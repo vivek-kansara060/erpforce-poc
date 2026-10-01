@@ -12,7 +12,7 @@ import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { employees, fmtNum } from '@/mock-data/masters';
 import {
-  ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed,
+  ASSET_ELSEWHERE_REASONS, ASSET_NOT_FOUND_REASONS, ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed, STOCK_DIFF_REASONS,
   type AssetCountLine, type CertRec, type CountSession, type CountType, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
 } from './data';
 import { FileList, aed, isBlank, num, requireFields, type Errors } from './shared';
@@ -192,6 +192,7 @@ const coveredCount = (s: CountSession) => (isAssetCount(s) ? (s.assetLines ?? []
 const resultTone = (r: string | null) => (r === 'Found' ? 'green' : r === 'Not Found' ? 'red' : 'amber') as 'green' | 'red' | 'amber';
 const sessionBadge = (s: CountSession) => (s.status === 'In Progress' ? 'In Progress' : s.adjustmentStatus ?? (varianceCount(s) ? 'Variance' : 'No Variance'));
 const REQ_PSV_ASSET = 'Physical Stock Verification > Fixed Assets count';
+const REQ_PSV_REASON = 'Physical Stock Verification > Reason for each difference';
 const ASSET_COUNT_HINT = 'Counting individual fixed assets is not defined in the requirement document. Rule to be confirmed with client';
 const selectStyle = { width: 190, padding: '6px 8px', border: '1px solid #D3D3D4', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
 
@@ -259,9 +260,11 @@ export function CountForm() {
       if (!assetLines.length) e.lines = head.location ? 'No fixed assets are recorded at this location' : 'Select a location to load the expected fixed assets';
       else if (complete && assetLines.some((l) => !l.result)) e.lines = 'Mark every fixed asset as Found, Not Found or Found elsewhere';
       else if (complete && assetLines.some((l) => l.result === 'Found elsewhere' && (!l.foundAt || l.foundAt === head.location))) e.lines = 'Select where each "Found elsewhere" asset was found (a different place from this location)';
+      else if (complete && assetLines.some((l) => l.result && l.result !== 'Found' && !l.reason)) e.lines = 'Select a reason for every asset that was not found or found elsewhere';
     } else {
       if (!lines.length) e.lines = 'Select a location to load the items to count';
       if (complete && lines.some((l) => l.countedQty === null || l.countedQty < 0)) e.lines = 'Enter the physically counted quantity for every item';
+      if (complete && !e.lines && lines.some((l) => { const v = variance(l); return v !== null && v !== 0 && !l.reason; })) e.lines = 'Select a reason for every line with a difference';
     }
     setErrors(e);
     if (Object.keys(e).length) { toast(e.lines ?? 'Please complete the mandatory fields highlighted on the form', 'error'); return; }
@@ -290,23 +293,29 @@ export function CountForm() {
           {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
           {isAssets && assetLines.length > 0 && (
             <>
-              <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Mark each unit as found at this location, not found, or found elsewhere. Units on hire at a client are not expected here.'}</Text>
+              <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Mark each unit as found at this location, not found, or found elsewhere. Units on hire at a client are not expected here. A reason is required for every unit that is not found or found elsewhere (reason list to be confirmed with client).'}</Text>
               <DataTable<AssetCountLine & { id: string }> hideToolbar rowKey={(r) => r.assetId} rows={assetLines.map((l) => ({ ...l, id: l.assetId }))} pageSize={20} columns={[
                 { key: 'assetId', label: 'Asset ID' }, { key: 'name', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' },
                 { key: 'expectedStatus', label: 'Expected Asset Status', render: (l) => <StatusChip status={l.expectedStatus} /> },
                 { key: 'result', label: 'Verified', sortable: false, render: (l) => (
-                  <select value={l.result ?? ''} onChange={(e) => setResult(l.assetId, { result: e.target.value || null, foundAt: e.target.value === 'Found elsewhere' ? l.foundAt : undefined })} style={selectStyle}>
+                  <select value={l.result ?? ''} onChange={(e) => setResult(l.assetId, { result: e.target.value || null, foundAt: e.target.value === 'Found elsewhere' ? l.foundAt : undefined, reason: undefined })} style={selectStyle}>
                     <option value="">Select...</option>{ASSET_RESULTS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>) },
                 { key: 'foundAt', label: 'Found At', sortable: false, render: (l) => (l.result === 'Found elsewhere' ? (
                   <select value={l.foundAt ?? ''} onChange={(e) => setResult(l.assetId, { foundAt: e.target.value })} style={selectStyle}>
                     <option value="">Select place...</option>{MOVEMENT_PLACES.filter((p) => p !== head.location).map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>) : '-') },
+                { key: 'reason', label: 'Reason', change: 'new', req: REQ_PSV_REASON, sortable: false, render: (l) => (l.result && l.result !== 'Found' ? (
+                  <select value={l.reason ?? ''} onChange={(e) => setResult(l.assetId, { reason: e.target.value || undefined })} style={selectStyle}>
+                    <option value="">Select reason...</option>{(l.result === 'Not Found' ? ASSET_NOT_FOUND_REASONS : ASSET_ELSEWHERE_REASONS).map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>) : '-') },
               ]} />
             </>
           )}
           {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
           {!isAssets && lines.length > 0 && (
+            <>
+            <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Enter the counted quantity for every item. A reason is required for every line with a difference (reason list to be confirmed with client).'}</Text>
             <DataTable<CountSession['lines'][number]> hideToolbar rowKey={(r) => r.itemId} rows={lines.map((l) => ({ ...l, id: l.itemId }))} pageSize={20} columns={[
               { key: 'code', label: 'Item Code' }, { key: 'name', label: 'Item' }, { key: 'unit', label: 'UOM' },
               { key: 'systemQty', label: 'System Quantity', align: 'right', render: (l) => fmtNum(l.systemQty) },
@@ -314,7 +323,12 @@ export function CountForm() {
                 <input type="number" min={0} value={l.countedQty ?? ''} onChange={(e) => setLines(lines.map((x) => (x.itemId === l.itemId ? { ...x, countedQty: e.target.value === '' ? null : Number(e.target.value) } : x)))}
                   style={{ width: 110, padding: '6px 8px', textAlign: 'right', border: '1px solid #D3D3D4', borderRadius: 4, font: 'inherit' }} />) },
               { key: 'variance', label: 'Variance', align: 'right', sortable: false, render: (l) => { const v = variance(l); return v === null ? '-' : <StatusChip status={v > 0 ? `+${v}` : String(v)} tone={v === 0 ? 'green' : 'amber'} />; } },
+              { key: 'reason', label: 'Reason', change: 'new', req: REQ_PSV_REASON, sortable: false, render: (l) => { const v = variance(l); return v === null || v === 0 ? '-' : (
+                <select value={l.reason ?? ''} onChange={(e) => setLines(lines.map((x) => (x.itemId === l.itemId ? { ...x, reason: e.target.value || undefined } : x)))} style={selectStyle}>
+                  <option value="">Select reason...</option>{STOCK_DIFF_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>); } },
             ]} />
+            </>
           )}
         </FormSection>
       </Page>
@@ -408,6 +422,7 @@ export function CountView() {
               { key: 'expectedStatus', label: 'Expected Asset Status', render: (l) => <StatusChip status={l.expectedStatus} /> },
               { key: 'result', label: 'Verified', sortable: false, render: (l) => (l.result ? <StatusChip status={l.result} tone={resultTone(l.result)} /> : '-') },
               { key: 'foundAt', label: 'Found At', sortable: false, render: (l) => l.foundAt ?? '-' },
+              { key: 'reason', label: 'Reason', change: 'new', req: REQ_PSV_REASON, sortable: false, render: (l) => l.reason ?? '-' },
             ]} />
           </Panel>
         ) : (
@@ -417,6 +432,7 @@ export function CountView() {
             { key: 'systemQty', label: 'System Quantity', align: 'right', render: (l) => fmtNum(l.systemQty) },
             { key: 'countedQty', label: 'Physically Counted', align: 'right', render: (l) => (l.countedQty === null ? '-' : fmtNum(l.countedQty)) },
             { key: 'variance', label: 'Variance', align: 'right', sortable: false, render: (l) => { const v = variance(l); return v === null ? '-' : <StatusChip status={v > 0 ? `+${v}` : String(v)} tone={v === 0 ? 'green' : 'amber'} />; } },
+            { key: 'reason', label: 'Reason', change: 'new', req: REQ_PSV_REASON, sortable: false, render: (l) => l.reason ?? '-' },
           ]} />
         </Panel>
         )}
