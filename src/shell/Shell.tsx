@@ -37,7 +37,8 @@ function TopBar({ mod, drawerWidth, launcher }: { mod?: ModuleDef; drawerWidth: 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {launcher ? <Logo height={36} /> : (
             <>
-              <Tooltip title="Back to modules"><IconButton size="small" onClick={() => nav('/')}><KeyboardBackspaceIcon sx={{ color: neutral[1000] }} /></IconButton></Tooltip>
+              {/* Same as the existing ERP header (window.history.back()); falls back to the module screen when there is no earlier in-app page, e.g. a link opened in a new tab. */}
+              <Tooltip title="Back"><IconButton size="small" onClick={() => ((window.history.state?.idx ?? 0) > 0 ? nav(-1) : nav('/'))}><KeyboardBackspaceIcon sx={{ color: neutral[1000] }} /></IconButton></Tooltip>
               <Select size="small" variant="standard" disableUnderline value={mod?.id ?? ''} onChange={(e) => { const m = modules.find((x) => x.id === e.target.value); if (m) nav(m.basePath); }} sx={{ minWidth: 250, '& .MuiSelect-select': { display: 'flex', alignItems: 'center', gap: 1, fontSize: 16, fontWeight: 500, py: 1 } }}>
                 {modules.map((m) => <MenuItem key={m.id} value={m.id} sx={{ gap: 1 }}><Box sx={{ display: 'flex', '& svg': { fontSize: 20 } }}>{m.icon}</Box>{m.label}</MenuItem>)}
               </Select>

@@ -12,6 +12,32 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 1 Oct, around 6:15 PM: The back arrow in the top bar now returns to the previous page, as in the existing ERP
+**Where:** POC Review Tools > Top bar > Back arrow
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The arrow next to the module name always went to the module selection screen, wherever you were. From an item's view page, for example, it skipped the Items listing completely. The existing ERP's header arrow does not behave like this: it goes back to the previous page, like the browser's back button.
+*What we did.* The arrow now goes back to the previous page you were on (listing to view page and back lands on the listing again). If there is no earlier page, for example when a link is opened directly in a new tab, it goes to the module selection screen so it never does nothing. Its tooltip now reads "Back".
+*Be aware.* As in the existing ERP, after you save a form the arrow goes back to the form you just saved, because that was the previous page. The breadcrumb at the top left (for example "Items") still always goes to the listing. This change was made in the shared top bar (`src/shell/Shell.tsx`) with approval, as an exception to the builder guide's rule against editing shared files.
+
+### 1 Oct, around 6:00 PM: Heavy Equipment Pricing shows what a price works out to at every billing frequency, and each price now has a view page
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** NEW
+
+*The problem.* A price is set for one billing frequency only (for example AED 600 Daily). The user and the customer had no quick way to see what that means per week, month, quarter or year. Clicking a price in the list also went straight into edit mode; there was no page to just look at it.
+*What we did.* Under the fields on the Add and Edit Price form there is now a **Billing Frequency Preview** table. It takes the price and frequency you set and shows the equivalent price for Daily, Weekly, Monthly, Quarterly and Yearly, with a "How it is worked out" column (for example "600 × 7 days"). The frequency you set is marked "(set)". The table updates as you type. Clicking a price in the list now opens a new **view page** showing Category, Sub-Category, Price and Frequency with the same preview table, plus Edit and Delete buttons. Saving a price now opens its view page.
+*Connected change.* Nothing is saved from the preview. No extra price records are created, and quotations and orders still use only the price that was set.
+*Be aware.* The conversion assumes 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months and 1 year = 12 months (360 days), rounded to 2 decimals. A note under the table says this, explains that figures can differ by a few fils (AED 14 monthly is AED 0.47 daily, but 0.47 × 30 = AED 14.10), and states that the table is a preview only and actual invoices follow the rental dates on the order.
+
+### 1 Oct, 5:30 PM: Product Classification removed from the Heavy Equipment Fixed Asset form, and Rental removed from the standard item form
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Heavy Equipment Fixed Asset form let the user pick any Product Classification (Inventory, Rental, AMC, Fuel Trading, Trading), but depreciation applied whatever was picked. Heavy equipment in this form is always rental fleet, so picking Trading or AMC made no sense and still produced a depreciating asset. The standard Add Item form, for its part, still offered Rental, so a rental generator could be created a second time as an ordinary item.
+*What we did.* The Heavy Equipment Fixed Asset form no longer shows the Product Classification field. Every record saved from it is classified as Rental automatically. On the standard Add Item form, the Product Classification dropdown no longer offers Rental, and a hint under it says rental equipment is added as a Heavy Equipment Fixed Asset.
+*Connected change.* The Heavy Equipment Fixed Asset details page still shows "Product Classification: Rental" as a read-only value. Existing standard items that are already classified as Rental (Diesel Generator 100 KVA, Diesel Generator 500 KVA and Power Cable 4C x 185 mm) keep that value and still show it when edited; only new choices are limited.
+*Be aware.* Equipment kept for sale (Trading) is added on the standard item form, not the heavy equipment form. Whether the three existing Rental items should stay as ordinary items is to be confirmed with client.
+
 ### 1 Oct, 3:00 PM: The Heavy Equipment Fixed Asset form no longer asks for a name, item code, asset ID or tracking method
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Type:** NEW

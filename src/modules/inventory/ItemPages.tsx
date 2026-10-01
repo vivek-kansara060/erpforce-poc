@@ -133,7 +133,9 @@ export function ItemForm() {
         <TextInput label="Item Code" change="new" req={REQ_ITEM} value={code} disabled hint="Auto-generated" />
         <TextInput label="SKU" required value={f.sku} onChange={set('sku')} error={errors.sku} />
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
-        <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification} options={[...PRODUCT_CLASSIFICATIONS]} onChange={set('classification')} error={errors.classification} />
+        <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification}
+          options={PRODUCT_CLASSIFICATIONS.filter((c) => c !== 'Rental' || f.classification === 'Rental')} onChange={set('classification')} error={errors.classification}
+          hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
         <SelectInput label="Category" required change="new" req={REQ_ITEM} value={f.category} options={categoryOptions(cats.rows, 'Normal', f.category)} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
         <SelectInput label="Sub-Category" change="new" req={REQ_ITEM} value={f.subCategory} options={subCategoriesOf(cats.rows, f.category)} disabled={!f.category || subCategoriesOf(cats.rows, f.category).length === 0}

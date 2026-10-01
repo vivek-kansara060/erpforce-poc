@@ -15,7 +15,7 @@ import { getCollection, useCollection } from '@/store/store';
 import { suppliers } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, PRODUCT_CLASSIFICATIONS, TODAY,
+  ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
   attributesFor, buildBoard, categoryOptions, categorySeed, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf, subCategoriesOf, topCategories,
   type AuditEntry, type BoardRow, type DisposalRec, type CategoryRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
@@ -92,7 +92,7 @@ const blank: Record<string, any> = {
   method: 'Straight line', decliningFactor: '', computation: 'Constant periods', usefulLifeYears: '', usefulLifeHours: '', accFixedAsset: '', accDepreciation: '', accExpense: '', journal: ACCOUNTS.journals[0],
   ownership: 'Owned', supplier: '', crossHireIdle: false, insurance: [],
 };
-const BASIC_KEYS = ['name', 'classification', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'assetStatus', 'putToUseDate', 'notDepreciable'];
+const BASIC_KEYS = ['name', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'assetStatus', 'putToUseDate', 'notDepreciable'];
 const DEP_KEYS = ['method', 'decliningFactor', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense'];
 const TRACKED: [string, string][] = [['name', 'Name'], ['assetStatus', 'Asset Status'], ['ownership', 'Ownership Type'], ['assetValue', 'Asset Value'], ['nbv', 'Current Net Book Value'], ['usefulLifeYears', 'Useful Life (Years)'], ['method', 'Depreciation Method'], ['department', 'Department']];
 
@@ -125,10 +125,10 @@ export function HeavyForm() {
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
   const validate = (): Errors => {
-    const req = ['classification', 'category', 'assetType', 'assetStatus', 'ownership'];
+    const req = ['category', 'assetType', 'assetStatus', 'ownership'];
     if (!existing) req.push('initialLocation');
     if (dep) req.push('method', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense');
-    const e = requireFields(f, req, { classification: 'Product Classification', assetType: 'Asset Type', assetStatus: 'Asset Status', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
+    const e = requireFields(f, req, { assetType: 'Asset Type', assetStatus: 'Asset Status', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
     Object.assign(e, validateSerialized(f, !dep), validateAttrs(attrDefs, f.attrs));
     if (f.assetStatus === 'Disposed' && existing?.assetStatus !== 'Disposed' && !getCollection<DisposalRec>('inventory.disposals').some((d) => d.assetId === assetId && d.status === 'Approved')) e.assetStatus = 'Disposed requires an Approved Disposal Request';
     if (dep && !e.usefulLifeYears && num(f.usefulLifeYears) <= 0) e.usefulLifeYears = 'Useful Life must be greater than 0';
@@ -160,7 +160,7 @@ export function HeavyForm() {
     const unchanged = !!existing && existing.category === f.category && existing.subCategory === f.subCategory && existing.brand === f.brand && existing.model === f.model;
     const displayName = unchanged ? existing!.name : [f.category, f.subCategory, f.brand, f.model].filter(Boolean).join(' ');
     const rec: HeavyRec = {
-      id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: f.classification, tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
+      id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: 'Rental', tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
       specification: f.specification, assetType: f.assetType, purchaseDate: f.purchaseDate, putToUseDate: f.putToUseDate, assetValue: n('assetValue') || 0, notDepreciable: n('notDepreciable') || 0, nbv: n('nbv') || 0, deprPct: n('deprPct') || 0, deprAmount: n('deprAmount') || 0, capex: n('capex') || 0,
       department: f.department, company: COMPANY, status: f.status, assetStatus: f.assetStatus, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
       accFixedAsset: f.accFixedAsset, accDepreciation: f.accDepreciation, accExpense: f.accExpense, journal: f.journal, ownership: f.ownership, supplier: f.ownership === 'Cross-Hired' ? f.supplier : '', crossHireIdle: f.ownership === 'Cross-Hired' && !!f.crossHireIdle,
@@ -174,7 +174,6 @@ export function HeavyForm() {
   const basic = (
     <>
       <FormGrid>
-        <SelectInput label="Product Classification" required change="new" req={REQ_HE} value={f.classification} options={[...PRODUCT_CLASSIFICATIONS]} onChange={set('classification')} error={errors.classification} />
         <SelectInput label="Asset Type" required change="new" req={REQ_FA} value={f.assetType} options={ASSET_TYPES} onChange={set('assetType')} error={errors.assetType} />
         <SelectInput label="Category" required change="new" req={REQ_HE} value={f.category} options={categoryOptions(cats.rows, 'Heavy Equipment', f.category)} error={errors.category}
           onChange={(v) => upd({ category: v, subCategory: '', attrs: {}, ...(cats.rows.find((c) => c.level === 1 && c.name === v)?.depMethod ? { method: cats.rows.find((c) => c.level === 1 && c.name === v)!.depMethod } : {}) })} />
