@@ -1,0 +1,2683 @@
+
+
+
+
+
+
+ERPFORCE
+Heavy Equipment Rental Module
+
+
+Table of Contents
+Executive Summary
+Heavy Equipment Rental Business Model
+CRM Module
+Rental Module
+Procurement Module
+Inventory &amp; Fixed Assets Module
+Finance &amp; Accounting Module
+HRMS Module
+Roles &amp; Permissions
+Notifications &amp; Audit Trail
+Pending Client Confirmation
+Master Data Import
+User Training
+Approval
+
+Executive Summary
+This document describes the ERPForce Heavy Equipment Rental Module. It consolidates the business requirements, screen-level field specifications, business rules, reports, and dashboards for every functional area of the module into a single reference for the development team.
+The ERPForce Heavy Equipment Rental Module covers the following areas:
+CRM / Sales
+Procurement (Purchase)
+Inventory &amp; Fixed Assets
+Rental
+Accounting &amp; Finance
+HRMS
+NovaForce, the ERPForce AI Assistant (standard ERPForce functionality; no customization scoped in this document)
+The six modules with confirmed customization requirements CRM, Procurement, Inventory &amp; Fixed Assets, Rental, Accounting &amp; Finance, and HRMS are each detailed in full in the chapters that follow, covering every screen, field, business rule, report, and dashboard required.
+Heavy Equipment Rental Business Model
+A heavy equipment rental business typically operates across four commercial activities, and a single client engagement can span more than one of them at once:
+Rental renting generators and related equipment to clients.
+Trading selling equipment, spare parts, and consumables outright.
+Fuel Trading selling fuel, whether client-collected or delivered by the business as an added service.
+AMC (Annual Maintenance Contracts) scheduled maintenance visits, billed according to contract terms.
+Every enquiry can be tagged with one or more of these activities at the outset, and more activities can be added to the same account or project later as the relationship grows. One Opportunity, Quotation, and Sales Order stays a single record throughout activity tagging happens at the line level, so a single order can mix a Rental line, a Fuel Trading line, and a Service line, each tracked for its own profitability.
+Core Principles Applied Across Every Module
+Category-based commitment: clients commit to an equipment Group and Category at Quotation and Sales Order stage; the exact serialized asset is only assigned at the point of Delivery.
+One-asset-one-record: every serialized rental or inventory asset has exactly one Fixed Asset Register entry, tracked through its entire life delivery, return, replacement, maintenance, and eventual disposal.
+Unified Asset Status: a single shared status list (Ready for Hire, On Hire, Off Hire, Under Maintenance, Disposed, Yard, Hold, and others) is used consistently across the Rental and Inventory &amp; Fixed Assets modules, rather than maintaining separate status lists per module.
+Configurable approval and alerting: rather than hard-coding approval thresholds, reminder lead times, and escalation rules throughout the system, these are built once as a shared, configurable Approval Engine and Alert/Reminder Engine that every module plugs into.
+Cross-Hire: when the business's own fleet cannot meet a rental demand, a unit is sourced from a third-party supplier and tracked through a five-stage lifecycle Request, Receive, Allocate, Return to Us, Return to Supplier with the same condition checks and cost/profitability tracking as an owned asset, except that no depreciation is posted against it.
+Cost Centre tagging: any transaction a sales invoice, a purchase invoice, a payroll entry, a depreciation posting can be tagged to a Cost Centre representing a project, branch, department, or activity, without being mandatory. Cost Centres can be flat or hierarchical, and reporting can roll figures up from child to parent automatically.
+CRM Module
+Lead
+The Lead screen is the entry point for every inbound enquiry, regardless of which of the four commercial activities it becomes.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Lead Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Lead Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Source
+ | Picklist
+ | Yes
+ | Website / WhatsApp / Email / Phone / Walk-in / Referral / Trade Show / Other.
+ | Activity Type(s)
+ | Multi-select picklist
+ | Yes
+ | Rental / Trading / Fuel Trading / AMC / Service / Other. Multi-select a Lead can cover more than one activity at once. Not locked here; more can be added later at Opportunity, Quotation, or afterwards against the same account.
+ | Customer / Company Name
+ | Text or linked record
+ | Yes
+ | Free text if new; linked if an existing Customer record matches.
+ | Contact Person, Phone, Email
+ | Text
+ | Yes
+ | Primary point of contact for this lead.
+ | Lead Owner
+ | User reference
+ | Yes
+ | Assigned team member responsible for follow-up.
+ | Lead Status
+ | Picklist
+ | Yes
+ | New / Contacted / Qualified / Unqualified / Converted / Lost.
+ | Lost Reason
+ | Picklist
+ | Conditional
+ | Mandatory when Lead Status = Lost or Unqualified (e.g., Price, Competitor, No Stock, Client Went Cold).
+ | Next Follow-Up Date
+ | Date
+ | No
+ | Drives follow-up reminders.
+ | Classification / Tags
+ | Text / multi-select
+ | No
+ | Free classification for reporting.
+ | Communication Log
+ | Log, system-appended
+ | N/A
+ | Records every call/email/note against the lead.
+ | Attachments
+ | File upload
+ | No
+ | Supporting documents (RFQ, site plan, etc.).
+ | Business Rules
+At least one Activity Type is mandatory before a Lead can be converted into an Opportunity; more than one can be selected.
+A Lead converts into exactly one Opportunity; the conversion action carries Customer, Contact, and the full set of selected Activity Type(s) forward automatically.
+Duplicate detection checks phone number and company name before allowing a new Lead to be saved, with a warning rather than a hard block.
+
+Opportunity
+The Opportunity screen captures the qualified interest behind a Lead what the customer wants, in general terms without committing to item-level or asset-level detail. That commitment happens at Quotation.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Opportunity Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Opportunity Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Customer Name
+ | Linked record
+ | Yes
+ | Linked to Customer Master.
+ | Opportunity Owner
+ | User reference
+ | Yes
+ | Sales rep responsible for the deal.
+ | Opportunity Title
+ | Text
+ | Yes
+ | Short description of the deal's purpose carries through to Quotation to speed up repeat-quote creation.
+ | Activity Type(s)
+ | Multi-select picklist
+ | Yes
+ | Inherited from the Lead, editable here. Summary-level only does not constrain what activity types appear at line level on the Quotation. New activity types can be added at any time, including long after this Opportunity is won, against the same account.
+ | Source, Point of Contact, Campaign
+ | Text / picklist
+ | No
+ | Marketing/origin tracking.
+ | Rating
+ | Picklist (Cold/Warm/Hot)
+ | No
+ | Qualitative deal temperature.
+ | Stage
+ | Picklist
+ | Yes
+ | Enquiry / Qualified / Quoted / Won / Lost drives the Sales Pipeline Dashboard.
+ | Equipment Group
+ | Picklist
+ | No
+ | Optional at this stage category/spec-level only, never a specific serialized asset. Sourced from the Asset Category master.
+ | Equipment Category
+ | Picklist, dependent on Group
+ | No
+ | Optional at this stage; full commitment happens at Quotation.
+ | FOC Line Indicator
+ | Checkbox
+ | No
+ | Marks an item of interest as Free of Cost; the asset must still be tracked once allocated, even though no revenue applies.
+ | Estimated Amount
+ | Currency
+ | No
+ | Assumption-based estimate; remains editable through Quotation and Sales Order.
+ | Discount, VAT Type, Total Amount, Adjustment
+ | Currency / picklist
+ | No
+ | Same financial fields as Quotation, editable at this stage.
+ | Win Probability
+ | Slider / percentage
+ | No
+ | Input to the Sales Forecast calculation.
+ | Expected Close Date
+ | Date
+ | Yes
+ | Input to the Sales Forecast calculation.
+ | Sales Forecast Value
+ | Calculated, read-only
+ | N/A
+ | Weighted revenue forecast (Estimated Amount × Win Probability, rolled up by period). Exact formula and reporting period requires confirmation.
+ | Next Action, Comments, Tags, Competitor Details
+ | Text
+ | No
+ | Free-form deal-management notes.
+ | LPO Number / Date
+ | Text / Date
+ | No
+ | Captured if available this early; not mandatory at Opportunity stage.
+ | Location / Site
+ | Text or map lookup
+ | No
+ | Delivery/site location, if known.
+ | Approval Required
+ | System flag, configurable
+ | N/A
+ | Off by default. A configurable approval framework must exist to switch on approval gates (by value/discount threshold) without a rebuild. Exact thresholds require confirmation.
+ | Business Rules
+An Opportunity's Activity Type(s) field is a multi-select summary it can list more than one activity, and does not need to resolve into a single value.
+Equipment Group/Category, if entered, is never treated as a firm reservation it is informational only until Quotation.
+An Opportunity can carry multiple equipment lines, including a mix of billable and FOC lines. FOC lines still require asset allocation tracking once the deal converts to Delivery.
+If a requested Category shows zero availability across the fleet, the system flags this on the Opportunity but does not block its creation or progression the demand is still captured for pipeline and procurement-planning visibility.
+An Opportunity converts into exactly one Quotation at a time (a new Quotation can be created against the same Opportunity for revisions). Both remain single records regardless of how many Activity Types are involved.
+New Activity Types can be added to an existing account/Opportunity at any time there is no cutoff after which only the originally selected activities apply.
+Quotation
+Quotation is where the commercial commitment takes shape. It carries six interlocking customizations: line-level Activity Type tagging, Group + Category selection, the Package Builder, Contract Type, the internal Allocation Tag, and the Document Template selector.
+Design Principles
+A Quotation is one record, but its lines are not required to share the same Activity Type mixed-activity Quotations are the norm, not an edge case.
+The exact serialized asset is never chosen at Quotation only at Delivery. What Quotation reserves is a soft, SLA-based hold on a Category, which Operations can reassign before Delivery if needed.
+Matching an unavailable requested spec to the nearest available Category is a manual, salesperson judgment calls no automatic matching engine is required. What is required is full visibility, via the Allocation Tag and a supporting report, of what was requested versus what was actually reserved or delivered.
+Both pre-built standard Packages and freshly-assembled ad hoc bundles are supported side by side.
+Contract Type stays editable through the Quotation and is only fully locked at Sales Order confirmation.
+Document Template choice is a manual, per-quotation decision made by the sales rep never defaulted or fixed by customer.
+
+
+
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Quotation Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Quotation Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Linked Opportunity
+ | Linked record
+ | Yes
+ | Quotation is always generated from, or linked to, an Opportunity.
+ | Opportunity Title (inherited)
+ | Text, read-only
+ | No
+ | Carried automatically from the linked Opportunity, for context and faster repeat-quote creation.
+ | Previous Quotation (revision link)
+ | Linked record
+ | No
+ | Links a revised Quotation to its prior version.
+ | Quotation Version History
+ | System log, read-only
+ | N/A
+ | Every revision retained in full, not overwritten, with a complete field-level audit trail of who changed what and when.
+ | Quotation Description
+ | Free text
+ | No
+ | Quotation-level only; does not exist on, or sync back to, the Opportunity.
+ | Customer Name, Contact, Email, Phone, Address
+ | Text / linked
+ | Yes
+ | Inherited from the linked Opportunity/Customer, editable per quotation.
+ | Prepared By (Name, Designation, Mobile, Email)
+ | Text
+ | Yes
+ | Identifies the preparer for print output.
+ | Quotation Valid Until
+ | Date
+ | Yes
+ | Mandatory. Drives the Quotation Aging Report.
+ | Quotation Status
+ | Picklist
+ | Yes
+ | Draft / Submitted for Approval / Approved / Rejected / Revised / Converted to Sales Order.
+ | Activity Type (per line)
+ | Picklist, mandatory per line
+ | Yes
+ | Rental / Trading / Fuel Trading / AMC / Service / Other set independently on every line. This is the authoritative activity tag; it drives which of the remaining line-level fields apply to that line, and feeds per-activity profitability reporting within one Quotation.
+ | Contract Type (per Rental/AMC line)
+ | Picklist
+ | Yes (Rental/AMC lines)
+ | Open PO / Closed (fixed end date) / Project (1–2 years). Set per line, since a mixed-activity Quotation may have Rental lines on one Contract Type and no Contract Type at all on Trading/Service lines.
+ | Contract End Date (per line)
+ | Date
+ | Conditional
+ | Mandatory when that line's Contract Type is Closed or Project.
+ | Document Template
+ | Picklist
+ | Yes
+ | Manually selected per quotation by the sales rep, applying to the whole document regardless of how many Activity Types its lines cover. Content is admin-editable without a code change. Final template list requires confirmation.
+ | Line Type (per item line)
+ | Picklist
+ | Yes
+ | Individual / Package.
+ | Equipment Group / Category (per Rental/AMC line)
+ | Picklist
+ | Yes (Rental/AMC lines)
+ | Mandatory only for lines tagged Rental or AMC. Trading/Fuel Trading/Service lines use standard Item/Code selection instead, per that line's own Activity Type.
+ | Allocation Tag (per Rental/AMC line)
+ | Internal reference, hidden from print
+ | No
+ | Populated when the actual reserved Category differs from the client-facing requested spec. Visible to Sales and Operations roles only; every change is logged to the audit trail.
+ | Package Discount
+ | Percentage / amount
+ | Conditional
+ | Editable per quotation even when a standard Package template is used.
+ | FOC Indicator (per line)
+ | Checkbox
+ | No
+ | Price is zero; the line item is still tracked through Delivery and Return.
+ | Item Code, Description, Unit, Brand, Qty, Price, Price Total
+ | Various
+ | Yes
+ | Standard line-item fields, present on every line regardless of its Activity Type.
+ | Terms &amp; Conditions
+ | Selectable template + rich text edit
+ | Yes
+ | Selectable base template, editable per quotation.
+ | Discount %, Discount Amount, Subtotal, Adjustment
+ | Currency / percentage
+ | No
+ | Standard financial roll-up fields, at both line and document level.
+ | VAT Type
+ | Picklist
+ | Yes
+ | Standard (With VAT) / Export (Zero-Rated) the business has VAT-exempt export transactions.
+ | VAT Amount, Total Amount
+ | Currency, calculated
+ | N/A
+ | System-calculated, rolled up across all lines regardless of Activity Type.
+ | Total Amount 
+ |  |  | Total Line amount
+ | Push Amount to Opportunity
+ | Checkbox
+ | No
+ | When checked, updates the linked Opportunity's Estimated Amount with this Quotation's total.
+ | Business Rules
+Every line on a Quotation carries its own Activity Type; there is no document-level Activity Type field that a line inherits by default.
+A Rental/AMC line cannot be saved without Group + Category populated; the specific serialized asset is never selectable here. Trading/Fuel Trading/Service lines never require Group + Category, regardless of what Activity Types appear elsewhere on the same Quotation.
+The Allocation Tag never appears on any client-facing PDF output, under any Document Template configuration.
+The Category held against a Rental/AMC line can be changed any time up to Delivery, but every change is logged previous Category, new Category, user, timestamp.
+Changing a line's Contract Type after the Quotation has progressed to Sales Order forces a mandatory review of that line's invoice schedule and end-date fields before the change can be saved.
+A Package line locks its component Asset, Accessories, and Services together for pricing; a component can be swapped without deleting the whole line, but price is manually adjusted afterward rather than auto-recalculated.
+Full quotation version history is retained indefinitely by default; retention period requires confirmation.
+A new Activity Type can be introduced on a Quotation at any time by simply adding a line tagged with it no separate approval step is required purely to introduce a new activity to an existing account, beyond whatever approval that line's value or discount would normally trigger.
+Pricing &amp; Rate Management
+A bulk price-update capability allows the Accounts/Pricing team to revise prices across many assets or categories in a single action, by uploading a spreadsheet rather than editing records individually.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Bulk Price Update Upload
+ | File upload (spreadsheet)
+ | Yes
+ | Uploads new prices for many assets/categories at once.
+ | Category Filter
+ | Picklist, multi-select
+ | Yes
+ | Rental / Service / Packages / Inventory the update can be scoped to one or more categories per upload.
+ | Price History
+ | System log, read-only
+ | N/A
+ | Old price is retained in history whenever a bulk update changes it, so pricing at any past point in time can be reconstructed.
+ | Effective Date
+ | Date
+ | Yes
+ | New pricing applies only to Quotations/Orders created after this date it never changes pricing on existing, already-confirmed Quotations or Orders.
+ | Business Rules
+A bulk price update never retroactively changes a Quotation or Sales Order that already exists it only affects new records created after the update's effective date.
+Every bulk update is retained in price history, so the price that applied to any historical transaction remains reconstruct able.
+Sales Order
+The Sales Order is the confirmed, commercially binding record of the deal. Its print output functions as a formal agreement with the client. Consistent with Quotation, Contract Type is confirmed per line, not once for the whole Order a mixed-activity Sales Order can have a Rental line under a Closed contract and a Trading line with no Contract Type at all.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Order Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation. (Should Follow the Serial No based on the Prefix)
+ | Order Date
+ | Date/time, auto
+ | Yes
+ | Defaults to creation date/time. (Should be Editable)
+ | Linked Quotation / Opportunity
+ | Linked record
+ | Yes
+ | Sales Order is always generated from an approved Quotation. (Editing Options must be available for each &amp; every Line items)
+ | Customer Name, Order Owner, Point of Contact
+ | Text / linked
+ | Yes
+ | Inherited from the Quotation, editable if needed. (All Fields are shared as a template earlier. Please included all those fields)
+ | Order Title, Reference, Order Tags
+ | Text
+ | No
+ | Free classification fields.
+ | Activity Type (per line, inherited)
+ | Picklist, read-only per line
+ | Yes
+ | Carried forward from each Quotation line; a single Order can mix activity types across its lines, exactly as at Quotation. 
+ | Contract Type, Contract End Date (per Rental/AMC line)
+ | Picklist / Date
+ | Yes / Conditional
+ | Inherited per line from the Quotation; must be set, and end date populated where Closed/Project, before that specific line can be confirmed. Not a single document-level value.
+ | Billing Structure (per Project-type line)
+ | Picklist
+ | Conditional
+ | Milestone / Lump Sum required when a line's Contract Type is Project. The ERPForce feature that should drive this selection requires confirmation. (Must be Editable)
+ | Order Status
+ | Picklist
+ | Yes
+ | Pending / Confirmed / Partially Delivered / Fully Delivered / Closed / Cancelled. Full list requires confirmation.
+ | Delivery Method
+ | Picklist
+ | No
+ | Own Fleet / External Transporter informational at Order stage; finalised at Delivery Order.
+ | LPO Number / Date
+ | Text / Date
+ | No
+ | Client purchase-order reference. And Expiry Date also must be mentioned
+ | Location / Site
+ | Text or map lookup
+ | No
+ | Delivery/site location. 
+ | Assigned Asset(s) / Allocation Tag (per Rental/AMC line, per delivery)
+ | Reference
+ | No
+ | Populated at Delivery; editable if a replacement/substitution occurs after confirmation. Every change logged.
+ | Certificate / Compliance Status (per assigned asset)
+ | Read-only, rolled up
+ | No
+ | Shows registration/insurance/inspection validity for the asset(s) on this Order, sourced from the Fixed Asset Register.
+ | Billing Cycle Reference (per delivery)
+ | System-linked
+ | N/A
+ | Rental billing period is tracked per individual delivery under this Order, not per Order as a whole. (Dates should be editable)
+ | Item grid, Terms &amp; Conditions, Discount, VAT, Total Amount, Adjustment, Comments
+ | Various
+ | Yes
+ | Same structure as Quotation, carried forward on conversion, with each line retaining its own Activity Type. As per the shared template, each item may have multiple separate descriptions. When an item is selected, all descriptions associated with that item should automatically be displayed in the Description field, with the option for the user to select the required descriptions. Alternatively, direct access required to the item master from this page is required to provide an option to add and maintain multiple descriptions for each item, so that the required descriptions can be configured in advance and selected when preparing the transaction.An option Required to upload all DO/CN/INVOICE/CREDIT NOTE/LPO/QUOTE hereAn option required to View Live DO against the Orders on the side corner
+ | Business Rules
+Once confirmed, a line's commercial terms price, quantity, Contract Type terms are frozen; only a formal revision action can change them. The specific asset/material assigned to a Rental/AMC line can still change at the point of Delivery without revising commercial terms.
+A single Sales Order can be fulfilled across multiple partial Deliveries, on different dates, across different lines. The rental billing cycle runs per delivery: it starts when that specific delivery goes out, and ends when that specific delivered material is returned.
+If stock runs out for a Category already on a confirmed Rental/AMC line, the Order can be amended to the nearest available Category, using the same spec-substitution logic as Quotation.
+An Order cannot be marked fully complete while any linked delivery, on any line, remains unreturned.
+No customer signature is required to confirm the Sales Order itself; a signature is required later, at Delivery.
+
+Delivery Order
+Delivery is the point where the specific serialized asset is finally assigned against the Category confirmed on the Sales Order line, and where physical custody transfers to the client.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Delivery Order Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation. (Should be editable)
+ | Delivery Date
+ | Date/time
+ | Yes
+ | Actual dispatch date/time. (Should be editable)
+ | Linked Sales Order (and line)
+ | Linked record
+ | Yes
+ | Delivery is always created against a confirmed Sales Order line, since one Order can have lines under different Activity Types with different fulfilment paths.
+ | Delivery Type
+ | Picklist
+ | Yes
+ | Full / Partial supports staged delivery against one Order.
+ | Assigned Asset(s)
+ | Picker, constrained to confirmed Category
+ | Yes
+ | The exact serialized unit is selected here for the first time, limited to stock within the Sales Order line's confirmed Category.
+ | Accessories (ad hoc)
+ | Multi-select / tags
+ | No
+ | Accessories attached at the point of delivery are tagged here even if they were not on the original Quotation/Sales Order, so they can be reconciled at Return. ( All items must be added/updated in the Sales Order first. Only the items selected in the Sales Order should be available in the Delivery Order (DO) as a Pick List.  The DO should allow users to select only from the items already included in the respective Sales Order.  A separate Description field should be available in the DO, allowing users to add or modify additional information where required not any Additional Items).
+ | Transport Type
+ | Picklist
+ | Yes
+ | Own Fleet / External Transporter. Drives the cost-allocation field below and the Logistics Dashboard.
+ | External Transport Cost
+ | Currency
+ | Conditional
+ | Mandatory when Transport Type is External. Allocated against the Order/Project so order-level profitability stays accurate.
+ | Delivery Condition Attachments
+ | File upload (photo/document)
+ | No (optional)
+ | Field must exist on-screen but is not a mandatory gate to complete delivery.
+ | Customer Signature
+ | signature capture
+ | Yes (with fallback)
+ | Electronic capture preferred; manual print plus physical attachment as fallback where e-signature isn't possible on site.
+ | Ad Hoc Item / FOC Indicator (per added line)
+ | Checkbox
+ | No
+ | Marks a last-minute addition as Free of Cost; price is zero, but the asset/item is still tracked. (Item must be updated in the Sales Order first)
+ | Delivery Status
+ | Picklist
+ | Yes
+ | Dispatched / Delivered / Acknowledged. 
+ | 
+
+Business Rules
+A Delivery Order cannot be marked complete without either a customer e-signature or an attached manual confirmation record.
+External transport cost must post to the same Order/Project cost centre as the rest of the delivery, for accurate profitability reporting.
+Any accessory tagged at delivery, whether originally quoted or added ad hoc, must be carried into the Return reconciliation.
+Fuel level and Hour Meter Reading are not captured on this screen that capture point sits with the Rental module.
+Customer Returns
+Returns close out the rental cycle for a specific delivery, stopping the billing clock, transferring custody back to the business, and gating the asset's return to active fleet availability.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Return Entry Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation. It would be better to follow the same numbering sequence as the DO, with the abbreviation “CN”
+ | Linked Sales Order / Delivery Order
+ | Linked record
+ | Yes
+ | Return is always raised against a specific delivered asset.
+ | Return Method
+ | Picklist
+ | Yes
+ | Self-Return / Company Collection both are supported, selectable per transaction.
+ | Return Entry Timestamp
+ | Date/time, system-set
+ | Yes
+ | Stops the rental billing clock for the returned asset; precedes inspection. (Date must be Editable)
+ | Inspection Status
+ | Picklist
+ | Yes
+ | Pending Inspection / Passed / Damage Found. A distinct, later step from the Return Entry itself inspection happens once the asset physically reaches the warehouse.
+ | Damage Charge
+ | Currency, linked to Sales Order
+ | Conditional
+ | Mandatory when Inspection Status is Damage Found; tracked against the originating Sales Order and feeds the Damage &amp; Repair Cost Report.
+ | Operations Return Checklist
+ | Checklist + attachments
+ | Yes
+ | Must be completed before the asset's status can change to Ready for Hire. Checklist content requires confirmation.
+ | Fuel Note
+ | Text / reference
+ | No
+ | Fuel is never billed as part of rental any fuel-related note here is for reference only; fuel transactions are handled entirely as Trading.
+ | Business Rules
+Rental billing stops at the Return Entry timestamp, regardless of when inspection is subsequently completed.
+The asset cannot become Ready for Hire again until the Operations Return Checklist is marked complete.
+A damage charge, once raised, is linked permanently to the originating Sales Order for reporting and audit purposes.
+Customer Master Data
+The Customer record is the single source of truth for every relationship the business has across all commercial activities.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Customer Code
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Customer Type
+ | Fixed = Company
+ | Yes
+ | No individual/consumer customer type in this phase all customers are companies. (Individual also required)
+ | Company Name, Trade License Number, VAT/TRN Number
+ | Text
+ | Yes
+ | Standard KYC fields, always trade-license based.
+Please include all fields as shared as a template earlier
+ | Address, Contact tabs
+ | Text / multi-record
+ | Yes
+ | Standard contact management.
+ | Credit Limit
+ | Currency
+ | Yes
+ | Drives credit-exposure checks at Quotation/Sales Order stage. Exact enforcement rule (hard block vs. warning) requires confirmation.
+ | Cost Centre / Project (per site)
+ | Reference, one-to-many
+ | No
+ | Allows one customer with multiple sites/projects to be tracked distinctly under the same account. Each Sales Order is a Project/ Cost Centre. For others will be created as Office/Warehouse etc
+ | Active / Inactive Status
+ | Toggle + history log
+ | Yes
+ | Changeable at any time; every change retained in history and reflected in the Customer KPI Summary.
+ | Customer KPI Summary
+ | Calculated, read-only
+ | N/A
+ | Exact KPI set requires confirmation likely on-time payment rate, return condition rate, order frequency.
+ | Sales History, Returns History, Asset Status History, Items Sold
+ | System log, read-only
+ | N/A
+ | Full transaction history per customer, filterable by Activity Type at the line level.
+ | Business Rules
+A customer transacts across all Activity Types under one record there is no separate customer silo per Activity Type, only filtering at the reporting layer.
+Setting a customer to Inactive does not delete or hide their transaction history it only blocks new transactions going forward.
+Reports
+Report
+ | Purpose
+ | Sales Order Summary / Detail Reports
+ | Standard order-level reporting. 
+ | Sales Invoice Summary / Detail Reports
+ | Standard invoice-level reporting.
+ | Sales by Salesperson Performance Report
+ | Performance by individual and team.
+ | Pending Quotes &amp; Approvals Report
+ | Quotes awaiting action.
+ | Sales Return &amp; Credit Note Report
+ | Returns and credits issued.
+ | Regional / Branch Sales Performance Report
+ | Performance by location.
+ | Sales Discount &amp; Promotion Analysis Report
+ | Discount usage and impact.
+ | Required vs. Hired/Allocated Category Report
+ | Compares what was requested on the quote against what was actually allocated or delivered.
+ | Lead Source Conversion Report
+ | Which lead sources convert into business.
+ | Quoted vs. Delivered Spec Report
+ | What was quoted versus what was actually delivered feeds fleet purchasing decisions.
+ | Lead Response / SLA Breach Report
+ | Leads not contacted within the target time window.
+ | Lost Lead / Lost Opportunity Reason Report
+ | Breakdown by reason.
+ | Opportunity Pipeline / Funnel Report
+ | Count and value by stage, filterable by Activity Type.
+ | Win/Loss Ratio Report
+ | By salesperson, Activity Type, and Category.
+ | Quotation Conversion Ratio Report
+ | Quotes converting to confirmed orders.
+ | Quotation Aging Report
+ | Quotes approaching or past validity date, unconverted.
+ | Category Demand vs. Availability Report
+ | What's being quoted vs. what's actually in stock.
+ | Package vs. Individual Line Mix Report
+ | How often the Package Builder is used vs. line-by-line.
+ | Contract Type Mix Report
+ | Revenue/volume split across Open PO / Closed / Project, by line.
+ | Sales Order Backlog Report
+ | Confirmed orders not yet delivered.
+ | On-Time Delivery Performance Report
+ | Actual vs. promised delivery dates.
+ | Customer Returns &amp; Damage Report
+ | Frequency and cost, by customer/category.
+ | Customer Credit Exposure Report
+ | Credit limit utilization, customers over limit.
+ | New vs. Repeat Customer Report
+ | First-time vs. returning business.
+ | Customer Revenue Contribution Report
+ | Top customers by revenue/volume.
+ | Customer Master Data Completeness Report
+ | Missing trade license/VAT/credit terms flags.
+ | Activity Type Performance Report
+ | Rental vs. Trading vs. Fuel Trading vs. AMC vs. Service, pipeline and revenue side by side, aggregated from line-level tags.
+ | Salesperson Target vs. Achievement Report
+ | Quota tracking, where targets are set.
+ | Certificate / Compliance Expiry Report
+ | Registration/insurance/inspection validity across assets referenced on active Sales Orders.
+ | External Logistics Cost &amp; Order Profitability Report
+ | Tracks external transport cost against the Order/Project for accurate margin visibility.
+ | Customer Performance / KPI Report
+ | Consolidated customer scorecard payment behaviour, return condition, order frequency.
+ | Multi-Activity Order Profitability Report
+ | For a single Sales Order spanning multiple Activity Types, breaks down revenue and cost per line/activity within that one Order.
+ | Bulk Price Update History Report
+ | Every bulk price change applied old price, new price, effective date, and who applied it.
+ | Dashboards
+Dashboard
+ | Description
+ | Salesperson Performance Dashboard
+ | Number of sales per salesperson, invoices, volume, credit notes, customer collections data, ageing, pipeline, forecast revenue, and stage evaluation.
+ | Renewal &amp; Retention Dashboard
+ | Contracts approaching their Contract Type end date, visible to salesperson, manager, and operations.
+ | Sales Task 
+ | List view of pending tasks by priority; users can adjust priority/status, fully audited.
+ | Collections Dashboard
+ | Collection percentage by customer, with weekly status remarks and action notes; follow-up cadence driven by each project's payment terms and due dates.
+ | Logistics / Fleet Availability Dashboard
+ | Own-fleet vehicle availability and utilisation status, to decide between own-fleet and external transport at delivery.
+ | Sales Pipeline Dashboard
+ | Lead to Opportunity to Quotation to Sales Order funnel, filterable by Activity Type and salesperson.
+ | Quotation Approval Queue Dashboard
+ | All quotes pending approval, wait time, and who needs to act.
+ | Credit &amp; Collections Alert Dashboard
+ | Customers nearing or over credit limit and overdue invoices, surfaced to sales to prevent quoting a blocked customer.
+ | Category Demand Dashboard
+ | Heat-map of most-quoted equipment groups/categories, to flag under-stocked categories early.
+ | Data Migration &amp; Multi-Branch
+No historical CRM/quote/customer data migration is required. This is a clean cutover any historical data to be preserved will be entered or uploaded manually by the client team, not migrated by ERPForce.
+The business may operate multiple branches/locations. The system supports multi-branch/location segregation for CRM records; visibility, reporting, and numbering series require confirmation.
+
+Rental Module
+Rental Order &amp; Status Lifecycle
+The status list (Ready for Hire, On Hire, Off Hire, Breakdown, Under Maintenance, Disposed, Yard) with two additions: the list must stay admin-extendable, and a separate Active/Inactive flag is needed at asset level, distinct from operational status, with full history always retained.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Asset Status
+ | Picklist shared Unified Status Master (Inventory &amp; Fixed Assets Annex)
+ | Yes
+ | Ready for Hire / On Hire / Off Hire / Breakdown / Under Maintenance / Disposed / Yard / Hold (new see 2.2). Admin-extendable.
+ | Active / Inactive Flag
+ | Toggle, separate from Status
+ | Yes
+ | Independent of operational status; full asset history always retained regardless of this flag.
+ | Hold Reason
+ | Text / picklist
+ | Conditional
+ | Mandatory when Asset Status = Hold captures why invoicing is paused (e.g., site not ready for deployment) and whether the delay is the business's responsibility or the client's.
+ | Rental Order Line Type
+ | Picklist
+ | Yes
+ | Asset / Service / Package / FOC one Rental Order can mix all four.
+ | FOC Indicator (per line)
+ | Checkbox
+ | No
+ | Price = 0, but the asset's usage/history is still tracked, consistent with the FOC pattern used across every other Annex.
+ | Extension Request
+ | Transaction, linked to original Order
+ | No
+ | Formal action to extend a Rental Order's end date; revises the existing Sales Order rather than creating a new one. Fully audited.
+ | Early Termination Request
+ | Transaction, linked to original Order
+ | No
+ | Formal action to close a Rental Order before its agreed end date; triggers manual Finance adjustment (Section 10).
+ | Business Rules Status Flow
+On-Hire is assigned once a Delivery Assignment happens not at Sales Order confirmation.
+Off-Hire is triggered the moment an asset comes back from a client site (return event) this immediately stops the rental invoicing cycle for that asset.
+An asset does not go straight from Off-Hire to Ready for Hire. It first goes to the Yard for inspection; only after evaluation does it move to Ready for Hire (if condition is acceptable) or Under Maintenance (if not).
+A Hold status is required for the case where an asset has been physically delivered but the client site is not yet ready for deployment. While On Hold, the invoicing cycle does not start; a Hold Reason is mandatory, distinguishing whether the delay is the business's fault (no penalty) or the client's (late-payment charge may apply).
+Extending a Rental Order revises the existing Sales Order (does not create a new Order); a Renewal/Expiry Dashboard (Section 17) lets the Service Desk proactively check with the client before the end date.
+Early termination follows the same closure process as a normal end-of-contract return, but Finance manually decides and applies the commercial adjustment either the full committed amount or a pro-rated charge based on actual days used. This is a case-by-case commercial decision, not an automated calculation.
+
+Delivery &amp; Fleet Logistics
+A rental business typically uses a mix of its own delivery fleet (low-bed trucks, etc.) and external transport, chosen depending on availability the Service Desk needs live visibility of both to decide which to use for any given job.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Delivery Vehicle
+ | Linked to Fixed Asset Register (Inventory &amp; Fixed Assets Annex)
+ | Yes (own fleet)
+ | Own delivery vehicles are tracked exactly like rental fleet assets full history, maintenance, cost, and depreciation, not a separate simplified vehicle record.
+ | Assigned Driver
+ | Linked record, usually paired with a vehicle
+ | Yes
+ | Drivers are typically linked to a specific vehicle by default; the Service Desk can manually reassign when needed.
+ | Vehicle/Job Status
+ | Picklist
+ | Yes
+ | Free / Assigned / En Route / Stuck-Delayed. “Stuck-Delayed” requires a mandatory reason (e.g., crane unavailable, offloading didn't happen), visible on the Logistics Dashboard (Section 17) so the Service Desk can plan around it.
+ | Delivery Zone
+ | Not restricted
+ | N/A
+ | No fixed radius or zone any vehicle can be assigned anywhere in the UAE, at the team's discretion.
+ | Logistics Cost (per Sales Order)
+ | Currency, linked to Cost Centre
+ | No
+ | Every Sales Order can carry its logistics cost, tagged to the same Cost Centre model defined in the Finance Annex, so total order cost and profitability can be calculated including delivery/collection cost.
+ | Business Rules
+Vehicle and driver assignment is decided by the Service Desk team; a job can move from Own Fleet to External Transport (or vice versa) based on real-time fleet availability shown on the Logistics Dashboard.
+A vehicle/job stuck mid-delivery (e.g., waiting on site equipment) must be flagged with a reason, not simply left showing as “Out on Job” indefinitely this distinction is what lets the Service Desk correctly plan the next assignment.
+Own delivery vehicles follow the exact same Fixed Asset Register model as rental fleet assets (Inventory &amp; Fixed Assets Annex, Section 4) they are not a separate, lighter-weight vehicle record.
+Fuel Management
+Generators are rented without fuel by default fuel is always a separate Trading transaction to the client, even when the business is the one delivering it as an added service. This reconfirms the fuel-is-never-bundled-into-rental rule already established in the Scope of Work and Procurement Annex.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Fuel Delivery Record
+ | Transaction, linked to the Rental Order/project
+ | No
+ | Logs fuel quantity delivered, even when delivered by the business as an additional billable service rather than the client self-supplying.
+ | Fuel Reading (ongoing)
+ | Numeric, manual entry
+ | No
+ | Consumption tracked via periodic readings, not only at delivery and return consistent with the manual usage-recording model in the Inventory &amp; Fixed Assets Annex, Section 10.
+ | Fuel Shortfall Billing
+ | Not applicable
+ | N/A
+ | Since fuel is never bundled into the rental price, a “shortfall at return” scenario does not apply fuel is trued up as its own Trading transaction, not a rental billing adjustment.
+ | Combined Pricing Toggle (future-facing)
+ | System flag, not active
+ | N/A
+ | The pricing model should not hard-code fuel as always-separate leave room for a future “fuel included in rental price” option, even though it is not used today.
+ | Business Rules
+Fuel is always billed as a distinct Trading transaction, whether the client self-supplies or the business delivers it as an additional service it never forms part of the rental price calculation.
+Because fuel is never bundled into rental, there is no fuel-shortfall-at-return billing rule to build any fuel discrepancy is a Trading-side reconciliation, not a Rental one.
+Maintenance &amp; Service Scheduling
+Every trigger type (Hour Meter Reading, calendar interval, or both) is required the requirement is for a flexible, per-asset configuration rather than one fixed rule, with notifications on every trigger.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Service Trigger Type (per asset)
+ | Picklist, configurable
+ | Yes
+ | HMR / Calendar / Both. Configurable per asset, not fixed system-wide.
+ | Service Tier Definition (per Category)
+ | Admin-configurable structure
+ | Yes
+ | A/B/C (or however many tiers the client wants) tiers defined per equipment Category how many tiers and what triggers each is left to the client/admin to configure, not hard-coded.
+ | Certificate / Document Expiry (linked)
+ | Same structure as Inventory &amp; Fixed Assets Annex, Section 9
+ | No
+ | Insurance and other document expiries use the identical flexible add-and-track capability already defined there not a separate structure.
+ | Consumable Usage (per service/repair)
+ | Linked to Item Master, quantity
+ | No
+ | Tracks which spare parts/consumables were used in a given service or repair job.
+ | Consumption Classification
+ | Picklist same as Finance Annex, Section 8
+ | Yes
+ | Capital Improvement / General Expense reuses the exact classification already defined in the Finance Annex, not a duplicate concept.
+ | Reorder Trigger
+ | System flag same as Procurement Annex, Section 12
+ | N/A
+ | Low stock on a spare part automatically raises a Purchase Requisition, per the Spare Parts Replenishment logic already defined in the Procurement Annex.
+ | Maintenance Job Closure
+ | Action, permission-gated
+ | Yes
+ | Any user holding the relevant permission can close a maintenance job as complete not restricted to a fixed designation.
+ | Business Rules
+Service scheduling triggers (HMR, calendar, or both) are configurable per asset, and every trigger raises a notification rather than relying on someone checking manually.
+Consumed spare parts must always be classified as Capital Improvement or General Expense at the point of consumption against a fixed asset this reuses the Finance Annex's existing classification model exactly.
+Maintenance job closure is a permissions question, not a role-title restriction the exact role list is defined by the admin during rollout.
+Replacement Processing
+Replacement is initiated from the Rental Order itself not the Delivery Order and, following the same design principle confirmed for Returns (Section 7), the user should never need to separately navigate into a Delivery Order to process a swap.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Replacement Transaction
+ | Linked to Rental Order, asset-in/asset-out pair
+ | Yes
+ | Initiated directly from the Rental Order screen. Old asset (in) and new asset (out) are recorded against the same project in one transaction.
+ | Replacement Reason
+ | Picklist, admin-extendable
+ | Yes
+ | Mandatory dropdown e.g., breakdown, customer request, upgrade extendable by an admin user.
+ | Customer Notification
+ | Flag / log
+ | No
+ | The customer is informed of a replacement; a replacement can also originate as a customer request itself.
+ | Price Adjustment (optional)
+ | Currency, optional
+ | No
+ | Replacement rarely changes the price the customer pays, but the option must exist it is not assumed to always be price-neutral.
+ | Resulting Status of Faulty Asset
+ | Fixed = Under Maintenance
+ | N/A
+ | A faulty asset removed via replacement always moves to Under Maintenance first; the decision to eventually Dispose is a separate, manual step taken later by an authorised user the system never auto-disposes, even if the asset looks beyond repair at swap time.
+ | Business Rules
+Replacement is entered from the Rental Order, showing only the assets currently outstanding against that Order (already-returned or already-replaced assets do not clutter this view) the same entry-point principle as Returns (Section 7).
+The system must always be able to reconstruct, per Rental Order, exactly what was delivered, when; what was returned, when; and what was replaced, when a complete chronological asset-movement ledger, not just a final snapshot.
+A faulty asset swapped out always goes to Under Maintenance first; Disposal is a distinct, manually-triggered decision afterward.
+Reports
+Replacement History Report full history, filterable by project, client, and asset, to support operational-efficiency tracking (shares its structure with the Procurement Annex's equivalent report).
+Customer Return &amp; Condition Assessment
+This section carries the most important workflow decision in the whole Annex, confirmed in review: Return must be initiated directly from the Sales Order / Rental Order the user should never have to drill down into a Delivery Order to process a return.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Return Entry Point
+ | Action, available directly on the Sales/Rental Order
+ | Yes
+ | The Sales Order shows every asset currently rented against it; assets already returned are not shown at this point only pending-to-return assets appear.
+ | Linked Delivery Order (internal)
+ | System-linked, not user-navigated
+ | N/A
+ | The system knows internally which Delivery Order each pending asset came from, but the user never needs to open or navigate to that Delivery Order to process the return.
+ | Automatic DO Closure
+ | System-triggered
+ | N/A
+ | Once a return is completed against an asset, its originating Delivery Order is automatically closed in the background no manual DO-closure step required.
+ | Pre-Return Site Checklist
+ | Checklist, completed at client site
+ | Yes
+ | A minor/preliminary check completed at the client site before Off-Hire is confirmed.
+ | Yard Inspection Checklist
+ | Checklist, admin-configurable
+ | Yes
+ | Full inspection once the asset reaches the Yard; checklist items are user/admin-configurable, not fixed.
+ | Return Photo Attachments
+ | File upload
+ | Yes (mandatory)
+ | Photos are mandatory at Return this differs from Delivery, where attachments are optional (Inventory &amp; Fixed Assets Annex, Section 4.3 / CRM Annex, Delivery Order).
+ | Damage Charge / Additional Invoice
+ | Transaction, linked to Sales Order
+ | Conditional
+ | Raised when damage is found; amount is manually decided by an authorised user (flexible, case by case), but every charge and its justification is retained in history.
+ | Return-to-Ready-for-Hire SLA
+ | Numeric (days), admin-configurable
+ | Yes
+ | Admin-settable number of days within which an Off-Hire asset should be inspected and moved to Ready for Hire (or Maintenance); the system alerts if this SLA is breached.
+ | Business Rules
+Return is always initiated from the Sales/Rental Order, never requiring navigation into a Delivery Order; the Order view shows only outstanding (not-yet-returned) assets at any point in time.
+Completing a return automatically closes its originating Delivery Order in the background this closure is never a separate manual action.
+Inspection happens in two stages: a light check at the client site before Off-Hire, and a full checklist-driven inspection once the asset reaches the Yard.
+Photos are mandatory at Return (unlike at Delivery, where they remain optional).
+An SLA alert fires if an asset stays Off-Hire without moving to Ready for Hire or Maintenance within the admin-configured number of days.
+Cross-Hire (Rental Side)
+This section confirms, from the Rental operations side, exact alignment with the five-stage Cross-Hire lifecycle already defined in the Procurement Annex (Request → Receive → Allocate → Return to Us → Return to Supplier).
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Cross-Hire Unit (linked)
+ | Linked to Procurement Annex's Cross-Hire Request
+ | Yes
+ | Once delivered to a client, tracked like an owned asset for status, condition checks, and invoicing except no depreciation is posted (Inventory &amp; Fixed Assets Annex, Section 6).
+ | Cross-Hire Decision Right
+ | Permission-gated action
+ | N/A
+ | Primarily decided by the Operational Desk, but the permission to initiate a cross-hire request can be granted to other users too not restricted to one fixed role.
+ | Supplier Dispute / Additional Charge
+ | Currency, linked to Return-to-Supplier stage
+ | Conditional
+ | If the supplier disputes condition or charges on return, any resulting additional payment is recorded against the Return-to-Supplier transaction, with full financial history retained.
+ | Cross-Hire Cost Roll-Up
+ | Calculated, linked to originating Sales Order
+ | N/A
+ | Every cross-hire cost (including any supplier dispute charge) rolls into the originating Sales Order's profitability calculation.
+ | Business Rules
+A cross-hired unit is tracked exactly like an owned asset for status, condition, and invoicing purposes, with the sole exception that no depreciation is ever posted against it.
+Any additional charge arising from a supplier dispute at Return-to-Supplier is recorded and traced back to the specific client project the unit served, so that project's true profitability (net of any dispute cost) is visible.
+
+
+Reports
+Cross-Hire Frequency Report how often a particular category is cross-hired, to guide future fleet purchase decisions (shares its structure with the Procurement Annex's equivalent report).
+Overdue On-Hire &amp; Contract Expiry
+The commercial response to an overdue asset (renew, charge, or hold) stays flexible and case-by-case what is non-negotiable is that internal alerts must always fire, and the system must be able to distinguish whether the delay is the business's fault or the client's.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Contract End Date (from CRM Annex)
+ | Date, inherited
+ | Yes
+ | Drives the overdue check below.
+ | Overdue Flag
+ | System-calculated
+ | N/A
+ | Raised automatically once Contract End Date passes without a completed return.
+ | Fault Attribution
+ | Picklist
+ | Conditional
+ | Company / Client determines whether an overdue charge is appropriate (e.g., no charge if the business's own logistics couldn't collect on time).
+ | Overdue Billing Treatment
+ | Picklist, decided case by case
+ | No
+ | Same Rate / Penalty Rate / Hold Billing flexible, not a fixed automatic rule.
+ | Escalation Threshold (days overdue)
+ | Numeric, admin-configurable
+ | Yes
+ | Configurable reminder/escalation setting not hard-coded.
+ | Business Rules
+An internal alert/reminder always fires once a contract passes its end date without a completed return this is mandatory regardless of how the commercial side is ultimately handled.
+Both Operations and Sales need visibility of overdue on-hire assets; follow-up responsibility is shared, not owned by a single role.
+Escalation to a manager occurs after an admin-configured number of overdue days, not a fixed system default.
+Rental Invoicing &amp; Billing Cycle
+This section largely reconfirms rules already established in the CRM and Finance Annexes, with one new requirement: a live, Sales-Order-level asset ledger.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Billing Cycle Type
+ | Picklist, per Contract Type
+ | Yes
+ | Weekly / Monthly / Custom configurable per contract, consistent with Contract Type in the CRM Annex.
+ | Invoice Cycle Pause
+ | Manual action, Accounts-only
+ | No
+ | Allows Accounts to manually pause the recurring invoice cycle for a specific commercial reason the default behaviour is that a mid-cycle replacement does NOT pause billing.
+ | Sales Order Asset Ledger
+ | Live, read-only view on the Sales Order
+ | N/A
+ | Per Sales Order: what asset, delivered when, invoice-cycle start date, amount invoiced to date, amount received to date always reflecting the current, up-to-date state of what is actually still out on that project.
+ | Business Rules
+Invoices auto-generate automatically according to the agreed Contract Type/billing-cycle terms no manual per-cycle confirmation step is required (this reconfirms the rule already established in the CRM and Finance Annexes).
+A mid-cycle Replacement (Section 6) does not, by default, change or pause the invoice cycle; pausing is a distinct manual Accounts action taken only when commercially justified.
+For multi-delivery Sales Orders, each asset's billing starts from its own individual delivery date, not from the date the whole Order is completed this reconfirms the CRM Annex's existing per-delivery billing rule.
+The Sales Order Asset Ledger must always show the current, accurate picture of what is still out against that project it is a live view, not a point-in-time snapshot that goes stale.
+Data Migration &amp; Asset Onboarding
+Unlike most other modules in this engagement, a specific, confirmed migration requirement applies here this is not the default “no historical migration” assumption used elsewhere.
+Confirmed Migration Scope
+All currently open Rental Orders must be migrated into ERPForce at cutover.
+Every asset needs an opening Net Book Value and Remaining Useful Life recorded at onboarding these populate the fields already defined in the Inventory &amp; Fixed Assets Annex, Section 4 and Section 7, as opening balances rather than system-calculated-from-zero values.
+Any open/outstanding expense history per asset both General Expense and Capital Improvement entries needs to be brought in as opening records, using the same classification model defined in the Finance Annex, Section 8.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Opening Net Book Value (per asset)
+ | Currency, one-time entry at onboarding
+ | Yes
+ | Populates the Fixed Asset Register's Net Book Value field as a starting point, not a system-calculated result.
+ | Opening Remaining Useful Life (per asset)
+ | Numeric, one-time entry at onboarding
+ | Yes
+ | Populates the Useful Life field as a starting point.
+ | Opening Expense History (per asset)
+ | Structured entries, Capital Improvement / General Expense
+ | No
+ | Brings forward historical cost events using the same classification as ongoing entries, so historical and future costs are comparable.
+ | Open Rental Order Import
+ | Bulk data load
+ | Yes
+ | All currently active Rental Orders, with their current asset assignments and billing state, migrated as a starting position.
+ | Reports
+All of the following were during the review and follow-up.
+Report
+ | Purpose
+ | Utilization % Report (per asset)
+ | How much of the time an asset is actually earning revenue shared with the Inventory &amp; Fixed Assets Annex.
+ | Replacement History Report
+ | All-time replacement history, filterable by project, client, and asset (Section 6).
+ | Cross-Hire Frequency Report
+ | How often a category is cross-hired, to guide future purchase decisions shared with the Procurement Annex (Section 8).
+ | Sales Order Asset Ledger
+ | Live per-Order view of assets delivered, billed, and received to date (Section 10).
+ | Logistics Cost &amp; Profitability Report
+ | Delivery/collection cost allocated per Sales Order, feeding overall order profitability (Section 3).
+ | 
+
+
+Dashboards
+Dashboard
+ | Description
+ | Fleet Status Dashboard
+ | Live counts by category, Available/On-Hire/Under-Maintenance/Disposed shared with the Inventory &amp; Fixed Assets Annex.
+ | Logistics / Fleet Availability Dashboard
+ | Own delivery vehicle status, assigned driver, current job/site, and stuck/delayed flags with reason.
+ | Renewal &amp; Overdue Dashboard
+ | Upcoming contract expiries and current overdue on-hire assets shown together, for Service Desk and Sales follow-up.
+ | Maintenance / Breakdown Dashboard
+ | Assets due for service or currently down, by category.
+ | Cross-Hire Cost vs. Rental Revenue Dashboard
+ | Cost of cross-hired units vs. revenue earned, shared with the Procurement Annex.
+ | 
+Procurement Module
+Supplier / Vendor Master
+The Supplier record underpins every downstream document in this module Requisition, RFQ, PO, Goods Receipt, Invoice, Returns, and Cross-Hire. A heavy equipment rental business typically deals with equipment manufacturers, spare-parts suppliers, fuel suppliers, cross-hire companies, and service providers, often on locked pricing for a fixed period.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Supplier Code
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Supplier Name, Trade License No., VAT/TRN No., Address, Contact tabs
+ | Text
+ | Yes
+ | Standard KYC fields.
+ | Supplier Type
+ | Picklist
+ | Yes
+ | Equipment Manufacturer / Spare Parts Supplier / Fuel Supplier / Cross-Hire Company / Service Provider / Other.
+ | Supplier Classification
+ | Picklist
+ | No
+ | Preferred / New / Blacklisted. Not mandatory to set, but must be filterable/reportable.
+ | Supplier Documents (Trade License, VAT Certificate, Bank Details, etc.)
+ | File upload, multiple, per document type
+ | No (optional)
+ | Each document type has its own attachment slot and its own expiry date field, driving reminder alerts. Uploading is optional but the structure must exist per document type.
+ | Document Expiry Date (per document)
+ | Date
+ | Conditional
+ | Mandatory once a document is uploaded. Drives expiry reminders (Section 12).
+ | Active / Inactive Status
+ | Toggle + mandatory reason + audit log
+ | Yes
+ | Every status change requires a reason (e.g., credit terms exceeded, non-quality supply) and is fully logged who changed it, when, why, and when it was reactivated, if applicable.
+ | Credit Period / Credit Limit
+ | Numeric (days) / Currency
+ | No
+ | Used to trigger automatic or manual blocking when exceeded.
+ | Internal Performance Rating
+ | Calculated or manual, 1–5 or similar scale
+ | No
+ | Tracks on-time delivery, quality issues, and pricing history over time feeds the Supplier Performance Report (Section 13).
+ | Price Agreement Reference(s)
+ | Linked record, one-to-many
+ | No
+ | Links to active Price/Rate Agreements for this supplier (Section 7).
+ | Payment Terms (default)
+ | Text / picklist
+ | No
+ | Default terms for this supplier; can be overridden at project or invoice level (Section 9).
+ | Business Rules
+A supplier can be set Inactive either manually (with mandatory reason) or automatically when a configured credit-period/credit-limit threshold is exceeded; both paths log the same audit trail.
+Document upload is never mandatory to create a Supplier record, but if a document is uploaded, its expiry date becomes mandatory.
+Supplier Classification and Internal Performance Rating are informational/reporting fields they do not themselves block transactions unless the supplier is explicitly set Inactive.
+Purchase Requisition
+The Requisition is the internal request to buy, raised by any department, and is deliberately lightweight it captures what is needed and why, without committing to a specific supplier.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Requisition Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Requisition Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Requesting Department / Wing
+ | Picklist
+ | Yes
+ | Trading / Service / AMC / Rental / Other any department can raise a requisition. Note the conceptual overlap with the CRM module's Activity Type field; confirm with the client whether these should share the same master list.
+ | Purpose
+ | Picklist
+ | No
+ | Restock / New Project / Breakdown Repair / Other optional classification of why the requisition was raised.
+ | Item Details (per line)
+ | Text / linked to Item Master
+ | Yes
+ | Description, quantity, unit no supplier is named at this stage.
+ | Approval Status
+ | Picklist, system-driven
+ | N/A
+ | Pending / Approved / Rejected driven by the configurable Approval Engine (Section 1.1), based on total requisition value.
+ | Approver(s)
+ | System-assigned, read-only
+ | N/A
+ | Populated automatically based on the value-tier approval matrix (see Business Rules below).
+ | Business Rules
+Approval is value-tiered. The client's own example: 0–2,000 AED → Warehouse; 2,000–5,000 AED → Warehouse Manager; 5,000–10,000 AED → Manager; above 10,000 AED → General Manager. This must be built as a configurable matrix, not hard-coded to these exact figures the client explicitly described this as a sample.
+A Requisition does not require a named supplier to be submitted or approved.
+An approved Requisition can proceed either to a Request for Quotation (Section 4) or directly to a Purchase Order (Section 5) the RFQ step is optional, not mandatory.
+Request for Quotation (RFQ) &amp; Quote Comparison
+RFQ is an optional step available when the buyer wants to compare pricing across suppliers, but never a mandatory gate before raising a Purchase Order.
+
+
+
+
+
+
+
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | RFQ Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Linked Requisition
+ | Linked record
+ | No
+ | An RFQ can be raised with or without a prior Requisition.
+ | Suppliers Invited (multiple)
+ | Multi-select, linked to Supplier Master
+ | Yes (if RFQ used)
+ | One RFQ can be sent to several suppliers for comparison.
+ | Quote Comparison Grid
+ | Read-only, system-built
+ | N/A
+ | Side-by-side view of each invited supplier's quoted price/terms per line item, to support selection.
+ | Selected Supplier (per line or overall)
+ | Picklist
+ | Yes (to proceed)
+ | Chosen supplier feeds directly into Purchase Order creation.
+ | Business Rules
+RFQ is entirely optional a Purchase Order can be created directly from an approved Requisition (or from scratch) without ever going through an RFQ.
+When RFQ is used, the Quote Comparison Grid is for decision support only; it does not itself commit to a supplier until a Purchase Order is created from it.
+Purchase Order
+The Purchase Order is the formal commitment to a supplier and, per the client, the point where budget control must be enforced. This is a materially bigger screen than a standard PO because of the cost-centre/budget-variance logic layered on top.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | PO Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | PO Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Supplier
+ | Linked record
+ | Yes
+ | Selected directly, or carried from an RFQ.
+ | Currency
+ | Picklist
+ | Yes
+ | One currency per PO; different POs can use different currencies. Full multi-currency support required.
+ | Exchange Rate (at PO date)
+ | Numeric, system-fetched or manual
+ | Yes (non-base currency)
+ | Captured at PO creation; exchange differences at invoice/payment time follow standard finance treatment (gain/loss posting to be confirmed with Accounting Annex).
+ | Cost Centre / Project
+ | Linked record
+ | Yes
+ | Every PO must be allocated to a cost centre so spend can be tracked against budget.
+ | Budget Reference (linked to Cost Centre)
+ | System-linked, read-only
+ | N/A
+ | Shows the budget allocated to this cost centre and the amount already committed/spent.
+ | Budget Variance Flag
+ | System-calculated, read-only
+ | N/A
+ | Automatically raised when this PO would push the cost centre over its allocated budget.
+ | Over-Budget Reason
+ | Text
+ | Conditional
+ | Mandatory when the Budget Variance Flag is raised captures why the purchase is needed despite exceeding budget.
+ | Over-Budget Approval Action
+ | Action: Approve Overage / Amend Budget
+ | Conditional
+ | An authorised user must either approve the overage or amend the cost centre's budget before the PO can proceed.
+ | Payment Terms, Delivery Terms
+ | Text / picklist
+ | Yes
+ | Standard commercial terms.
+ | Item Details (per line): Code, Description, Unit, Qty, Price, Price Total
+ | Various
+ | Yes
+ | Standard line-item fields.
+ | Linked Price Agreement (per line, if applicable)
+ | Linked record
+ | No
+ | Auto-populates price from an active Price Agreement (Section 6), if one exists for this supplier/item.
+ | PO Status
+ | Picklist
+ | Yes
+ | Draft / Pending Approval / Approved / Partially Received / Fully Received / Closed / Cancelled.
+ | Approval History
+ | System log, read-only
+ | N/A
+ | Full audit trail of every approval/re-approval action on this PO.
+ | Business Rules
+A PO cannot be confirmed while a Budget Variance Flag is active unless an authorised user has either approved the overage (with a reason) or amended the cost centre's budget.
+Multi-level approval is required, driven by the same configurable Approval Engine used for Requisitions (Section 3), with its own value-tier matrix.
+A single PO can be received against multiple Goods Receipts over time, remaining open until the full ordered quantity has been received (Section 7).
+Any revision to a PO after it has been sent to the supplier requires re-approval through the same approval matrix.
+Price / Rate Agreements
+Some businesses lock pricing with regular suppliers for a fixed period on many recurring items this needs its own record, separate from any individual PO, so that price validity is enforced automatically.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Agreement Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Supplier
+ | Linked record
+ | Yes
+ | The supplier this agreement is locked with.
+ | Item(s) Covered
+ | Linked, multiple
+ | Yes
+ | Each item carries its own locked price.
+ | Locked Price (per item)
+ | Currency
+ | Yes
+ | The agreed rate for the validity period.
+ | Validity Period (Start / End Date)
+ | Date range
+ | Yes
+ | Defines how long the locked price applies.
+ | Agreement Status
+ | Picklist
+ | Yes
+ | Active / Expired / Superseded.
+ | Business Rules
+When creating a PO line for an item/supplier combination with an active Price Agreement, the locked price is auto-populated; the user can still override it, but an override should be visibly flagged.
+An Agreement past its Validity Period end date automatically shows as Expired and no longer auto-populates pricing.
+Goods Receipt
+Goods Receipt confirms what actually arrived against a Purchase Order, and specifically needs to distinguish between stock received at the business's own location versus stock received and held at a client's site (relevant for Fuel Trading).
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | GRN Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Linked Purchase Order
+ | Linked record
+ | Yes
+ | A GRN is always raised against a PO.
+ | Receipt Date
+ | Date, auto
+ | Yes
+ | Defaults to creation date.
+ | Receiving Location
+ | Picklist
+ | Yes
+ | Own warehouse / Client site (for Fuel Trading stock held at a client's location). Drives the location-wise stock dashboard (Section 14).
+ | Confirmed By
+ | User reference, role-based access
+ | Yes
+ | Any user with Goods-Receipt access rights can confirm not restricted to a fixed designation. Access is controlled entirely through the role/permission configuration (Section 11).
+ | Quantity Received (per line)
+ | Numeric
+ | Yes
+ | Supports partial receipt a PO line can be received across multiple GRNs until the full ordered quantity is met.
+ | Item Condition
+ | Picklist
+ | Yes
+ | Accepted / Rejected – Damaged / Rejected – Short. Rejected items trigger the resupply/credit workflow (Business Rules below).
+ | Quality Check / Inspection
+ | Checkbox or linked traceability step
+ | Conditional
+ | Required for items under lot/serial traceability, aligned with the same traceability configuration used in the Inventory/Fixed Assets module.
+ | Certificate / Warranty Attachment (per item, if applicable)
+ | File upload + expiry date
+ | No
+ | Warranty or compliance certificates can be attached at GRN stage (or later, at asset level see Section 10).
+ | Business Rules
+Items rejected as damaged or defective on arrival are not accepted into stock; the supplier is required to resupply.
+If a defect is discovered after the item has already entered stock: for consumable/inventory items, a credit note process is triggered with the supplier; for fixed assets, the item is routed to Maintenance instead of a credit process.
+A PO remains open (Partially Received status) until all lines reach their full ordered quantity across one or more GRNs.
+Stock received and held at a client's site must be tracked as a distinct location, with full visibility of how much has been sold from the business's own location versus the client-held location this is a high-priority dashboard requirement (Section 14).
+Vendor Bill / Invoice
+Vendor invoices are matched against the PO and the Goods Receipt before payment approval a standard three-way match, with an explicit bypass for petty cash purchases.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Invoice Number
+ | Text (supplier's reference) + internal auto-number
+ | Yes
+ | Both the supplier's own invoice number and an internal reference are captured.
+ | Linked Purchase Order
+ | Linked record
+ | Yes (except petty cash)
+ | Three-way match: PO → GRN → Invoice.
+ | Linked Goods Receipt(s)
+ | Linked record(s)
+ | Yes (except petty cash)
+ | One invoice can reference multiple GRNs if the PO was received in parts.
+ | Purchase Type
+ | Picklist
+ | Yes
+ | Credit / Cash / Petty Cash Petty Cash purchases bypass the mandatory PO/GRN link.
+ | Match Status
+ | System-calculated
+ | N/A
+ | Matched / Mismatched compares invoice quantity and price against the linked PO and GRN.
+ | Payment Terms
+ | Text / picklist, overridable
+ | Yes
+ | Defaults from the Supplier Master, but can be overridden at project or invoice level.
+ | Approval Status
+ | Picklist
+ | Yes
+ | Pending / Approved / Rejected rejection requires the supplier to submit a revised invoice.
+ | Business Rules
+An invoice that does not match its linked PO and GRN (on quantity and/or price) is rejected, and a revised invoice is requested from the supplier externally the system does not auto-adjust to force a match.
+Petty cash purchases are the one purchase type explicitly allowed to bypass the PO/GRN link requirement.
+Payment Terms can be set at three levels Supplier default, Project, or individual Invoice with the more specific level taking precedence.
+Vendor Returns
+Returns to a supplier must stay traceable back through the whole purchase chain, whether or not an invoice has been raised yet.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Return Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Linked Purchase Invoice or Goods Receipt
+ | Linked record
+ | Yes
+ | Links to the Purchase Invoice if one exists; otherwise links directly to the Goods Receipt. Either path must trace back to the originating PO.
+ | Return Reason
+ | Picklist
+ | Yes
+ | Damaged, wrong item, quality issue, excess quantity, other.
+ | Resolution Type
+ | Picklist
+ | Yes
+ | Material Return (replacement) / Credit Note / Refund outcome depends on the situation and is selected per return.
+ | Resolution Reference
+ | Linked record
+ | Conditional
+ | Links to the replacement GRN, Credit Note, or Refund transaction, whichever resolution type applies.
+ | Business Rules
+Every Vendor Return must be traceable back to its originating Purchase Order, regardless of whether it is linked via an Invoice or directly via a Goods Receipt.
+Resolution Type determines the downstream transaction created (replacement stock movement, Credit Note, or Refund) all three must be supported.
+Cross-Hire Suppliers
+Cross-hire renting equipment in from a third-party supplier to cover a shortfall in owned fleet is explicitly not a normal purchase. It needs its own traceable lifecycle, distinct from standard Procurement, because the same unit moves through allocation, client use, and return in a way a regular purchased item never does.
+The Confirmed Lifecycle
+This is a requirement: this needs “full history from request → receive → allocation → return to us → return to supplier.” This is a five-stage lifecycle, one stage more granular than a standard purchase:
+1. Request raised when a rental Category has no available owned-fleet unit.
+2. Receive the cross-hired unit is collected from the supplier into the business's custody.
+3. Allocation the unit is delivered/allocated to the client's Sales Order, exactly like an owned asset.
+4. Return to Us the client returns the unit to the business first (not directly to the supplier).
+5. Return to Supplier the business then returns the unit to the cross-hire supplier, closing the loop.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Cross-Hire Request Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Triggering Sales Order / Category
+ | Linked record
+ | Yes
+ | The rental demand that could not be met from owned fleet.
+ | Cross-Hire Supplier
+ | Linked record
+ | Yes
+ | Selected from the Supplier Master (Supplier Type = Cross-Hire Company).
+ | Agreed Rate
+ | Currency
+ | Yes
+ | Negotiated per transaction fixed-rate agreements are possible but not the norm; pricing is flexible by default.
+ | Lifecycle Stage
+ | Picklist, sequential
+ | Yes
+ | Request / Received / Allocated / Returned to Us / Returned to Supplier. Full history retained at every transition.
+ | Condition Check (on Return to Us)
+ | Checklist + attachments
+ | Yes
+ | Same condition-inspection process used for owned assets returned from a customer (see CRM Annex, Customer Returns).
+ | Re-Issue Reference (optional)
+ | Linked record
+ | No
+ | If, after Return to Us, the unit is reissued to a different client project instead of going straight back to the supplier.
+ | Supplier Invoice Reference
+ | Linked record
+ | Yes
+ | Cross-hire cost feeds into the supplier's invoice, tied to the lifecycle above.
+ | Business Rules
+A cross-hired unit returned from a client (“Return to Us”) goes through the same condition/inspection workflow as an owned asset return, before either being reissued to another project or proceeding to “Return to Supplier.”
+Every stage transition is logged with date, user, and reference, giving a complete traceable history per cross-hired unit.
+Cross-Hire Profitability Reporting (confirmed requirement)
+The client wants a decision-support view comparing: (a) what the business pays the cross-hire supplier, against (b) what the business earns renting that unit to its own client plus an extended comparison of what the margin would look like if the business owned an equivalent asset outright instead of cross-hiring. This is intended to help forecast future fleet purchase decisions (buy vs. continue cross-hiring), and is detailed further as a report in Section 13.
+Compliance &amp; Certificates
+Certificates and warranties attach both to what the business buys (from suppliers) and to what it owns (its own fleet) this section covers the Procurement-side capture; ownership of the ongoing asset-level record sits with the Inventory/Fixed Assets Annex, but Procurement must be able to originate and edit these entries.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Certificate / Warranty Type
+ | Picklist
+ | Yes
+ | Insurance, Trade License, Safety Certification, Inspection Certificate, Manufacturer Warranty, Other.
+ | Certificate Entry Point
+ | System-flexible
+ | N/A
+ | Can be added at Goods Receipt (Section 7), at Purchase Order (Section 5), or later, directly at the asset level all three entry points must be supported.
+ | Expiry Date
+ | Date
+ | Yes
+ | Drives the reminder alert below.
+ | Reminder Lead Time
+ | Numeric (days before expiry), configurable
+ | Yes
+ | Flexible/adjustable per certificate type or per item not a single fixed value system-wide.
+ | Edit / Update History
+ | System log, read-only
+ | N/A
+ | Every add, change, or correction to a certificate record is retained certificates can be added, changed, or corrected at any point in an asset's life.
+ | Business Rules
+A certificate or warranty record can be created at Goods Receipt, at Purchase Order stage, or added retroactively at the asset level the data model must not assume it is only ever captured at one point in the purchase cycle.
+Expiry reminders must be configurable per certificate type (or per item), not a single system-wide lead time.
+Spare Parts &amp; Consumables Replenishment
+Spare parts and consumables (filters, batteries, oil, etc.) need an automatic reorder trigger, independent of the Maintenance module's own consumables register described elsewhere in this module.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Item (Spare Part / Consumable)
+ | Linked to Item Master
+ | Yes
+ | Any item flagged as a spare part or consumable.
+ | Minimum Stock Level
+ | Numeric, configurable per item
+ | Yes
+ | Flexible per item not a single system-wide default.
+ | Maximum / Reorder Quantity
+ | Numeric, configurable per item
+ | Yes
+ | Used together with Minimum Stock Level to calculate the reorder quantity.
+ | Preferred Supplier
+ | Linked record, optional
+ | No
+ | Spare parts are not locked to the equipment's original supplier any supplier can be used.
+ | Auto-Requisition Trigger
+ | System flag
+ | N/A
+ | When stock falls to or below the Minimum Stock Level, a Purchase Requisition (Section 3) is automatically generated.
+ | Business Rules
+Reorder logic is based on configurable Min/Max thresholds per item, not a single global rule.
+An auto-generated Requisition from this trigger follows the same approval matrix as a manually raised Requisition.
+Spare parts can be sourced from any supplier, independent of which supplier the related equipment was originally purchased from.
+Reports
+All of the following were during the review, either by name or by clear description.
+Report
+ | Purpose
+ | Open Purchase Orders Report
+ | POs not yet fully received, by supplier/cost centre.
+ | Pending Deliveries Report
+ | Expected receipts not yet arrived, against PO promised dates.
+ | Supplier Spend Report
+ | Total spend by supplier, by category, and by project/site.
+ | Ageing Payable Report
+ | Outstanding supplier payments by age bucket.
+ | Overdue Payments Report
+ | Payments past due date, by supplier.
+ | Budget vs. Actual Report
+ | Cost-centre budget compared to committed/actual spend, surfacing the same variance used for the PO-level flag (Section 5).
+ | Forecast Report
+ | Projected procurement spends, informed by open POs, requisitions, and reorder triggers.
+ | Revenue vs. Expense Report
+ | Yearly and monthly view of how procurement spend is affecting the overall budget.
+ | Cashflow Report
+ | Cash outflow view incorporating supplier payment schedules.
+ | Supplier Performance / Rating Report
+ | On-time delivery, quality issues, and pricing history per supplier (Section 2).
+ | Supplier Certificate Expiry Report
+ | All supplier documents nearing or past expiry.
+ | Capex / Fixed Asset Useful-Life Report
+ | Tracks capital expenditure against assets and monitors useful life coordinate with the Accounting/Fixed Assets Annex.
+ | Cross-Hire Cost vs. Rental Revenue Report
+ | Cost of cross-hiring vs. revenue earned from that unit, plus a projected buy-vs-hire comparison (Section 10).
+ | Location-Wise Stock &amp; Sales Report
+ | Stock and sales split between the business's own location and client-held locations (Fuel Trading) flagged by the client as a very important requirement (Section 7).
+ | Dashboards
+Dashboard
+ | Description
+ | Supplier Certificate Expiry Dashboard
+ | Upcoming supplier document/certificate expiries, confirmed as a required dashboard by the client.
+ | Budget vs. Actual Dashboard
+ | Live view of cost-centre spends against budget, surfacing the same variance flag used at PO level.
+ | Location-Wise Inventory &amp; Sales Dashboard
+ | Own location vs. client-held location stock and sales the client called this “a very important criteria” for Fuel Trading.
+ | Cross-Hire Lifecycle &amp; Profitability Dashboard
+ | Live status of every cross-hired unit across its five-stage lifecycle, plus the cost-vs-revenue comparison feeding fleet purchase decisions.
+ | Low-Stock / Reorder Dashboard
+ | Items at or below their configured Minimum Stock Level, with auto-generated Requisitions.
+ | Pending Approvals Dashboard
+ | All Requisitions, POs, and Invoices awaiting action, by approver.
+ | 
+Inventory &amp; Fixed Assets Module
+Item / Product Master
+Every physical thing the business owns, rents out, or trades starts as a record here. This master splits along two independent dimensions: which commercial activity the item belongs to, and how the item is physically tracked these are not the same thing and must not be conflated.
+Field
+ | Type
+ | Mandatory
+ | Status
+ | Notes / Validation Rule
+ | Item Code
+ | Auto-generated
+ | Yes
+ | Standard
+ | System-generated on creation.
+ | Product Classification
+ | Picklist
+ | Yes
+ | Customization
+ | Inventory / Rental / AMC / Fuel Trading / Trading. Determines which downstream module and commercial logic applies to this item.
+ | Category
+ | Picklist, linked to Category Master
+ | Yes
+ | Customization
+ | Sourced from the Category &amp; Sub-Category Master.
+ | Sub-Category
+ | Picklist, dependent on Category
+ | No
+ | Customization
+ | Further division within a Category, as needed.
+ | Tracking Method
+ | Picklist
+ | Yes
+ | Customization
+ | Serialized (Unique Asset ID) / Quantity / Length (or other unit of measure). Set per item, not assumed from Category a generator is always Serialized whether it sits under Rental or Inventory classification; a filter is always tracked by Quantity.
+ | Brand, Model, Engine Number, Capacity
+ | Text / numeric
+ | Conditional
+ | Customization
+ | Mandatory for serialized items; not applicable to simple quantity-tracked consumables.
+ | Purchase Date, Asset Value, Current Net Book Value, Depreciation %, Depreciated Amount, CapEx Value
+ | Date / Currency
+ | Conditional
+ | Customization
+ | Mandatory for serialized (asset-tracked) items.
+ | Item Image / Photo
+ | Image upload, displayed on record
+ | No
+ | Customization
+ | Displays directly on the item/asset screen rather than sitting in a file list.
+ | Attachments (invoice, warranty card, manual, etc.)
+ | File upload, multiple
+ | No
+ | Standard
+ | Standard document attachment capability.
+ | 
+Business Rules
+Product Classification and Tracking Method are independent fields. An item classified as Rental is not automatically Serialized, and an item classified as Inventory is not automatically Quantity-tracked both fields are set explicitly per item.
+Access to create or edit an Item/Product Master record is controlled by role/permission configuration, not restricted to a fixed job title.
+Category &amp; Sub-Category Master
+This master feeds the Group + Category selection in the CRM module as well as the Item/Product Master, and needs to stay genuinely admin-configurable since the category list is expected to keep growing.
+Field
+ | Type
+ | Mandatory
+ | Status
+ | Notes / Validation Rule
+ | Category Name
+ | Text
+ | Yes
+ | Standard
+ | E.g., Generator, Cable, Panel, ATS Panel, POD, Trolley, Tray, Day Tank, Spare Engine, Vehicle.
+ | Sub-Category Name
+ | Text, linked to parent Category
+ | No
+ | Standard
+ | E.g., under Generator: 100 KVA, 200 KVA.
+ | Custom Attributes (per Category/Sub-Category)
+ | Dynamic field configuration
+ | No
+ | Customization
+ | Each Category or Sub-Category can define its own additional required fields (e.g., Generators need engine details; Cables need length/core) without a code change.
+ | Active / Inactive
+ | Toggle
+ | Yes
+ | Standard
+ | Retiring a category without deleting its history.
+ | Business Rules
+The Category/Sub-Category list is never a fixed, hard-coded list authorised users can add new categories and sub-categories at any time, and this list is the single source both the Item/Product Master and the CRM module's Group + Category quoting draw from.
+Creating a new Category or Sub-Category is controlled by role/permission configuration.
+Fixed Asset Register (Serialized Asset Tracking)
+For every serialized item generator and similar rental/inventory assets the system provides full lifetime visibility: profitability, utilization, idle time, depreciation, usage history by client/project, CapEx, useful life, and a complete audit trail, all from one asset record.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Asset ID
+ | Auto-generated, unique
+ | Yes
+ | One record per physical unit the core identifier used for QR/barcode tagging and every cross-module reference (CRM Allocation Tag, Procurement Cross-Hire lifecycle).
+ | Linked Item/Product Master
+ | Linked record
+ | Yes
+ | Inherits Category, Sub-Category, and base specification.
+ | Asset Status
+ | Picklist shared Unified Status Master
+ | Yes
+ | Ready for Hire / On Hire / Off Hire / Breakdown / Under Maintenance / Disposed / Yard / Hold, and any other status the business defines. This is the same Unified Rental Status Master used by the Rental module, extended here rather than duplicated.
+ | Ownership Type
+ | Picklist
+ | Yes
+ | Owned / Cross-Hired / Spare-Standby.
+ | Current Location
+ | Derived, read-only
+ | N/A
+ | Not a manually maintained field computed from the latest entry in the Movement History log, so it can never drift out of sync with actual recorded movements.
+ | Utilization %
+ | Calculated, read-only
+ | N/A
+ | On-hire time vs. available time, over a selected period.
+ | Idle Time
+ | Calculated, read-only
+ | N/A
+ | Time spent Available (not on hire) over a selected period.
+ | Profitability (to date and by period)
+ | Calculated, read-only
+ | N/A
+ | Revenue earned less depreciation, maintenance, and consumable cost.
+ | Useful Life (Years / Hours)
+ | Numeric
+ | Yes
+ | Basis for the end-of-life planning report.
+ | Audit Trail
+ | System log, read-only
+ | N/A
+ | Every field change on this record who changed what, and when.
+ | Tracking Method
+Serialized items (e.g., generators) get one Fixed Asset Register record per physical unit, regardless of whether that unit is currently classified Rental or Inventory.
+Quantity-tracked items (e.g., filters, small spares) do not get individual Fixed Asset Register records they are tracked as stock quantity against the Item/Product Master directly.
+Length-tracked items (e.g., cables) are tracked by total length/quantity per batch, not per unit. This is a configurable Tracking Method per item, not a hard-coded exception limited to cables the system does not assume in advance which future item types might need length-based tracking.
+QR / Barcode Tagging
+Every serialized asset supports a QR code or barcode tag, generated from its Asset ID.
+Phase 1 scope: scanning the tag displays the Asset ID only. Displaying additional information on scan (status, location, next service due, certificates) is deferred to a later phase.
+Business Rules
+An asset's Current Location is always derived from Movement History, never manually overridden correcting a location means adding a correcting movement entry, not editing a location field directly.
+Utilization, Idle Time, and Profitability are calculated fields, refreshed from underlying transactional data rather than manually entered.
+
+
+
+
+
+
+
+
+Location &amp; Warehouse Master
+A client's site, where a rental asset is delivered, is not a Location Master entry it is tracked through the Movement History log instead. Only the business's own yards and any location where its own stock physically sits at a supplier's premises belong in this master.
+Field
+ | Type
+ | Mandatory
+ | Status
+ | Notes / Validation Rule
+ | Location Code
+ | Auto-generated
+ | Yes
+ | Standard
+ | System-generated on creation.
+ | Location Type
+ | Picklist
+ | Yes
+ | Customization
+ | Own Yard / Supplier-Held Location. A client project site is explicitly not a Location Master entry that is tracked via Movement History instead.
+ | Linked Supplier
+ | Linked record
+ | Conditional
+ | Customization
+ | Mandatory when Location Type is Supplier-Held Location for example, fuel stock physically stored at a supplier's premises but owned by the business.
+ | Stock Held, Consumption, Remaining Value (at this location)
+ | Calculated, read-only
+ | N/A
+ | Customization
+ | Required for Supplier-Held Locations tracks how much of the business's own stock sits at that location, how much has been consumed or sold, and the remaining value.
+ | Business Rules
+Internal transfers between the business's own yards are logged as a formal Movement/Transfer entry every asset must always be able to show where it currently is.
+Stock physically held at a supplier's location, most relevant for Fuel Trading, is still the business's own stock tracked under the Location Master with Location Type Supplier-Held, with running consumption and remaining-value calculations, not treated as sold or transferred out.
+When an asset is delivered to a client/project, that movement is recorded in Movement History with the client/project as the destination it does not create or require a new Location Master record.
+“Where is this asset right now” is answered by the most recent Movement History entry, not by a separate current-location lookup.
+Asset Ownership Type
+Owned, Cross-Hired, and Spare/Standby assets are clearly distinguishable everywhere in counts, in reports, and especially in how Cross-Hire assets are costed rather than depreciated.
+Field
+ | Type
+ | Mandatory
+ | Status
+ | Notes / Validation Rule
+ | Ownership Type
+ | Picklist (on the Fixed Asset Register)
+ | Yes
+ | Customization
+ | Owned / Cross-Hired / Spare-Standby.
+ | Cross-Hire Idle Flag
+ | Checkbox / status refinement
+ | Conditional
+ | Customization
+ | Marks a cross-hired unit that has been returned by the client to the business's own location but not yet returned to the original cross-hire supplier distinct from a normal Return. Aligns with the “Returned to Us” vs. “Returned to Supplier” stages in the Procurement module's Cross-Hire lifecycle.
+ | Depreciation Applicable
+ | System-derived, read-only
+ | N/A
+ | Customization
+ | False for Cross-Hired assets (no depreciation tracked); True for Owned assets.
+ | Cost &amp; Profitability Tracking
+ | Calculated, read-only
+ | N/A
+ | Customization
+ | Applies to Cross-Hired assets in place of depreciation tracks cost incurred vs. revenue earned, traceable to the specific project/allocation.
+ | Include in Available Fleet Count
+ | System-derived, read-only
+ | N/A
+ | Customization
+ | True for Owned serialized assets not currently on hire; False for Spare/Standby units and true quantity-tracked consumable stock.
+ | Business Rules
+Cross-Hired assets never generate a depreciation posting; they are costed and tracked for profitability against the project/client they are allocated to instead.
+A Cross-Hired asset returned by the client but sitting idle at the business's own yard, not yet sent back to the supplier, is visibly flagged as such an operationally distinct state from a normal Available owned asset.
+Spare parts and other true consumable stock are excluded from “available fleet” counts by default; a serialized asset held as spare/standby, such as a backup generator, is included, since it is a real fleet unit even though not currently deployed.
+Depreciation &amp; Valuation
+Depreciation runs automatically once an asset is entered into the system, and its current book value is visible at any time, not just at period-end close.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Depreciation Method
+ | Picklist, configurable by Finance role
+ | Yes
+ | Default is Straight-Line; other methods can be enabled by an authorised Finance/Accounts user.
+ | Depreciation Method Override (per Category)
+ | Picklist, optional per Category
+ | No
+ | Different equipment types can use a different method than the system default.
+ | Useful Life
+ | Numeric (years)
+ | Yes
+ | Basis for the depreciation schedule.
+ | Depreciation Start Date
+ | Date, system-set
+ | Yes
+ | Depreciation posting begins automatically from the date the asset is entered/capitalised in the system.
+ | Current Net Book Value
+ | Calculated, read-only
+ | N/A
+ | Visible at any time, updated automatically as depreciation posts not only at month/year-end.
+ | Costing Method (for non-serialized/consumable stock)
+ | Picklist, standard ERPForce configuration
+ | Yes
+ | Uses ERPForce's existing standard costing-method configuration, e.g. FIFO or Weighted Average.
+ | Business Rules
+Depreciation posts automatically on a recurring basis, typically monthly, from the Depreciation Start Date, without requiring a manual journal each period.
+Current Net Book Value always reflects the latest automatic posting, viewable on demand from the Fixed Asset Register.
+Movement History
+Every delivery, return, internal transfer, and repair against an asset is visible as one continuous, traceable timeline this is what actually answers “where is this asset right now,” rather than a separately maintained location field.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Movement Entry Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Linked Asset
+ | Linked record
+ | Yes
+ | The Fixed Asset Register entry this movement applies to.
+ | Movement Type
+ | Picklist
+ | Yes
+ | Delivery / Return / Internal Transfer / Sent for Repair / Cross-Hire Stage Change.
+ | From / To (Location, Client, or Project)
+ | Linked reference
+ | Yes
+ | Can reference a Location Master entry, a Customer/Project, or a Supplier for Cross-Hire, depending on Movement Type.
+ | Movement Date/Time
+ | Date/time
+ | Yes
+ | Start of this movement's validity period.
+ | Duration at Location/Project
+ | Calculated, read-only
+ | N/A
+ | From this entry's date to the next entry's date, or to now, if this is the latest entry.
+ | Business Rules
+Movement History is append-only it is never edited retroactively to “fix” a location; a correction is made by adding a new movement entry.
+This log is strictly internal it is not exposed to customers in any client-facing report or document.
+An asset's full history must be viewable in one place, spanning every delivery, return, transfer, and repair, at any point in its life.
+Compliance &amp; Certificates (Asset-Level)
+This section owns the ongoing, asset-level record of registration, insurance, inspection, and warranty documents. Procurement can originate these entries at Goods Receipt or Purchase Order stage, but this module is where they live and get maintained for the life of the asset.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Certificate / Document Type
+ | Picklist
+ | Yes
+ | Registration, Insurance, Inspection, Warranty, Other flexible to add new types.
+ | Document Attachment
+ | File upload
+ | No
+ | The certificate/document file itself.
+ | Expiry Date
+ | Date
+ | Yes
+ | Drives the reminder alert below.
+ | Reminder Lead Time
+ | Numeric (days before expiry), configurable
+ | Yes
+ | Flexible/adjustable, not a single fixed value system-wide.
+ | Last Updated By / Edit History
+ | System log, read-only
+ | N/A
+ | Any user with edit/update permission on the asset record can renew or update a certificate; every change is logged.
+ | 
+Business Rules
+Certificate entry is flexible in structure new document types can be added without a code change, and a given asset can carry any number of certificate records.
+Whoever holds edit permission on the asset record is authorised to renew or update its certificates not restricted to a separate, fixed compliance role.
+Manual Usage &amp; Status Recording
+All usage/status data running hours, condition is entered manually in this phase; no IoT device or vendor integration work is in scope. The data model does not assume manual entry is permanent: an IoT feed can be added in a later phase without reworking this screen or its underlying fields.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Linked Asset
+ | Linked record
+ | Yes
+ | The Fixed Asset Register entry this reading applies to.
+ | Reading Date/Time
+ | Date/time
+ | Yes
+ | When the reading was taken.
+ | Hour Meter Reading (HMR)
+ | Numeric
+ | Yes
+ | Manually entered running-hours value.
+ | Recorded By
+ | User reference
+ | Yes
+ | The exact responsible role field technician, delivery driver, warehouse staff requires confirmation; built as a generic user reference, access-controlled by role.
+ | Entry Method
+ | Picklist
+ | No
+ | Direct System Entry (on-site) / Paper, Entered Later. Preferred method requires confirmation.
+ | Fuel Level, Condition Notes
+ | Numeric / text, optional
+ | No
+ | Exact list of what else to capture at each reading requires confirmation.
+ | Reading Source
+ | Fixed = Manual (Phase 1)
+ | N/A
+ | Reserved field so a future IoT feed can populate the same structure without a schema change.
+ | Business Rules
+Whether a missed or late reading should be flagged by the system, or simply backfilled without any flag, requires confirmation.
+Whether a minimum reading frequency, for example at least once a month per asset, should be enforced with an overdue alert requires confirmation the Overdue/Missing Usage Readings Report is required regardless, so some frequency rule will need to exist to support it.
+
+
+
+
+
+Physical Stock Verification
+Periodic counts need to be comparable against system records, with a clear path to adjust the system when they don't match.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Stock Count Session
+ | Auto-generated header record
+ | Yes
+ | Groups a physical count exercise: date, location, items covered.
+ | System Quantity (per item, at count time)
+ | Read-only, system snapshot
+ | N/A
+ | Captured at the moment the count session starts.
+ | Physically Counted Quantity
+ | Numeric, manual entry
+ | Yes
+ | Entered by whoever performs the count.
+ | Variance
+ | Calculated, read-only
+ | N/A
+ | Physically Counted minus System Quantity, flagged when non-zero.
+ | Stock Adjustment
+ | Transaction, linked to variance
+ | Conditional
+ | Raised to bring system quantity in line with the physical count, subject to the same approval framework used elsewhere.
+ | Business Rules
+Physical count frequency is not fixed system-wide the system supports an ad hoc count session at any time, not only on a fixed schedule.
+Any variance between the system quantity and the physical count is visible and generates a Stock Adjustment before the system quantity is corrected it is never silently overwritten.
+Asset Disposal / Write-Off
+A formal process is needed for assets reaching end of life or damaged beyond repair, whether the outcome is scrapping or a sale.
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Disposal Request Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Linked Asset
+ | Linked record
+ | Yes
+ | The Fixed Asset Register entry being disposed.
+ | Disposal Reason
+ | Picklist
+ | Yes
+ | End of Useful Life / Damaged Beyond Repair / Other.
+ | Disposal Method
+ | Picklist
+ | Yes
+ | Scrap / Sale.
+ | Scrap/Sale Value
+ | Currency
+ | Conditional
+ | Mandatory when Disposal Method is Sale.
+ | Supporting Documents
+ | File upload
+ | No
+ | E.g., valuation, reason justification.
+ | Approval Status
+ | Picklist, driven by configurable Approval Engine
+ | Yes
+ | Approval thresholds/roles require confirmation.
+ | Business Rules
+An asset cannot be marked Disposed on the Fixed Asset Register until its Disposal Request has reached Approved status.
+A disposed asset is excluded from all active-fleet counts and dashboards going forward, but its full history remains visible Movement History, depreciation record, profitability to date.
+Reports
+Report
+ | Purpose
+ | Asset Utilization Report
+ | On-hire time vs. available time, per asset and by category.
+ | Asset Profitability Report
+ | Revenue earned vs. depreciation, maintenance, and consumable cost, per asset.
+ | End-of-Useful-Life Report
+ | Assets approaching the end of their configured useful life, to plan replacement purchases.
+ | Category Demand vs. Owned Report
+ | Which categories are most in demand vs. what the business actually owns.
+ | Overdue / Missing Usage Readings Report
+ | Assets without a usage reading within the confirmed minimum frequency.
+ | Idle Time Report
+ | Time each asset has spent Available, not on hire, by category and period.
+ | Movement History Report
+ | Full delivery/return/transfer/repair history per asset, for internal use only.
+ | Owned vs. Cross-Hire vs. Spare-Standby Report
+ | Fleet composition by ownership type, including the Cross-Hire idle-at-our-location flag.
+ | Location-Wise Stock Report
+ | Stock held, consumed, and remaining value by location, including Supplier-Held Locations shares data with the Procurement module's equivalent report.
+ | Physical Stock Variance Report
+ | Results of physical count sessions against system quantity, with resulting adjustments.
+ | Certificate Expiry Report
+ | All asset-level certificates nearing or past expiry.
+ | Asset Disposal / Write-Off Report
+ | All disposed/written-off assets, reason, method, and value.
+ | Dashboards
+Dashboard
+ | Description
+ | Fleet Status Dashboard
+ | Live counts of Available / On-Hire / Under-Maintenance / Disposed, by category.
+ | Owned vs. Cross-Hire Dashboard
+ | Distinguishes owned fleet from cross-hired units, including which cross-hired units are idle at the business's own location awaiting return to supplier.
+ | Asset Profitability Dashboard
+ | Per-asset earned vs. cost view, filterable by category and period.
+ | Location-Wise Stock Dashboard
+ | Own-yard vs. supplier-held stock, with consumption and remaining value shared with the Procurement module's equivalent dashboard.
+ | End-of-Life Planning Dashboard
+ | Assets approaching end of useful life, to support purchase planning.
+ | .
+
+Finance &amp; Accounting Module
+Chart of Accounts
+A chart of accounts is typically brought across conceptually not migrated as a literal copy, but rebuilt to fit ERPForce's structure. Cost Centre logic is deliberately not defined here see Section 3 for the dedicated Cost Centre Master, which every account and transaction can reference.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Account Code
+ | Auto-generated / structured
+ | Yes
+ | Ledger account identifier.
+ | Account Name, Account Type (Asset/Liability/Income/Expense/Equity)
+ | Text / Picklist
+ | Yes
+ | Standard chart-of-accounts fields.
+ | Books/Ledgers Structure
+ | Single, combined
+ | N/A
+ | One combined set of books across the company no separate ledger per branch or entity is required. Branch/entity distinctions are handled via Cost Centre tagging (Section 3), not separate books.
+ | Business Rules
+Many rental businesses operate a single, combined set of books; multi-branch reporting (where needed) is achieved through Cost Centre tagging on transactions (Section 3), not through separate ledgers.
+The Chart of Accounts is rebuilt in ERPForce's own structure rather than imported as-is from the outgoing system see Section 16 for the migration approach.
+Cost Centre Master &amp; Allocation
+This section was added after a dedicated review, since the original workshop under-specified how Cost Centres actually work. Every answer below is and should be treated as the authoritative Cost Centre model for the entire ERPForce build Procurement's Purchase Order budget check, the CRM Annex's Contract Type, and every report split “by project” all reference this same structure.
+Field-Level Specification Cost Centre Master
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Cost Centre Code
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Cost Centre Name
+ | Text
+ | Yes
+ | Descriptive name.
+ | Cost Centre Type
+ | Picklist, open-ended/admin-configurable
+ | Yes
+ | Not a fixed list Project, Activity Type, Capital, Rental, Equipment, or any new type the client defines later. An authorised user can add new types without a code change.
+ | Parent Cost Centre
+ | Self-referencing link, optional
+ | No
+ | Enables a hierarchical structure (e.g., a Project sitting under a Branch) when the client wants one structure is flexible, not fixed to flat or hierarchical system-wide. A given Cost Centre can be flat (no parent) or nested, as needed.
+ | Created By / Creation Rights
+ | System-logged, role-gated
+ | N/A
+ | Cost Centre creation sits under the Finance module by default, but is role/permission-driven other roles (e.g., Operations, Project team) can be granted rights to create one when starting a new project, without needing Finance to do it for them.
+ | Active / Inactive Status
+ | Toggle
+ | Yes
+ | A Cost Centre is never hard-deleted it can only be set Inactive. All historical data and reporting must remain fully accessible for an Inactive Cost Centre.
+ | Field-Level Specification Transaction-Level Allocation
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Cost Centre (per transaction)
+ | Linked field, present on every transaction type
+ | No (optional)
+ | Every transaction type in the system sales invoice, purchase invoice, payroll, depreciation posting, general expense carries a Cost Centre field, but entering it is never enforced as mandatory.
+ | Allocation Level
+ | Picklist
+ | Conditional
+ | Header (whole transaction to one Cost Centre) / Line-Wise (each line split to a different Cost Centre or percentage). Both must be supported.
+ | Allocation Split (%, per Cost Centre)
+ | Numeric, manual entry
+ | Conditional
+ | Entered manually by the Accounts team on each transaction that needs splitting there is no standing/automatic allocation rule engine (e.g., no “always split Head Office rent 20/30/50” template). Every split is a manual decision at the point of entry.
+ | Business Rules
+Cost Centre structure is flexible by design: it can be flat or hierarchical, and the client decides which on a case-by-case basis the data model must not assume one or the other globally.
+A single Cost Centre record can represent any type the client defines (Project, Activity Type, Capital, Rental, Equipment, etc.) the Cost Centre Type list itself is open-ended and admin-extendable.
+Cost Centre creation is owned by the Finance module, but other roles can be granted creation rights this is a permissions question, not a hard module boundary.
+No transaction is blocked for missing a Cost Centre the field is always available, never mandatory.
+Closing a Cost Centre only ever sets it Inactive; the system must always be able to report against an Inactive Cost Centre's full history.
+A transaction can be allocated to more than one Cost Centre, either by splitting the whole transaction at header level or by splitting individual lines differently both mechanisms are required, not just one.
+Overhead or shared costs that don't clearly belong to one project (e.g., head-office rent, shared HR salary) are simply posted as general expense they are not force-allocated down to project Cost Centres.
+Sales Invoicing &amp; Receivables
+All four Activity Types post the same way at the accounting level, with one exception: Rental needs automatic, recurring invoice generation, since a single Sales Order can bill repeatedly over its Contract Type period.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Sales Invoice Number
+ | Auto-generated
+ | Yes
+ | System-generated on creation.
+ | Activity Type (inherited)
+ | Picklist, read-only
+ | Yes
+ | Inherited from the linked Sales Order (CRM Annex) drives reporting split by Activity Type (Section 15) but not different posting logic.
+ | Cost Centre (per invoice/line)
+ | Linked, optional
+ | No
+ | Same Cost Centre model as Section 3 can be tagged at invoice header or per line.
+ | Recurring Invoice Schedule
+ | System-generated, time-period driven
+ | Conditional
+ | Mandatory for Rental invoices automatically generates invoices based on the billing cycle/time period selected on the Sales Order (Contract Type, per the CRM Annex).
+ | Credit Terms
+ | Numeric (days), defaulted + overridable
+ | Yes
+ | Defaults from the Customer Master but can be overridden per project.
+ | Collection Priority Indicator
+ | System-calculated, non-mandatory input field
+ | No
+ | Driven by conditions set on the Customer Master (not mandatory to set); feeds the monthly Collection Priority List (Section 14).
+ | Payment Status
+ | Picklist, system-calculated
+ | N/A
+ | Unpaid / Partially Paid / Fully Paid updates automatically as payments are recorded.
+ | Linked Payments (one-to-many)
+ | Linked records
+ | N/A
+ | Tracks every payment received against this invoice, whether full or partial.
+ | Business Rules
+Rental Sales Invoices are generated automatically according to the billing cycle chosen on the Sales Order; Trading, Fuel Trading, and AMC invoices are raised individually as standard transactions.
+Credit Terms default from the Customer Master but can be overridden at project level the more specific value takes precedence.
+A Customer Statement of Account is a mandatory system capability, but distribution is manual the Accounts team generates and shares it as needed, rather than it being auto-emailed on a fixed schedule.
+Purchase Invoicing &amp; Payables
+This section is the Finance-side counterpart to the Procurement Annex's Vendor Bill screen the three-way match happens in Procurement; what happens once a bill is approved for payment is specified here.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Linked Vendor Bill
+ | Linked record
+ | Yes
+ | Sourced from the Procurement Annex's Vendor Bill / Invoice screen.
+ | Cost Centre (per bill/line)
+ | Linked, optional
+ | No
+ | Same Cost Centre model as Section 3 the same field referenced by the Procurement Annex's Purchase Order budget check.
+ | Approval Workflow (by purchase type)
+ | System-driven, configurable
+ | Yes
+ | Approval routing varies by purchase type (equipment, fuel, spare parts, etc.) uses the same configurable Approval Engine referenced across every Annex in this engagement.
+ | Payment Method
+ | Picklist
+ | Yes
+ | Bank Transfer / Cheque / Other.
+ | Payment Batch / Priority
+ | Manual selection by Accounts team
+ | N/A
+ | No automated payment-prioritisation logic is required the Accounts team manually decides which invoices to pay when cash is limited.
+ | Payment Status
+ | Picklist, system-calculated
+ | N/A
+ | Unpaid / Partially Paid / Fully Paid, tracked per invoice.
+ | Linked Payments (one-to-many)
+ | Linked records
+ | N/A
+ | Every payment made against this invoice, whether full or partial.
+ | Business Rules
+Approval routing for a Vendor Bill depends on its purchase type, using the same configurable, value/type-tiered approval matrix pattern established in the Procurement Annex.
+Payment file/cheque generation is not automated in this phase the system records the payment method and reference, but execution remains a manual Accounts-team action.
+Partial payments are always tracked against their specific invoice, with the invoice's Payment Status updating accordingly.
+Bank &amp; Cash Management
+A business may operate multiple bank accounts and uses petty cash at branch/site level both need dedicated tracking, alongside a single combined view of overall cash position.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Bank Account (multiple)
+ | Linked record, one per account
+ | Yes
+ | Each bank account tracked separately.
+ | Bank Reconciliation Record
+ | Transaction, periodic
+ | Yes
+ | Reconciles system-recorded transactions against the bank statement on a regular basis.
+ | Petty Cash Account (per branch/site)
+ | Linked record
+ | Yes
+ | Tracks petty cash held at each branch/site.
+ | Petty Cash Draw
+ | Transaction, linked to employee
+ | Yes
+ | Records an employee drawing petty cash for an expense.
+ | Petty Cash Reimbursement / Settlement
+ | Transaction, linked to Draw
+ | Yes
+ | Settles a petty cash draw once the employee submits expense justification an advance-and-settle cycle, not a simple expense entry.
+ | Day Book
+ | Consolidated, read-only view
+ | N/A
+ | Combined day-to-day view of cash and bank position across all accounts.
+ | Business Rules
+Bank reconciliation is performed regularly (frequency to be confirmed Section 17) against each bank account individually.
+Petty cash follows a draw-then-settle cycle: an employee takes cash against a petty cash account, and later submits justification to settle/reimburse that draw the cash is not simply logged as spent at the point of withdrawal.
+The Day Book aggregates cash and bank balances across every account into one view, refreshed daily.
+Fixed Asset Accounting &amp; Depreciation
+This section is the Finance-side counterpart to the Inventory &amp; Fixed Assets Annex that Annex owns the asset register itself; this section owns how depreciation, disposal, and capital-improvement events post to the ledger.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Initial Depreciation Setup Approval
+ | Approval action, one-time per asset
+ | Yes
+ | Bringing a new fixed asset into its depreciation schedule requires an approval step; once approved, monthly depreciation posts automatically without further manual intervention.
+ | Monthly Depreciation Posting
+ | System-generated journal
+ | N/A
+ | Posts automatically every month once the asset's initial setup is approved, consistent with the automatic Net Book Value requirement in the Inventory &amp; Fixed Assets Annex.
+ | Disposal Gain/Loss Calculation
+ | Calculated, linked to Disposal record
+ | N/A
+ | Triggered when an asset is sold or scrapped (Inventory &amp; Fixed Assets Annex, Section 12) compares sale/scrap value against Net Book Value at disposal.
+ | Asset Cost Event Type
+ | Picklist
+ | Yes
+ | Capital Improvement / Expense (Repair). Determines whether the cost is capitalised (added to the asset's value) or expensed immediately.
+ | Capital Improvement Impact
+ | Structured entry
+ | Conditional
+ | Mandatory when Asset Cost Event Type = Capital Improvement records whether the improvement increases Useful Life, Net Book Value, or both, with the specific amount/extension recorded against the asset.
+ | Cost Centre (per asset)
+ | Linked, optional
+ | No
+ | Same Cost Centre model as Section 3 allows depreciation and repair cost to roll up into a project/Cost Centre's actuals for budgeting (Section 9).
+ | Business Rules
+A new fixed asset requires a one-time approval before it enters its automatic monthly depreciation cycle; after that approval, no further manual posting action is required unless a Capital Improvement event occurs.
+Every repair or improvement cost against an asset must be classified as either a Capital Improvement (capitalised, potentially extending useful life or increasing net book value) or an Expense (posted directly, no asset-value impact) the distinction must be recorded in detail, not just as a lump cost.
+Disposal Gain/Loss is calculated automatically from the Net Book Value at the point of disposal (Inventory &amp; Fixed Assets Annex, Section 7) against the actual sale/scrap value recorded.
+Budgeting, Forecasting &amp; Cost Centre Reporting
+This section was substantially expanded after review on Cost Centre logic. Budgeting, forecasting, and reporting all build directly on the Cost Centre Master defined in Section 3 there is no separate budget structure to maintain.
+Budgeting Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Budget Record
+ | Linked to Cost Centre
+ | Yes
+ | Set against any Cost Centre defined in Section 3, regardless of type or hierarchy level.
+ | Budget Process
+ | Picklist, per Cost Centre Type
+ | Yes
+ | Bottom-Up (Cost Centre owner submits, then approved) / Top-Down (Finance/Management sets it) confirmed as both, depending on Cost Centre Type. Which process applies to which type is configurable, not fixed system-wide.
+ | Budget Line (per expense category)
+ | Linked, multiple per Cost Centre
+ | Yes
+ | A Cost Centre's budget is broken into expense categories (e.g., fuel, labor, spare parts, transport) rather than held as a single total figure —.
+ | Budget Period
+ | Date range
+ | Yes
+ | Typically annual, with monthly breakdown for variance reporting.
+ | Budget Revision
+ | Transaction, permission-gated
+ | N/A
+ | A budget can be revised mid-year by a user with the appropriate permission; every revision is logged with who changed it, when, and the reason.
+ | Over-Budget Alert &amp; Approval
+ | System-driven, configurable
+ | N/A
+ | Triggers the same alert-and-approve-or-amend workflow already defined in the Procurement Annex's Purchase Order screen, from the Finance/budget-owner side.
+ | Forecasting Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Forecast Record
+ | Linked to Cost Centre
+ | Yes
+ | A rolling forecast, maintained per Cost Centre, distinct from (but built on the same structure as) its Budget.
+ | Forecast Type
+ | Fixed = Rolling
+ | N/A
+ | Confirmed as a rolling forecast it automatically updates from actuals each month, rather than being set once and left static.
+ | Forecast Basis
+ | System-calculated, updated monthly
+ | N/A
+ | Combines actual-to-date spend/revenue with a projection for the remaining period; recalculates automatically as each month's actuals post. Exact projection method (straight-line run-rate vs. manual override by Cost Centre owner) to be confirmed see Section 17.
+ | Forecast vs. Budget Variance
+ | Calculated, read-only
+ | N/A
+ | Compares the live rolling forecast against the original budget, surfaced on the Budget vs. Actual Dashboard (Section 15).
+ | Business Rules
+Budgeting and forecasting both sit on top of the Cost Centre Master (Section 3) there is no parallel budget-specific hierarchy or master to maintain separately.
+Whether a Cost Centre's budget is built bottom-up or top-down depends on its Cost Centre Type, and this mapping is configurable by an authorised Finance user, not hard-coded.
+Every Cost Centre's budget is broken down by expense category; a single lump-sum budget per Cost Centre is not sufficient.
+The rolling forecast recalculates automatically every month as actuals post against a Cost Centre the client does not want a forecast that has to be manually refreshed.
+A budget revision is only available to users with the appropriate permission, and every revision is fully audited old value, new value, user, timestamp, and reason.
+Cost Centre Reporting Confirmed Requirements
+Profit &amp; Loss per Cost Centre both revenue and cost shown where the Cost Centre earns revenue (e.g., a Rental project); cost-only where it does not (e.g., a pure department).
+Side-by-side Cost Centre comparison e.g., Project A vs. Project B profitability, viewed together rather than one at a time.
+Automatic roll-up to parent level where a hierarchy exists (Section 3), child Cost Centre figures sum automatically into their parent's report (e.g., all Dubai branch projects rolling into a Dubai branch total).
+Budget vs. Actual vs. Forecast, viewable by Cost Centre, monthly (Section 14).
+AMC Billing (Chargeable vs. Non-Chargeable)
+The AMC billing rule is as follows: the scheduled AMC visit itself is never billed, but consumables and additional work performed during that visit usually are, with a Free-of-Cost override available case by case.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Service Type (per line item on an AMC job)
+ | Picklist
+ | Yes
+ | Scheduled Visit (Non-Chargeable) / Consumable (Chargeable by default) / Additional Task (Chargeable by default).
+ | Chargeable Override
+ | Checkbox (Free of Cost)
+ | No
+ | Allows a normally chargeable line to be marked FOC for a specific job, consistent with the FOC pattern already used in the CRM, Procurement, and Inventory Annexes.
+ | Sign-Off Role
+ | Fixed = Project Team
+ | N/A
+ | Chargeable classification on an AMC job is approved by the Project Team, not a separate Finance approval step.
+ | Business Rules
+A scheduled AMC visit itself is never billed to the customer it is covered under the AMC contract.
+Consumables and additional tasks performed during an AMC visit are billed by default, but the Project Team can mark a specific line as Free of Cost where appropriate.
+Approval authority for AMC chargeable classification sits with the Project Team, not Finance only processes the resulting invoice once classified.
+Multi-Currency &amp; VAT
+Standard UAE VAT treatment applies, extended for export/zero-rated transactions (consistent with the VAT Type field already scoped in the CRM Annex's Quotation screen), plus full multi-currency support with tracked exchange rates.
+
+
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Transaction Currency
+ | Picklist
+ | Yes
+ | Any currency the business transacts in, not limited to AED.
+ | Exchange Rate (by period)
+ | Numeric, maintained by date range
+ | Yes
+ | Rates tracked over time, not a single static value.
+ | Exchange Gain/Loss
+ | Calculated, posted automatically
+ | N/A
+ | Triggered when a payment settles at a different exchange rate than the original transaction rate.
+ | VAT Type
+ | Picklist
+ | Yes
+ | Standard (With VAT) / Export (Zero-Rated) same field and logic as the CRM Annex's Quotation screen.
+ | VAT Audit File Export
+ | System-generated file, standard FTA format
+ | Yes
+ | Generates the UAE Federal Tax Authority VAT Audit File (FAF) for filing/audit purposes a specific, named regulatory deliverable, not a generic export.
+ | Business Rules
+Exchange rates are maintained by date/period, and any payment settling at a rate different from the transaction's original rate automatically posts the resulting gain or loss.
+VAT treatment follows the standard UAE VAT system, with Export/Zero-Rated transactions handled distinctly from standard VAT transactions.
+The system must be able to produce the VAT Audit File in the format required for FTA filing or external audit, not just a generic transaction export.
+Reports
+All of the following were during the review and the Cost Centre follow-up.
+Standard Financial Reports
+Report
+ | Purpose
+ | Profit &amp; Loss, Balance Sheet, Cashflow, Trial Balance
+ | Standard financial statements.
+ | Fixed vs. Variable Cost P&amp;L
+ | Custom P&amp;L view splitting cost behaviour, built from the ledger/root level so any new ledger field can be incorporated without a separate development cycle.
+ | Customer Statement of Account
+ | Formal statement for periodic distribution to clients (Section 4).
+ | Collection Priority List
+ | Monthly worklist of customers to prioritise for collection, driven by Customer Master conditions (Section 4).
+ | Accounts Receivable Ageing Report
+ | Outstanding customer invoices by age bucket.
+ | Accounts Payable Ageing Report
+ | Outstanding supplier invoices by age bucket shared with the Procurement Annex's Ageing Payable Report.
+ | Day Book / Cash Position Report
+ | Combined cash and bank position across all accounts (Section 6).
+ | Fixed Asset Gain/Loss on Disposal Report
+ | Disposal outcomes across the fixed asset register (Section 8), shared with the Inventory &amp; Fixed Assets Annex.
+ | Capital Improvement vs. Expense Report
+ | Tracks which asset costs were capitalised vs. expensed, and their impact on useful life/net book value (Section 8).
+ | Activity Type Profitability Report
+ | P&amp;L split by Rental / Trading / Fuel Trading / AMC.
+ | VAT Audit File
+ | UAE FTA-format export for filing or audit (Section 11).
+ | Cost Centre Reports (Section 9)
+Report
+ | Purpose
+ | Cost Centre Profit &amp; Loss Report
+ | Revenue and cost per Cost Centre, or cost-only where the Cost Centre does not earn revenue.
+ | Cost Centre Comparison Report
+ | Side-by-side view of two or more Cost Centres (e.g., Project A vs. Project B).
+ | Cost Centre Roll-Up Report
+ | Child Cost Centre figures automatically summed into their parent (where a hierarchy exists).
+ | Budget vs. Actual vs. Forecast Report
+ | Monthly comparison by Cost Centre, showing the rolling forecast alongside budget and actual.
+ | Cost Centre Allocation Detail Report
+ | Full trace of every header- and line-level allocation split posted to a Cost Centre.
+ | Dashboards
+Dashboard
+ | Description
+ | Business Health Dashboard
+ | Revenue, expenses, and profit at a glance —.
+ | Receivables &amp; Collections Dashboard
+ | Overdue invoices and the monthly Collection Priority List, by customer.
+ | Payables Dashboard
+ | Outstanding supplier invoices and pending payment approvals.
+ | Cost Centre Budget vs. Actual vs. Forecast Dashboard
+ | Live Cost Centre spend against budget and rolling forecast, shared with the Procurement Annex's equivalent view.
+ | Activity Type Profitability Dashboard
+ | Rental vs. Trading vs. Fuel Trading vs. AMC profitability, trending over time.
+ | Cash Position Dashboard
+ | Live Day Book view across all bank and cash accounts.
+ | 
+HRMS Module
+Standard HRMS Provisions
+The areas below are standard HR functionality expected in any UAE-compliant HRMS. They are described here at a general level only no client customization has been requested, and detailed field-level specification will follow a dedicated HRMS discovery session.
+Employee Master Data
+Standard employee record: personal details, employee type (UAE National/Expatriate), joining date, department/designation/branch, reporting line, employment status, bank details for WPS, and the standard UAE identity/work documents (Emirates ID, Passport, Residence Visa, Labor Card) the latter feed directly into the Document Compliance module (Section 5).
+Organization Structure
+Standard Department, Designation, and Branch/Location masters, with the Branch/Location list shared with the Location Master already defined in the Inventory &amp; Fixed Assets Annex rather than maintained separately.
+Attendance &amp; Time Tracking
+Standard attendance capture (biometric, manual, or mobile check-in, depending on role/location), daily attendance records, overtime tracking, and an approval-gated regularization request for corrections.
+Payroll &amp; Compensation Structure
+Standard salary structure (Basic plus Allowances), monthly WPS-compliant salary file generation, End of Service Gratuity calculated per UAE Labour Law, monthly payslips, and standard payroll deductions. Salary cost can optionally be tagged to a Cost Centre (Finance Annex, Section 3) where an employee works predominantly on one client project.
+Asset Issuance to Employees
+Standard company-asset issuance (laptops, phones, tools), extended to technician/driver vehicle allocation using the same Fixed Asset Register entry as the vehicle's own record (Rental Annex, Section 3) already referenced as an HRMS capability in the CRM Annex.
+Leave Management
+Standard Leave Structure
+Standard leave types (Annual, Sick, Maternity/Paternity, Compassionate, Unpaid, Public Holiday), standard entitlement tracking, and a standard approval-gated leave request routed to the employee's Reporting Manager. Detailed entitlement days per type to be confirmed during an HRMS discovery session.
+Leave Carry forward Rule
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Carry forward Limit (per Leave Type)
+ | Numeric (days), admin-configurable
+ | Yes
+ | Default value 10 days, but must be changeable by an authorised HR user without a code change explicitly confirmed as needing flexibility.
+ | Excess Leave Treatment
+ | Picklist, admin-configurable
+ | Yes
+ | Lapse / Encash (Paid Out) / Capped Maximum Balance the treatment itself is configurable, not fixed to one rule, since This is required for a flexible option rather than committing to a single policy now.
+ | Carry forward Applicability
+ | Per Leave Type, configurable
+ | No
+ | The carry forward rule is configurable per Leave Type not hard-coded to apply only to Annual Leave, in case the client wants it to apply elsewhere later.
+ | Business Rules
+At each leave-year rollover, any balance above the configured Carry forward Limit is treated according to the configured Excess Leave Treatment (Lapse, Encash, or Capped Maximum) an authorised HR user can change both the limit and the treatment at any time.
+The default carry forward limit is 10 days, but this must be a setting, not a hard-coded value.
+Ticket Allowance / Benefit Accrual
+This is the standard UAE flight-ticket benefit, but paid as a cash amount rather than an actual booked ticket, accrued monthly, and paid out only when the policy's payout interval is reached not automatically every month.
+Field-Level Specification
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Ticket Policy
+ | Master record, assignable per employee/grade
+ | Yes
+ | Defines the ticket allowance amount and payout interval that applies to a given employee or grade.
+ | Ticket Allowance Amount
+ | Currency, per policy
+ | Yes
+ | The cash value of the benefit paid as an amount, never issued as an actual ticket.
+ | Accrual Frequency
+ | Fixed = Monthly
+ | N/A
+ | The allowance amount is split and accrued monthly, building a running provision balance per employee, regardless of when it is actually paid out.
+ | Payout Interval
+ | Numeric (years), admin-configurable per policy
+ | Yes
+ | Not automatic monthly payment the accrued balance is paid out only when the policy's interval is reached (e.g., every 1 year or every 2 years, depending on the provision assigned to that employee).
+ | Ticket Accrual Ledger
+ | System log, per employee, monthly entries
+ | N/A
+ | Running record of every monthly accrual posting, so the current provision balance is always visible even between payout events.
+ | Ticket Payout Transaction
+ | Transaction, triggered at policy interval
+ | N/A
+ | Pays out the accrued balance to the employee when the configured interval is reached; the accrual ledger continues afterward for the next cycle.
+ | Business Rules
+The ticket allowance accrues monthly in the background as a provision, whether or not it is close to being paid out this ensures the liability is always visible on the books even between payout events.
+Payout is never automatic on a monthly basis; it only occurs when the employee's assigned Ticket Policy interval is reached (e.g., after 1 or 2 years), matching the specific provision that applies to that employee.
+On termination, any accrued-but-not-yet-paid ticket allowance balance is included in final settlement (Section 2.4).
+
+Document &amp; Certificate Compliance, Notifications &amp; Warnings
+Two related but distinct capabilities are needed here: an automatic expiry notification system, and a separate, formal HR warning record both are required, and both need a full history retained against the employee.
+Field-Level Specification Document Compliance
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Document Type
+ | Picklist, admin-extendable
+ | Yes
+ | Passport / Residence Visa / Emirates ID / Labor Card / Driving License / Health-Medical Insurance Card / Professional Certification / Other This is required for provision to add different types, not a fixed list.
+ | Document Record (per employee, per type)
+ | Number, Issue Date, Expiry Date, Attachment
+ | Yes
+ | One record per document per employee; multiple documents of different types per employee.
+ | Reminder Lead Time (per Document Type)
+ | Numeric (days before expiry), admin-configurable
+ | Yes
+ | Configurable per document type, not a single system-wide value.
+ | Notification Recipients
+ | Multi-select
+ | Yes
+ | Employee / HR / Reporting Manager configurable per document type.
+ | Field-Level Specification HR Warning Record
+Field
+ | Type
+ | Mandatory
+ | Notes / Validation Rule
+ | Warning Record
+ | Linked to Employee
+ | Yes
+ | A formal, standalone record distinct from the automatic notification log above.
+ | Warning Trigger
+ | Picklist
+ | Yes
+ | Document Expiry (auto-suggested, linked to the specific expired Document Record) / Other Disciplinary Reason (manually raised by HR).
+ | Linked Document (if applicable)
+ | Linked record
+ | Conditional
+ | Populated automatically when the warning trigger is a document expiry.
+ | Warning Level
+ | Picklist
+ | Yes
+ | Verbal / Written / Final standard HR escalation levels.
+ | Issued By, Issued Date
+ | User reference, Date
+ | Yes
+ | Records which HR user issued the warning and when.
+ | Warning Letter Attachment
+ | File upload
+ | No
+ | The formal warning document, where one is issued.
+ | Warning Status
+ | Picklist
+ | Yes
+ | Active / Resolved / Escalated.
+ | Business Rules
+Two distinct histories must both be retained per employee: (1) the automatic expiry-notification log every reminder the system sent, to whom, and when; and (2) the formal HR Warning record an intentional, HR-issued action, which may or may not be linked to an expired document.
+A document expiry does not automatically create a Warning Record the notification fires first (Section 8.1); HR then decides, using the notification as context, whether to formally issue a Warning (Section 8.2).
+Both the notification log and the Warning history remain fully visible on the employee's record indefinitely, even after the underlying document is renewed or the warning is resolved.
+Reports &amp; Dashboards
+Standard Reports and Dashboards
+Standard HR reporting: Employee Headcount, Payroll Summary, and End of Service Gratuity Liability reports, plus an HR Overview Dashboard (headcount, pending approvals) to be detailed during an HRMS discovery session.
+Reports Tied to the Ticket Allowance and Document Compliance Features
+Report
+ | Purpose
+ | Leave Balance Report
+ | Current entitlement, taken, and carried-forward balance per employee (Section 3).
+ | Ticket Accrual &amp; Payout Report
+ | Running provision balance and payout history per employee (Section 4).
+ | Document Expiry Report
+ | All employee documents nearing or past expiry, by document type (Section 5.1).
+ | Warning History Report
+ | All formal HR warnings issued, by employee, level, and status (Section 5.2).
+ | Dashboards Tied to the Ticket Allowance and Document Compliance Features
+Dashboard
+ | Description
+ | Document Expiry Dashboard
+ | All employees with documents expiring within the configured reminder window, by type (Section 5.1).
+ | Leave Management Dashboard
+ | Team leave calendar and balances, including carry forward status, for managers (Section 3).
+ | 
+Roles &amp; Permissions
+Access across every module in ERPForce is governed by role and permission configuration rather than fixed job titles. This principle is applied consistently: whether it is creating a Cost Centre, approving a Purchase Order, issuing an HR warning, or confirming a Goods Receipt, the deciding factor is the permission a role has been granted, not the name of that role.
+Data Visibility
+Sales Representatives see only their own records leads, opportunities, quotations, and orders.
+Sales Managers, Sales Help Desk, Operations, and Management see all records across all sales representatives.
+Warehouse and yard staff see inventory and asset records relevant to their location, unless granted broader access.
+Finance and Accounts roles see the full financial ledger; other roles see only the transactions relevant to their function unless granted broader access.
+Organisational Escalation Chains
+Commercial chain: Salesperson to Sales Manager to Sales Support.
+Operational chain: Service Manager to Operations Manager.
+These chains determine how dashboards and alerts route for example, a Sales Support SLA/Hire-Desk dashboard for commercial issues, and a separate Operations Support SLA/Service-Desk dashboard for operational issues.
+Consolidated Role Matrix
+Role
+ | Typical Access
+ | Sales Representative
+ | Own Leads, Opportunities, Quotations, and Orders only.
+ | Sales Manager
+ | All CRM records; approves quotes/discounts per the configured approval matrix; escalation point for the Sales Support chain.
+ | Sales Help Desk / Support
+ | All CRM records; handles commercial SLA and hire-desk issues.
+ | Operations / Service Manager
+ | Delivery logistics, Allocation Tag visibility, certificate status; escalation point for the operational chain.
+ | Operations Manager
+ | Top of the operational escalation chain; full operational visibility.
+ | Dispatcher / Service Desk
+ | Assigns vehicles and drivers; initiates cross-hire and return/replacement actions if granted.
+ | Yard Supervisor
+ | Initiates returns and replacements; closes maintenance jobs if granted.
+ | Service Technician
+ | Closes maintenance jobs; records usage readings.
+ | Buyer / Procurement Officer
+ | Raises RFQs and Purchase Orders; does not approve payments.
+ | Warehouse Staff
+ | Confirms Goods Receipt if granted; creates or edits Item Master records if granted.
+ | Accountant
+ | Posts invoices and payments up to the lowest approval tier; reconciles bank accounts.
+ | Finance Manager
+ | Full financial visibility; approves payments at mid-to-upper tiers; can be granted budget-revision and Cost Centre creation rights.
+ | Fleet / Asset Manager
+ | Full Fixed Asset Register access; confirms physical stock counts; can be granted disposal-approval rights.
+ | HR Officer
+ | Employee records, leave processing, document compliance; issues HR warnings if granted.
+ | HR Manager
+ | Full HR access; can be granted payroll-processing and policy-configuration rights.
+ | Payroll Officer
+ | Processes payroll; does not approve leave or issue warnings.
+ | General Manager / Management
+ | Full visibility across every module, including all KPI and management dashboards; top approval tier.
+ | External Auditor
+ | Read-only access, where granted, typically limited to Finance records.
+ | The exact role list, and the specific approval thresholds each role holds, are configured during implementation and can be changed by an authorised administrator without a code change.
+Notifications &amp; Audit Trail
+Notifications
+Notifications are needed throughout the system rather than in any single module. The following categories apply across CRM, Procurement, Inventory &amp; Fixed Assets, Finance &amp; Accounting, Rental, and HRMS:
+Approval-pending alerts, at every tier of every configured approval matrix Requisitions, Purchase Orders, Quotations, budget overages, disposal requests.
+Expiry reminders, with a configurable lead time per document/certificate type supplier documents, asset certificates, and employee documents all use the same underlying mechanism.
+Overdue alerts overdue receivables, overdue rental returns, overdue maintenance, low stock, and missed usage readings.
+Task and priority notifications a Kanban/list view of pending tasks by priority, with every priority or status change logged.
+Event confirmations payroll processed, delivery confirmed, payment received.
+A consolidated daily digest email, summarising a user's outstanding items in one message rather than only event-by-event alerts.
+Notification channels are email and in-app by default; SMS/WhatsApp can be added per notification type where required.
+Audit Trail
+Every field change, on every screen, in every module, is logged with the user who made the change and the date and time it was made. This applies without exception quotation revisions, budget changes, Cost Centre status changes, certificate updates, HR warnings, asset status transitions, and price updates are all captured the same way.
+Every revision to a Quotation is retained in full version history rather than being overwritten.
+Every Cost Centre status change and every manual allocation split is logged with user and timestamp.
+Every budget revision is logged with the old value, the new value, the user, the timestamp, and the reason.
+Every Allocation Tag change on a Rental/AMC line is logged previous Category, new Category, user, and timestamp.
+E-Signature
+Electronic signature capture is required for Delivery confirmation and referenced in Quotation/Sales Order print output where relevant.
+A manual fallback a printed form with a physical signature, attached to the record is available for any e-signature step where electronic capture is not possible on site.
+The specific e-signature tool or provider ERPForce's built-in capability or a third-party integration requires confirmation.
+
+Master Data Import
+The following data templates will be provided ahead of the system build stage. Completed templates must be returned before build begins:
+Items (Inventory, Non-Inventory, and Service Items) and Item Categories.
+Attributes and Units of Measurement.
+Customers and Vendors.
+Employees.
+Chart of Accounts.
+Fixed Assets.
+Users, with their roles, to control access.
+User Training
+Training sessions will be provided for the following:
+Common options and functions.
+CRM / Sales.
+Procurement.
+Inventory &amp; Fixed Assets.
+Manufacturing.
+Rental.
+Accounting &amp; Finance.
+HRMS.
+NovaForce, the ERPForce AI Assistant.

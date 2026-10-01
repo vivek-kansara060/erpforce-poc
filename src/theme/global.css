@@ -1,0 +1,7 @@
+:root { font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+html, body, #root { height: 100%; margin: 0; }
+::selection { background: #2EB273; color: #fff; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #BDBEBF; border-radius: 3px; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.main-wrapper { width: 100%; height: calc(100vh - 4.6875rem); overflow-y: auto; }
