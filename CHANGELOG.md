@@ -12,6 +12,32 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 1 Oct, 3:00 PM: The Heavy Equipment Fixed Asset form no longer asks for a name, item code, asset ID or tracking method
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** NEW
+
+*The problem.* The form started with four fields that did not need the user: Item Code and Asset ID were read-only numbers the system generates anyway, Tracking Method was fixed to "Serialized" because heavy equipment is always serialized, and Name asked the user to type a name for something that is already described by its category, sub-category, brand and model. They made the form longer without adding information.
+*What we did.* Removed all four fields from the form. The system still generates the unique ID behind the scenes. The record's display name is now built automatically from Category, Sub-Category, Brand and Model (for example "Generator 500 KVA Cummins C500D5"). When an existing record is edited, it keeps its current name unless one of those four values changes.
+*Connected change.* Everything that shows an asset's name (movement history, stock counts, disposal requests, usage readings) keeps working because the name still exists on the record, it is just no longer typed in.
+*Be aware.* The details page still shows a read-only "Tracking Method: Serialized" line. Only the form was changed.
+
+### 1 Oct, 3:00 PM: Heavy equipment is now identified by a Serialized ID on the listing and the details page
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** NEW
+
+*Why.* With the item code and asset ID gone from the form, a reviewer still needs a way to tell two units of the same model apart and to quote one unit. The unique ID the system generates for each physical unit is now shown as the **Serialized ID**.
+*What we did.* The Heavy Equipment Fixed Asset listing has a new first column, **Serialized ID**, and the details page shows it in place of the old Item Code. It is the same unique number the rest of the POC uses for that unit (for example in stock counts and disposal requests), so nothing needs to be re-linked.
+
+### 1 Oct, 3:00 PM: Item categories now have a Category Type: Normal or Heavy Equipment
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The category list was one mixed list. The Heavy Equipment Fixed Asset form offered categories like Spare Part, Consumable and Fuel, and the standard item form offered Generator and Vehicle, even though each form is meant for one kind of thing.
+*What we did on the Item Category screen.* Added a **Category Type** dropdown (Normal or Heavy Equipment), in the same style as the Count Type dropdown on the stock count. It is required on a top-level category. A sub-category always follows its parent's type, so the dropdown is locked for it, and changing a parent's type updates its sub-categories. The list has a new Category Type column and a filter, and the details page shows the type. As a starting point, Generator, Vehicle, POD, Spare Engine, Trolley and Day Tank are Heavy Equipment, and everything else is Normal.
+*What we did on the Items forms.* The Heavy Equipment Fixed Asset form now offers only Heavy Equipment categories, and the standard Add Item form offers only Normal categories. An existing record whose category is not in its form's list still shows that category when it is opened, so nothing looks blank.
+*Be aware.* The requirement document does not mention a category type, so the dropdown carries a note: rule to be confirmed with client. Because Generator is now a Heavy Equipment category, a new standard item (for example an Inventory Fixed Asset) can no longer be created under it. Heavy Equipment Pricing was not changed, since it also prices rental cables and panels, so it still lists every category.
+
 ### 1 Oct, 1:13 PM: Every difference in a count now needs a reason
 **Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
 **Type:** NEW

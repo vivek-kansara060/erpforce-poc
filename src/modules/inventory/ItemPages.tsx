@@ -12,7 +12,7 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, topCategories, subCategoriesOf, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categoryOptions, categorySeed, topCategories, subCategoriesOf, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
@@ -20,7 +20,7 @@ const isSerialized = (t?: string) => t === 'Serialized';
 const TRACK_LABEL: Record<string, string> = { Serialized: 'Serialized', Quantity: 'Quantity', Length: 'Length (or applicable UOM)' };
 
 /* ------------------------------------------------------------------ list */
-interface Row { id: string; kind: 'item' | 'heavy'; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
+interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
 export const HEAVY_PATH = '/inventory/items/heavy';
 
 export function ItemList() {
@@ -32,7 +32,7 @@ export function ItemList() {
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
     ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status })),
-    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
+    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
   const open = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}` : `/inventory/items/${r.id}`);
@@ -40,6 +40,7 @@ export function ItemList() {
   const heavyView = type === 'Heavy Equipment Fixed Asset';
   const cols: Column<Row>[] = heavyView
     ? [
+        { key: 'assetId', label: 'Serialized ID', change: 'new', req: REQ_HE },
         { key: 'category', label: 'Category', change: 'new', req: REQ_HE },
         { key: 'subCategory', label: 'Sub-Category', change: 'new', req: REQ_HE },
         { key: 'name', label: 'Name' },
@@ -134,7 +135,7 @@ export function ItemForm() {
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
         <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification} options={[...PRODUCT_CLASSIFICATIONS]} onChange={set('classification')} error={errors.classification} />
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
-        <SelectInput label="Category" required change="new" req={REQ_ITEM} value={f.category} options={topCategories(cats.rows)} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
+        <SelectInput label="Category" required change="new" req={REQ_ITEM} value={f.category} options={categoryOptions(cats.rows, 'Normal', f.category)} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
         <SelectInput label="Sub-Category" change="new" req={REQ_ITEM} value={f.subCategory} options={subCategoriesOf(cats.rows, f.category)} disabled={!f.category || subCategoriesOf(cats.rows, f.category).length === 0}
           hint={f.category && subCategoriesOf(cats.rows, f.category).length === 0 ? 'No sub-categories under this category' : 'Optional, depends on Category'} onChange={set('subCategory')} />
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}

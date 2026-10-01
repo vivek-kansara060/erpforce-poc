@@ -11,11 +11,12 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { ATTRIBUTE_TYPES, BRANDS, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type PricingRec } from './data';
+import { ATTRIBUTE_TYPES, BRANDS, CATEGORY_TYPES, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, categoryTypeOf, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type CategoryType, type PricingRec } from './data';
 import { aed, isBlank, type Errors } from './shared';
 
 const REQ_PRICING = 'Heavy Equipment Pricing > Category / Sub-Category Pricing';
 const REQ_CAT = 'Category & Sub-Category Master';
+const REQ_CAT_TYPE = 'Category & Sub-Category Master > Category Type (Normal / Heavy Equipment)';
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 
 /* ------------------------------------------------------------------ Item Category list (existing columns and actions) */
@@ -28,11 +29,12 @@ export function CategoryList() {
     <Page>
       <PageTitle title="Item Category" />
       <DataTable<CategoryRec>
-        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12}
+        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12} filter={{ key: 'categoryType', options: [...CATEGORY_TYPES] }}
         onAdd={() => nav('/inventory/categories/add')} addLabel="Add Category" onRowClick={(r) => nav(`/inventory/categories/${r.id}`)}
         columns={[
           { key: 'name', label: 'Category Name' },
           { key: 'parent', label: 'Parent' },
+          { key: 'categoryType', label: 'Category Type', change: 'new', req: REQ_CAT_TYPE, render: (r) => categoryTypeOf(r) },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
           { key: 'level', label: 'Level', align: 'right' },
           { key: 'sub', label: 'Sub Categories', sortable: false, align: 'right', render: (r) => (r.level === 1 ? cats.rows.filter((c) => c.parent === r.name).length : 0) },
@@ -57,12 +59,16 @@ export function CategoryForm() {
   const cats = useCats();
   const existing = id ? cats.get(id) : undefined;
   const [f, setF] = useState(() => ({
+    categoryType: (existing ? categoryTypeOf(existing) : 'Normal') as string,
     parent: existing && existing.parent !== '-' ? existing.parent : '', name: existing?.name ?? '', brand: existing?.brand ?? '', description: existing?.description ?? '', skuPrefix: existing?.skuPrefix ?? '',
     uniqueItems: String(existing?.uniqueItems ?? 1), active: existing ? existing.status === 'Active' : true, depMethod: existing?.depMethod ?? '', attributes: existing?.attributes ?? ([] as AttributeDef[]),
   }));
   const [errors, setErrors] = useState<Errors>({});
   const set = <K extends keyof typeof f>(k: K) => (v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
   const level = f.parent ? 2 : 1;
+  // A sub-category always follows its parent category's type.
+  const parentRec = cats.rows.find((c) => c.level === 1 && c.name === f.parent);
+  const effectiveType = (parentRec ? categoryTypeOf(parentRec) : f.categoryType) as CategoryType;
   const skuPreview = f.skuPrefix && Number.isInteger(Number(f.uniqueItems || 1)) ? `${f.skuPrefix}-${String(Number(f.uniqueItems || 1)).padStart(5, '0')}` : '-';
   const setAttr = (i: number, p: Partial<AttributeDef>) => set('attributes')(f.attributes.map((a, n) => (n === i ? { ...a, ...p } : a)));
 
@@ -74,9 +80,9 @@ export function CategoryForm() {
     else if (f.attributes.some((a) => a.type === 'Picklist' && !a.options.trim())) e.attributes = 'Picklist attributes need at least one value';
     setErrors(e);
     if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', level, status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
+    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', level, categoryType: effectiveType, status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
     if (existing) {
-      cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : c.parent === existing.name ? { ...c, parent: rec.name } : c)));
+      cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : c.parent === existing.name ? { ...c, parent: rec.name, categoryType: rec.categoryType } : c)));
     } else cats.add(rec);
     toast(existing ? 'Category updated' : 'Category created');
     nav('/inventory/categories');
@@ -93,6 +99,8 @@ export function CategoryForm() {
           <FormGrid>
             <SelectInput label="Parent Category" value={f.parent} options={topCategories(cats.rows).filter((c) => c !== existing?.name)} onChange={set('parent')} hint="Leave empty for a top-level category, select one to create a Sub-Category" />
             <TextInput label="Level" value={String(level)} disabled />
+            <SelectInput label="Category Type" required change="new" req={REQ_CAT_TYPE} value={effectiveType} options={[...CATEGORY_TYPES]} disabled={!!f.parent} onChange={set('categoryType')}
+              hint={f.parent ? 'A sub-category follows its parent category' : 'Heavy Equipment categories are offered in the Heavy Equipment Fixed Asset form, Normal categories in the standard Item form. Rule to be confirmed with client'} />
             <TextInput label="Category Name" required value={f.name} onChange={set('name')} error={errors.name} />
             <SelectInput label="Brand" value={f.brand} options={BRANDS} onChange={set('brand')} />
             <TextInput label="Description" value={f.description} onChange={set('description')} full multiline rows={2} />
@@ -146,6 +154,7 @@ export function CategoryView() {
         <ValueGrid cols={4}>
           <ValueField label="Parent Category" value={r.parent === '-' ? undefined : r.parent} />
           <ValueField label="Level" value={String(r.level)} />
+          <ValueField label="Category Type" value={categoryTypeOf(r)} change="new" req={REQ_CAT_TYPE} />
           <ValueField label="Category Name" value={r.name} />
           <ValueField label="Brand" value={r.brand} />
           <ValueField label="Description" value={r.description} />
