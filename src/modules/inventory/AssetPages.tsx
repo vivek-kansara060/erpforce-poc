@@ -12,8 +12,8 @@ import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { employees, fmtNum } from '@/mock-data/masters';
 import {
-  CERT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, countSeed, disposalSeed, heavySeed, itemSeed, locationSeed, readingSeed,
-  type CertRec, type CountSession, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type ReadingRec,
+  ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed,
+  type AssetCountLine, type CertRec, type CountSession, type CountType, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
 } from './data';
 import { FileList, aed, isBlank, num, requireFields, type Errors } from './shared';
 import dayjs from 'dayjs';
@@ -185,7 +185,15 @@ export function ReadingForm() {
 /* ================================================================== Physical stock verification */
 const variance = (l: { systemQty: number; countedQty: number | null }) => (l.countedQty === null ? null : l.countedQty - l.systemQty);
 const sessionVariances = (s: CountSession) => s.lines.filter((l) => variance(l) !== null && variance(l) !== 0);
-const sessionBadge = (s: CountSession) => (s.status === 'In Progress' ? 'In Progress' : s.adjustmentStatus ?? (sessionVariances(s).length ? 'Variance' : 'No Variance'));
+const isAssetCount = (s: Pick<CountSession, 'type'>) => s.type === 'Fixed Assets';
+const assetVariances = (s: CountSession) => (s.assetLines ?? []).filter((l) => l.result === 'Not Found' || l.result === 'Found elsewhere');
+const varianceCount = (s: CountSession) => (isAssetCount(s) ? assetVariances(s).length : sessionVariances(s).length);
+const coveredCount = (s: CountSession) => (isAssetCount(s) ? (s.assetLines ?? []).length : s.lines.length);
+const resultTone = (r: string | null) => (r === 'Found' ? 'green' : r === 'Not Found' ? 'red' : 'amber') as 'green' | 'red' | 'amber';
+const sessionBadge = (s: CountSession) => (s.status === 'In Progress' ? 'In Progress' : s.adjustmentStatus ?? (varianceCount(s) ? 'Variance' : 'No Variance'));
+const REQ_PSV_ASSET = 'Physical Stock Verification > Fixed Assets count';
+const ASSET_COUNT_HINT = 'Counting individual fixed assets is not defined in the requirement document. Rule to be confirmed with client';
+const selectStyle = { width: 190, padding: '6px 8px', border: '1px solid #D3D3D4', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
 
 export function CountList() {
   const nav = useNavigate();
@@ -200,8 +208,9 @@ export function CountList() {
           { key: 'number', label: 'Stock Count Session' },
           { key: 'date', label: 'Date' },
           { key: 'location', label: 'Location' },
-          { key: 'items', label: 'Items Covered', sortable: false, align: 'right', render: (r) => r.lines.length },
-          { key: 'var', label: 'Lines with Variance', sortable: false, align: 'right', render: (r) => sessionVariances(r).length },
+          { key: 'type', label: 'Count Type', change: 'new', req: REQ_PSV_ASSET, sortable: false, render: (r) => r.type ?? 'Stock Items' },
+          { key: 'items', label: 'Items Covered', sortable: false, align: 'right', render: (r) => coveredCount(r) },
+          { key: 'var', label: 'Lines with Variance', sortable: false, align: 'right', render: (r) => varianceCount(r) },
           { key: 'adjustmentNo', label: 'Stock Adjustment', render: (r) => r.adjustmentNo ?? '-' },
           { key: 'status', label: 'Status', sortable: false, render: (r) => <StatusChip status={sessionBadge(r)} tone={sessionBadge(r) === 'Variance' ? 'amber' : undefined} /> },
         ]}
@@ -219,25 +228,44 @@ export function CountForm() {
   const items = useCollection<ItemRec>('items', itemSeed);
   const locs = useCollection<LocationRec>('locations', locationSeed);
   const existing = id ? sessions.get(id) : undefined;
-  const [head, setHead] = useState({ location: existing?.location ?? '', date: existing?.date ?? TODAY, countedBy: existing?.countedBy ?? '' });
+  const [head, setHead] = useState({ location: existing?.location ?? '', date: existing?.date ?? TODAY, countedBy: existing?.countedBy ?? '', confirmedBy: existing?.confirmedBy ?? '' });
+  const locStock = useCollection<LocationStock>('inventory.locationStock', locationStockSeed);
+  const heavy = useHeavy();
   const [lines, setLines] = useState<CountSession['lines']>(existing?.lines ?? []);
+  const [type, setType] = useState<CountType>(existing?.type ?? 'Stock Items');
+  const [assetLines, setAssetLines] = useState<AssetCountLine[]>(existing?.assetLines ?? []);
   const [errors, setErrors] = useState<Errors>({});
   if (id && (!existing || existing.status !== 'In Progress')) return <NotFound back="Physical Stock Verification" to="/inventory/stock-verification" />;
-  const snapshot = (location: string) => {
-    const fuel = locs.rows.find((l) => l.name === location)?.type === 'Supplier-Held Location';
-    return items.rows.filter((i) => i.tracking !== 'Serialized' && i.category !== 'Service' && (fuel ? i.classification === 'Fuel Trading' : i.classification !== 'Fuel Trading') && i.stock > 0)
-      .map((i) => ({ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: i.stock, countedQty: null as number | null }));
+  const isAssets = type === 'Fixed Assets';
+  const assetSnapshot = (location: string): AssetCountLine[] =>
+    heavy.rows.filter((h) => currentLocation(h) === location && h.assetStatus !== 'Disposed')
+      .map((h) => ({ heavyId: h.id, assetId: h.assetId, name: h.name, category: h.category, ownership: h.ownership, expectedStatus: h.assetStatus, result: null }));
+  const reload = (nextType: CountType, location: string) => {
+    if (!location) { setLines([]); setAssetLines([]); return; }
+    if (nextType === 'Fixed Assets') { setLines([]); setAssetLines(assetSnapshot(location)); } else { setAssetLines([]); setLines(snapshot(location)); }
   };
+  const setResult = (assetId: string, p: Partial<AssetCountLine>) => setAssetLines(assetLines.map((x) => (x.assetId === assetId ? { ...x, ...p } : x)));
+  // System quantity is what this location holds (not the item's total across all locations).
+  const snapshot = (location: string) =>
+    locStock.rows.filter((r) => r.location === location && r.qty > 0)
+      .flatMap((r) => { const i = items.get(r.itemId); return i && i.tracking !== 'Serialized' && i.category !== 'Service' ? [{ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: r.qty, countedQty: null as number | null }] : []; });
   const save = (complete: boolean) => {
     const e: Errors = {};
     if (isBlank(head.location)) e.location = 'Location is required';
     if (isBlank(head.date)) e.date = 'Date is required';
     if (isBlank(head.countedBy)) e.countedBy = 'Counted By is required';
-    if (!lines.length) e.lines = 'Select a location to load the items to count';
-    if (complete && lines.some((l) => l.countedQty === null || l.countedQty < 0)) e.lines = 'Enter the physically counted quantity for every item';
+    if (complete && isBlank(head.confirmedBy)) e.confirmedBy = 'Confirmed By is required to complete the count';
+    if (isAssets) {
+      if (!assetLines.length) e.lines = head.location ? 'No fixed assets are recorded at this location' : 'Select a location to load the expected fixed assets';
+      else if (complete && assetLines.some((l) => !l.result)) e.lines = 'Mark every fixed asset as Found, Not Found or Found elsewhere';
+      else if (complete && assetLines.some((l) => l.result === 'Found elsewhere' && (!l.foundAt || l.foundAt === head.location))) e.lines = 'Select where each "Found elsewhere" asset was found (a different place from this location)';
+    } else {
+      if (!lines.length) e.lines = 'Select a location to load the items to count';
+      if (complete && lines.some((l) => l.countedQty === null || l.countedQty < 0)) e.lines = 'Enter the physically counted quantity for every item';
+    }
     setErrors(e);
     if (Object.keys(e).length) { toast(e.lines ?? 'Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const rec: CountSession = { id: existing?.id ?? `cs${Date.now()}`, number: existing?.number ?? `SCS-26-${String(sessions.rows.length + 1).padStart(5, '0')}`, ...head, status: complete ? 'Completed' : 'In Progress', lines };
+    const rec: CountSession = { id: existing?.id ?? `cs${Date.now()}`, number: existing?.number ?? `SCS-26-${String(sessions.rows.length + 1).padStart(5, '0')}`, ...head, status: complete ? 'Completed' : 'In Progress', lines: isAssets ? [] : lines, ...(isAssets ? { type, assetLines } : {}) };
     if (existing) sessions.update(rec.id, rec); else sessions.add(rec);
     toast(complete ? 'Count completed' : 'Count progress saved');
     nav(`/inventory/stock-verification/${rec.id}`);
@@ -248,14 +276,37 @@ export function CountForm() {
         actions={<><Button variant="text" onClick={() => nav('/inventory/stock-verification')}>Cancel</Button><Button variant="outlined" onClick={() => save(false)}>Save progress</Button><Button variant="contained" onClick={() => save(true)}>Complete Count</Button></>} />
       <Page sx={{ pt: 2 }}>
         <FormGrid cols={3}>
+          <TextInput label="Stock Count Session" change="new" req={REQ_PSV} value={existing ? existing.number : 'Auto-generated'} disabled hint="Header record, number generated when the session is saved" />
+          <SelectInput label="Count Type" required change="new" req={REQ_PSV_ASSET} value={type} options={[...COUNT_TYPES]} disabled={!!existing}
+            onChange={(v) => { setType(v as CountType); reload(v as CountType, head.location); }} hint={ASSET_COUNT_HINT} />
           <SelectInput label="Location" required change="new" req={REQ_PSV} value={head.location} options={locs.rows.map((l) => l.name)} disabled={!!existing} error={errors.location}
-            onChange={(v) => { setHead({ ...head, location: v }); setLines(snapshot(v)); }} hint="System quantity is captured when the session starts" />
+            onChange={(v) => { setHead({ ...head, location: v }); reload(type, v); }} hint={isAssets ? 'Expected assets are those whose current location is this one (from Movement History)' : 'System quantity is captured when the session starts'} />
           <DateInput label="Date" required change="new" req={REQ_PSV} value={head.date} onChange={(v) => setHead({ ...head, date: v })} error={errors.date} />
           <SelectInput label="Counted By" required change="new" req={REQ_PSV} value={head.countedBy} options={EMP} onChange={(v) => setHead({ ...head, countedBy: v })} error={errors.countedBy} />
+          <SelectInput label="Confirmed By" change="new" req={REQ_PSV} value={head.confirmedBy} options={EMP} onChange={(v) => setHead({ ...head, confirmedBy: v })} error={errors.confirmedBy} hint="Required to complete the count. The Fleet / Asset Manager confirms counts per the role matrix; exact rule to be confirmed with client" />
+          <TextInput label="Items Covered" change="new" req={REQ_PSV} value={String(isAssets ? assetLines.length : lines.length)} disabled hint={isAssets ? 'Fixed assets expected at the selected location' : 'Items loaded for the selected location'} />
         </FormGrid>
-        <FormSection title="Items to Count" change="new" req={REQ_PSV}>
-          {lines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
-          {lines.length > 0 && (
+        <FormSection title={isAssets ? 'Fixed Assets to Verify' : 'Items to Count'} change="new" req={isAssets ? REQ_PSV_ASSET : REQ_PSV}>
+          {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
+          {isAssets && assetLines.length > 0 && (
+            <>
+              <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Mark each unit as found at this location, not found, or found elsewhere. Units on hire at a client are not expected here.'}</Text>
+              <DataTable<AssetCountLine & { id: string }> hideToolbar rowKey={(r) => r.assetId} rows={assetLines.map((l) => ({ ...l, id: l.assetId }))} pageSize={20} columns={[
+                { key: 'assetId', label: 'Asset ID' }, { key: 'name', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' },
+                { key: 'expectedStatus', label: 'Expected Asset Status', render: (l) => <StatusChip status={l.expectedStatus} /> },
+                { key: 'result', label: 'Verified', sortable: false, render: (l) => (
+                  <select value={l.result ?? ''} onChange={(e) => setResult(l.assetId, { result: e.target.value || null, foundAt: e.target.value === 'Found elsewhere' ? l.foundAt : undefined })} style={selectStyle}>
+                    <option value="">Select...</option>{ASSET_RESULTS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>) },
+                { key: 'foundAt', label: 'Found At', sortable: false, render: (l) => (l.result === 'Found elsewhere' ? (
+                  <select value={l.foundAt ?? ''} onChange={(e) => setResult(l.assetId, { foundAt: e.target.value })} style={selectStyle}>
+                    <option value="">Select place...</option>{MOVEMENT_PLACES.filter((p) => p !== head.location).map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>) : '-') },
+              ]} />
+            </>
+          )}
+          {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
+          {!isAssets && lines.length > 0 && (
             <DataTable<CountSession['lines'][number]> hideToolbar rowKey={(r) => r.itemId} rows={lines.map((l) => ({ ...l, id: l.itemId }))} pageSize={20} columns={[
               { key: 'code', label: 'Item Code' }, { key: 'name', label: 'Item' }, { key: 'unit', label: 'UOM' },
               { key: 'systemQty', label: 'System Quantity', align: 'right', render: (l) => fmtNum(l.systemQty) },
@@ -277,31 +328,89 @@ export function CountView() {
   const toast = useToast();
   const sessions = useCollection<CountSession>('inventory.counts', countSeed);
   const items = useCollection<ItemRec>('items', itemSeed);
+  const locStock = useCollection<LocationStock>('inventory.locationStock', locationStockSeed);
+  const heavy = useHeavy();
+  const [reject, setReject] = useState(false);
   const s = sessions.get(id);
   if (!s) return <NotFound back="Physical Stock Verification" to="/inventory/stock-verification" />;
-  const vars = sessionVariances(s);
-  const raise = () => { sessions.update(s.id, { adjustmentNo: `ADJ-26-${String(21 + sessions.rows.length).padStart(5, '0')}`, adjustmentStatus: 'Pending Approval' }); toast('Stock Adjustment raised and sent for approval'); };
-  const approve = () => { s.lines.forEach((l) => { if (l.countedQty !== null && variance(l) !== 0) items.update(l.itemId, { stock: l.countedQty }); }); sessions.update(s.id, { adjustmentStatus: 'Approved' }); toast('Stock Adjustment approved, system quantity corrected'); };
+  const assets = isAssetCount(s);
+  const vars = assets ? assetVariances(s) : sessionVariances(s);
+  const log = s.log ?? [];
+  const push = (adjustmentStatus: NonNullable<CountSession['adjustmentStatus']>, title: string, detail: string, extra: Partial<CountSession> = {}) =>
+    sessions.update(s.id, { ...extra, adjustmentStatus, log: [...log, { when: NOW_STAMP, title, detail, by: 'Current User' }] });
+  const raise = () => {
+    const adjustmentNo = `ADJ-26-${String(21 + sessions.rows.length).padStart(5, '0')}`;
+    push('Pending Approval', 'Stock Adjustment raised', `${adjustmentNo} sent for approval`, { adjustmentNo });
+    toast('Stock Adjustment raised and sent for approval');
+  };
+  const approve = () => {
+    if (assets) {
+      // Found elsewhere: append a corrective Movement History entry (append-only, never an edit). Not Found: logged on the asset for follow-up only; Asset Status is never changed automatically.
+      let skipped = 0;
+      assetVariances(s).forEach((l, k) => {
+        const h = heavy.get(l.heavyId);
+        if (!h) return;
+        // Guard against a stale count: if the asset has moved since the count, its Movement History is not touched.
+        if (currentLocation(h) !== s.location) { skipped += 1; return; }
+        if (l.result === 'Found elsewhere' && l.foundAt) {
+          const mv: Movement = { id: `m${Date.now()}-${k}`, entryNo: nextMovementNo(h.movements.length + 300 + k), date: NOW, type: 'Internal Transfer', from: s.location, to: l.foundAt, reference: s.number, by: 'Current User' };
+          heavy.update(h.id, { movements: [...h.movements, mv], audit: [{ when: NOW_STAMP, title: 'Location corrected by physical count', detail: `Found at ${l.foundAt} in ${s.number}; ${mv.entryNo} added`, by: 'Current User' }, ...h.audit] });
+        } else if (l.result === 'Not Found') {
+          heavy.update(h.id, { audit: [{ when: NOW_STAMP, title: 'Not found in physical count', detail: `${s.number}: follow up required, Asset Status not changed`, by: 'Current User' }, ...h.audit] });
+        }
+      });
+      push('Approved', 'Approved', `Movement History corrected for assets found elsewhere; missing assets logged for follow-up${skipped ? `; ${skipped} asset(s) skipped because they moved after the count` : ''}`);
+      toast(skipped ? `Adjustment approved, ${skipped} asset(s) skipped because they moved after the count` : 'Adjustment approved, asset records updated');
+      return;
+    }
+    // Only this location's quantity is set to the counted figure; the item's total moves by the same difference.
+    s.lines.forEach((l) => {
+      if (l.countedQty === null || variance(l) === 0) return;
+      const row = locStock.rows.find((r) => r.itemId === l.itemId && r.location === s.location);
+      const current = row ? row.qty : l.systemQty;
+      if (row) locStock.update(row.id, { qty: l.countedQty });
+      const it = items.get(l.itemId);
+      if (it) items.update(l.itemId, { stock: it.stock + (l.countedQty - current) });
+    });
+    push('Approved', 'Approved', `System quantity corrected at ${s.location}`);
+    toast(`Stock Adjustment approved, system quantity corrected at ${s.location}`);
+  };
+  const doReject = () => { push('Rejected', 'Rejected', 'System quantity unchanged'); setReject(false); toast('Stock Adjustment rejected, system quantity unchanged'); };
   return (
     <>
       <FormHeader crumbs={[{ label: 'Physical Stock Verification', to: '/inventory/stock-verification' }, { label: s.number }]} status={<StatusChip status={sessionBadge(s)} tone={sessionBadge(s) === 'Variance' ? 'amber' : undefined} />}
         actions={<>
           {s.status === 'In Progress' && <Button variant="contained" onClick={() => nav(`/inventory/stock-verification/${s.id}/edit`)}>Continue Counting</Button>}
           {s.status === 'Completed' && vars.length > 0 && !s.adjustmentNo && <Button variant="contained" onClick={raise}>Raise Stock Adjustment</Button>}
-          {s.adjustmentStatus === 'Pending Approval' && <Button variant="contained" onClick={approve}>Approve Adjustment</Button>}
+          {s.adjustmentStatus === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve Adjustment</Button></>}
         </>} />
       <Page sx={{ pt: 2 }}>
         <ValueGrid cols={4}>
           <ValueField label="Stock Count Session" value={s.number} change="new" req={REQ_PSV} />
+          <ValueField label="Count Type" value={s.type ?? 'Stock Items'} change="new" req={REQ_PSV_ASSET} />
           <ValueField label="Date" value={s.date} />
           <ValueField label="Location" value={s.location} />
+          <ValueField label="Items Covered" value={String(coveredCount(s))} change="new" req={REQ_PSV} />
           <ValueField label="Counted By" value={s.countedBy} />
+          <ValueField label="Confirmed By" value={s.confirmedBy || (s.status === 'Completed' ? '-' : 'Not yet confirmed')} change="new" req={REQ_PSV} />
         </ValueGrid>
         <KpiRow><Box sx={{ mt: 3, display: 'contents' }}>
-          <KpiCard title="Items Covered" value={s.lines.length} /><KpiCard title="Lines with Variance" value={vars.length} tint={vars.length ? '#FFFAF0' : undefined} />
+          <KpiCard title="Items Covered" value={coveredCount(s)} /><KpiCard title="Lines with Variance" value={vars.length} tint={vars.length ? '#FFFAF0' : undefined} />
           <KpiCard title="Stock Adjustment" value={s.adjustmentNo ?? '-'} sub={s.adjustmentStatus ? <>Approval: {s.adjustmentStatus}</> : vars.length ? 'Not raised yet' : 'Not required'} />
         </Box></KpiRow>
-        {s.status === 'Completed' && vars.length > 0 && s.adjustmentStatus !== 'Approved' && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>System quantity is corrected only after the Stock Adjustment is approved. Approval thresholds and roles to be confirmed with client.</Text>}
+        {s.status === 'Completed' && vars.length > 0 && s.adjustmentStatus !== 'Approved' && s.adjustmentStatus !== 'Rejected' && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>System quantity is corrected only after the Stock Adjustment is approved. Approval thresholds and roles to be confirmed with client.</Text>}
+        {s.adjustmentStatus === 'Rejected' && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>The Stock Adjustment was rejected, so system quantity was not changed. What happens to a rejected variance to be confirmed with client.</Text>}
+        {assets && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>On approval, assets found elsewhere get a corrective Movement History entry and assets not found are logged on the asset for follow-up. Asset Status is not changed automatically, and a lost asset still needs an approved Disposal Request. {ASSET_COUNT_HINT}.</Text>}
+        {assets ? (
+          <Panel title="Count Result" change="new" req={REQ_PSV_ASSET}>
+            <DataTable<AssetCountLine & { id: string }> hideToolbar rows={(s.assetLines ?? []).map((l) => ({ ...l, id: l.assetId }))} columns={[
+              { key: 'assetId', label: 'Asset ID' }, { key: 'name', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' },
+              { key: 'expectedStatus', label: 'Expected Asset Status', render: (l) => <StatusChip status={l.expectedStatus} /> },
+              { key: 'result', label: 'Verified', sortable: false, render: (l) => (l.result ? <StatusChip status={l.result} tone={resultTone(l.result)} /> : '-') },
+              { key: 'foundAt', label: 'Found At', sortable: false, render: (l) => l.foundAt ?? '-' },
+            ]} />
+          </Panel>
+        ) : (
         <Panel title="Count Result" change="new" req={REQ_PSV}>
           <DataTable<CountSession['lines'][number] & { id: string }> hideToolbar rows={s.lines.map((l) => ({ ...l, id: l.itemId }))} columns={[
             { key: 'code', label: 'Item Code' }, { key: 'name', label: 'Item' }, { key: 'unit', label: 'UOM' },
@@ -310,7 +419,10 @@ export function CountView() {
             { key: 'variance', label: 'Variance', align: 'right', sortable: false, render: (l) => { const v = variance(l); return v === null ? '-' : <StatusChip status={v > 0 ? `+${v}` : String(v)} tone={v === 0 ? 'green' : 'amber'} />; } },
           ]} />
         </Panel>
+        )}
+        {log.length > 0 && <Panel title="Approval History" change="new" req={REQ_PSV} sx={{ mt: 2 }}><Timeline items={[...log].reverse().map((l) => ({ when: l.when, title: l.title, detail: l.detail, by: l.by, tone: l.title === 'Approved' ? 'green' as const : l.title === 'Rejected' ? 'red' as const : 'blue' as const }))} /></Panel>}
       </Page>
+      <ConfirmDialog open={reject} danger title="Reject stock adjustment" description="System quantity stays unchanged." confirmLabel="Reject" onClose={() => setReject(false)} onConfirm={doReject} />
     </>
   );
 }

@@ -11,7 +11,7 @@ export const TRACKING_METHODS = [
   { value: 'Quantity', label: 'Quantity' },
   { value: 'Length', label: 'Length (or other unit of measure)' },
 ];
-export const ITEM_TYPES = ['Inventory', 'Non Inventory', 'Assembly (Finished product)', 'Service', 'Package', 'Inventory Fixed Asset', 'Heavy Equipment'];
+export const ITEM_TYPES = ['Inventory', 'Non Inventory', 'Assembly (Finished product)', 'Service', 'Package', 'Inventory Fixed Asset', 'Heavy Equipment Fixed Asset'];
 export const UOMS = ['Nos', 'Meter', 'Litre', 'Drum', 'Visit', 'Job', 'Kg', 'Set'];
 export const FREQUENCIES = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
 export const OWNERSHIP = ['Owned', 'Cross-Hired', 'Spare-Standby'];
@@ -97,8 +97,28 @@ const SERIAL_SEED: Record<string, Partial<ItemRec>> = {
   i7: { attrs: { 'at-c1': '4', 'at-c2': '100' } },
   i11: { brand: 'Emirates Cable & Panel', model: 'ATS-630', engineNo: 'N/A', capacity: '630 A', purchaseDate: '2025-01-20', assetValue: 48000, nbv: 41500, deprPct: 13.54, deprAmount: 6500, capex: 48000, attrs: { 'at-p1': '630' } },
 };
+/** Stock held per item per location. The item's own stock is the total of its rows, so a count at one location only moves that location. */
+export interface LocationStock { id: string; itemId: string; location: string; qty: number }
+const FUEL_DEPOT = 'ENOC Al Quoz Depot (Fuel Stock)';
+// [item id, Jebel Ali Main Yard, Sharjah Yard, Abu Dhabi Mussafah Yard]. Jebel Ali keeps the original figures so the earlier count sessions still match.
+const YARD_STOCK: [string, number, number, number][] = [
+  ['i3', 14, 6, 4], ['i4', 41, 20, 12], ['i5', 6, 4, 2], ['i6', 18, 8, 5], ['i7', 1800, 600, 400], ['i12', 9, 3, 2],
+];
+export const locationStockSeed: LocationStock[] = [
+  ...YARD_STOCK.flatMap(([itemId, a, b, c]) => [
+    { id: `ls-${itemId}-1`, itemId, location: 'Jebel Ali Main Yard', qty: a },
+    { id: `ls-${itemId}-2`, itemId, location: 'Sharjah Yard', qty: b },
+    { id: `ls-${itemId}-3`, itemId, location: 'Abu Dhabi Mussafah Yard', qty: c },
+  ]),
+  { id: 'ls-i8-4', itemId: 'i8', location: FUEL_DEPOT, qty: 21500 },
+];
+const stockTotal = (itemId: string, fallback: number) => {
+  const rows = locationStockSeed.filter((r) => r.itemId === itemId);
+  return rows.length ? rows.reduce((t, r) => t + r.qty, 0) : fallback;
+};
 export const itemSeed: ItemRec[] = itemMaster.map((m) => ({
   ...m,
+  stock: stockTotal(m.id, m.stock),
   type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.category === 'Service' ? 'Service' : 'Inventory',
   sku: m.code.replace('ITM', 'SKU'),
   status: m.id === 'i4' ? 'Inactive' : 'Active',
@@ -268,15 +288,46 @@ export const readingSeed: ReadingRec[] = [
   rd(8, 'AST-1019', '2026-09-25T14:00', 820, 'Grace Fernandez', READING_METHODS[0], 90), rd(9, 'AST-1024', '2026-09-05T12:00', 0, 'Sanjay Kumar'),
 ];
 export interface CountLine { itemId: string; code: string; name: string; unit: string; systemQty: number; countedQty: number | null }
-export interface CountSession { id: string; number: string; date: string; location: string; countedBy: string; status: 'In Progress' | 'Completed'; lines: CountLine[]; adjustmentNo?: string; adjustmentStatus?: 'Pending Approval' | 'Approved' }
+/** Count Type is not defined in the requirement document (rule to be confirmed with client). Sessions without a type are Stock Items counts. */
+export const COUNT_TYPES = ['Stock Items', 'Fixed Assets'] as const;
+export type CountType = (typeof COUNT_TYPES)[number];
+export const ASSET_RESULTS = ['Found', 'Not Found', 'Found elsewhere'] as const;
+/** One expected unit in a Fixed Assets count: the assets whose current location (from Movement History) is the counted location. */
+export interface AssetCountLine { heavyId: string; assetId: string; name: string; category: string; ownership: string; expectedStatus: string; result: string | null; foundAt?: string }
+export interface CountSession { id: string; number: string; date: string; location: string; countedBy: string; status: 'In Progress' | 'Completed'; lines: CountLine[]; type?: CountType; assetLines?: AssetCountLine[]; confirmedBy?: string; adjustmentNo?: string; adjustmentStatus?: 'Pending Approval' | 'Approved' | 'Rejected'; log?: AuditEntry[] }
+const al = (n: number, name: string, category: string, ownership: string, expectedStatus: string, result: string | null, foundAt?: string): AssetCountLine => ({ heavyId: `he${n}`, assetId: `AST-${1000 + n}`, name, category, ownership, expectedStatus, result, foundAt });
 const ln = (id: string, code: string, name: string, unit: string, sys: number, counted: number | null): CountLine => ({ itemId: id, code, name, unit, systemQty: sys, countedQty: counted });
 export const countSeed: CountSession[] = [
-  { id: 'cs1', number: 'SCS-26-00001', date: '2026-08-31', location: 'Jebel Ali Main Yard', countedBy: 'Grace Fernandez', status: 'Completed', adjustmentNo: 'ADJ-26-00014', adjustmentStatus: 'Approved', lines: [
+  { id: 'cs1', number: 'SCS-26-00001', date: '2026-08-31', location: 'Jebel Ali Main Yard', countedBy: 'Grace Fernandez', status: 'Completed', confirmedBy: 'Sanjay Kumar', adjustmentNo: 'ADJ-26-00014', adjustmentStatus: 'Approved',
+    log: [{ when: '2026-08-31 16:20', title: 'Stock Adjustment raised', detail: 'ADJ-26-00014 sent for approval', by: 'Grace Fernandez' }, { when: '2026-09-01 09:35', title: 'Approved', detail: 'System quantity corrected', by: 'Sanjay Kumar' }], lines: [
     ln('i3', 'ITM-0003', 'Oil Filter (Cummins C-Series)', 'Nos', 16, 14), ln('i4', 'ITM-0004', 'Fuel Filter (Perkins 1106)', 'Nos', 41, 41), ln('i5', 'ITM-0005', 'Battery 12V 200Ah', 'Nos', 6, 6), ln('i6', 'ITM-0006', 'Engine Oil 15W-40 (20 L)', 'Drum', 18, 18), ln('i12', 'ITM-0012', 'Air Filter (Perkins 2506)', 'Nos', 9, 9)] },
-  { id: 'cs2', number: 'SCS-26-00002', date: '2026-09-28', location: 'Jebel Ali Main Yard', countedBy: 'Sanjay Kumar', status: 'Completed', adjustmentNo: 'ADJ-26-00021', adjustmentStatus: 'Pending Approval', lines: [
+  { id: 'cs2', number: 'SCS-26-00002', date: '2026-09-28', location: 'Jebel Ali Main Yard', countedBy: 'Sanjay Kumar', status: 'Completed', confirmedBy: 'Grace Fernandez', adjustmentNo: 'ADJ-26-00021', adjustmentStatus: 'Pending Approval',
+    log: [{ when: '2026-09-28 17:05', title: 'Stock Adjustment raised', detail: 'ADJ-26-00021 sent for approval', by: 'Sanjay Kumar' }], lines: [
     ln('i3', 'ITM-0003', 'Oil Filter (Cummins C-Series)', 'Nos', 14, 12), ln('i4', 'ITM-0004', 'Fuel Filter (Perkins 1106)', 'Nos', 41, 41), ln('i5', 'ITM-0005', 'Battery 12V 200Ah', 'Nos', 6, 7), ln('i6', 'ITM-0006', 'Engine Oil 15W-40 (20 L)', 'Drum', 18, 18), ln('i7', 'ITM-0007', 'Power Cable 4C x 185 mm', 'Meter', 1800, 1760)] },
   { id: 'cs3', number: 'SCS-26-00003', date: '2026-09-30', location: 'ENOC Al Quoz Depot (Fuel Stock)', countedBy: 'Sanjay Kumar', status: 'In Progress', lines: [ln('i8', 'ITM-0008', 'Diesel (Bulk)', 'Litre', 21500, null)] },
+  { id: 'cs4', number: 'SCS-26-00004', date: '2026-09-15', location: 'Sharjah Yard', countedBy: 'Grace Fernandez', status: 'Completed', confirmedBy: 'Sanjay Kumar', adjustmentNo: 'ADJ-26-00018', adjustmentStatus: 'Rejected',
+    log: [{ when: '2026-09-15 15:40', title: 'Stock Adjustment raised', detail: 'ADJ-26-00018 sent for approval', by: 'Grace Fernandez' }, { when: '2026-09-16 10:10', title: 'Rejected', detail: 'System quantity unchanged', by: 'Sanjay Kumar' }],
+    lines: [ln('i4', 'ITM-0004', 'Fuel Filter (Perkins 1106)', 'Nos', 20, 18), ln('i5', 'ITM-0005', 'Battery 12V 200Ah', 'Nos', 4, 4)] },
+  { id: 'cs5', number: 'SCS-26-00005', date: '2026-09-29', location: 'Jebel Ali Main Yard', countedBy: 'Grace Fernandez', status: 'Completed', confirmedBy: 'Sanjay Kumar', type: 'Fixed Assets', lines: [], adjustmentNo: 'ADJ-26-00024', adjustmentStatus: 'Pending Approval',
+    log: [{ when: '2026-09-29 18:10', title: 'Stock Adjustment raised', detail: 'ADJ-26-00024 sent for approval', by: 'Grace Fernandez' }],
+    assetLines: [
+      al(14, 'Diesel Generator 200 KVA Cummins C200D5', 'Generator', 'Owned', 'Under Maintenance', 'Found'),
+      al(17, 'Diesel Generator 500 KVA Perkins 2506C', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(19, 'Diesel Generator 1500 KVA Cummins C1500D5', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(21, 'Low-bed Truck Mercedes Actros 3340', 'Vehicle', 'Owned', 'Ready for Hire', 'Found elsewhere', 'Sharjah Yard'),
+      al(23, 'Flatbed Truck Isuzu FTR 34', 'Vehicle', 'Owned', 'Under Maintenance', 'Found'),
+      al(25, 'Perkins Spare Engine 2506C-E15', 'Spare Engine', 'Spare-Standby', 'Yard', 'Not Found'),
+    ] },
 ];
+/** Rows for the Physical Stock Variance Report, built from the live count sessions (the seed sessions until the app has loaded them). */
+export function countVarianceRows(): Record<string, any>[] {
+  const live = getCollection<CountSession>('inventory.counts');
+  return (live.length ? live : countSeed).filter((s) => s.status === 'Completed').flatMap((s) => [
+    // Fixed Assets counts: one unit expected, so a unit not found at the counted location is a variance of -1 (Found elsewhere also shows where it was found)
+    ...(s.assetLines ?? []).filter((l) => l.result !== 'Found').map((l) => ({ session: s.number, date: s.date, location: s.location, item: `${l.assetId} - ${l.name} (${l.result}${l.foundAt ? `: ${l.foundAt}` : ''})`, sys: 1, counted: 0, variance: -1, adj: s.adjustmentNo ?? '-', status: s.adjustmentStatus ?? 'Not raised' })),
+    ...s.lines.filter((l) => l.countedQty !== null && l.countedQty !== l.systemQty).map((l) => ({ session: s.number, date: s.date, location: s.location, item: l.name, sys: l.systemQty, counted: l.countedQty, variance: (l.countedQty as number) - l.systemQty, adj: s.adjustmentNo ?? '-', status: s.adjustmentStatus ?? 'Not raised' })),
+  ]);
+}
 export const DISPOSAL_REASONS = ['End of Useful Life', 'Damaged Beyond Repair', 'Other'];
 export const DISPOSAL_METHODS = ['Scrap', 'Sale'];
 export interface DisposalRec { id: string; number: string; assetId: string; reason: string; method: string; value: number; docs: string[]; status: 'Draft' | 'Pending Approval' | 'Approved' | 'Rejected'; date: string; log: AuditEntry[] }

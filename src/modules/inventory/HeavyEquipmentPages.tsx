@@ -164,7 +164,7 @@ export function HeavyForm() {
       insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
     if (existing) heavy.update(existing.id, rec); else heavy.add(rec);
-    toast(existing ? 'Heavy equipment updated' : 'Heavy equipment created');
+    toast(existing ? 'Heavy equipment fixed asset updated' : 'Heavy equipment fixed asset created');
     nav(`${HEAVY_PATH}/${rec.id}`);
   };
 
@@ -175,7 +175,7 @@ export function HeavyForm() {
         <TextInput label="Asset ID" change="new" req={REQ_FA} value={assetId} disabled hint="Auto-generated, unique per physical unit" />
         <TextInput label="Name" required change="new" req={REQ_HE} value={f.name} onChange={set('name')} error={errors.name} />
         <SelectInput label="Product Classification" required change="new" req={REQ_HE} value={f.classification} options={[...PRODUCT_CLASSIFICATIONS]} onChange={set('classification')} error={errors.classification} />
-        <TextInput label="Tracking Method" change="new" req={REQ_HE} value="Serialized (Unique Asset ID)" disabled hint="Heavy Equipment is always serialized" />
+        <TextInput label="Tracking Method" change="new" req={REQ_HE} value="Serialized (Unique Asset ID)" disabled hint="Heavy Equipment Fixed Asset is always serialized" />
         <SelectInput label="Asset Type" required change="new" req={REQ_FA} value={f.assetType} options={ASSET_TYPES} onChange={set('assetType')} error={errors.assetType} />
         <SelectInput label="Category" required change="new" req={REQ_HE} value={f.category} options={topCategories(cats.rows)} error={errors.category}
           onChange={(v) => upd({ category: v, subCategory: '', attrs: {}, ...(cats.rows.find((c) => c.level === 1 && c.name === v)?.depMethod ? { method: cats.rows.find((c) => c.level === 1 && c.name === v)!.depMethod } : {}) })} />
@@ -272,7 +272,7 @@ export function HeavyForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment' }]}
+        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment Fixed Asset' }]}
         actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -297,7 +297,7 @@ export function MovementForm() {
   const r = heavy.get(id);
   const [f, setF] = useState({ type: '', from: r ? currentLocation(r) : '', to: '', date: NOW, reference: '' });
   const [errors, setErrors] = useState<Errors>({});
-  if (!r) return <Page><PageTitle title="Heavy equipment not found" /></Page>;
+  if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" /></Page>;
   const set = (k: string) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const latest = [...r.movements].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0]?.date ?? '';
   const entryNo = nextMovementNo(r.movements.length + 100 + heavy.rows.length * 10);
@@ -344,7 +344,7 @@ export function HeavyView() {
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const r = heavy.get(id);
   const board = useMemo(() => (r ? buildBoard({ start: r.putToUseDate || r.purchaseDate, assetValue: r.assetValue, notDepreciable: r.notDepreciable, months: r.usefulLifeYears * 12, method: r.method, factor: r.decliningFactor }) : []), [r]);
-  if (!r) return <Page><PageTitle title="Heavy equipment not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
+  if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
   const dep = depreciationApplicable(r.ownership);

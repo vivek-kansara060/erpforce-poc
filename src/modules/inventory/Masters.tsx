@@ -14,7 +14,7 @@ import { useCollection } from '@/store/store';
 import { ATTRIBUTE_TYPES, BRANDS, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type PricingRec } from './data';
 import { aed, isBlank, type Errors } from './shared';
 
-const REQ_PRICING = 'Pricing Master > Category / Sub-Category Pricing';
+const REQ_PRICING = 'Heavy Equipment Pricing > Category / Sub-Category Pricing';
 const REQ_CAT = 'Category & Sub-Category Master';
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 
@@ -170,7 +170,7 @@ export function CategoryView() {
   );
 }
 
-/* ------------------------------------------------------------------ Pricing Master (new) */
+/* ------------------------------------------------------------------ Heavy Equipment Pricing (new) */
 export function PricingList() {
   const nav = useNavigate();
   const toast = useToast();
@@ -178,7 +178,7 @@ export function PricingList() {
   const [del, setDel] = useState<PricingRec | null>(null);
   return (
     <Page>
-      <PageTitle title="Pricing Master" change="new" req={REQ_PRICING} />
+      <PageTitle title="Heavy Equipment Pricing" change="new" req={REQ_PRICING} />
       <DataTable<PricingRec>
         rows={pricing.rows} searchPlaceholder="Search pricing..."
         onAdd={() => nav('/inventory/pricing/add')} addLabel="Add Price" onRowClick={(r) => nav(`/inventory/pricing/${r.id}/edit`)}
@@ -221,7 +221,7 @@ export function PricingForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Pricing Master', to: '/inventory/pricing' }, { label: existing ? 'Edit Price' : 'Add Price' }]}
+        crumbs={[{ label: 'Heavy Equipment Pricing', to: '/inventory/pricing' }, { label: existing ? 'Edit Price' : 'Add Price' }]}
         actions={<><Button variant="outlined" onClick={() => nav('/inventory/pricing')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>

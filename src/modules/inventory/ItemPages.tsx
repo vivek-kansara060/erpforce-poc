@@ -12,7 +12,7 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, topCategories, subCategoriesOf, nextItemCode, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, topCategories, subCategoriesOf, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
@@ -32,12 +32,12 @@ export function ItemList() {
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
     ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status })),
-    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
+    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
   const open = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}` : `/inventory/items/${r.id}`);
   const edit = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}/edit` : `/inventory/items/${r.id}/edit`);
-  const heavyView = type === 'Heavy Equipment';
+  const heavyView = type === 'Heavy Equipment Fixed Asset';
   const cols: Column<Row>[] = heavyView
     ? [
         { key: 'category', label: 'Category', change: 'new', req: REQ_HE },
@@ -62,7 +62,7 @@ export function ItemList() {
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
         {['All', ...ITEM_TYPES].map((t) => (
           <Box key={t} onClick={() => setType(t)} sx={{ cursor: 'pointer', px: 1.25, py: 0.4, borderRadius: '1.5rem', fontSize: 12, fontWeight: 500, bgcolor: type === t ? primaryGreen[200] : neutral[200], color: type === t ? primaryGreen[900] : neutral[800], '&:hover': { bgcolor: type === t ? primaryGreen[200] : neutral[300] } }}>
-            {t}{t === 'Heavy Equipment' && <ChangeTag kind="new" req={REQ_HE} />}
+            {t}{t === 'Heavy Equipment Fixed Asset' && <ChangeTag kind="new" req={REQ_HE} />}
           </Box>
         ))}
       </Box>
@@ -70,7 +70,7 @@ export function ItemList() {
         key={heavyView ? 'heavy' : 'all'}
         rows={view} columns={cols}
         searchPlaceholder="Search items..."
-        onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add')} addLabel={heavyView ? 'Add Heavy Equipment' : 'Add Item'}
+        onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add')} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
         onRowClick={open}
         actions={[
           { label: 'View', onClick: open },
@@ -127,8 +127,8 @@ export function ItemForm() {
   const basic = (
     <>
       <FormGrid>
-        <SelectInput label="Type" required value={f.type} options={existing ? ITEM_TYPES.filter((t) => t !== 'Heavy Equipment') : ITEM_TYPES} error={errors.type}
-          onChange={(v) => { if (v === 'Heavy Equipment') { toast('Heavy Equipment items are created in the Heavy Equipment form'); nav(`${HEAVY_PATH}/add`); return; } set('type')(v); }} />
+        <SelectInput label="Type" required value={f.type} options={existing ? ITEM_TYPES.filter((t) => t !== 'Heavy Equipment Fixed Asset') : ITEM_TYPES} error={errors.type}
+          onChange={(v) => { if (v === 'Heavy Equipment Fixed Asset') { toast('Heavy Equipment Fixed Assets are created in the Heavy Equipment Fixed Asset form'); nav(`${HEAVY_PATH}/add`); return; } set('type')(v); }} />
         <TextInput label="Item Code" change="new" req={REQ_ITEM} value={code} disabled hint="Auto-generated" />
         <TextInput label="SKU" required value={f.sku} onChange={set('sku')} error={errors.sku} />
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
@@ -198,9 +198,11 @@ export function ItemView() {
   const toast = useToast();
   const items = useItems();
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
+  const locStock = useCollection<LocationStock>('inventory.locationStock', locationStockSeed);
   const r = items.get(id);
   if (!r) return <Page><PageTitle title="Item not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const serial = isSerialized(r.tracking);
+  const stockRows = locStock.rows.filter((x) => x.itemId === r.id);
   return (
     <>
       <FormHeader
@@ -237,14 +239,24 @@ export function ItemView() {
             </>
           ) },
           { label: 'Inventory', content: (
-            <ValueGrid cols={4}>
-              <ValueField label="Costing Method" value={r.costingMethod} />
-              <ValueField label="Traceability" value={r.traceability} />
-              <ValueField label="Reorder Point" value={r.minStock === undefined ? undefined : fmtNum(r.minStock)} />
-              <ValueField label="Reorder Quantity" value={r.reorderQty === undefined ? undefined : fmtNum(r.reorderQty)} />
-              <ValueField label="Use Bins" value={r.useBins ? 'Yes' : 'No'} />
-              <ValueField label="Stock on Hand" value={`${fmtNum(r.stock)} ${r.unit}`} />
-            </ValueGrid>
+            <>
+              <ValueGrid cols={4}>
+                <ValueField label="Costing Method" value={r.costingMethod} />
+                <ValueField label="Traceability" value={r.traceability} />
+                <ValueField label="Reorder Point" value={r.minStock === undefined ? undefined : fmtNum(r.minStock)} />
+                <ValueField label="Reorder Quantity" value={r.reorderQty === undefined ? undefined : fmtNum(r.reorderQty)} />
+                <ValueField label="Use Bins" value={r.useBins ? 'Yes' : 'No'} />
+                <ValueField label="Stock on Hand (all locations)" value={`${fmtNum(r.stock)} ${r.unit}`} />
+              </ValueGrid>
+              {stockRows.length > 0 && (
+                <Panel title="Location wise stock" sx={{ mt: 2 }}>
+                  <DataTable<LocationStock> hideToolbar rows={stockRows} pageSize={10} columns={[
+                    { key: 'location', label: 'Location' },
+                    { key: 'qty', label: `Quantity (${r.unit})`, align: 'right', render: (x) => fmtNum(x.qty) },
+                  ]} />
+                </Panel>
+              )}
+            </>
           ) },
           { label: 'Pricing and Accounts', content: (
             <ValueGrid cols={4}>
