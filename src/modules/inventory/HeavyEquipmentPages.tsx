@@ -26,7 +26,6 @@ import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
-const REQ_ITEM_CODE = 'Item Master > Item Code';
 const REQ_FA = 'Fixed Asset Register';
 const REQ_MV = 'Movement History';
 const REQ_CERT_TAB = 'Compliance & Certificates (2 Oct call: on the individual asset)';
@@ -247,7 +246,6 @@ export function HeavyForm() {
             ? <TextInput label="Current Location" change="new" req={REQ_MV} value={currentLocation(existing)} disabled hint="Derived from Movement History, add a movement to change it" />
             : <SelectInput label="Initial Location" required change="new" req={REQ_MV} value={f.initialLocation} options={LOCATION_NAMES} onChange={set('initialLocation')} error={errors.initialLocation} disabled={crossHired && !!chRec} hint={crossHired && chRec ? 'Where the cross-hired unit was received, from the cross-hire record' : 'Creates the first Movement History entry'} />}
           <SelectInput label="Department" value={f.department} options={DEPARTMENTS} onChange={set('department')} />
-          <TextInput label="Company" value={COMPANY} disabled />
           <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
         </FormGrid>
         {existing && (
@@ -298,8 +296,6 @@ export function HeavyForm() {
   const ownership = (
     <>
       <FormGrid>
-        <TextInput label="Ownership Type" value={f.ownership} disabled hint="Set on Basic Details" />
-        <TextInput label="Owner Company" value={COMPANY} disabled />
         <TextInput label="Depreciation Applicable" change="new" req={REQ_HE} value={dep ? 'Yes' : 'No'} disabled hint="System-derived" />
         <TextInput label="Include in Available Fleet Count" change="new" req={REQ_HE} value={inFleetCount({ ownership: f.ownership, assetStatus: f.assetStatus }) ? 'Yes' : 'No'} disabled hint="System-derived" />
         {!dep && <TextInput label="Cost and Profitability Tracking" change="new" req={REQ_HE} value="Applicable, tracked against project allocation" disabled hint="Used in place of depreciation" full />}
@@ -494,8 +490,6 @@ export function HeavyView() {
             <Text type="h3" weight="medium" sx={{ mb: 2 }}>{r.name}</Text>
             <ValueGrid cols={4}>
               <ValueField label="Serialized ID" value={r.assetId} change="new" req={REQ_FA} />
-              <ValueField label="Product Classification" value={r.classification} change="new" req={REQ_HE} />
-              <ValueField label="Tracking Method" value="Serialized (Unique Asset ID)" change="new" req={REQ_HE} />
               <ValueField label="Asset Type" value={r.assetType} change="new" req={REQ_FA} />
               <ValueField label="Category" value={r.category} change="new" req={REQ_HE} />
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_HE} />
@@ -515,7 +509,6 @@ export function HeavyView() {
                   <ValueGrid cols={4}>
                     <ValueField label="Put to Use Date" value={r.putToUseDate} change="new" req={REQ_FA} />
                     <ValueField label="Department" value={r.department} change="new" req={REQ_FA} />
-                    <ValueField label="Company" value={r.company} change="new" req={REQ_FA} />
                     <ValueField label="Specification" value={r.specification} change="new" req={REQ_FA} />
                   </ValueGrid>
                 </Box>
@@ -572,7 +565,6 @@ export function HeavyView() {
             <>
               <ValueGrid cols={4}>
                 <ValueField label="Ownership Type" value={r.ownership} change="new" req={REQ_HE} />
-                <ValueField label="Owner Company" value={r.company} />
                 {r.ownership === 'Cross-Hired' && <ValueField label="Cross-Hire Supplier" value={r.supplier} change="new" req={REQ_HE} />}
                 {r.ownership === 'Cross-Hired' && <ValueField label="Cross-Hire Idle" value={r.crossHireIdle ? <StatusChip status="Idle" /> : 'No'} change="new" req={REQ_HE} />}
                 <ValueField label="Depreciation Applicable" value={dep ? 'Yes' : 'No'} change="new" req={REQ_HE} />

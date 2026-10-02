@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 4:00 PM: Asset screens cleaned of internal and repeated fields
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Heavy Equipment Fixed Asset page still showed fields that never change or that the client does not need: Product Classification (always Rental), Tracking Method (always Serialized, already shown by the Serialized ID), Company and Owner Company (always Gulf Power Rentals LLC). The form showed Company too, and the Ownership tab repeated Ownership Type, which is now set on Basic Details.
+*What we did.* Removed Product Classification and Tracking Method from the asset page header, Company from the asset page and form, Owner Company from the Ownership tab (page and form), and the repeated Ownership Type from the form's Ownership tab. Ownership Type is still shown once on the asset page's Ownership tab.
+*Be aware.* The values are still stored on the record (every heavy asset is Rental and Serialized), they are only no longer displayed. The standard item form and page keep Product Classification and Tracking Method, because they differ between items there.
+
 ### 2 Oct, around 3:45 PM: Dashboards show only figures backed by the asset records, and link to those records
 **Where:** Inventory & Fixed Assets > Dashboards
 **Type:** EXISTING WITH CHANGE
