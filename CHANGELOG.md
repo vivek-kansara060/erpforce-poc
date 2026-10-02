@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 5:15 PM: A rental price now stores a price for every billing frequency; calculated prices can be changed by hand
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Each rental billing frequency was a separate price record, the listing showed a Billing Frequency column, and the screen explained how each figure was worked out. The ask is one rental price per Category / Sub-Category that holds every frequency, with calculated figures editable and no formula on screen.
+*What we did.* On the form, the user picks a **Billing Frequency** and enters its price; the **Price for Every Billing Frequency** table fills in Daily, Weekly, Monthly, Quarterly and Yearly at once. Any calculated price can be **changed by hand** (it is marked "Changed by hand"); changing the chosen frequency or its price **recalculates** all of them. Saving stores **all five prices**. The **view page** shows all five with their source (Entered, Calculated, Changed by hand). The **listing** no longer has a Billing Frequency column: it has one row per Category / Sub-Category and a **Show rental prices for** dropdown that decides which frequency's price the Price column shows (trading rows show their sales price). The "How it is worked out" column is removed and a short note explains the conversion (7 / 30 / 90 / 360 days, 2 decimals). **Add Another Frequency** is removed because every frequency is now on one record. Bulk upload columns list a price per frequency. Trading prices are unchanged.
+*Connected change.* The demo 100 KVA monthly and weekly prices were merged into one record (monthly AED 18,500 entered, weekly AED 5,200 changed by hand).
+
 ### 2 Oct, around 5:00 PM: "My access" (Can edit / View only) switch removed; the POC assumes full access
 **Where:** Inventory & Fixed Assets > Reports
 **Where:** Inventory & Fixed Assets > Product Management > Items

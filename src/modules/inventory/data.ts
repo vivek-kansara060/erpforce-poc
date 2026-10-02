@@ -85,22 +85,41 @@ export const attributesFor = (rows: CategoryRec[], category?: string, sub?: stri
 ];
 
 /* ------------------------------------------------------------------ pricing master */
-/** Rental prices are kept per billing frequency (one record each); Trading (sales) prices have no frequency. */
+/**
+ * Pricing master. A Rental price is one record per Category / Sub-Category that holds a price for EVERY billing frequency:
+ * the user enters one frequency's price, the others are calculated from it and can be changed by hand. Trading (sales)
+ * prices are a single sales price with no frequency.
+ */
 export const PRICING_ACTIVITIES = ['Rental', 'Trading'] as const;
 export type PricingActivity = (typeof PRICING_ACTIVITIES)[number];
-export interface PricingRec { id: string; activity: PricingActivity; category: string; subCategory: string; price: number; frequency?: string; description: string }
-const rp = (id: string, category: string, subCategory: string, frequency: string, price: number, description: string): PricingRec => ({ id, activity: 'Rental', category, subCategory, frequency, price, description });
+export interface PricingRec {
+  id: string; activity: PricingActivity; category: string; subCategory: string; description: string;
+  /** Trading: the sales price. Rental: the price entered for baseFrequency. */
+  price: number;
+  /** Rental only: the billing frequency the user entered the price for */
+  frequency?: string;
+  /** Rental only: price per billing frequency, all frequencies stored */
+  prices?: Record<string, number>;
+  /** Rental only: frequencies whose calculated price was changed by hand */
+  edited?: string[];
+}
+/** Days each billing frequency stands for: 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months, 1 year = 12 months. */
+export const FREQ_DAYS: Record<string, number> = { Daily: 1, Weekly: 7, Monthly: 30, Quarterly: 90, Yearly: 360 };
+/** Prices for every billing frequency calculated from one frequency's price, rounded to 2 decimals. */
+export const deriveFrequencyPrices = (price: number, frequency: string): Record<string, number> =>
+  Object.fromEntries(FREQUENCIES.map((fq) => [fq, Math.round(((price / FREQ_DAYS[frequency]) * FREQ_DAYS[fq]) * 100) / 100]));
+const rp = (id: string, category: string, subCategory: string, frequency: string, price: number, description: string, overrides: Record<string, number> = {}): PricingRec =>
+  ({ id, activity: 'Rental', category, subCategory, frequency, price, description, prices: { ...deriveFrequencyPrices(price, frequency), ...overrides }, edited: Object.keys(overrides) });
 const tp = (id: string, category: string, subCategory: string, price: number, description: string): PricingRec => ({ id, activity: 'Trading', category, subCategory, price, description });
 export const pricingSeed: PricingRec[] = [
-  rp('pr1', 'Generator', '100 KVA', 'Monthly', 18500, 'Rental 100 KVA generator, monthly rate'),
-  rp('pr2', 'Generator', '100 KVA', 'Weekly', 5200, 'Rental 100 KVA generator, weekly rate'),
-  rp('pr3', 'Generator', '200 KVA', 'Monthly', 29500, 'Rental 200 KVA generator, monthly rate'),
-  rp('pr4', 'Generator', '500 KVA', 'Monthly', 52000, 'Rental 500 KVA generator, monthly rate'),
-  rp('pr5', 'Generator', '1000 KVA', 'Monthly', 98000, 'Rental 1000 KVA generator, monthly rate'),
-  rp('pr6', 'Cable', '4 Core 185 mm', 'Monthly', 14, 'Rental power cable, per meter per month'),
-  rp('pr7', 'Panel', 'ATS Panel', 'Monthly', 6800, 'Rental ATS panel, monthly rate'),
-  rp('pr8', 'POD', '20 ft POD', 'Monthly', 7500, 'Rental 20 ft power container, monthly rate'),
-  rp('pr9', 'Vehicle', 'Low-bed Truck', 'Daily', 2400, 'Low-bed truck with driver, daily rate'),
+  rp('pr1', 'Generator', '100 KVA', 'Monthly', 18500, 'Rental 100 KVA generator', { Weekly: 5200 }),
+  rp('pr3', 'Generator', '200 KVA', 'Monthly', 29500, 'Rental 200 KVA generator'),
+  rp('pr4', 'Generator', '500 KVA', 'Monthly', 52000, 'Rental 500 KVA generator'),
+  rp('pr5', 'Generator', '1000 KVA', 'Monthly', 98000, 'Rental 1000 KVA generator'),
+  rp('pr6', 'Cable', '4 Core 185 mm', 'Monthly', 14, 'Rental power cable, per meter'),
+  rp('pr7', 'Panel', 'ATS Panel', 'Monthly', 6800, 'Rental ATS panel'),
+  rp('pr8', 'POD', '20 ft POD', 'Monthly', 7500, 'Rental 20 ft power container'),
+  rp('pr9', 'Vehicle', 'Low-bed Truck', 'Daily', 2400, 'Low-bed truck with driver'),
   tp('pr10', 'Generator', '100 KVA', 165000, 'New 100 KVA diesel generator, sale price'),
   tp('pr11', 'Panel', 'ATS Panel', 61000, 'ATS panel 630A, sale price'),
   tp('pr12', 'Cable', '4 Core 185 mm', 95, 'Power cable 4C x 185 mm, sale price per meter'),
