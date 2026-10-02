@@ -12,7 +12,7 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, qtyWithUnit, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
@@ -251,13 +251,13 @@ export function ItemView() {
                 <ValueField label="Reorder Point" value={r.minStock === undefined ? undefined : fmtNum(r.minStock)} />
                 <ValueField label="Reorder Quantity" value={r.reorderQty === undefined ? undefined : fmtNum(r.reorderQty)} />
                 <ValueField label="Use Bins" value={r.useBins ? 'Yes' : 'No'} />
-                <ValueField label="Stock on Hand (all locations)" value={`${fmtNum(r.stock)} ${r.unit}`} />
+                <ValueField label="Stock on Hand (all locations)" value={qtyWithUnit(r.stock, r.unit)} />
               </ValueGrid>
               {stockRows.length > 0 && (
                 <Panel title="Location wise stock" sx={{ mt: 2 }}>
                   <DataTable<LocationStock> hideToolbar rows={stockRows} pageSize={10} columns={[
                     { key: 'location', label: 'Location' },
-                    { key: 'qty', label: `Quantity (${r.unit})`, align: 'right', render: (x) => fmtNum(x.qty) },
+                    { key: 'qty', label: 'Quantity', align: 'right', render: (x) => qtyWithUnit(x.qty, r.unit) },
                   ]} />
                 </Panel>
               )}

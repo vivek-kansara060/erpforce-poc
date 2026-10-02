@@ -121,7 +121,7 @@ const SERIAL_SEED: Record<string, Partial<ItemRec>> = {
   i11: { brand: 'Emirates Cable & Panel', model: 'ATS-630', engineNo: 'N/A', capacity: '630 A', purchaseDate: '2025-01-20', assetValue: 48000, nbv: 41500, deprPct: 13.54, deprAmount: 6500, capex: 48000, attrs: { 'at-p1': '630' } },
 };
 /** Stock held per item per location. The item's own stock is the total of its rows, so a count at one location only moves that location. */
-export interface LocationStock { id: string; itemId: string; location: string; qty: number }
+export interface LocationStock { id: string; itemId: string; location: string; qty: number; /** quantity consumed or sold from this location so far (Supplier-Held Locations) */ consumed?: number }
 const FUEL_DEPOT = 'ENOC Al Quoz Depot (Fuel Stock)';
 // [item id, Jebel Ali Main Yard, Sharjah Yard, Abu Dhabi Mussafah Yard]. Jebel Ali keeps the original figures so the earlier count sessions still match.
 const YARD_STOCK: [string, number, number, number][] = [
@@ -133,7 +133,7 @@ export const locationStockSeed: LocationStock[] = [
     { id: `ls-${itemId}-2`, itemId, location: 'Sharjah Yard', qty: b },
     { id: `ls-${itemId}-3`, itemId, location: 'Abu Dhabi Mussafah Yard', qty: c },
   ]),
-  { id: 'ls-i8-4', itemId: 'i8', location: FUEL_DEPOT, qty: 21500 },
+  { id: 'ls-i8-4', itemId: 'i8', location: FUEL_DEPOT, qty: 21500, consumed: 38500 },
 ];
 const stockTotal = (itemId: string, fallback: number) => {
   const rows = locationStockSeed.filter((r) => r.itemId === itemId);
@@ -298,16 +298,29 @@ export const heavyCodes = () => {
 };
 
 /* ------------------------------------------------------------------ location master (existing + new) */
+/** Location master (2 Oct call: Parent Location, Company and the address block removed; City kept). Stock figures are derived from location stock, never typed in. */
 export interface LocationRec {
-  id: string; code: string; name: string; shortName: string; type: string; supplierId?: string; parent: string; company: string; address1: string; zipcode: string; country: string; state: string; city: string; summary: string;
-  inventoryAvailable: boolean; status: 'Active' | 'Inactive'; stockHeld?: number; consumed?: number; remainingValue?: number;
+  id: string; code: string; name: string; shortName: string; type: string; supplierId?: string; city: string;
+  inventoryAvailable: boolean; status: 'Active' | 'Inactive';
 }
 export const LOCATION_TYPES = ['Own Yard', 'Supplier-Held Location'];
-export const locationSeed: LocationRec[] = locations.map((l, i) => ({
-  ...l, shortName: l.name.split(' ').map((w) => w[0]).join('').slice(0, 4).toUpperCase(), parent: '', company: COMPANY,
-  address1: ['Plot 412, Jebel Ali Industrial Area 1', 'Industrial Area 13, Sajaa Road', 'Plot 88, Mussafah M-26', 'ENOC Depot, Al Quoz Industrial 3'][i] ?? '', zipcode: '', country: 'United Arab Emirates', state: l.city, city: l.city,
-  summary: l.type === 'Own Yard' ? 'Own storage yard for fleet and spares' : 'Business-owned fuel stock held at supplier premises', inventoryAvailable: true, status: 'Active' as const,
+export const locationSeed: LocationRec[] = locations.map((l) => ({
+  id: l.id, code: l.code, name: l.name, type: l.type, supplierId: l.supplierId, city: l.city,
+  shortName: l.name.split(' ').map((w) => w[0]).join('').slice(0, 4).toUpperCase(), inventoryAvailable: true, status: 'Active' as const,
 }));
+/** Sample deliveries made from a supplier-held location (POC: Delivery Orders themselves are raised in the sales / rental flow, which is not built yet). */
+export interface LocationDelivery { id: string; number: string; date: string; location: string; customer: string; itemId: string; qty: number; status: string }
+export const locationDeliverySeed: LocationDelivery[] = [
+  { id: 'ld1', number: 'DN-26-00412', date: '2026-09-27', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Dubai Metro Works JV', itemId: 'i8', qty: 6000, status: 'Delivered' },
+  { id: 'ld2', number: 'DN-26-00398', date: '2026-09-18', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Emirates Infrastructure LLC', itemId: 'i8', qty: 8500, status: 'Delivered' },
+  { id: 'ld3', number: 'DN-26-00371', date: '2026-09-05', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Al Noor Events Management', itemId: 'i8', qty: 2500, status: 'Delivered' },
+  { id: 'ld4', number: 'DN-26-00433', date: '2026-10-01', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Gulf Build Contracting', itemId: 'i8', qty: 4000, status: 'Dispatched' },
+];
+/** A quantity always shown with its unit, e.g. "21,500 Litres". */
+export const qtyWithUnit = (qty: number, unit: string) => {
+  const plural: Record<string, string> = { Nos: 'Nos', Meter: 'Meters', Litre: 'Litres', Drum: 'Drums', Visit: 'Visits', Job: 'Jobs', Kg: 'Kg', Set: 'Sets' };
+  return `${qty.toLocaleString('en-US')} ${qty === 1 ? unit : plural[unit] ?? unit}`;
+};
 
 /* ------------------------------------------------------------------ certificates, usage readings, stock verification, disposal */
 export const CERT_TYPES = ['Registration', 'Insurance', 'Inspection', 'Warranty', 'Other'];

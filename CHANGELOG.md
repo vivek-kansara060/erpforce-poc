@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 1:00 PM: Location is simplified, and stock at a location is shown per item with its unit
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Location form carried fields that do not help this module (Parent Location, Company, Address, Zipcode, Country, State, Summary). Supplier-held stock was shown as bare numbers such as "60,000" with no unit, and stock and consumption looked like form fields.
+*What we did.* The Location form and page now have only Name, Short Name, Location Code, Location Type, Linked Supplier (for supplier-held locations), City, Inventory Available and Status; the list has a Location Type filter and a City column. Every location page shows a **read-only stock table per item, always with the unit**: for a supplier-held location it shows Stock Held, Consumed, Remaining and Remaining Value (for example "60,000 Litres held, 38,500 Litres consumed, 21,500 Litres remaining"); for an own yard it shows Quantity on Hand and Value. A supplier-held location also lists the **Delivery Orders** made from it. On the item page, location-wise stock and stock on hand now show units too.
+*Be aware.* The deliveries are sample data: Delivery Orders are raised in the sales / rental flow, which the POC does not have yet. Stock and consumption are calculated figures and cannot be typed in.
+
 ### 2 Oct, around 12:30 PM: Cross-hired assets take their details from the cross-hire record and show only what applies to them
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Type:** EXISTING WITH CHANGE
