@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 3:45 PM: Dashboards show only figures backed by the asset records, and link to those records
+**Where:** Inventory & Fixed Assets > Dashboards
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Ajin asked that dashboards come after the source screens and never show numbers without a reliable source. Two dashboards did: Asset Profitability used estimated cost formulas, and Location-Wise Stock used fixed numbers. All dashboards were also calculated once from the starting demo data, so changes made in the POC did not show, and there was no way from a dashboard into the records behind it.
+*What we did.* **Asset Profitability** and **Location-Wise Stock** dashboards are **held back** until their source data exists. The three that remain (**Fleet Status**, **Owned vs. Cross-Hire**, **End-of-Life Planning**) are now **counted live** from the Heavy Equipment Fixed Asset records each time they open, so a new, returned or disposed asset changes them straight away. Each has an **Underlying records** panel with buttons to the matching asset list and reports.
+*Be aware.* The held-back dashboards' reports (Asset Profitability Report, Location-Wise Stock Report) are still available under Reports. No fleet-management (delivery vehicles) dashboard exists in this POC.
+
 ### 2 Oct, around 3:30 PM: Every report has a visible filter, column search, sticky totals, print and drill-down to the asset; View only access
 **Where:** Inventory & Fixed Assets > Reports
 **Where:** Inventory & Fixed Assets > Product Management > Items
