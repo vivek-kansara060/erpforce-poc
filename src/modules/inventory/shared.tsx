@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Box, Button } from '@mui/material';
+import { AppDialog } from '@/components/Dialogs';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { Text } from '@/components/Text';
 import { FieldShell, FormGrid, FormSection, NumberInput, SelectInput, TextInput, DateInput, ValueField, ValueGrid } from '@/components/Form';
@@ -133,6 +134,36 @@ export function FileList({ names }: { names?: string[] }) {
 
 export function Note({ children }: { children: ReactNode }) {
   return <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>{children}</Text>;
+}
+
+/** A master-data dropdown with a "+ Add" link above it, so a new master value can be created without leaving the form. */
+export function AddableSelect({ onAdd, addLabel = '+ Add', ...p }: Parameters<typeof SelectInput>[0] & { onAdd: () => void; addLabel?: string }) {
+  return (
+    <Box sx={{ position: 'relative', gridColumn: p.full ? '1 / -1' : undefined, minWidth: 0 }}>
+      <SelectInput {...p} />
+      {!p.disabled && <Button size="small" variant="text" onClick={onAdd} sx={{ position: 'absolute', top: -6, right: 0, minWidth: 0, px: 0.75, py: 0, fontSize: 12 }}>{addLabel}</Button>}
+    </Box>
+  );
+}
+
+/** Small "add a master value" dialog: one name field plus an optional fixed context line (e.g. the parent category). */
+export function QuickAddDialog({ open, title, label, context, onClose, onSave }: { open: boolean; title: string; label: string; context?: string; onClose: () => void; onSave: (name: string) => string | undefined }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string>();
+  const close = () => { setName(''); setError(undefined); onClose(); };
+  const save = () => {
+    if (!name.trim()) { setError(`${label} is required`); return; }
+    const e = onSave(name.trim());
+    if (e) { setError(e); return; }
+    close();
+  };
+  return (
+    <AppDialog open={open} title={title} onClose={close} onConfirm={save} confirmLabel="Add" maxWidth="xs">
+      {context && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>{context}</Text>}
+      <TextInput label={label} required value={name} onChange={(v) => { setName(v); setError(undefined); }} error={error} />
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>It is added as Active and can be edited later in its master screen.</Text>
+    </AppDialog>
+  );
 }
 
 export const REQ_ATTR = 'Category Master > Custom Attributes';

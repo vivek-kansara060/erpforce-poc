@@ -12,7 +12,8 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categoryOptions, categorySeed, topCategories, subCategoriesOf, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { CategorySelect, SubCategorySelect } from './Masters';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
@@ -137,9 +138,8 @@ export function ItemForm() {
           options={PRODUCT_CLASSIFICATIONS.filter((c) => c !== 'Rental' || f.classification === 'Rental')} onChange={set('classification')} error={errors.classification}
           hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
-        <SelectInput label="Category" required change="new" req={REQ_ITEM} value={f.category} options={categoryOptions(cats.rows, 'Normal', f.category)} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
-        <SelectInput label="Sub-Category" change="new" req={REQ_ITEM} value={f.subCategory} options={subCategoriesOf(cats.rows, f.category)} disabled={!f.category || subCategoriesOf(cats.rows, f.category).length === 0}
-          hint={f.category && subCategoriesOf(cats.rows, f.category).length === 0 ? 'No sub-categories under this category' : 'Optional, depends on Category'} onChange={set('subCategory')} />
+        <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
+        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={set('subCategory')} />
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}
           hint={f.tracking === 'Length' ? 'Select the applicable UOM, e.g. Meter' : undefined} />
         <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />

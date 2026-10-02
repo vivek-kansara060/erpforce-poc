@@ -37,13 +37,10 @@ export { COMPANY };
 
 /* ------------------------------------------------------------------ category master (existing Item Category + new) */
 export interface AttributeDef { id: string; name: string; type: string; options: string; required: boolean }
-export const CATEGORY_TYPES = ['Normal', 'Heavy Equipment'] as const;
-export type CategoryType = (typeof CATEGORY_TYPES)[number];
 export interface CategoryRec {
-  id: string; name: string; parent: string; level: number; status: 'Active' | 'Inactive';
+  /** parent is '-' for a Category; a Sub-Category names its parent Category. */
+  id: string; name: string; parent: string; status: 'Active' | 'Inactive';
   brand?: string; description?: string; skuPrefix?: string; uniqueItems?: number; attributes: AttributeDef[]; depMethod?: string;
-  /** Sub-categories follow their parent's type. Records without a type are Normal. */
-  categoryType?: CategoryType;
 }
 const EXTRA_CATEGORIES = ['Spare Part', 'Consumable', 'Fuel', 'Service'];
 const PREFIX: Record<string, string> = { Generator: 'GEN', Cable: 'CBL', Panel: 'PNL', POD: 'POD', Trolley: 'TRL', Tray: 'TRY', 'Day Tank': 'DTK', 'Spare Engine': 'SPE', Vehicle: 'VEH', 'Spare Part': 'SPR', Consumable: 'CON', Fuel: 'FUL', Service: 'SRV' };
@@ -58,26 +55,24 @@ const ATTRS: Record<string, AttributeDef[]> = {
   ],
   Panel: [{ id: 'at-p1', name: 'Rated Current (A)', type: 'Number', options: '', required: false }],
 };
-const HEAVY_GROUPS = ['Generator', 'Vehicle', 'POD', 'Spare Engine', 'Trolley', 'Day Tank'];
-const typeOfGroup = (g: string): CategoryType => (HEAVY_GROUPS.includes(g) ? 'Heavy Equipment' : 'Normal');
 export const categorySeed: CategoryRec[] = [
   ...equipmentGroups.flatMap((g, gi) => [
-    { id: `cat${gi + 1}`, name: g.group, parent: '-', level: 1, status: 'Active' as const, categoryType: typeOfGroup(g.group), skuPrefix: PREFIX[g.group], uniqueItems: 1, description: `${g.group} equipment and accessories`, attributes: ATTRS[g.group] ?? [], depMethod: g.group === 'Vehicle' ? 'Declining' : undefined },
-    ...g.categories.map((c, ci) => ({ id: `cat${gi + 1}-${ci + 1}`, name: c, parent: g.group, level: 2, status: 'Active' as const, categoryType: typeOfGroup(g.group), skuPrefix: `${PREFIX[g.group]}${ci + 1}`, uniqueItems: 1, attributes: [] as AttributeDef[] })),
+    { id: `cat${gi + 1}`, name: g.group, parent: '-', status: 'Active' as const, skuPrefix: PREFIX[g.group], uniqueItems: 1, description: `${g.group} equipment and accessories`, attributes: ATTRS[g.group] ?? [], depMethod: g.group === 'Vehicle' ? 'Declining' : undefined },
+    ...g.categories.map((c, ci) => ({ id: `cat${gi + 1}-${ci + 1}`, name: c, parent: g.group, status: 'Active' as const, skuPrefix: `${PREFIX[g.group]}${ci + 1}`, uniqueItems: 1, attributes: [] as AttributeDef[] })),
   ]),
-  ...EXTRA_CATEGORIES.map((n, i) => ({ id: `catx${i + 1}`, name: n, parent: '-', level: 1, status: 'Active' as const, categoryType: 'Normal' as const, skuPrefix: PREFIX[n], uniqueItems: 1, attributes: [] as AttributeDef[] })),
+  ...EXTRA_CATEGORIES.map((n, i) => ({ id: `catx${i + 1}`, name: n, parent: '-', status: 'Active' as const, skuPrefix: PREFIX[n], uniqueItems: 1, attributes: [] as AttributeDef[] })),
 ];
-export const categoryTypeOf = (r: Pick<CategoryRec, 'categoryType'>): CategoryType => r.categoryType ?? 'Normal';
-/** Active top-level categories of one type. The current value is kept in the list so an existing record still shows its category. */
-export const categoryOptions = (rows: CategoryRec[], type: CategoryType, current?: string) => {
-  const names = rows.filter((r) => r.level === 1 && r.status === 'Active' && categoryTypeOf(r) === type).map((r) => r.name);
+export const isTopCategory = (r: Pick<CategoryRec, 'parent'>) => !r.parent || r.parent === '-';
+/** Active categories. The current value is kept in the list so an existing record still shows its category. */
+export const categoryOptions = (rows: CategoryRec[], current?: string) => {
+  const names = rows.filter((r) => isTopCategory(r) && r.status === 'Active').map((r) => r.name);
   return current && !names.includes(current) ? [...names, current] : names;
 };
-export const topCategories = (rows: CategoryRec[]) => rows.filter((r) => r.level === 1 && r.status === 'Active').map((r) => r.name);
+export const topCategories = (rows: CategoryRec[]) => rows.filter((r) => isTopCategory(r) && r.status === 'Active').map((r) => r.name);
 export const subCategoriesOf = (rows: CategoryRec[], category?: string) => (category ? rows.filter((r) => r.parent === category && r.status === 'Active').map((r) => r.name) : []);
 /** Custom attributes defined on the Category plus those defined on the selected Sub-Category. */
 export const attributesFor = (rows: CategoryRec[], category?: string, sub?: string): AttributeDef[] => [
-  ...(rows.find((r) => r.level === 1 && r.name === category)?.attributes ?? []),
+  ...(rows.find((r) => isTopCategory(r) && r.name === category)?.attributes ?? []),
   ...(sub ? rows.find((r) => r.parent === category && r.name === sub)?.attributes ?? [] : []),
 ];
 

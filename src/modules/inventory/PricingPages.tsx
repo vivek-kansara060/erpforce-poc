@@ -10,7 +10,8 @@ import { Panel } from '@/components/Widgets';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { FREQUENCIES, PRICING_ACTIVITIES, categorySeed, pricingSeed, subCategoriesOf, topCategories, type CategoryRec, type PricingActivity, type PricingRec } from './data';
+import { FREQUENCIES, PRICING_ACTIVITIES, pricingSeed, type PricingActivity, type PricingRec } from './data';
+import { CategorySelect, SubCategorySelect } from './Masters';
 import { aed, isBlank, type Errors } from './shared';
 
 const REQ_PRICING = 'Heavy Equipment Pricing > Rental and Trading Pricing (2 Oct call)';
@@ -18,7 +19,6 @@ const REQ_PREVIEW = 'Heavy Equipment Pricing > Billing Frequency Preview (POC re
 const REQ_BULK = 'Pricing & Rate Management > Bulk Price Update Upload';
 const BASE = '/inventory/pricing';
 const usePricing = () => useCollection<PricingRec>('inventory.pricing', pricingSeed);
-const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 const labelOf = (r: Pick<PricingRec, 'category' | 'subCategory'>) => `${r.category}${r.subCategory ? ` / ${r.subCategory}` : ''}`;
 /** Rental frequencies not yet priced for this Category / Sub-Category. */
 const unusedFrequencies = (rows: PricingRec[], category: string, subCategory: string, exceptId?: string) =>
@@ -132,7 +132,6 @@ export function PricingForm() {
   const [params] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
-  const cats = useCats();
   const pricing = usePricing();
   const existing = id ? pricing.get(id) : undefined;
   // "Add Another Frequency": start from an existing rental price, keep its Category / Sub-Category and offer the next frequency not priced yet.
@@ -145,7 +144,6 @@ export function PricingForm() {
   const [err, setErr] = useState<Errors>({});
   const rental = f.activity === 'Rental';
   const trading = f.activity === 'Trading';
-  const subs = subCategoriesOf(cats.rows, f.category);
   const save = () => {
     const e: Errors = {};
     if (isBlank(f.activity)) e.activity = 'Activity Type is required';
@@ -177,8 +175,8 @@ export function PricingForm() {
             <SelectInput label="Activity Type" required change="new" req={REQ_PRICING} value={f.activity} options={[...PRICING_ACTIVITIES]} disabled={!!existing || !!from} error={err.activity}
               onChange={(v) => setF({ ...f, activity: v, frequency: v === 'Rental' ? f.frequency : '' })} hint="Rental prices are per billing frequency; Trading is a single sales price" />
             <Box />
-            <SelectInput label="Category" required change="new" req={REQ_PRICING} value={f.category} options={topCategories(cats.rows)} disabled={!!from} onChange={(v) => setF({ ...f, category: v, subCategory: '' })} error={err.category} />
-            <SelectInput label="Sub-Category" change="new" req={REQ_PRICING} value={f.subCategory} options={subs} disabled={!!from || !f.category || subs.length === 0} onChange={(v) => setF({ ...f, subCategory: v })} />
+            <CategorySelect value={f.category} req={REQ_PRICING} disabled={!!from} onChange={(v) => setF({ ...f, category: v, subCategory: '' })} error={err.category} />
+            <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_PRICING} disabled={!!from} onChange={(v) => setF({ ...f, subCategory: v })} />
             {rental && <SelectInput label="Billing Frequency" required change="new" req={REQ_PRICING} value={f.frequency} options={freqOptions} onChange={(v) => setF({ ...f, frequency: v })} error={err.frequency}
               hint={f.category && freqOptions.length === 0 ? 'Every billing frequency is already priced for this Category and Sub-Category' : 'Each billing frequency is a separate price'} />}
             {(rental || trading) && <NumberInput label={trading ? 'Sales Price (AED)' : 'Rental Price (AED)'} required change="new" req={REQ_PRICING} value={f.price} onChange={(v) => setF({ ...f, price: v })} error={err.price} />}

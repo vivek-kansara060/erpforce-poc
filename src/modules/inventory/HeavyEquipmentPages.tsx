@@ -16,9 +16,10 @@ import { suppliers } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
   ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
-  attributesFor, buildBoard, categoryOptions, categorySeed, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf, subCategoriesOf, topCategories,
+  attributesFor, buildBoard, categorySeed, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
   type AuditEntry, type BoardRow, type DisposalRec, type CategoryRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
+import { CategorySelect, SubCategorySelect } from './Masters';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
@@ -113,14 +114,13 @@ export function HeavyForm() {
   const [leave, setLeave] = useState(false);
   const upd = (p: Record<string, any>) => setF((x) => ({ ...x, ...p }));
   const set = (k: string) => (v: any) => upd({ [k]: v });
-  const subs = subCategoriesOf(cats.rows, f.category);
   const attrDefs = attributesFor(cats.rows, f.category, f.subCategory);
   const insurance: InsuranceEntry[] = f.insurance;
   const setIns = (i: number, p: Partial<InsuranceEntry>) => set('insurance')(insurance.map((x, n) => (n === i ? { ...x, ...p } : x)));
   const dep = depreciationApplicable(f.ownership);
   const months = (num(f.usefulLifeYears) || 0) * 12;
   const startDate = f.putToUseDate || f.purchaseDate;
-  const catDefault = cats.rows.find((c) => c.level === 1 && c.name === f.category)?.depMethod;
+  const catDefault = cats.rows.find((c) => isTopCategory(c) && c.name === f.category)?.depMethod;
 
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
@@ -175,9 +175,9 @@ export function HeavyForm() {
     <>
       <FormGrid>
         <SelectInput label="Asset Type" required change="new" req={REQ_FA} value={f.assetType} options={ASSET_TYPES} onChange={set('assetType')} error={errors.assetType} />
-        <SelectInput label="Category" required change="new" req={REQ_HE} value={f.category} options={categoryOptions(cats.rows, 'Heavy Equipment', f.category)} error={errors.category}
-          onChange={(v) => upd({ category: v, subCategory: '', attrs: {}, ...(cats.rows.find((c) => c.level === 1 && c.name === v)?.depMethod ? { method: cats.rows.find((c) => c.level === 1 && c.name === v)!.depMethod } : {}) })} />
-        <SelectInput label="Sub-Category" change="new" req={REQ_HE} value={f.subCategory} options={subs} disabled={!f.category || subs.length === 0} hint="Optional, depends on Category" onChange={(v) => upd({ subCategory: v, attrs: {} })} />
+        <CategorySelect value={f.category} error={errors.category} req={REQ_HE}
+          onChange={(v) => { const dm = cats.rows.find((c) => isTopCategory(c) && c.name === v)?.depMethod; upd({ category: v, subCategory: '', attrs: {}, ...(dm ? { method: dm } : {}) }); }} />
+        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_HE} onChange={(v) => upd({ subCategory: v, attrs: {} })} />
         <TextInput label="Specification" change="new" req={REQ_FA} value={f.specification} onChange={set('specification')} multiline rows={2} full />
       </FormGrid>
       <AttributeFields defs={attrDefs} values={f.attrs} onChange={set('attrs')} errors={errors} />

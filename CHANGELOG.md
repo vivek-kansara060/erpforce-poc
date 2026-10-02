@@ -12,6 +12,18 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 11:30 AM: Category and Sub-Category are now two simple masters, without Level or Category Type
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Where:** Inventory & Fixed Assets > Product Management > Item Sub-Category
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Item Category mixed categories and sub-categories in one list, showed an unexplained Level field, and forced every category into a hard-coded Category Type (Normal or Heavy Equipment). In the 2 Oct call Ajin asked for this to be simplified and for masters to be addable from the screens that use them.
+*What we did.* **Item Category** now lists categories only (Category Name, number of Sub-Categories, Description, Status) and has a view page showing its sub-categories, with Activate / Deactivate, Edit and Delete. A new **Item Sub-Category** screen lists sub-categories with their Category, with a Category filter, and its own add, edit and view pages; a sub-category simply picks the category it belongs to. **Level** and **Category Type** are removed everywhere. On the item form, the Heavy Equipment Fixed Asset form and the pricing form, the Category and Sub-Category dropdowns have a **+ Add** link that adds a new value in a small dialog without leaving the form, and selects it.
+*Connected change.* Because Category Type is gone, the Heavy Equipment Fixed Asset form and the standard item form now both offer every active category.
+*Be aware.* Deleting a category still deletes its sub-categories; Deactivate is offered next to Delete to keep history.
+
 ### 2 Oct, around 11:00 AM: Heavy Equipment Pricing separates Rental and Trading prices, with descriptions and bulk upload
 **Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
 **Type:** EXISTING WITH CHANGE
