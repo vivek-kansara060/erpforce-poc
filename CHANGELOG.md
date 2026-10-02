@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 5:30 PM: A disposal by sale or scrap now ends with an invoice to a selected party
+**Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
+**Where:** Inventory & Fixed Assets > Reports
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* A sale or a scrap always brings in an amount, so both need an invoice to the party taking the asset. Before, only a sale captured a buyer and invoice reference, and a scrap was simply recorded.
+*What we did.* After approval, both methods show **Create Invoice**. The invoice has an **Invoice Number** (suggested, editable), **Invoice Date**, **Invoice To Taken From** (Customer list or Entered manually), **Invoice To** (picked from the customer list or typed in), and the **Sale / Scrap Amount**; a scrap can also carry a scrap reference. The request then shows a **Sale Invoice / Scrap Invoice** panel with these details, the net book value at disposal, the gain or loss and the finance journal reference. The request form asks for an optional **expected value** for both methods. The lifecycle's last step is now **Sale Invoiced / Scrap Invoiced**, the list's Outcome column reads "Sold, invoiced", "Scrapped, invoiced" or "Invoice to create", and the Asset Disposal report shows Invoiced To, Invoice Amount and Invoice.
+*Be aware.* Two points are **flagged to be confirmed with client**: whether the invoiced party is picked by the system or entered by hand (both are offered for now), and the VAT treatment (the amount is shown without VAT). The invoice is a reference record only; the POC has no Finance module.
+
 ### 2 Oct, around 5:15 PM: A rental price now stores a price for every billing frequency; calculated prices can be changed by hand
 **Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
 **Type:** EXISTING WITH CHANGE
