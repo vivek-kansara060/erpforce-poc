@@ -10,7 +10,7 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { suppliers } from '@/mock-data/masters';
-import { LOCATION_TYPES, itemSeed, locationDeliverySeed, locationSeed, locationStockSeed, qtyWithUnit, type ItemRec, type LocationRec, type LocationStock } from './data';
+import { LOCATION_TYPES, itemSeed, locationSeed, locationStockSeed, qtyWithUnit, type ItemRec, type LocationRec, type LocationStock } from './data';
 import { aed, requireFields, type Errors } from './shared';
 
 const REQ = 'Location & Warehouse Master';
@@ -37,21 +37,6 @@ function LocationStockTable({ location, supplierHeld }: { location: string; supp
         { key: 'remaining', label: 'Remaining', align: 'right' }, { key: 'value', label: 'Remaining Value', align: 'right' },
       ] : [
         { key: 'item', label: 'Item' }, { key: 'remaining', label: 'Quantity on Hand', align: 'right' }, { key: 'value', label: 'Value', align: 'right' },
-      ]} />
-    </Panel>
-  );
-}
-
-/** Deliveries made from a supplier-held location (sample data; Delivery Orders are raised in the sales / rental flow). */
-function LocationDeliveries({ location }: { location: string }) {
-  const items = useCollection<ItemRec>('items', itemSeed);
-  const rows = locationDeliverySeed.filter((d) => d.location === location).map((d) => { const it = items.get(d.itemId); return { ...d, item: it?.name ?? d.itemId, quantity: it ? qtyWithUnit(d.qty, it.unit) : String(d.qty) }; });
-  return (
-    <Panel title="Delivery Orders from this Location" change="new" req={`${REQ} > Delivery against Supplier-Held Location`} sx={{ mt: 2 }}>
-      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>Sample deliveries for the POC. Delivery Orders are raised in the sales / rental flow, which is not part of this POC yet; each delivery reduces the remaining stock above.</Text>
-      <DataTable hideToolbar rows={rows} pageSize={50} emptyText="No deliveries from this location" columns={[
-        { key: 'number', label: 'Delivery Order' }, { key: 'date', label: 'Date' }, { key: 'customer', label: 'Customer' }, { key: 'item', label: 'Item' },
-        { key: 'quantity', label: 'Quantity', align: 'right' }, { key: 'status', label: 'Status', render: (r: any) => <StatusChip status={r.status} /> },
       ]} />
     </Panel>
   );
@@ -156,7 +141,6 @@ export function LocationView() {
           <ValueField label="Inventory Available" value={r.inventoryAvailable ? 'Yes' : 'No'} />
         </ValueGrid>
         <LocationStockTable location={r.name} supplierHeld={held} />
-        {held && <LocationDeliveries location={r.name} />}
       </Page>
     </>
   );

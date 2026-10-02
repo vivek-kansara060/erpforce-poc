@@ -308,14 +308,6 @@ export const locationSeed: LocationRec[] = locations.map((l) => ({
   id: l.id, code: l.code, name: l.name, type: l.type, supplierId: l.supplierId, city: l.city,
   shortName: l.name.split(' ').map((w) => w[0]).join('').slice(0, 4).toUpperCase(), inventoryAvailable: true, status: 'Active' as const,
 }));
-/** Sample deliveries made from a supplier-held location (POC: Delivery Orders themselves are raised in the sales / rental flow, which is not built yet). */
-export interface LocationDelivery { id: string; number: string; date: string; location: string; customer: string; itemId: string; qty: number; status: string }
-export const locationDeliverySeed: LocationDelivery[] = [
-  { id: 'ld1', number: 'DN-26-00412', date: '2026-09-27', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Dubai Metro Works JV', itemId: 'i8', qty: 6000, status: 'Delivered' },
-  { id: 'ld2', number: 'DN-26-00398', date: '2026-09-18', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Emirates Infrastructure LLC', itemId: 'i8', qty: 8500, status: 'Delivered' },
-  { id: 'ld3', number: 'DN-26-00371', date: '2026-09-05', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Al Noor Events Management', itemId: 'i8', qty: 2500, status: 'Delivered' },
-  { id: 'ld4', number: 'DN-26-00433', date: '2026-10-01', location: 'ENOC Al Quoz Depot (Fuel Stock)', customer: 'Gulf Build Contracting', itemId: 'i8', qty: 4000, status: 'Dispatched' },
-];
 /** A quantity always shown with its unit, e.g. "21,500 Litres". */
 export const qtyWithUnit = (qty: number, unit: string) => {
   const plural: Record<string, string> = { Nos: 'Nos', Meter: 'Meters', Litre: 'Litres', Drum: 'Drums', Visit: 'Visits', Job: 'Jobs', Kg: 'Kg', Set: 'Sets' };

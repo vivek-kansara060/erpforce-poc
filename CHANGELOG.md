@@ -12,6 +12,13 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 4:45 PM: Delivery Orders list removed from supplier-held locations
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Type:** REMOVED
+
+*The problem.* The sample "Delivery Orders from this Location" panel on supplier-held locations is not needed for now.
+*What we did.* Removed the panel and its sample data. The read-only stock table (Stock Held, Consumed, Remaining and Remaining Value, with units) stays on every location page.
+
 ### 2 Oct, around 4:00 PM: Asset screens cleaned of internal and repeated fields
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Type:** EXISTING WITH CHANGE
