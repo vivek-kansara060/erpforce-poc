@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Box } from '@mui/material';
+import { Link, useNavigate } from 'react-router-dom';
+import { Box, Button } from '@mui/material';
 import { DataTable, type Column } from '@/components/DataTable';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
@@ -13,6 +13,7 @@ type Row = ChangeEntry & { id: string };
 
 /** POC-only review aid: the requirement-to-ERP mapping table (Existing / Existing with change / New / Removed) with links to each screen. */
 export function ChangeRegister() {
+  const nav = useNavigate();
   const rows: Row[] = useMemo(() => modules.flatMap((m) => m.changes.map((c, i) => ({ ...c, id: `${m.id}-${i}` }))), []);
   const [selMod, setSelMod] = useState('All');
   const shown = selMod === 'All' ? rows : rows.filter((r) => r.module === selMod);
@@ -29,7 +30,8 @@ export function ChangeRegister() {
     <Box>
       <FormHeader crumbs={[{ label: 'Modules', to: '/' }, { label: 'Change Register' }]} />
       <Page>
-        <PageTitle title="Change Register" subtitle="Every screen or feature that differs from the existing ERP, mapped to the requirement document." />
+        <PageTitle title="Change Register" subtitle="Every screen or feature that differs from the existing ERP, mapped to the requirement document."
+          right={<Button variant="outlined" onClick={() => nav('/change-register/changelog')}>View detailed changelog</Button>} />
         <KpiRow>
           <KpiCard title="New" value={count('NEW')} tint="#E8F5F0" />
           <KpiCard title="Existing with change" value={count('EXISTING WITH CHANGE')} tint="#FFF3CC" />

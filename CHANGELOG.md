@@ -1,0 +1,195 @@
+# ERPForce POC: What We Changed and Why
+
+This is a plain-language log of every change made to the ERPForce POC (the Heavy Equipment Rental design POC). It is written so anyone can open it and understand what changed, why it changed, and how it affects the rest of the system. It only covers this POC. The real `erp-fe` and `erp-be` code has not been touched.
+
+**How to read it.** Each entry is one change to one screen, newest first. Under every heading are two tags: **Where** (module, side menu and screen, exactly as they appear in the POC's sidebar) and **Type** (the same classification the Change Register uses: NEW, EXISTING WITH CHANGE, EXISTING, REMOVED). A change that touches more than one screen has one Where line per screen. Times are IST; "around" means the time was not written down when the work was done, so it is an estimate.
+
+**Reading it inside the POC.** Open the Change Register and press "View detailed changelog". The page lets you filter these entries by module, by side menu and screen, and by Type.
+
+**Where the "why" comes from.** The requirement document (`ERPForce_Heavy_Equipment_Rental_Module.md`), the description of what the existing ERP already does (`docs/baseline/inventory-fa.md`), and the two calls with Ajin on 25 and 30 September.
+
+**Current state in one paragraph.** The POC's Inventory module has a Heavy Equipment Fixed Asset type and a Heavy Equipment Pricing screen (both named to match Ajin's wording), and a Physical Stock Verification screen that counts both stock items and individual heavy equipment assets, with per-location quantities, a confirmer, and a proper approve or reject step. Its variance report reads live data.
+
+---
+
+### 1 Oct, around 6:15 PM: The back arrow in the top bar now returns to the previous page, as in the existing ERP
+**Where:** POC Review Tools > Top bar > Back arrow
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The arrow next to the module name always went to the module selection screen, wherever you were. From an item's view page, for example, it skipped the Items listing completely. The existing ERP's header arrow does not behave like this: it goes back to the previous page, like the browser's back button.
+*What we did.* The arrow now goes back to the previous page you were on (listing to view page and back lands on the listing again). If there is no earlier page, for example when a link is opened directly in a new tab, it goes to the module selection screen so it never does nothing. Its tooltip now reads "Back".
+*Be aware.* As in the existing ERP, after you save a form the arrow goes back to the form you just saved, because that was the previous page. The breadcrumb at the top left (for example "Items") still always goes to the listing. This change was made in the shared top bar (`src/shell/Shell.tsx`) with approval, as an exception to the builder guide's rule against editing shared files.
+
+### 1 Oct, around 6:00 PM: Heavy Equipment Pricing shows what a price works out to at every billing frequency, and each price now has a view page
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** NEW
+
+*The problem.* A price is set for one billing frequency only (for example AED 600 Daily). The user and the customer had no quick way to see what that means per week, month, quarter or year. Clicking a price in the list also went straight into edit mode; there was no page to just look at it.
+*What we did.* Under the fields on the Add and Edit Price form there is now a **Billing Frequency Preview** table. It takes the price and frequency you set and shows the equivalent price for Daily, Weekly, Monthly, Quarterly and Yearly, with a "How it is worked out" column (for example "600 × 7 days"). The frequency you set is marked "(set)". The table updates as you type. Clicking a price in the list now opens a new **view page** showing Category, Sub-Category, Price and Frequency with the same preview table, plus Edit and Delete buttons. Saving a price now opens its view page.
+*Connected change.* Nothing is saved from the preview. No extra price records are created, and quotations and orders still use only the price that was set.
+*Be aware.* The conversion assumes 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months and 1 year = 12 months (360 days), rounded to 2 decimals. A note under the table says this, explains that figures can differ by a few fils (AED 14 monthly is AED 0.47 daily, but 0.47 × 30 = AED 14.10), and states that the table is a preview only and actual invoices follow the rental dates on the order.
+
+### 1 Oct, 5:30 PM: Product Classification removed from the Heavy Equipment Fixed Asset form, and Rental removed from the standard item form
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Heavy Equipment Fixed Asset form let the user pick any Product Classification (Inventory, Rental, AMC, Fuel Trading, Trading), but depreciation applied whatever was picked. Heavy equipment in this form is always rental fleet, so picking Trading or AMC made no sense and still produced a depreciating asset. The standard Add Item form, for its part, still offered Rental, so a rental generator could be created a second time as an ordinary item.
+*What we did.* The Heavy Equipment Fixed Asset form no longer shows the Product Classification field. Every record saved from it is classified as Rental automatically. On the standard Add Item form, the Product Classification dropdown no longer offers Rental, and a hint under it says rental equipment is added as a Heavy Equipment Fixed Asset.
+*Connected change.* The Heavy Equipment Fixed Asset details page still shows "Product Classification: Rental" as a read-only value. Existing standard items that are already classified as Rental (Diesel Generator 100 KVA, Diesel Generator 500 KVA and Power Cable 4C x 185 mm) keep that value and still show it when edited; only new choices are limited.
+*Be aware.* Equipment kept for sale (Trading) is added on the standard item form, not the heavy equipment form. Whether the three existing Rental items should stay as ordinary items is to be confirmed with client.
+
+### 1 Oct, 3:00 PM: The Heavy Equipment Fixed Asset form no longer asks for a name, item code, asset ID or tracking method
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** NEW
+
+*The problem.* The form started with four fields that did not need the user: Item Code and Asset ID were read-only numbers the system generates anyway, Tracking Method was fixed to "Serialized" because heavy equipment is always serialized, and Name asked the user to type a name for something that is already described by its category, sub-category, brand and model. They made the form longer without adding information.
+*What we did.* Removed all four fields from the form. The system still generates the unique ID behind the scenes. The record's display name is now built automatically from Category, Sub-Category, Brand and Model (for example "Generator 500 KVA Cummins C500D5"). When an existing record is edited, it keeps its current name unless one of those four values changes.
+*Connected change.* Everything that shows an asset's name (movement history, stock counts, disposal requests, usage readings) keeps working because the name still exists on the record, it is just no longer typed in.
+*Be aware.* The details page still shows a read-only "Tracking Method: Serialized" line. Only the form was changed.
+
+### 1 Oct, 3:00 PM: Heavy equipment is now identified by a Serialized ID on the listing and the details page
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** NEW
+
+*Why.* With the item code and asset ID gone from the form, a reviewer still needs a way to tell two units of the same model apart and to quote one unit. The unique ID the system generates for each physical unit is now shown as the **Serialized ID**.
+*What we did.* The Heavy Equipment Fixed Asset listing has a new first column, **Serialized ID**, and the details page shows it in place of the old Item Code. It is the same unique number the rest of the POC uses for that unit (for example in stock counts and disposal requests), so nothing needs to be re-linked.
+
+### 1 Oct, 3:00 PM: Item categories now have a Category Type: Normal or Heavy Equipment
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The category list was one mixed list. The Heavy Equipment Fixed Asset form offered categories like Spare Part, Consumable and Fuel, and the standard item form offered Generator and Vehicle, even though each form is meant for one kind of thing.
+*What we did on the Item Category screen.* Added a **Category Type** dropdown (Normal or Heavy Equipment), in the same style as the Count Type dropdown on the stock count. It is required on a top-level category. A sub-category always follows its parent's type, so the dropdown is locked for it, and changing a parent's type updates its sub-categories. The list has a new Category Type column and a filter, and the details page shows the type. As a starting point, Generator, Vehicle, POD, Spare Engine, Trolley and Day Tank are Heavy Equipment, and everything else is Normal.
+*What we did on the Items forms.* The Heavy Equipment Fixed Asset form now offers only Heavy Equipment categories, and the standard Add Item form offers only Normal categories. An existing record whose category is not in its form's list still shows that category when it is opened, so nothing looks blank.
+*Be aware.* The requirement document does not mention a category type, so the dropdown carries a note: rule to be confirmed with client. Because Generator is now a Heavy Equipment category, a new standard item (for example an Inventory Fixed Asset) can no longer be created under it. Heavy Equipment Pricing was not changed, since it also prices rental cables and panels, so it still lists every category.
+
+### 1 Oct, 1:13 PM: Every difference in a count now needs a reason
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Type:** NEW
+
+*The problem.* When a count found a difference, the screen recorded the numbers but not why they differed. An approver could not tell a real loss from a recording mistake. A single reason for the whole session would not have helped either, because one count can contain differences with different causes (one item lost, another simply miscounted).
+*What we did.* The reason is recorded **per line with a difference**, in both kinds of count.
+- **Stock Items counts:** a **Reason** dropdown appears on any line where the counted quantity differs from the system quantity, and stays empty ("-") on matching lines. The choices are Lost or stolen, Damaged, Miscount or recount needed, Unposted delivery or movement, and Other.
+- **Fixed Assets counts:** a Reason dropdown appears on any unit that is Not Found or Found elsewhere. The two cases have their own lists, because the causes differ. Not Found: Lost or stolen, Sent out and not recorded, Recording error, Other. Found elsewhere: Moved without being recorded, Wrong location recorded, Other. Changing a unit's result clears its reason so an old reason cannot stay attached to a new result.
+- **Required to complete.** A count cannot be completed while any line with a difference has no reason, and the screen tells the counter exactly that.
+- The view page shows the reason beside each difference, and the sample counts all have reasons filled in.
+*Be aware.* The requirement document does not define reasons at all, so the lists above are our proposal. The screen says so with a visible note ("reason list to be confirmed with client"). The reason is a label for the approver and the report. It does not change how stock or assets are corrected on approval, and it does not post anything to accounting.
+
+### 1 Oct, 1:13 PM: The variance report shows the reason for each difference
+**Where:** Inventory & Fixed Assets > Reports > Physical Stock Variance Report
+**Type:** NEW
+
+The Physical Stock Variance Report has a new **Reason** column next to Variance, for both stock differences and fixed asset differences, so anyone reading the report can see why each difference happened as well as how big it was. It reads the same live counts as the Stock Count screens.
+
+### 1 Oct, 1:00 PM: The detailed changelog can be filtered by module, side menu and change type
+**Where:** POC Review Tools > Change Register > Detailed changelog
+**Type:** NEW
+
+*The problem.* The changelog was one long document. To find out what changed on a particular screen you had to read all of it.
+*What we did.* The detailed changelog page now has the same pill filters as the Change Register, plus one more level. You pick a **module**, then (for that module) a **side menu group** and, where the group has several screens, the **screen**, and finally a **change type** (NEW, EXISTING WITH CHANGE and so on). Each pill shows how many entries it holds. Every entry shows where it happened as clickable chips that open that screen in the POC.
+*How it works.* Each entry in this file carries a **Where** and **Type** line (see the top of this file). The page reads those lines, so adding a new entry with those two lines makes it appear in the filters automatically.
+*Be aware.* Only the Inventory & Fixed Assets module has been built so far. The other modules still show only a placeholder dashboard, so their filters show zero entries.
+
+### 1 Oct, 12:56 PM: The detailed changelog can be read from inside the POC
+**Where:** POC Review Tools > Change Register > Detailed changelog
+**Type:** NEW
+
+*The problem.* The Change Register shows a short table of what is new or changed, but the full story of what changed and why only lived in the `CHANGELOG.md` file, which reviewers could not open from the POC.
+*What we did.* Added a **View detailed changelog** button at the top right of the Change Register. It opens a new reading page (`#/change-register/changelog`) that shows the whole changelog as a formatted document, with a link back to the Change Register. The page reads `CHANGELOG.md` directly, so whenever we add an entry to the file and redeploy, the page shows it.
+*Be aware.* The POC cannot add outside libraries, so the page uses a small built-in formatter that handles what the changelog uses (headings, paragraphs, bold, italic, code and bullet lists). If we start using tables or images in the changelog, the formatter will need extending.
+
+### 1 Oct, 12:44 PM: A count now compares against what that location actually holds
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Type:** NEW
+
+*The problem.* Every item had one stock number shared by the whole company. Counting Oil Filters at Jebel Ali showed 14, and counting them at Sharjah also showed 14. Worse, approving a correction at one yard overwrote the single number, which silently changed the figure for every other yard.
+*What we did on the count screen.* Each item now has a stock quantity per location (for example Oil Filter: Jebel Ali 14, Sharjah 6, Abu Dhabi Mussafah 4, total 24). The Start Count form loads the quantities for the chosen location only, so Jebel Ali, Sharjah and the fuel depot each show their own figures. When a stock adjustment is approved, only that location's quantity is set to the counted figure. The item's total then moves by the same difference, so the total and the locations always agree.
+*Be aware.* Items with a system quantity of zero at a location are still not listed for counting. The matching change on the Items screen is logged in the next entry.
+
+### 1 Oct, 12:44 PM: Item stock is now shown per location
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*Why.* The count screen now works location by location (see the entry above), so the item's own page needed to show the same numbers, otherwise a reviewer could not see where the stock really sits.
+*What we did.* The item's view page (Inventory tab) now has a **Location wise stock** table under the total, and the total is labelled "Stock on Hand (all locations)". The existing ERP already shows stock by location on item pages, so this is not a new idea, it just makes the new numbers visible.
+*Be aware.* The total is now the sum of the locations, so some totals look larger than before (Oil Filter went from 14 to 24). Jebel Ali keeps the old figures, so the earlier sample counts still line up.
+
+### 1 Oct, 12:44 PM: A count can now record who confirmed it
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Type:** NEW
+
+*The problem.* The form only had "Counted By", the person who did the counting. The requirement document's role table says the Fleet / Asset Manager confirms physical stock counts, which is a separate step: the counter reports the numbers and a manager accepts them as valid.
+*What we did.* Added a **Confirmed By** field on the Start Count Session form. It is required to complete the count, and it shows on the count's view page next to Counted By. The sample counts have a confirmer filled in.
+*Be aware.* The document does not spell out exactly how confirmation works, so the field carries a visible note: "exact rule to be confirmed with client". It is a simple field for now, not a separate approval step.
+
+### 1 Oct, 12:44 PM: The Physical Stock Variance Report now reflects real activity
+**Where:** Inventory & Fixed Assets > Reports > Physical Stock Variance Report
+**Type:** NEW
+
+*The problem.* The report was built from fixed sample data, so creating, approving or rejecting a count changed nothing in it.
+*What we did.* The report now reads the same list of counts that the Stock Count screens use, each time it is opened. A count you complete, approve or reject appears in the report straight away, with the right status. If the Stock Count screens have not been opened yet, it shows the sample counts.
+*How we checked.* Replacing the list of counts in a test changes the report's rows.
+
+### 1 Oct, 12:12 PM: Heavy equipment can now be counted, unit by unit
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Reports > Physical Stock Variance Report
+**Type:** NEW
+
+*The problem.* The count could only handle stock quantities (for example 14 oil filters). Heavy equipment was left out completely, because each generator or truck is a single, individually tracked asset. Saying "we have 6 of them" is not useful when every unit has its own record, status and history. So none of the fleet was ever being verified.
+
+*What we did on the count screen.* The start form now has a **Count Type** choice: Stock Items or Fixed Assets. When you choose Fixed Assets and a location, the screen lists the units that the system expects to be at that location. "Expected" means the latest entry in the unit's Movement History says it is there. Units out on hire at a client are not listed, because they are not supposed to be in the yard, and units already disposed of are not listed either.
+
+For each unit the counter picks one of three results:
+- **Found**: it is where the system says it is.
+- **Not Found**: it is not there.
+- **Found elsewhere**: it is somewhere else, and the counter says where.
+
+The count cannot be completed until every unit has a result, and a "Found elsewhere" unit must have the place it was found. The sessions list has a new Count Type column, and the Items Covered and Lines with Variance columns count assets for asset counts. A sample asset count (`SCS-26-00005`, Jebel Ali Main Yard, one unit found elsewhere, one not found, waiting for approval) shows the approval.
+
+*What happens on the Items screen after approval.* This is where the count connects to the heavy equipment records:
+- A **Found elsewhere** unit gets a new correcting entry in its **Movement History** (an Internal Transfer from the counted location to where it was found, pointing back to the count session). The asset's Current Location then updates by itself, because the location is always read from the latest movement. The old entries are never edited, only added to.
+- A **Not Found** unit only gets a note in its audit trail saying it was missing in the count and needs follow-up. Its **Asset Status is not changed**. The requirement document says the system must never dispose of an asset by itself, and a disposal needs its own approved request, so a missing asset must go through a Disposal Request before it can be marked Disposed.
+- A **rejected** count changes nothing on any asset.
+- **Safety check.** If a unit has moved since the count was done (for example it was delivered to a client in the meantime), approving the count skips that unit instead of overwriting its newer history. The approval history says how many units were skipped.
+
+*What we did on the report.* The Physical Stock Variance Report now includes asset counts: a unit that was not at the counted place shows as system 1, counted 0, variance minus 1, with where it was found if known.
+
+*Be aware.* The requirement document does not define how individual assets are counted. This is our reading of it, and the screen says so with a visible note ("Rule to be confirmed with client"). Things deliberately left out: adding an unexpected asset found during a count, a "Lost" or "Missing" asset status, a "Lost" reason on disposal requests, and automatically raising a Disposal Request.
+
+### 1 Oct, around 12:00 PM: The count now has the approval steps the rest of the POC already has
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Reports > Physical Stock Variance Report
+**Type:** NEW
+
+*The problem.* When a count found a difference, a Stock Adjustment could be raised, but it only had an Approve button. The requirement document says the adjustment must follow "the same approval framework used elsewhere" and that the system quantity must never be silently overwritten. The Asset Disposal Request screen in this POC already works that way, with Approve, Reject and a history of who did what.
+
+*What we did on the count screen.*
+- Added a **Reject** button, with a confirmation, next to Approve. Rejecting leaves the system quantity untouched.
+- Added an **Approval History** panel showing, in order, when the adjustment was raised and who approved or rejected it.
+- Added a **Rejected** status. It shows in red in the sessions list, using the colours the POC already uses for rejected items.
+- Added a short on-screen note saying that what happens to a rejected difference (for example whether it can be raised again) still needs to be confirmed with the client. Today a rejected adjustment cannot be raised again.
+- The requirement document says a count is a header record that is auto-generated and covers a date, a location and the items covered. The start form now shows a read-only **Stock Count Session** field ("Auto-generated", then the real number once saved) and an **Items Covered** field. The view page also shows Items Covered.
+- To make every state visible we added a rejected sample count (`SCS-26-00004`, Sharjah Yard) and approval history to the two existing sample counts.
+
+*What we did on the report.* The Adjustment Status column of the Physical Stock Variance Report shows the new Rejected state.
+
+### 1 Oct, 11:39 AM: Item type renamed to "Heavy Equipment Fixed Asset"
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** NEW
+
+On the 30 September call Ajin made it clear that this is the fixed asset form brought across from accounting, not a general "heavy equipment" item. The item type was called "Heavy Equipment"; it is now called **Heavy Equipment Fixed Asset** everywhere users can see it: the type chip and filter on the Items list, the Add button, the page headings, messages, and the small requirement badges used in review mode. Internal links and storage names were left as they were, so nothing broke.
+
+### 1 Oct, 11:39 AM: "Pricing Master" renamed to "Heavy Equipment Pricing"
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** NEW
+
+Following the 30 September call, where Ajin called it "Heavy equipment pricing", the screen is now named that way in the sidebar, the page title, the add and edit headings and the change register.
+*Be aware.* It is still a sidebar item. Ajin talked about it living in the Items type dropdown instead. That has not been changed and is an open point.
+
+### Open points for Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Type:** NEW
+
+Not yet decided or built: listing items whose system quantity at a location is zero. The reason lists also still need the client's confirmation.

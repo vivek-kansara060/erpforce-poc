@@ -15,8 +15,8 @@ import { getCollection, useCollection } from '@/store/store';
 import { suppliers } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, PRODUCT_CLASSIFICATIONS, TODAY,
-  attributesFor, buildBoard, categorySeed, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf, subCategoriesOf, topCategories,
+  ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
+  attributesFor, buildBoard, categoryOptions, categorySeed, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf, subCategoriesOf, topCategories,
   type AuditEntry, type BoardRow, type DisposalRec, type CategoryRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
@@ -92,7 +92,7 @@ const blank: Record<string, any> = {
   method: 'Straight line', decliningFactor: '', computation: 'Constant periods', usefulLifeYears: '', usefulLifeHours: '', accFixedAsset: '', accDepreciation: '', accExpense: '', journal: ACCOUNTS.journals[0],
   ownership: 'Owned', supplier: '', crossHireIdle: false, insurance: [],
 };
-const BASIC_KEYS = ['name', 'classification', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'assetStatus', 'putToUseDate', 'notDepreciable'];
+const BASIC_KEYS = ['name', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'assetStatus', 'putToUseDate', 'notDepreciable'];
 const DEP_KEYS = ['method', 'decliningFactor', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense'];
 const TRACKED: [string, string][] = [['name', 'Name'], ['assetStatus', 'Asset Status'], ['ownership', 'Ownership Type'], ['assetValue', 'Asset Value'], ['nbv', 'Current Net Book Value'], ['usefulLifeYears', 'Useful Life (Years)'], ['method', 'Depreciation Method'], ['department', 'Department']];
 
@@ -125,10 +125,10 @@ export function HeavyForm() {
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
   const validate = (): Errors => {
-    const req = ['name', 'classification', 'category', 'assetType', 'assetStatus', 'ownership'];
+    const req = ['category', 'assetType', 'assetStatus', 'ownership'];
     if (!existing) req.push('initialLocation');
     if (dep) req.push('method', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense');
-    const e = requireFields(f, req, { classification: 'Product Classification', assetType: 'Asset Type', assetStatus: 'Asset Status', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
+    const e = requireFields(f, req, { assetType: 'Asset Type', assetStatus: 'Asset Status', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
     Object.assign(e, validateSerialized(f, !dep), validateAttrs(attrDefs, f.attrs));
     if (f.assetStatus === 'Disposed' && existing?.assetStatus !== 'Disposed' && !getCollection<DisposalRec>('inventory.disposals').some((d) => d.assetId === assetId && d.status === 'Approved')) e.assetStatus = 'Disposed requires an Approved Disposal Request';
     if (dep && !e.usefulLifeYears && num(f.usefulLifeYears) <= 0) e.usefulLifeYears = 'Useful Life must be greater than 0';
@@ -156,28 +156,26 @@ export function HeavyForm() {
     const audit: AuditEntry[] = existing
       ? changed.length ? [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Record updated', detail: changed.join('; '), by: 'Current User' }, ...existing.audit] : existing.audit
       : [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset record created', detail: `Asset ID ${assetId} generated`, by: 'Current User' }];
+    // No name is typed in: the display name is built from Category, Sub-Category, Brand and Model (an existing record keeps its name unless one of those changes).
+    const unchanged = !!existing && existing.category === f.category && existing.subCategory === f.subCategory && existing.brand === f.brand && existing.model === f.model;
+    const displayName = unchanged ? existing!.name : [f.category, f.subCategory, f.brand, f.model].filter(Boolean).join(' ');
     const rec: HeavyRec = {
-      id: existing?.id ?? `he${Date.now()}`, code, assetId, name: f.name, classification: f.classification, tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
+      id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: 'Rental', tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
       specification: f.specification, assetType: f.assetType, purchaseDate: f.purchaseDate, putToUseDate: f.putToUseDate, assetValue: n('assetValue') || 0, notDepreciable: n('notDepreciable') || 0, nbv: n('nbv') || 0, deprPct: n('deprPct') || 0, deprAmount: n('deprAmount') || 0, capex: n('capex') || 0,
       department: f.department, company: COMPANY, status: f.status, assetStatus: f.assetStatus, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
       accFixedAsset: f.accFixedAsset, accDepreciation: f.accDepreciation, accExpense: f.accExpense, journal: f.journal, ownership: f.ownership, supplier: f.ownership === 'Cross-Hired' ? f.supplier : '', crossHireIdle: f.ownership === 'Cross-Hired' && !!f.crossHireIdle,
       insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
     if (existing) heavy.update(existing.id, rec); else heavy.add(rec);
-    toast(existing ? 'Heavy equipment updated' : 'Heavy equipment created');
+    toast(existing ? 'Heavy equipment fixed asset updated' : 'Heavy equipment fixed asset created');
     nav(`${HEAVY_PATH}/${rec.id}`);
   };
 
   const basic = (
     <>
       <FormGrid>
-        <TextInput label="Item Code" change="new" req={REQ_ITEM_CODE} value={code} disabled hint="Auto-generated" />
-        <TextInput label="Asset ID" change="new" req={REQ_FA} value={assetId} disabled hint="Auto-generated, unique per physical unit" />
-        <TextInput label="Name" required change="new" req={REQ_HE} value={f.name} onChange={set('name')} error={errors.name} />
-        <SelectInput label="Product Classification" required change="new" req={REQ_HE} value={f.classification} options={[...PRODUCT_CLASSIFICATIONS]} onChange={set('classification')} error={errors.classification} />
-        <TextInput label="Tracking Method" change="new" req={REQ_HE} value="Serialized (Unique Asset ID)" disabled hint="Heavy Equipment is always serialized" />
         <SelectInput label="Asset Type" required change="new" req={REQ_FA} value={f.assetType} options={ASSET_TYPES} onChange={set('assetType')} error={errors.assetType} />
-        <SelectInput label="Category" required change="new" req={REQ_HE} value={f.category} options={topCategories(cats.rows)} error={errors.category}
+        <SelectInput label="Category" required change="new" req={REQ_HE} value={f.category} options={categoryOptions(cats.rows, 'Heavy Equipment', f.category)} error={errors.category}
           onChange={(v) => upd({ category: v, subCategory: '', attrs: {}, ...(cats.rows.find((c) => c.level === 1 && c.name === v)?.depMethod ? { method: cats.rows.find((c) => c.level === 1 && c.name === v)!.depMethod } : {}) })} />
         <SelectInput label="Sub-Category" change="new" req={REQ_HE} value={f.subCategory} options={subs} disabled={!f.category || subs.length === 0} hint="Optional, depends on Category" onChange={(v) => upd({ subCategory: v, attrs: {} })} />
         <TextInput label="Specification" change="new" req={REQ_FA} value={f.specification} onChange={set('specification')} multiline rows={2} full />
@@ -272,7 +270,7 @@ export function HeavyForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment' }]}
+        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment Fixed Asset' }]}
         actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -297,7 +295,7 @@ export function MovementForm() {
   const r = heavy.get(id);
   const [f, setF] = useState({ type: '', from: r ? currentLocation(r) : '', to: '', date: NOW, reference: '' });
   const [errors, setErrors] = useState<Errors>({});
-  if (!r) return <Page><PageTitle title="Heavy equipment not found" /></Page>;
+  if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" /></Page>;
   const set = (k: string) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const latest = [...r.movements].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0]?.date ?? '';
   const entryNo = nextMovementNo(r.movements.length + 100 + heavy.rows.length * 10);
@@ -344,7 +342,7 @@ export function HeavyView() {
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const r = heavy.get(id);
   const board = useMemo(() => (r ? buildBoard({ start: r.putToUseDate || r.purchaseDate, assetValue: r.assetValue, notDepreciable: r.notDepreciable, months: r.usefulLifeYears * 12, method: r.method, factor: r.decliningFactor }) : []), [r]);
-  if (!r) return <Page><PageTitle title="Heavy equipment not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
+  if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
   const dep = depreciationApplicable(r.ownership);
@@ -367,7 +365,7 @@ export function HeavyView() {
           <Box sx={{ flex: 1 }}>
             <Text type="h3" weight="medium" sx={{ mb: 2 }}>{r.name}</Text>
             <ValueGrid cols={4}>
-              <ValueField label="Item Code" value={r.code} change="new" req={REQ_ITEM_CODE} />
+              <ValueField label="Serialized ID" value={r.assetId} change="new" req={REQ_FA} />
               <ValueField label="Product Classification" value={r.classification} change="new" req={REQ_HE} />
               <ValueField label="Tracking Method" value="Serialized (Unique Asset ID)" change="new" req={REQ_HE} />
               <ValueField label="Asset Type" value={r.assetType} change="new" req={REQ_FA} />

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Button, Checkbox, FormControlLabel, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { ConfirmDialog, useToast } from '@/components/Dialogs';
@@ -11,11 +12,12 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { ATTRIBUTE_TYPES, BRANDS, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type PricingRec } from './data';
+import { ATTRIBUTE_TYPES, BRANDS, CATEGORY_TYPES, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, categoryTypeOf, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type CategoryType, type PricingRec } from './data';
 import { aed, isBlank, type Errors } from './shared';
 
-const REQ_PRICING = 'Pricing Master > Category / Sub-Category Pricing';
+const REQ_PRICING = 'Heavy Equipment Pricing > Category / Sub-Category Pricing';
 const REQ_CAT = 'Category & Sub-Category Master';
+const REQ_CAT_TYPE = 'Category & Sub-Category Master > Category Type (Normal / Heavy Equipment)';
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 
 /* ------------------------------------------------------------------ Item Category list (existing columns and actions) */
@@ -28,11 +30,12 @@ export function CategoryList() {
     <Page>
       <PageTitle title="Item Category" />
       <DataTable<CategoryRec>
-        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12}
+        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12} filter={{ key: 'categoryType', options: [...CATEGORY_TYPES] }}
         onAdd={() => nav('/inventory/categories/add')} addLabel="Add Category" onRowClick={(r) => nav(`/inventory/categories/${r.id}`)}
         columns={[
           { key: 'name', label: 'Category Name' },
           { key: 'parent', label: 'Parent' },
+          { key: 'categoryType', label: 'Category Type', change: 'new', req: REQ_CAT_TYPE, render: (r) => categoryTypeOf(r) },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
           { key: 'level', label: 'Level', align: 'right' },
           { key: 'sub', label: 'Sub Categories', sortable: false, align: 'right', render: (r) => (r.level === 1 ? cats.rows.filter((c) => c.parent === r.name).length : 0) },
@@ -57,12 +60,16 @@ export function CategoryForm() {
   const cats = useCats();
   const existing = id ? cats.get(id) : undefined;
   const [f, setF] = useState(() => ({
+    categoryType: (existing ? categoryTypeOf(existing) : 'Normal') as string,
     parent: existing && existing.parent !== '-' ? existing.parent : '', name: existing?.name ?? '', brand: existing?.brand ?? '', description: existing?.description ?? '', skuPrefix: existing?.skuPrefix ?? '',
     uniqueItems: String(existing?.uniqueItems ?? 1), active: existing ? existing.status === 'Active' : true, depMethod: existing?.depMethod ?? '', attributes: existing?.attributes ?? ([] as AttributeDef[]),
   }));
   const [errors, setErrors] = useState<Errors>({});
   const set = <K extends keyof typeof f>(k: K) => (v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
   const level = f.parent ? 2 : 1;
+  // A sub-category always follows its parent category's type.
+  const parentRec = cats.rows.find((c) => c.level === 1 && c.name === f.parent);
+  const effectiveType = (parentRec ? categoryTypeOf(parentRec) : f.categoryType) as CategoryType;
   const skuPreview = f.skuPrefix && Number.isInteger(Number(f.uniqueItems || 1)) ? `${f.skuPrefix}-${String(Number(f.uniqueItems || 1)).padStart(5, '0')}` : '-';
   const setAttr = (i: number, p: Partial<AttributeDef>) => set('attributes')(f.attributes.map((a, n) => (n === i ? { ...a, ...p } : a)));
 
@@ -74,9 +81,9 @@ export function CategoryForm() {
     else if (f.attributes.some((a) => a.type === 'Picklist' && !a.options.trim())) e.attributes = 'Picklist attributes need at least one value';
     setErrors(e);
     if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', level, status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
+    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', level, categoryType: effectiveType, status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
     if (existing) {
-      cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : c.parent === existing.name ? { ...c, parent: rec.name } : c)));
+      cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : c.parent === existing.name ? { ...c, parent: rec.name, categoryType: rec.categoryType } : c)));
     } else cats.add(rec);
     toast(existing ? 'Category updated' : 'Category created');
     nav('/inventory/categories');
@@ -93,6 +100,8 @@ export function CategoryForm() {
           <FormGrid>
             <SelectInput label="Parent Category" value={f.parent} options={topCategories(cats.rows).filter((c) => c !== existing?.name)} onChange={set('parent')} hint="Leave empty for a top-level category, select one to create a Sub-Category" />
             <TextInput label="Level" value={String(level)} disabled />
+            <SelectInput label="Category Type" required change="new" req={REQ_CAT_TYPE} value={effectiveType} options={[...CATEGORY_TYPES]} disabled={!!f.parent} onChange={set('categoryType')}
+              hint={f.parent ? 'A sub-category follows its parent category' : 'Heavy Equipment categories are offered in the Heavy Equipment Fixed Asset form, Normal categories in the standard Item form. Rule to be confirmed with client'} />
             <TextInput label="Category Name" required value={f.name} onChange={set('name')} error={errors.name} />
             <SelectInput label="Brand" value={f.brand} options={BRANDS} onChange={set('brand')} />
             <TextInput label="Description" value={f.description} onChange={set('description')} full multiline rows={2} />
@@ -146,6 +155,7 @@ export function CategoryView() {
         <ValueGrid cols={4}>
           <ValueField label="Parent Category" value={r.parent === '-' ? undefined : r.parent} />
           <ValueField label="Level" value={String(r.level)} />
+          <ValueField label="Category Type" value={categoryTypeOf(r)} change="new" req={REQ_CAT_TYPE} />
           <ValueField label="Category Name" value={r.name} />
           <ValueField label="Brand" value={r.brand} />
           <ValueField label="Description" value={r.description} />
@@ -170,7 +180,52 @@ export function CategoryView() {
   );
 }
 
-/* ------------------------------------------------------------------ Pricing Master (new) */
+/* ------------------------------------------------------------------ Heavy Equipment Pricing (new) */
+const REQ_PREVIEW = 'Heavy Equipment Pricing > Billing Frequency Preview (POC review aid)';
+/** Days each billing frequency stands for in the preview: 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months, 1 year = 12 months. */
+const FREQ_DAYS: Record<string, number> = { Daily: 1, Weekly: 7, Monthly: 30, Quarterly: 90, Yearly: 360 };
+const fmtN = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** How a frequency's price is derived from the set price, in words (e.g. "600 × 7 days", "18,000 ÷ 30 days"). */
+function howDerived(price: number, from: number, to: number) {
+  if (from === to) return 'Price you entered';
+  if (to % from === 0) return `${fmtN(price)} × ${to / from}${from === 1 ? ' days' : ''}`;
+  if (from % to === 0) return `${fmtN(price)} ÷ ${from / to}${to === 1 ? ' days' : ''}`;
+  return `${fmtN(price)} ÷ ${from} days × ${to} days`;
+}
+
+/** Read-only preview of the set price converted into every billing frequency. Nothing here is saved. */
+function FrequencyPreview({ price, frequency }: { price: number; frequency: string }) {
+  const from = FREQ_DAYS[frequency];
+  const ready = !!from && price > 0;
+  const rows = FREQUENCIES.map((fq) => ({ id: fq, frequency: fq, price: ready ? round2((price / from) * FREQ_DAYS[fq]) : 0, how: ready ? howDerived(price, from, FREQ_DAYS[fq]) : '', set: fq === frequency }));
+  return (
+    <Panel title="Billing Frequency Preview" change="new" req={REQ_PREVIEW} sx={{ mt: 3 }}>
+      {!ready ? <Text type="s5" color="theme.secondary.700">Enter a price and select a frequency to see the preview.</Text> : (
+        <>
+          <DataTable<(typeof rows)[number]> rows={rows} hideToolbar columns={[
+            { key: 'frequency', label: 'Frequency', render: (r) => <Text type="s4" weight={r.set ? 'medium' : undefined}>{r.frequency}{r.set ? ' (set)' : ''}</Text> },
+            { key: 'price', label: 'Price', align: 'right', render: (r) => <Text type="s4" weight={r.set ? 'medium' : undefined}>{aed(r.price)}</Text> },
+            { key: 'how', label: 'How it is worked out', render: (r) => r.how },
+          ]} />
+          <Box sx={{ mt: 1.5, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+            <InfoOutlinedIcon sx={{ fontSize: 18, mt: '2px', color: 'text.secondary' }} />
+            <Box>
+              <Text type="s5" color="theme.secondary.700">Preview only. Actual invoices follow the rental dates on the order.</Text>
+              <Text type="s5" color="theme.secondary.700">
+                Converted using 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months and 1 year = 12 months (360 days), and rounded to 2 decimals.
+                Because of this, figures can differ by a few fils from what you get by multiplying a rounded figure back (for example AED 14 monthly is AED 0.47 daily, but 0.47 × 30 = AED 14.10).
+                Real calendar months (28 to 31 days) and years (365 days) are not reflected here.
+              </Text>
+            </Box>
+          </Box>
+        </>
+      )}
+    </Panel>
+  );
+}
+
 export function PricingList() {
   const nav = useNavigate();
   const toast = useToast();
@@ -178,10 +233,10 @@ export function PricingList() {
   const [del, setDel] = useState<PricingRec | null>(null);
   return (
     <Page>
-      <PageTitle title="Pricing Master" change="new" req={REQ_PRICING} />
+      <PageTitle title="Heavy Equipment Pricing" change="new" req={REQ_PRICING} />
       <DataTable<PricingRec>
         rows={pricing.rows} searchPlaceholder="Search pricing..."
-        onAdd={() => nav('/inventory/pricing/add')} addLabel="Add Price" onRowClick={(r) => nav(`/inventory/pricing/${r.id}/edit`)}
+        onAdd={() => nav('/inventory/pricing/add')} addLabel="Add Price" onRowClick={(r) => nav(`/inventory/pricing/${r.id}`)}
         columns={[
           { key: 'category', label: 'Category' },
           { key: 'subCategory', label: 'Sub-Category' },
@@ -216,12 +271,12 @@ export function PricingForm() {
     const rec: PricingRec = { id: existing?.id ?? `pr${Date.now()}`, category: f.category, subCategory: f.subCategory, price: Number(f.price), frequency: f.frequency };
     if (existing) pricing.update(rec.id, rec); else pricing.add(rec);
     toast(existing ? 'Price updated' : 'Price added');
-    nav('/inventory/pricing');
+    nav(`/inventory/pricing/${rec.id}`);
   };
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Pricing Master', to: '/inventory/pricing' }, { label: existing ? 'Edit Price' : 'Add Price' }]}
+        crumbs={[{ label: 'Heavy Equipment Pricing', to: '/inventory/pricing' }, { label: existing ? 'Edit Price' : 'Add Price' }]}
         actions={<><Button variant="outlined" onClick={() => nav('/inventory/pricing')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -232,8 +287,41 @@ export function PricingForm() {
             <NumberInput label="Price (AED)" required change="new" req={REQ_PRICING} value={f.price} onChange={(v) => setF({ ...f, price: v })} error={err.price} />
             <SelectInput label="Frequency" required change="new" req={REQ_PRICING} value={f.frequency} options={FREQUENCIES} onChange={(v) => setF({ ...f, frequency: v })} error={err.frequency} />
           </FormGrid>
+          <FrequencyPreview price={Number(f.price) || 0} frequency={f.frequency} />
         </Box>
       </Page>
+    </>
+  );
+}
+
+export function PricingView() {
+  const { id } = useParams();
+  const nav = useNavigate();
+  const toast = useToast();
+  const pricing = useCollection<PricingRec>('inventory.pricing', pricingSeed);
+  const r = pricing.get(id);
+  const [del, setDel] = useState(false);
+  if (!r) return <Page><PageTitle title="Price not found" right={<Button variant="outlined" onClick={() => nav('/inventory/pricing')}>Back to Heavy Equipment Pricing</Button>} /></Page>;
+  const label = `${r.category}${r.subCategory ? ` / ${r.subCategory}` : ''}`;
+  return (
+    <>
+      <FormHeader
+        crumbs={[{ label: 'Heavy Equipment Pricing', to: '/inventory/pricing' }, { label: `${label} (${r.frequency})` }]}
+        actions={<><Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button><Button variant="contained" onClick={() => nav(`/inventory/pricing/${r.id}/edit`)}>Edit</Button></>}
+      />
+      <Page sx={{ pt: 2 }}>
+        <Box sx={{ maxWidth: 1100 }}>
+          <ValueGrid cols={4}>
+            <ValueField label="Category" value={r.category} change="new" req={REQ_PRICING} />
+            <ValueField label="Sub-Category" value={r.subCategory || undefined} change="new" req={REQ_PRICING} />
+            <ValueField label="Price" value={aed(r.price)} change="new" req={REQ_PRICING} />
+            <ValueField label="Frequency" value={r.frequency} change="new" req={REQ_PRICING} />
+          </ValueGrid>
+          <FrequencyPreview price={r.price} frequency={r.frequency} />
+        </Box>
+      </Page>
+      <ConfirmDialog open={del} danger title="Delete price" description={`Delete the ${r.frequency} price for ${label}?`} confirmLabel="Delete" onClose={() => setDel(false)}
+        onConfirm={() => { pricing.remove(r.id); toast('Price deleted'); nav('/inventory/pricing'); }} />
     </>
   );
 }

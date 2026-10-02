@@ -8,7 +8,7 @@ import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 
 export const REQ_ITEM = 'Item Master > New Fields';
-export const REQ_HE = 'Product Management > Heavy Equipment';
+export const REQ_HE = 'Product Management > Heavy Equipment Fixed Asset';
 
 export type Errors = Record<string, string>;
 export const REQUIRED_MSG = 'This field is required';

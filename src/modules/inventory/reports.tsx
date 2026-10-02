@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import type { DashboardDef, ReportDef } from '@/components/ReportsAndDashboards';
 import { fmtAED } from '@/mock-data/masters';
-import { READING_FREQUENCY_DAYS, TODAY, certSeed, countSeed, currentLocation, depreciationApplicable, disposalSeed, heavySeed, inFleetCount, movementDurations, readingSeed, stockStatusOf, type HeavyRec } from './data';
+import { READING_FREQUENCY_DAYS, TODAY, certSeed, countVarianceRows, currentLocation, depreciationApplicable, disposalSeed, heavySeed, inFleetCount, movementDurations, readingSeed, stockStatusOf, type HeavyRec } from './data';
 import { certStatus } from './AssetPages';
 
 const REQ = 'Inventory & Fixed Assets > ';
@@ -64,8 +64,9 @@ export const reports: ReportDef[] = [
     columns: [{ key: 'location', label: 'Location' }, { key: 'type', label: 'Location Type' }, { key: 'supplier', label: 'Linked Supplier' }, { key: 'held', label: 'Stock Held', align: 'right' }, { key: 'consumed', label: 'Consumed', align: 'right' }, { key: 'value', label: 'Remaining Value', align: 'right' }],
     rows: stockRows.map((r) => ({ ...r, held: r.held.toLocaleString('en-US'), consumed: r.consumed.toLocaleString('en-US'), value: fmtAED(r.value) })) },
   { slug: 'physical-stock-variance', title: 'Physical Stock Variance Report', purpose: 'Results of physical count sessions against system quantity, with resulting adjustments.', group: 'Stock', change: 'new', req: REQ + 'Reports',
-    columns: [{ key: 'session', label: 'Stock Count Session' }, { key: 'date', label: 'Date' }, { key: 'location', label: 'Location' }, { key: 'item', label: 'Item' }, { key: 'sys', label: 'System Qty', align: 'right' }, { key: 'counted', label: 'Counted Qty', align: 'right' }, { key: 'variance', label: 'Variance', align: 'right' }, { key: 'adj', label: 'Stock Adjustment' }, { key: 'status', label: 'Adjustment Status', status: true }],
-    rows: countSeed.filter((s) => s.status === 'Completed').flatMap((s) => s.lines.filter((l) => l.countedQty !== null && l.countedQty !== l.systemQty).map((l) => ({ session: s.number, date: s.date, location: s.location, item: l.name, sys: l.systemQty, counted: l.countedQty, variance: (l.countedQty as number) - l.systemQty, adj: s.adjustmentNo ?? '-', status: s.adjustmentStatus ?? 'Not raised' }))) },
+    columns: [{ key: 'session', label: 'Stock Count Session' }, { key: 'date', label: 'Date' }, { key: 'location', label: 'Location' }, { key: 'item', label: 'Item' }, { key: 'sys', label: 'System Qty', align: 'right' }, { key: 'counted', label: 'Counted Qty', align: 'right' }, { key: 'variance', label: 'Variance', align: 'right' }, { key: 'reason', label: 'Reason' }, { key: 'adj', label: 'Stock Adjustment' }, { key: 'status', label: 'Adjustment Status', status: true }],
+    // Read from the live count sessions every time the report is opened, so new, approved and rejected counts show up.
+    get rows() { return countVarianceRows(); } },
   { slug: 'certificate-expiry', title: 'Certificate Expiry Report', purpose: 'All asset-level certificates nearing or past expiry.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
     filters: [{ key: 'status', label: 'Status', options: ['Expired', 'Due Soon'] }, { key: 'type', label: 'Certificate Type', options: ['Registration', 'Insurance', 'Inspection', 'Warranty', 'Other'] }],
     columns: [{ key: 'asset', label: 'Asset' }, { key: 'type', label: 'Certificate Type' }, { key: 'expiry', label: 'Expiry Date' }, { key: 'days', label: 'Days to Expiry', align: 'right' }, { key: 'lead', label: 'Reminder Lead (days)', align: 'right' }, { key: 'status', label: 'Status', status: true }],
