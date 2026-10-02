@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 1:45 PM: Usage Readings moved under the individual asset
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Fixed Asset Management
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Usage readings were a separate sidebar screen, disconnected from the asset they describe. Ajin asked for them to sit under the asset, entered manually for now, as an optional step.
+*What we did.* The asset page has a **Usage Readings** tab showing that asset's readings, newest first (date and time, hour meter reading in hours, recorded by, entry method, fuel level, condition notes, reading source). **Add Reading** opens a dialog; clicking a reading opens it for editing, and readings can be deleted. A reading still cannot be lower than the previous one. Entering readings is limited to users who are allowed to enter them (see the permission switch in a later entry). The separate Usage Readings sidebar screen is removed.
+*Be aware.* Readings are optional. The Reading Source field stays "Manual" and is kept so a future IoT or telematics feed can fill the same records; no IoT integration is built. The Overdue / Missing Usage Readings Report is unchanged.
+
 ### 2 Oct, around 1:30 PM: Compliance & Certificates moved onto the individual asset, with optional approval and Print QR
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Where:** Inventory & Fixed Assets > Fixed Asset Management

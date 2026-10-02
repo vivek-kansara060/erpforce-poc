@@ -20,7 +20,7 @@ import {
 } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
-import { AssetCertificates } from './AssetPages';
+import { AssetCertificates, AssetReadings } from './AssetPages';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
@@ -29,6 +29,7 @@ const REQ_ITEM_CODE = 'Item Master > Item Code';
 const REQ_FA = 'Fixed Asset Register';
 const REQ_MV = 'Movement History';
 const REQ_CERT_TAB = 'Compliance & Certificates (2 Oct call: on the individual asset)';
+const REQ_USE_TAB = 'Manual Usage & Status Recording (2 Oct call: under the individual asset)';
 const REQ_NAME = 'Fixed Asset > Asset Name (2 Oct call: suggested, editable by the client)';
 const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, manual change where needed)';
 /** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
@@ -468,7 +469,7 @@ export function HeavyView() {
   };
   const dep = depreciationApplicable(r.ownership);
   const attrDefs = attributesFor(cats.rows, r.category, r.subCategory);
-  const tabs = crossHired ? ['Basic Details', 'Cross-Hire', 'Compliance & Certificates'] : ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership', 'Compliance & Certificates'];
+  const tabs = crossHired ? ['Basic Details', 'Cross-Hire', 'Compliance & Certificates', 'Usage Readings'] : ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership', 'Compliance & Certificates', 'Usage Readings'];
   const initial = Math.max(0, tabs.indexOf((loc.state as any)?.tab));
   return (
     <>
@@ -578,6 +579,7 @@ export function HeavyView() {
             </>
           ) },
           { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: <AssetCertificates assetId={r.assetId} /> },
+          { label: 'Usage Readings', change: 'new', req: REQ_USE_TAB, content: <AssetReadings assetId={r.assetId} /> },
         ]} />
       </Page>
       <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"

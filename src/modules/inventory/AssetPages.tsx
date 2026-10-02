@@ -22,12 +22,12 @@ import dayjs from 'dayjs';
 const REQ_CERT = 'Compliance & Certificates (Asset-Level)';
 const REQ_CERT_ASSET = 'Compliance & Certificates (2 Oct call: on the individual asset, many per asset, optional approval)';
 const REQ_USE = 'Manual Usage & Status Recording';
+const REQ_USE_ASSET = 'Manual Usage & Status Recording (2 Oct call: under the individual asset, optional, manual for now)';
 const REQ_PSV = 'Physical Stock Verification';
 const REQ_DSP = 'Asset Disposal / Write-Off';
 const NOW_STAMP = `${TODAY} ${NOW.slice(11)}`;
 const EMP = employees.map((e) => e.name);
 const useHeavy = () => useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
-const useAssetOptions = (rows: HeavyRec[]) => rows.map((h) => ({ value: h.assetId, label: `${h.assetId} - ${h.name}` }));
 const assetName = (rows: HeavyRec[], assetId: string) => rows.find((h) => h.assetId === assetId)?.name ?? '-';
 const NotFound = ({ back, to }: { back: string; to: string }) => { const nav = useNavigate(); return <Page><PageTitle title="Record not found" right={<Button variant="outlined" onClick={() => nav(to)}>Back to {back}</Button>} /></Page>; };
 
@@ -120,77 +120,72 @@ function CertificateDialog({ open, assetId, rec, approvalOn, readOnly, onClose }
 }
 
 /* ================================================================== Usage readings */
-export function ReadingList() {
-  const nav = useNavigate();
+/** Usage readings of one asset (2 Oct call: kept under the asset, manual entry for now, optional). */
+export function AssetReadings({ assetId, canEnter = true }: { assetId: string; canEnter?: boolean }) {
   const toast = useToast();
-  const heavy = useHeavy();
-  const rows = useCollection<ReadingRec>('inventory.readings', readingSeed);
+  const readings = useCollection<ReadingRec>('inventory.readings', readingSeed);
+  const [dlg, setDlg] = useState<{ open: boolean; rec?: ReadingRec }>({ open: false });
   const [del, setDel] = useState<ReadingRec | null>(null);
+  const rows = readings.rows.filter((r) => r.assetId === assetId).sort((a, b) => b.date.localeCompare(a.date));
   return (
-    <Page>
-      <PageTitle title="Usage Readings" change="new" req={REQ_USE} subtitle={`Readings are entered manually in this phase. Reading frequency rule to be confirmed with client (${READING_FREQUENCY_DAYS} days assumed for the overdue report).`} />
-      <DataTable<ReadingRec>
-        rows={rows.rows} searchPlaceholder="Search readings..."
-        onAdd={() => nav('/inventory/usage-readings/add')} addLabel="Add Reading" onRowClick={(r) => nav(`/inventory/usage-readings/${r.id}`)}
+    <Panel title="Usage Readings" change="new" req={REQ_USE_ASSET}
+      right={canEnter ? <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Reading</Button> : <Text type="s5" color="theme.secondary.700">You do not have permission to enter readings</Text>}>
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>Readings are optional and entered manually in this phase. The Reading Source field is kept so a future IoT or telematics feed can fill the same records. Reading frequency rule to be confirmed with client ({READING_FREQUENCY_DAYS} days assumed for the overdue report).</Text>
+      <DataTable<ReadingRec> hideToolbar rows={rows} pageSize={50} emptyText="No readings recorded yet" onRowClick={canEnter ? (r) => setDlg({ open: true, rec: r }) : undefined}
         columns={[
-          { key: 'assetId', label: 'Asset', render: (r) => `${r.assetId} - ${assetName(heavy.rows, r.assetId)}` },
           { key: 'date', label: 'Reading Date/Time', render: (r) => r.date.replace('T', ' ') },
-          { key: 'hmr', label: 'Hour Meter Reading', align: 'right', render: (r) => fmtNum(r.hmr) },
+          { key: 'hmr', label: 'Hour Meter Reading', align: 'right', render: (r) => `${fmtNum(r.hmr)} hours` },
           { key: 'by', label: 'Recorded By' },
-          { key: 'method', label: 'Entry Method' },
+          { key: 'method', label: 'Entry Method', render: (r) => r.method || '-' },
           { key: 'fuel', label: 'Fuel Level', align: 'right', render: (r) => (r.fuel === undefined ? '-' : `${r.fuel}%`) },
+          { key: 'notes', label: 'Condition Notes', render: (r) => r.notes || '-' },
           { key: 'source', label: 'Reading Source', sortable: false, render: () => 'Manual' },
         ]}
-        actions={[{ label: 'Edit', onClick: (r) => nav(`/inventory/usage-readings/${r.id}`) }, { label: 'Delete', danger: true, onClick: setDel }]}
+        actions={canEnter ? [{ label: 'Edit', onClick: (r) => setDlg({ open: true, rec: r }) }, { label: 'Delete', danger: true, onClick: setDel }] : undefined}
       />
-      <ConfirmDialog open={!!del} danger title="Delete reading" description={`Delete the reading of ${del?.assetId} taken on ${del?.date.replace('T', ' ')}?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { rows.remove(del.id); toast('Reading deleted'); } }} />
-    </Page>
+      <ReadingDialog open={dlg.open} assetId={assetId} rec={dlg.rec} onClose={() => setDlg({ open: false })} />
+      <ConfirmDialog open={!!del} danger title="Delete reading" description={`Delete the reading taken on ${del?.date.replace('T', ' ')}?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { readings.remove(del.id); toast('Reading deleted'); } }} />
+    </Panel>
   );
 }
 
-export function ReadingForm() {
-  const { id } = useParams();
-  const nav = useNavigate();
+function ReadingDialog({ open, assetId, rec, onClose }: { open: boolean; assetId: string; rec?: ReadingRec; onClose: () => void }) {
   const toast = useToast();
-  const heavy = useHeavy();
   const readings = useCollection<ReadingRec>('inventory.readings', readingSeed);
-  const existing = id ? readings.get(id) : undefined;
-  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? '', date: existing?.date ?? NOW, hmr: existing ? String(existing.hmr) : '', by: existing?.by ?? '', method: existing?.method ?? '', fuel: existing?.fuel === undefined ? '' : String(existing.fuel), notes: existing?.notes ?? '' });
+  const init = () => ({ date: rec?.date ?? NOW, hmr: rec ? String(rec.hmr) : '', by: rec?.by ?? '', method: rec?.method ?? READING_METHODS[0], fuel: rec?.fuel === undefined ? '' : String(rec.fuel), notes: rec?.notes ?? '' });
+  const [f, setF] = useState<Record<string, any>>(init);
   const [errors, setErrors] = useState<Errors>({});
-  if (id && !existing) return <NotFound back="Usage Readings" to="/inventory/usage-readings" />;
-  const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
+  const [key, setKey] = useState('');
+  const k = `${open}-${rec?.id ?? 'new'}`;
+  if (k !== key) { setKey(k); setF(init()); setErrors({}); }
+  const set = (n: string) => (v: any) => setF((x) => ({ ...x, [n]: v }));
   const save = () => {
-    const e = requireFields(f, ['assetId', 'date', 'hmr', 'by'], { assetId: 'Linked Asset', date: 'Reading Date/Time', hmr: 'Hour Meter Reading', by: 'Recorded By' });
+    const e = requireFields(f, ['date', 'hmr', 'by'], { date: 'Reading Date/Time', hmr: 'Hour Meter Reading', by: 'Recorded By' });
     if (!e.hmr && num(f.hmr) < 0) e.hmr = 'Cannot be negative';
     if (!e.hmr && !e.date) {
-      const prior = readings.rows.filter((r) => r.assetId === f.assetId && r.id !== existing?.id && r.date < f.date).sort((a, b) => b.date.localeCompare(a.date))[0];
+      const prior = readings.rows.filter((r) => r.assetId === assetId && r.id !== rec?.id && r.date < f.date).sort((a, b) => b.date.localeCompare(a.date))[0];
       if (prior && num(f.hmr) < prior.hmr) e.hmr = `Cannot be lower than the previous reading (${fmtNum(prior.hmr)} on ${prior.date.slice(0, 10)})`;
     }
     if (!isBlank(f.fuel) && (num(f.fuel) < 0 || num(f.fuel) > 100)) e.fuel = 'Must be between 0 and 100';
     setErrors(e);
-    if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: ReadingRec = { id: existing?.id ?? `rd${Date.now()}`, assetId: f.assetId, date: f.date, hmr: Number(f.hmr), by: f.by, method: f.method, fuel: isBlank(f.fuel) ? undefined : Number(f.fuel), notes: f.notes };
-    if (existing) readings.update(rec.id, rec); else readings.add(rec);
-    toast(existing ? 'Reading updated' : 'Reading recorded');
-    nav('/inventory/usage-readings');
+    if (Object.keys(e).length) return;
+    const next: ReadingRec = { id: rec?.id ?? `rd${Date.now()}`, assetId, date: f.date, hmr: Number(f.hmr), by: f.by, method: f.method, fuel: isBlank(f.fuel) ? undefined : Number(f.fuel), notes: f.notes };
+    if (rec) readings.update(next.id, next); else readings.add(next);
+    toast(rec ? 'Reading updated' : 'Reading recorded');
+    onClose();
   };
   return (
-    <>
-      <FormHeader crumbs={[{ label: 'Usage Readings', to: '/inventory/usage-readings' }, { label: existing ? 'Edit Reading' : 'Add Reading' }]}
-        actions={<><Button variant="outlined" onClick={() => nav('/inventory/usage-readings')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
-      <Page sx={{ pt: 2 }}>
-        <FormGrid>
-          <SelectInput label="Linked Asset" required change="new" req={REQ_USE} value={f.assetId} options={useAssetOptions(heavy.rows)} onChange={set('assetId')} error={errors.assetId} disabled={!!existing} />
-          <DateInput label="Reading Date/Time" required change="new" req={REQ_USE} value={f.date} onChange={set('date')} error={errors.date} />
-          <NumberInput label="Hour Meter Reading (HMR)" required change="new" req={REQ_USE} value={f.hmr} onChange={set('hmr')} error={errors.hmr} />
-          <SelectInput label="Recorded By" required change="new" req={REQ_USE} value={f.by} options={EMP} onChange={set('by')} error={errors.by} hint="Responsible role to be confirmed with client" />
-          <SelectInput label="Entry Method" change="new" req={REQ_USE} value={f.method} options={READING_METHODS} onChange={set('method')} hint="Preferred method to be confirmed with client" />
-          <NumberInput label="Fuel Level (%)" change="new" req={REQ_USE} value={f.fuel} onChange={set('fuel')} error={errors.fuel} />
-          <TextInput label="Condition Notes" change="new" req={REQ_USE} value={f.notes} onChange={set('notes')} multiline rows={2} full hint="Other details to capture at each reading to be confirmed with client" />
-          <TextInput label="Reading Source" change="new" req={REQ_USE} value="Manual" disabled hint="Reserved so a future IoT feed can use the same structure" />
-        </FormGrid>
-      </Page>
-    </>
+    <AppDialog open={open} title={rec ? 'Edit Usage Reading' : 'Add Usage Reading'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
+      <FormGrid>
+        <DateInput label="Reading Date/Time" required change="new" req={REQ_USE} value={f.date} onChange={set('date')} error={errors.date} />
+        <NumberInput label="Hour Meter Reading (hours)" required change="new" req={REQ_USE} value={f.hmr} onChange={set('hmr')} error={errors.hmr} />
+        <SelectInput label="Recorded By" required change="new" req={REQ_USE} value={f.by} options={EMP} onChange={set('by')} error={errors.by} hint="Responsible role to be confirmed with client" />
+        <SelectInput label="Entry Method" change="new" req={REQ_USE} value={f.method} options={READING_METHODS} onChange={set('method')} hint="Preferred method to be confirmed with client" />
+        <NumberInput label="Fuel Level (%)" change="new" req={REQ_USE} value={f.fuel} onChange={set('fuel')} error={errors.fuel} />
+        <TextInput label="Reading Source" change="new" req={REQ_USE} value="Manual" disabled hint="Reserved so a future IoT feed can use the same structure" />
+        <TextInput label="Condition Notes" change="new" req={REQ_USE} value={f.notes} onChange={set('notes')} multiline rows={2} full />
+      </FormGrid>
+    </AppDialog>
   );
 }
 
