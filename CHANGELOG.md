@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 12:30 PM: Cross-hired assets take their details from the cross-hire record and show only what applies to them
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* For a cross-hired unit the user had to type the supplier and every detail by hand, tick an "idle" box manually, and the asset page still showed depreciation and movement history that do not apply. There was no way to filter own assets from cross-hired ones, and nothing ended a hire when the unit went back to the supplier.
+*What we did.* **Ownership Type** is now the first field on the Heavy Equipment Fixed Asset form. Choosing **Cross-Hired** asks for the **Cross-Hire Record** the unit came in on; picking it fills in the supplier, category, sub-category, brand, model, capacity, engine number, hire start, received-at location and the suggested name, and those fetched fields are locked. For a cross-hired unit the form and the asset page **hide Depreciation Board, Movement History and Ownership**, and the asset page has a **Cross-Hire** tab with the record, supplier, stage, hire dates and supplier rate. **Asset Status follows the cross-hire stage** (Received = Ready for Hire, On Hire = On Hire, Idle at Our Location = Yard), and Change Status is not offered for these units. **Returned to Us (Idle)** and **Return to Supplier** move the stage; returning to the supplier ends the hire, marks the asset Inactive and shows "Hire ended" instead of current hire details. The heavy equipment listing has **Own Asset / Cross-Hire Asset** filter chips.
+*Be aware.* The POC has no Procurement cross-hire screen, so three demo cross-hire records stand in for it (CH-26-00027 and CH-26-00028 are linked to the two existing cross-hired units; CH-26-00031 is waiting to be registered as an asset).
+
 ### 2 Oct, around 12:00 PM: Asset Type is a master, the asset name can be changed, and Asset Status is set by the system with a manual override
 **Where:** Inventory & Fixed Assets > Product Management > Asset Type
 **Where:** Inventory & Fixed Assets > Product Management > Items

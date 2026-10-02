@@ -102,7 +102,7 @@ export function SerializedFields({ f, upd, errors, req, withNotDepreciable, hide
 }
 
 /** Read-only counterpart used on the view pages. */
-export function SerializedView({ r, req }: { r: Record<string, any>; req: string }) {
+export function SerializedView({ r, req, hideValues }: { r: Record<string, any>; req: string; hideValues?: boolean }) {
   return (
     <>
       <ValueGrid cols={4}>
@@ -111,7 +111,7 @@ export function SerializedView({ r, req }: { r: Record<string, any>; req: string
         <ValueField label="Engine Number" value={r.engineNo} change="new" req={req} />
         <ValueField label="Capacity" value={r.capacity} change="new" req={req} />
       </ValueGrid>
-      <Box sx={{ mt: 3 }}>
+      {!hideValues && <Box sx={{ mt: 3 }}>
         <Text type="s3" weight="medium" sx={{ mb: 1.5 }}>Asset Value Details</Text>
         <ValueGrid cols={4}>
           <ValueField label="Purchase Date" value={r.purchaseDate} change="new" req={req} />
@@ -122,7 +122,7 @@ export function SerializedView({ r, req }: { r: Record<string, any>; req: string
           <ValueField label="Depreciated Amount" value={aed(r.deprAmount)} change="new" req={req} />
           <ValueField label="CapEx Value" value={aed(r.capex)} change="new" req={req} />
         </ValueGrid>
-      </Box>
+      </Box>}
     </>
   );
 }

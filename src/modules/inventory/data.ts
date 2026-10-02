@@ -275,6 +275,22 @@ function fromSeed(s: Seed): HeavyRec {
 }
 export const heavySeed: HeavyRec[] = SEEDS.map(fromSeed);
 
+/* ------------------------------------------------------------------ cross-hire records (POC stand-in for the Procurement cross-hire transaction) */
+/** Stages a cross-hired unit goes through. The asset's status follows the stage; it is not typed in. */
+export const CROSS_HIRE_STAGES = ['Received', 'On Hire', 'Idle at Our Location', 'Returned to Supplier'] as const;
+export type CrossHireStage = (typeof CROSS_HIRE_STAGES)[number];
+export interface CrossHireRec {
+  id: string; number: string; supplier: string; category: string; subCategory: string; brand: string; model: string; capacity: string; engineNo: string;
+  receivedAt: string; hireStart: string; expectedReturn: string; monthlyRate: number; stage: CrossHireStage; returnedOn?: string; heavyId?: string;
+}
+/** Asset Status that each cross-hire stage puts the asset in. */
+export const crossHireStatus: Record<CrossHireStage, string> = { Received: 'Ready for Hire', 'On Hire': 'On Hire', 'Idle at Our Location': 'Yard', 'Returned to Supplier': 'Off Hire' };
+export const crossHireSeed: CrossHireRec[] = [
+  { id: 'ch1', number: 'CH-26-00027', supplier: 'Falcon Equipment Hire LLC', category: 'Generator', subCategory: '500 KVA', brand: 'Cummins', model: 'CH-500', capacity: '500 KVA', engineNo: 'CUM-QSX15-70451', receivedAt: 'Jebel Ali Main Yard', hireStart: '2026-05-02', expectedReturn: '2026-11-30', monthlyRate: 21000, stage: 'On Hire', heavyId: 'he27' },
+  { id: 'ch2', number: 'CH-26-00028', supplier: 'Gulf Genset Rentals', category: 'Generator', subCategory: '200 KVA', brand: 'Perkins', model: 'CH-200', capacity: '200 KVA', engineNo: 'PRK-1106A-90211', receivedAt: 'Sharjah Yard', hireStart: '2026-06-10', expectedReturn: '2026-10-15', monthlyRate: 12500, stage: 'Idle at Our Location', heavyId: 'he28' },
+  { id: 'ch3', number: 'CH-26-00031', supplier: 'Falcon Equipment Hire LLC', category: 'Generator', subCategory: '1000 KVA', brand: 'Cummins', model: 'CH-1000', capacity: '1000 KVA', engineNo: 'CUM-KTA50-77310', receivedAt: 'Jebel Ali Main Yard', hireStart: '2026-09-28', expectedReturn: '2027-01-31', monthlyRate: 39000, stage: 'Received' },
+];
+
 /** Codes currently in use by Heavy Equipment records (live collection when loaded, seed otherwise). */
 export const heavyCodes = () => {
   const live = getCollection<HeavyRec>('inventory.heavyEquipment');
