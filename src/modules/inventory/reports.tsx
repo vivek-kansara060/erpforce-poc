@@ -1,7 +1,9 @@
 import dayjs from 'dayjs';
-import type { DashboardDef, ReportDef } from '@/components/ReportsAndDashboards';
+import type { DashboardDef } from '@/components/ReportsAndDashboards';
+import { getCollection } from '@/store/store';
+import type { InvReportDef } from './ReportPages';
 import { fmtAED } from '@/mock-data/masters';
-import { READING_FREQUENCY_DAYS, TODAY, certSeed, countVarianceRows, currentLocation, depreciationApplicable, disposalSeed, heavySeed, inFleetCount, movementDurations, readingSeed, stockStatusOf, type HeavyRec } from './data';
+import { READING_FREQUENCY_DAYS, TODAY, certSeed, countVarianceRows, currentLocation, depreciationApplicable, disposalSeed, heavySeed, inFleetCount, itemSeed, locationSeed, locationStockSeed, movementDurations, qtyWithUnit, readingSeed, stockStatusOf, type CertRec, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type ReadingRec } from './data';
 import { certStatus } from './AssetPages';
 
 const REQ = 'Inventory & Fixed Assets > ';
@@ -18,7 +20,6 @@ const costs = (h: HeavyRec) => {
   const hireCost = h.ownership === 'Cross-Hired' ? 21000 : 0;
   return { depreciation, maintenance, consumable, hireCost, revenue: h.profitability + depreciation + maintenance + consumable + hireCost };
 };
-const lastReading = (assetId: string) => readingSeed.filter((r) => r.assetId === assetId).sort((a, b) => b.date.localeCompare(a.date))[0];
 const endOfLife = (h: HeavyRec) => dayjs(h.putToUseDate || h.purchaseDate).add(h.usefulLifeYears, 'year');
 const eolAssets = live.filter((h) => depreciationApplicable(h.ownership) && h.usefulLifeYears > 0).map((h) => ({ h, end: endOfLife(h), monthsLeft: endOfLife(h).diff(dayjs(TODAY), 'month') })).sort((a, b) => a.monthsLeft - b.monthsLeft);
 const stockRows = [
@@ -28,53 +29,65 @@ const stockRows = [
   { location: 'ENOC Al Quoz Depot (Fuel Stock)', type: 'Supplier-Held Location', supplier: 'ENOC Fuel Distribution', held: 60000, consumed: 38500, value: 61275 },
 ];
 
-export const reports: ReportDef[] = [
-  { slug: 'asset-utilization', title: 'Asset Utilization Report', purpose: 'On-hire time vs. available time, per asset and by category.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'category', label: 'Category', options: cats }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'onHire', label: 'On-Hire Days (last 90)', align: 'right' }, { key: 'available', label: 'Available Days', align: 'right' }, { key: 'util', label: 'Utilization %', align: 'right' }],
-    rows: live.map((h) => ({ asset: name(h), category: h.category, onHire: onHireDays(h), available: PERIOD_DAYS - onHireDays(h), util: `${h.utilization}%` })) },
-  { slug: 'asset-profitability', title: 'Asset Profitability Report', purpose: 'Revenue earned vs. depreciation, maintenance, and consumable cost, per asset.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'category', label: 'Category', options: cats }, { key: 'ownership', label: 'Ownership Type', options: ['Owned', 'Cross-Hired', 'Spare-Standby'] }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }, { key: 'revenue', label: 'Revenue', align: 'right' }, { key: 'dep', label: 'Depreciation / Hire Cost', align: 'right' }, { key: 'maint', label: 'Maintenance', align: 'right' }, { key: 'cons', label: 'Consumables', align: 'right' }, { key: 'profit', label: 'Profitability', align: 'right' }],
-    rows: live.map((h) => { const c = costs(h); return { asset: name(h), category: h.category, ownership: h.ownership, revenue: fmtAED(c.revenue), dep: fmtAED(c.depreciation + c.hireCost), maint: fmtAED(c.maintenance), cons: fmtAED(c.consumable), profit: fmtAED(h.profitability) }; }) },
-  { slug: 'end-of-useful-life', title: 'End-of-Useful-Life Report', purpose: 'Assets approaching the end of their configured useful life, to plan replacement purchases.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'category', label: 'Category', options: cats }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'life', label: 'Useful Life (years)', align: 'right' }, { key: 'end', label: 'End of Useful Life' }, { key: 'left', label: 'Months Remaining', align: 'right' }, { key: 'plan', label: 'Replacement Planning', status: true }],
-    rows: eolAssets.map(({ h, end, monthsLeft }) => ({ asset: name(h), category: h.category, life: h.usefulLifeYears, end: end.format('YYYY-MM-DD'), left: monthsLeft, plan: monthsLeft <= 12 ? 'Due soon' : monthsLeft <= 36 ? 'Plan ahead' : 'On track' })) },
-  { slug: 'category-demand-vs-owned', title: 'Category Demand vs. Owned Report', purpose: 'Which categories are most in demand vs. what the business actually owns.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    columns: [{ key: 'category', label: 'Category' }, { key: 'demand', label: 'Units Requested (YTD)', align: 'right' }, { key: 'owned', label: 'Owned Units', align: 'right' }, { key: 'cross', label: 'Cross-Hired Units', align: 'right' }, { key: 'gap', label: 'Demand Gap', align: 'right' }],
-    rows: cats.map((c, i) => { const demand = [31, 9, 6, 4, 2][i] ?? 3; const owned = live.filter((h) => h.category === c && h.ownership !== 'Cross-Hired').length; return { category: c, demand, owned, cross: live.filter((h) => h.category === c && h.ownership === 'Cross-Hired').length, gap: Math.max(demand - owned, 0) }; }) },
-  { slug: 'overdue-usage-readings', title: 'Overdue / Missing Usage Readings Report', purpose: `Assets without a usage reading within the confirmed minimum frequency. Frequency rule to be confirmed with client (${READING_FREQUENCY_DAYS} days assumed).`, group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'last', label: 'Last Reading' }, { key: 'hmr', label: 'Last HMR', align: 'right' }, { key: 'days', label: 'Days Since Reading', align: 'right' }, { key: 'status', label: 'Status', status: true }],
-    rows: live.map((h) => { const r = lastReading(h.assetId); const days = r ? dayjs(TODAY).diff(dayjs(r.date), 'day') : null; return { asset: name(h), category: h.category, last: r ? r.date.replace('T', ' ') : '-', hmr: r ? r.hmr : '-', days: days ?? '-', status: days === null ? 'Missing' : days > READING_FREQUENCY_DAYS ? 'Overdue' : 'Up to date' }; }).filter((r) => r.status !== 'Up to date') },
-  { slug: 'idle-time', title: 'Idle Time Report', purpose: 'Time each asset has spent Available, not on hire, by category and period.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'category', label: 'Category', options: cats }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'period', label: 'Period' }, { key: 'idle', label: 'Idle Days', align: 'right' }, { key: 'idlePct', label: 'Idle %', align: 'right' }],
-    rows: live.map((h) => ({ asset: name(h), category: h.category, period: 'Last 90 days', idle: PERIOD_DAYS - onHireDays(h), idlePct: `${100 - h.utilization}%` })) },
-  { slug: 'movement-history', title: 'Movement History Report', purpose: 'Full delivery/return/transfer/repair history per asset, for internal use only.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'type', label: 'Movement Type', options: ['Delivery', 'Return', 'Internal Transfer', 'Sent for Repair', 'Cross-Hire Stage Change'] }],
-    columns: [{ key: 'entry', label: 'Movement Entry No.' }, { key: 'asset', label: 'Asset' }, { key: 'type', label: 'Movement Type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' }, { key: 'date', label: 'Date/Time' }, { key: 'dur', label: 'Duration' }],
-    rows: fleet.flatMap((h) => { const d = movementDurations(h.movements); return h.movements.map((m) => ({ entry: m.entryNo, asset: name(h), type: m.type, from: m.from, to: m.to, date: m.date.replace('T', ' '), dur: d[m.id] })); }).sort((a, b) => b.date.localeCompare(a.date)) },
-  { slug: 'owned-vs-cross-hire-vs-spare', title: 'Owned vs. Cross-Hire vs. Spare-Standby Report', purpose: 'Fleet composition by ownership type, including the Cross-Hire idle-at-our-location flag.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'ownership', label: 'Ownership Type', options: ['Owned', 'Cross-Hired', 'Spare-Standby'] }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }, { key: 'status', label: 'Asset Status', status: true }, { key: 'loc', label: 'Current Location' }, { key: 'idle', label: 'Cross-Hire Idle at Our Location', status: true }, { key: 'fleet', label: 'In Available Fleet Count' }],
-    rows: live.map((h) => ({ asset: name(h), category: h.category, ownership: h.ownership, status: h.assetStatus, loc: currentLocation(h), idle: h.crossHireIdle ? 'Idle' : '-', fleet: inFleetCount(h) ? 'Yes' : 'No' })) },
-  { slug: 'location-wise-stock', title: 'Location-Wise Stock Report', purpose: 'Stock held, consumed, and remaining value by location, including Supplier-Held Locations. Shares data with the Procurement module equivalent report.', group: 'Stock', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'type', label: 'Location Type', options: ['Own Yard', 'Supplier-Held Location'] }],
-    columns: [{ key: 'location', label: 'Location' }, { key: 'type', label: 'Location Type' }, { key: 'supplier', label: 'Linked Supplier' }, { key: 'held', label: 'Stock Held', align: 'right' }, { key: 'consumed', label: 'Consumed', align: 'right' }, { key: 'value', label: 'Remaining Value', align: 'right' }],
-    rows: stockRows.map((r) => ({ ...r, held: r.held.toLocaleString('en-US'), consumed: r.consumed.toLocaleString('en-US'), value: fmtAED(r.value) })) },
-  { slug: 'physical-stock-variance', title: 'Physical Stock Variance Report', purpose: 'Results of physical count sessions against system quantity, with resulting adjustments.', group: 'Stock', change: 'new', req: REQ + 'Reports',
-    columns: [{ key: 'session', label: 'Stock Count Session' }, { key: 'date', label: 'Date' }, { key: 'location', label: 'Location' }, { key: 'item', label: 'Item' }, { key: 'sys', label: 'System Qty', align: 'right' }, { key: 'counted', label: 'Counted Qty', align: 'right' }, { key: 'variance', label: 'Variance', align: 'right' }, { key: 'reason', label: 'Reason' }, { key: 'adj', label: 'Stock Adjustment' }, { key: 'status', label: 'Adjustment Status', status: true }],
-    // Read from the live count sessions every time the report is opened, so new, approved and rejected counts show up.
-    get rows() { return countVarianceRows(); } },
-  { slug: 'certificate-expiry', title: 'Certificate Expiry Report', purpose: 'All asset-level certificates nearing or past expiry.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'status', label: 'Status', options: ['Expired', 'Due Soon'] }, { key: 'type', label: 'Certificate Type', options: ['Registration', 'Insurance', 'Inspection', 'Warranty', 'Other'] }],
-    columns: [{ key: 'asset', label: 'Asset' }, { key: 'type', label: 'Certificate Type' }, { key: 'expiry', label: 'Expiry Date' }, { key: 'days', label: 'Days to Expiry', align: 'right' }, { key: 'lead', label: 'Reminder Lead (days)', align: 'right' }, { key: 'status', label: 'Status', status: true }],
-    rows: certSeed.map((c) => ({ c, s: certStatus(c) })).filter((x) => x.s.label !== 'Valid').map(({ c, s }) => ({ asset: `${c.assetId} - ${fleet.find((h) => h.assetId === c.assetId)?.name ?? ''}`, type: c.type, expiry: c.expiry, days: dayjs(c.expiry).diff(dayjs(TODAY), 'day'), lead: c.leadDays, status: s.label })).sort((a, b) => a.days - b.days) },
-  { slug: 'asset-disposal-write-off', title: 'Asset Disposal / Write-Off Report', purpose: 'All disposed/written-off assets, reason, method, and value.', group: 'Fixed Assets', change: 'new', req: REQ + 'Reports',
-    filters: [{ key: 'method', label: 'Disposal Method', options: ['Scrap', 'Sale'] }],
-    columns: [{ key: 'number', label: 'Disposal Request' }, { key: 'asset', label: 'Asset' }, { key: 'reason', label: 'Reason' }, { key: 'method', label: 'Method' }, { key: 'value', label: 'Scrap/Sale Value', align: 'right' }, { key: 'status', label: 'Approval Status', status: true }],
-    rows: disposalSeed.filter((d) => d.status === 'Approved').map((d) => ({ number: d.number, asset: `${d.assetId} - ${fleet.find((h) => h.assetId === d.assetId)?.name ?? ''}`, reason: d.reason, method: d.method, value: d.method === 'Sale' ? fmtAED(d.value) : '-', status: d.status })) },
+/* ------------------------------------------------------------------ reports (built from live POC data each time a report opens) */
+const liveOf = <T,>(name: string, seed: T[]): T[] => { const l = getCollection<T>(name); return l.length ? l : seed; };
+const liveFleet = () => liveOf<HeavyRec>('inventory.heavyEquipment', heavySeed);
+const activeFleet = () => liveFleet().filter((h) => h.status === 'Active' && h.assetStatus !== 'Disposed');
+const assetCols = (h: HeavyRec) => ({ asset: name(h), _heavyId: h.id });
+const heavyIdOf = (assetId: string) => liveFleet().find((h) => h.assetId === assetId)?.id;
+const assetNameOf = (assetId: string) => liveFleet().find((h) => h.assetId === assetId)?.name ?? '';
+const lastReadingLive = (assetId: string) => liveOf<ReadingRec>('inventory.readings', readingSeed).filter((r) => r.assetId === assetId).sort((a, b) => b.date.localeCompare(a.date))[0];
+const R = REQ + 'Reports';
+
+export const reports: InvReportDef[] = [
+  { slug: 'asset-utilization', title: 'Asset Utilization Report', purpose: 'On-hire time vs. available time, per asset and by category.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }, { key: 'onHire', label: 'On-Hire Days (last 90)', align: 'right', format: 'days', total: true }, { key: 'available', label: 'Available Days', align: 'right', format: 'days', total: true }, { key: 'util', label: 'Utilization %', align: 'right', format: 'pct' }],
+    rows: () => activeFleet().map((h) => ({ ...assetCols(h), category: h.category, ownership: h.ownership, onHire: onHireDays(h), available: PERIOD_DAYS - onHireDays(h), util: h.utilization })) },
+  { slug: 'asset-profitability', title: 'Asset Profitability Report', purpose: 'Revenue earned vs. depreciation, maintenance, and consumable cost, per asset.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }, { key: 'revenue', label: 'Revenue', align: 'right', format: 'aed', total: true }, { key: 'dep', label: 'Depreciation / Hire Cost', align: 'right', format: 'aed', total: true }, { key: 'maint', label: 'Maintenance', align: 'right', format: 'aed', total: true }, { key: 'cons', label: 'Consumables', align: 'right', format: 'aed', total: true }, { key: 'profit', label: 'Profitability', align: 'right', format: 'aed', total: true }],
+    rows: () => activeFleet().map((h) => { const c = costs(h); return { ...assetCols(h), category: h.category, ownership: h.ownership, revenue: c.revenue, dep: c.depreciation + c.hireCost, maint: c.maintenance, cons: c.consumable, profit: h.profitability }; }) },
+  { slug: 'end-of-useful-life', title: 'End-of-Useful-Life Report', purpose: 'Assets approaching the end of their configured useful life, to plan replacement purchases.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }, { key: 'plan', label: 'Replacement Planning' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'life', label: 'Useful Life (years)', align: 'right', format: 'num' }, { key: 'end', label: 'End of Useful Life' }, { key: 'left', label: 'Months Remaining', align: 'right', format: 'num' }, { key: 'plan', label: 'Replacement Planning', status: true }],
+    rows: () => activeFleet().filter((h) => depreciationApplicable(h.ownership) && h.usefulLifeYears > 0).map((h) => { const end = endOfLife(h); const left = end.diff(dayjs(TODAY), 'month'); return { ...assetCols(h), category: h.category, life: h.usefulLifeYears, end: end.format('YYYY-MM-DD'), left, plan: left <= 12 ? 'Due soon' : left <= 36 ? 'Plan ahead' : 'On track' }; }).sort((a, b) => a.left - b.left) },
+  { slug: 'category-demand-vs-owned', title: 'Category Demand vs. Owned Report', purpose: 'Which categories are most in demand vs. what the business actually owns.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }],
+    columns: [{ key: 'category', label: 'Category' }, { key: 'demand', label: 'Units Requested (YTD)', align: 'right', format: 'num', total: true }, { key: 'owned', label: 'Owned Units', align: 'right', format: 'num', total: true }, { key: 'cross', label: 'Cross-Hired Units', align: 'right', format: 'num', total: true }, { key: 'gap', label: 'Demand Gap', align: 'right', format: 'num', total: true }],
+    rows: () => { const f = activeFleet(); return Array.from(new Set(f.map((h) => h.category))).map((c, i) => { const demand = [31, 9, 6, 4, 2][i] ?? 3; const owned = f.filter((h) => h.category === c && h.ownership !== 'Cross-Hired').length; return { category: c, demand, owned, cross: f.filter((h) => h.category === c && h.ownership === 'Cross-Hired').length, gap: Math.max(demand - owned, 0) }; }); } },
+  { slug: 'overdue-usage-readings', title: 'Overdue / Missing Usage Readings Report', purpose: `Assets without a usage reading within the confirmed minimum frequency. Frequency rule to be confirmed with client (${READING_FREQUENCY_DAYS} days assumed).`, group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }, { key: 'status', label: 'Status' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'last', label: 'Last Reading' }, { key: 'hmr', label: 'Last HMR (hours)', align: 'right', format: 'num' }, { key: 'days', label: 'Days Since Reading', align: 'right', format: 'days' }, { key: 'status', label: 'Status', status: true }],
+    rows: () => activeFleet().map((h) => { const r = lastReadingLive(h.assetId); const days = r ? dayjs(TODAY).diff(dayjs(r.date), 'day') : undefined; return { ...assetCols(h), category: h.category, last: r ? r.date.replace('T', ' ') : '-', hmr: r?.hmr, days, status: days === undefined ? 'Missing' : days > READING_FREQUENCY_DAYS ? 'Overdue' : 'Up to date' }; }).filter((r) => r.status !== 'Up to date') },
+  { slug: 'idle-time', title: 'Idle Time Report', purpose: 'Time each asset has spent Available, not on hire, by category and period.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'period', label: 'Period' }, { key: 'idle', label: 'Idle Days', align: 'right', format: 'days', total: true }, { key: 'idlePct', label: 'Idle %', align: 'right', format: 'pct' }],
+    rows: () => activeFleet().map((h) => ({ ...assetCols(h), category: h.category, ownership: h.ownership, period: 'Last 90 days', idle: PERIOD_DAYS - onHireDays(h), idlePct: 100 - h.utilization })) },
+  { slug: 'movement-history', title: 'Movement History Report', purpose: 'Full delivery/return/transfer/repair history per asset, for internal use only.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'type', label: 'Movement Type' }, { key: 'category', label: 'Category' }],
+    columns: [{ key: 'entry', label: 'Movement Entry No.' }, { key: 'asset', label: 'Asset', link: 'asset' }, { key: 'type', label: 'Movement Type' }, { key: 'from', label: 'From' }, { key: 'to', label: 'To' }, { key: 'date', label: 'Date/Time' }, { key: 'dur', label: 'Duration' }],
+    rows: () => liveFleet().filter((h) => h.ownership !== 'Cross-Hired').flatMap((h) => { const d = movementDurations(h.movements); return h.movements.map((m) => ({ entry: m.entryNo, ...assetCols(h), category: h.category, type: m.type, from: m.from, to: m.to, date: m.date.replace('T', ' '), dur: d[m.id] })); }).sort((a, b) => b.date.localeCompare(a.date)) },
+  { slug: 'owned-vs-cross-hire-vs-spare', title: 'Owned vs. Cross-Hire vs. Spare-Standby Report', purpose: 'Fleet composition by ownership type, including the Cross-Hire idle-at-our-location flag.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'ownership', label: 'Ownership Type' }, { key: 'status', label: 'Asset Status' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'category', label: 'Category' }, { key: 'ownership', label: 'Ownership Type' }, { key: 'status', label: 'Asset Status', status: true }, { key: 'loc', label: 'Current Location' }, { key: 'idle', label: 'Cross-Hire Idle at Our Location' }, { key: 'fleet', label: 'In Available Fleet Count' }],
+    rows: () => activeFleet().map((h) => ({ ...assetCols(h), category: h.category, ownership: h.ownership, status: h.assetStatus, loc: currentLocation(h), idle: h.crossHireIdle ? 'Idle' : '-', fleet: inFleetCount(h) ? 'Yes' : 'No' })) },
+  { slug: 'location-wise-stock', title: 'Location-Wise Stock Report', purpose: 'Stock held, consumed, and remaining value by location, including Supplier-Held Locations. Shares data with the Procurement module equivalent report.', group: 'Stock', change: 'new', req: R,
+    filters: [{ key: 'type', label: 'Location Type' }, { key: 'location', label: 'Location' }],
+    columns: [{ key: 'location', label: 'Location' }, { key: 'type', label: 'Location Type' }, { key: 'item', label: 'Item' }, { key: 'held', label: 'Stock Held', align: 'right' }, { key: 'consumed', label: 'Consumed', align: 'right' }, { key: 'remaining', label: 'Remaining', align: 'right' }, { key: 'value', label: 'Remaining Value', align: 'right', format: 'aed', total: true }],
+    rows: () => { const items = liveOf<ItemRec>('items', itemSeed); const locs = liveOf<LocationRec>('locations', locationSeed); return liveOf<LocationStock>('inventory.locationStock', locationStockSeed).flatMap((r) => { const it = items.find((i) => i.id === r.itemId); if (!it) return []; const c = r.consumed ?? 0; return [{ location: r.location, type: locs.find((l) => l.name === r.location)?.type ?? '-', item: it.name, held: qtyWithUnit(r.qty + c, it.unit), consumed: qtyWithUnit(c, it.unit), remaining: qtyWithUnit(r.qty, it.unit), value: Math.round(r.qty * it.price * 100) / 100 }]; }); } },
+  { slug: 'physical-stock-variance', title: 'Physical Stock Variance Report', purpose: 'Results of physical count sessions against system quantity, with resulting adjustments.', group: 'Stock', change: 'new', req: R,
+    filters: [{ key: 'location', label: 'Location' }, { key: 'status', label: 'Adjustment Status' }],
+    columns: [{ key: 'session', label: 'Stock Count Session' }, { key: 'date', label: 'Date' }, { key: 'location', label: 'Location' }, { key: 'item', label: 'Item / Asset', link: 'asset' }, { key: 'sys', label: 'System Qty', align: 'right' }, { key: 'counted', label: 'Counted Qty', align: 'right' }, { key: 'variance', label: 'Variance', align: 'right' }, { key: 'reason', label: 'Reason' }, { key: 'adj', label: 'Stock Adjustment' }, { key: 'status', label: 'Adjustment Status', status: true }],
+    rows: () => countVarianceRows().map((r) => ({ ...r, _heavyId: r.assetId ? heavyIdOf(r.assetId) : undefined })) },
+  { slug: 'certificate-expiry', title: 'Certificate Expiry Report', purpose: 'All asset-level certificates nearing or past expiry.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'status', label: 'Status' }, { key: 'type', label: 'Certificate Type' }],
+    columns: [{ key: 'asset', label: 'Asset', link: 'asset' }, { key: 'type', label: 'Certificate Type' }, { key: 'reference', label: 'Reference' }, { key: 'expiry', label: 'Expiry Date' }, { key: 'days', label: 'Days to Expiry', align: 'right', format: 'num' }, { key: 'lead', label: 'Reminder Lead', align: 'right', format: 'days' }, { key: 'status', label: 'Status', status: true }],
+    rows: () => liveOf<CertRec>('inventory.certificates', certSeed).map((c) => ({ c, s: certStatus(c) })).filter((x) => x.s.label !== 'Valid').map(({ c, s }) => ({ asset: `${c.assetId} - ${assetNameOf(c.assetId)}`, _heavyId: heavyIdOf(c.assetId), type: c.type, reference: c.reference || '-', expiry: c.expiry, days: dayjs(c.expiry).diff(dayjs(TODAY), 'day'), lead: c.leadDays, status: s.label })).sort((a, b) => a.days - b.days) },
+  { slug: 'asset-disposal-write-off', title: 'Asset Disposal / Write-Off Report', purpose: 'All disposed/written-off assets, reason, method, and value.', group: 'Fixed Assets', change: 'new', req: R,
+    filters: [{ key: 'method', label: 'Disposal Method' }, { key: 'outcome', label: 'Outcome' }],
+    columns: [{ key: 'number', label: 'Disposal Request' }, { key: 'asset', label: 'Asset', link: 'asset' }, { key: 'reason', label: 'Reason' }, { key: 'method', label: 'Method' }, { key: 'outcome', label: 'Outcome', status: true }, { key: 'buyer', label: 'Buyer' }, { key: 'value', label: 'Sale Value', align: 'right', format: 'aed', total: true }, { key: 'invoice', label: 'Sales Invoice' }],
+    rows: () => liveOf<DisposalRec>('inventory.disposals', disposalSeed).filter((d) => d.status === 'Approved').map((d) => ({ number: d.number, asset: `${d.assetId} - ${assetNameOf(d.assetId)}`, _heavyId: heavyIdOf(d.assetId), reason: d.reason, method: d.method, outcome: d.outcome ? (d.method === 'Sale' ? 'Sold' : 'Scrapped') : 'Outcome pending', buyer: d.outcome?.buyer ?? '-', value: d.outcome?.saleValue, invoice: d.outcome?.invoiceRef ?? '-' })) },
 ];
 
 const count = (f: (h: HeavyRec) => boolean) => live.filter(f).length;

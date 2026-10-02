@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 3:30 PM: Every report has a visible filter, column search, sticky totals, print and drill-down to the asset; View only access
+**Where:** Inventory & Fixed Assets > Reports
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Reports had only a few dropdown filters, no column search, no totals, no print, and an asset in a report could not be opened. Most reports also read the starting demo data, so changes made in the POC did not show. Ajin also asked that only users with edit permission can edit; others can only view.
+*What we did.* Every inventory report now has a clearly visible **Filter** button (with a count of active filters) that opens a filter panel: **search across all columns**, the report's **dropdown filters** (options come from the data) and a **search box under every column heading**. Columns can be **sorted** by clicking the heading. A **totals row** (row count plus the sum of money, day and unit columns) stays **visible at the bottom while scrolling**. **Print** opens a print-ready copy of the filtered rows with the totals and the filters used; Export is kept. In every report that lists assets, **clicking the asset opens its asset page** with its details, current status and history. All twelve reports now read the **live POC data**, so new assets, counts, certificates, readings and disposals appear. A **My access** switch (**Can edit / View only**) on the Reports pages and the asset page stands in for the user's role: in View only, the asset page hides Edit, Activate / Deactivate, Change Status, Mark Ready for Hire, Add Movement, cross-hire actions and certificate and reading entry, and the Items list hides Add, Edit, Duplicate and Delete.
+*Be aware.* The POC has no login or role system, so the access switch is a single POC-level stand-in; in the live system it comes from the user's role permissions. Report figures are still POC demo values.
+
 ### 2 Oct, around 2:45 PM: Physical Stock Verification simplified: one free-text reason, Found / Not Found, filters, Select All, no paging
 **Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
 **Where:** Inventory & Fixed Assets > Reports

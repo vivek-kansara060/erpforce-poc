@@ -21,6 +21,7 @@ import {
 import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
 import { AssetCertificates, AssetReadings } from './AssetPages';
+import { AccessSwitch, useCanEdit } from './permissions';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
@@ -402,13 +403,13 @@ export function MovementForm() {
 }
 
 /* ------------------------------------------------------------------ cross-hire panel (view) */
-function CrossHirePanel({ ch, returned, onStage }: { ch?: CrossHireRec; returned: boolean; onStage: (s: CrossHireRec['stage']) => void }) {
+function CrossHirePanel({ ch, returned, onStage, canEdit }: { ch?: CrossHireRec; returned: boolean; onStage: (s: CrossHireRec['stage']) => void; canEdit: boolean }) {
   const [confirm, setConfirm] = useState(false);
   if (!ch) return <Panel title="Cross-Hire" change="new" req={REQ_CH}><Text type="s5" color="theme.secondary.700">No cross-hire record is linked to this asset. Edit the asset and select the cross-hire record it came in on.</Text></Panel>;
   return (
     <>
       {returned && <Panel sx={{ mb: 2, bgcolor: '#F4F5F7' }}><Text type="s4" weight="medium">Hire ended: returned to {ch.supplier} on {ch.returnedOn}.</Text><Text type="s5" color="theme.secondary.700">The unit is no longer in the active fleet. The record is kept for history.</Text></Panel>}
-      <Panel title="Cross-Hire Details" change="new" req={REQ_CH} right={!returned && (
+      <Panel title="Cross-Hire Details" change="new" req={REQ_CH} right={!returned && canEdit && (
         <Box sx={{ display: 'flex', gap: 1 }}>
           {ch.stage === 'On Hire' && <Button size="small" variant="outlined" onClick={() => onStage('Idle at Our Location')}>Returned to Us (Idle)</Button>}
           {ch.stage !== 'On Hire' && <Button size="small" variant="contained" onClick={() => setConfirm(true)}>Return to Supplier</Button>}
@@ -439,6 +440,7 @@ export function HeavyView() {
   const heavy = useHeavy();
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const r = heavy.get(id);
+  const canEdit = useCanEdit();
   const crossHires = useCrossHires();
   const [statusDlg, setStatusDlg] = useState(false);
   const [sf, setSf] = useState({ to: '', reason: '' });
@@ -477,13 +479,15 @@ export function HeavyView() {
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: `ID: ${r.assetId}` }]}
         status={<><StatusChip status={r.status} /><StatusChip status={stock} tone={tone(stock)} /></>}
         actions={<>
-          <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
-          {!crossHired && r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
-          {canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
-          <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>
+          <AccessSwitch />
+          {canEdit && <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>}
+          {canEdit && !crossHired && r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
+          {canEdit && canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
+          {canEdit && <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>}
         </>}
       />
       <Page sx={{ pt: 2 }}>
+        {!canEdit && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>View only: you can see this asset, its status and history, but not change it.</Text>}
         <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', mb: 3 }}>
           <PhotoBox src={r.image} size={132} />
           <Box sx={{ flex: 1 }}>
@@ -529,7 +533,7 @@ export function HeavyView() {
               </Panel>
             </>
           ) },
-          { label: 'Cross-Hire', hidden: !crossHired, change: 'new', req: REQ_CH, content: <CrossHirePanel ch={ch} returned={returned} onStage={moveStage} /> },
+          { label: 'Cross-Hire', hidden: !crossHired, change: 'new', req: REQ_CH, content: <CrossHirePanel ch={ch} returned={returned} onStage={moveStage} canEdit={canEdit} /> },
           { label: 'Depreciation Board', hidden: crossHired, content: !dep ? (
             <Panel title="Depreciation not applicable" change="new" req={REQ_FA}><Text type="s4" color="theme.secondary.800">Cross-Hired assets never generate a depreciation posting. Cost and profitability are tracked against the allocated project instead.</Text></Panel>
           ) : (
@@ -559,7 +563,7 @@ export function HeavyView() {
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Text type="s5" color="theme.secondary.700">Append-only log. Current Location is the destination of the latest entry.</Text>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => nav(`${HEAVY_PATH}/${r.id}/movement/add`)}>Add Movement</Button>
+                {canEdit && <Button variant="contained" startIcon={<AddIcon />} onClick={() => nav(`${HEAVY_PATH}/${r.id}/movement/add`)}>Add Movement</Button>}
               </Box>
               <MovementTable rows={r.movements} />
             </>
@@ -578,8 +582,8 @@ export function HeavyView() {
               <Panel title="Insurance" change="new" req={REQ_FA} sx={{ mt: 3 }}><InsuranceTable rows={r.insurance} /></Panel>
             </>
           ) },
-          { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: <AssetCertificates assetId={r.assetId} /> },
-          { label: 'Usage Readings', change: 'new', req: REQ_USE_TAB, content: <AssetReadings assetId={r.assetId} /> },
+          { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: <AssetCertificates assetId={r.assetId} canEdit={canEdit} /> },
+          { label: 'Usage Readings', change: 'new', req: REQ_USE_TAB, content: <AssetReadings assetId={r.assetId} canEnter={canEdit} /> },
         ]} />
       </Page>
       <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"

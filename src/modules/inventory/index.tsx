@@ -6,7 +6,8 @@ import { HeavyForm, HeavyView, MovementForm } from './HeavyEquipmentPages';
 import { LocationForm, LocationList, LocationView } from './LocationPages';
 import { CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView } from './AssetPages';
 import { dashboards, reports } from './reports';
-import { dashboardRoutes, reportRoutes } from '@/components/ReportsAndDashboards';
+import { dashboardRoutes } from '@/components/ReportsAndDashboards';
+import { invReportRoutes } from './ReportPages';
 import { CategoryForm, CategoryList, CategoryView, SubCategoryForm, SubCategoryList, SubCategoryView } from './Masters';
 import { PricingForm, PricingList, PricingView } from './PricingPages';
 import { AssetTypeForm, AssetTypeList } from './AssetTypePages';
@@ -72,7 +73,7 @@ const mod: ModuleDef = {
     { path: 'disposals/add', element: <DisposalForm /> },
     { path: 'disposals/:id', element: <DisposalView /> },
     { path: 'disposals/:id/edit', element: <DisposalForm /> },
-    ...reportRoutes('/inventory', reports),
+    ...invReportRoutes('/inventory', reports),
     ...dashboardRoutes('/inventory', dashboards),
   ],
   changes: [
@@ -87,7 +88,7 @@ const mod: ModuleDef = {
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Usage Readings tab', classification: 'NEW', existing: '-', change: 'Manual hour meter readings kept under the individual asset (no separate sidebar screen): optional, add / edit / delete in a dialog, entry limited to users allowed to enter readings, Reading Source reserved for a future IoT feed', ref: 'Manual Usage & Status Recording (2 Oct call)', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Physical Stock Verification', classification: 'NEW', existing: 'Only a Stock Reconciliation report', change: 'Count sessions with system snapshot, quantities with units, variance and Stock Adjustment approval (approve or reject, with approval history). Stock Items: one free-text reason for the session. Fixed Assets: Found / Not Found per unit with a reason only when not found, filters, Select All with bulk marking, inactive assets excluded, no paging', ref: 'Physical Stock Verification (2 Oct call)', path: '/inventory/stock-verification' },
     { module: 'Inventory & Fixed Assets', screen: 'Asset Disposal Requests', classification: 'NEW', existing: 'Dispose page in Accounting with no approval', change: 'Disposal request (asset, method, reason, documents) with approval; approval inactivates the asset, then the sale (buyer, sale value, Sales Invoice, journal, gain or loss) or scrap outcome is recorded; lifecycle stepper and history', ref: 'Asset Disposal / Write-Off (2 Oct call)', path: '/inventory/disposals' },
-    { module: 'Inventory & Fixed Assets', screen: 'Reports', classification: 'NEW', existing: '16 inventory reports', change: '12 fixed asset and stock reports', ref: 'Reports', path: '/inventory/reports' },
+    { module: 'Inventory & Fixed Assets', screen: 'Reports', classification: 'NEW', existing: '16 inventory reports', change: '12 fixed asset and stock reports built from live data, each with a visible Filter panel, column search, sorting, a sticky totals row, Print, Export and assets that open the asset page; a View only access switch', ref: 'Reports (2 Oct call)', path: '/inventory/reports' },
     { module: 'Inventory & Fixed Assets', screen: 'Dashboards', classification: 'NEW', existing: 'Customizable widget dashboard', change: '5 fleet dashboards', ref: 'Dashboards', path: '/inventory/dashboards' },
   ],
 };
