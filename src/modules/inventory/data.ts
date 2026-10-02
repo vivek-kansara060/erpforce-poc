@@ -82,17 +82,25 @@ export const attributesFor = (rows: CategoryRec[], category?: string, sub?: stri
 ];
 
 /* ------------------------------------------------------------------ pricing master */
-export interface PricingRec { id: string; category: string; subCategory: string; price: number; frequency: string }
+/** Rental prices are kept per billing frequency (one record each); Trading (sales) prices have no frequency. */
+export const PRICING_ACTIVITIES = ['Rental', 'Trading'] as const;
+export type PricingActivity = (typeof PRICING_ACTIVITIES)[number];
+export interface PricingRec { id: string; activity: PricingActivity; category: string; subCategory: string; price: number; frequency?: string; description: string }
+const rp = (id: string, category: string, subCategory: string, frequency: string, price: number, description: string): PricingRec => ({ id, activity: 'Rental', category, subCategory, frequency, price, description });
+const tp = (id: string, category: string, subCategory: string, price: number, description: string): PricingRec => ({ id, activity: 'Trading', category, subCategory, price, description });
 export const pricingSeed: PricingRec[] = [
-  { id: 'pr1', category: 'Generator', subCategory: '100 KVA', price: 18500, frequency: 'Monthly' },
-  { id: 'pr2', category: 'Generator', subCategory: '100 KVA', price: 5200, frequency: 'Weekly' },
-  { id: 'pr3', category: 'Generator', subCategory: '200 KVA', price: 29500, frequency: 'Monthly' },
-  { id: 'pr4', category: 'Generator', subCategory: '500 KVA', price: 52000, frequency: 'Monthly' },
-  { id: 'pr5', category: 'Generator', subCategory: '1000 KVA', price: 98000, frequency: 'Monthly' },
-  { id: 'pr6', category: 'Cable', subCategory: '4 Core 185 mm', price: 14, frequency: 'Monthly' },
-  { id: 'pr7', category: 'Panel', subCategory: 'ATS Panel', price: 6800, frequency: 'Monthly' },
-  { id: 'pr8', category: 'POD', subCategory: '20 ft POD', price: 7500, frequency: 'Monthly' },
-  { id: 'pr9', category: 'Vehicle', subCategory: 'Low-bed Truck', price: 2400, frequency: 'Daily' },
+  rp('pr1', 'Generator', '100 KVA', 'Monthly', 18500, 'Rental 100 KVA generator, monthly rate'),
+  rp('pr2', 'Generator', '100 KVA', 'Weekly', 5200, 'Rental 100 KVA generator, weekly rate'),
+  rp('pr3', 'Generator', '200 KVA', 'Monthly', 29500, 'Rental 200 KVA generator, monthly rate'),
+  rp('pr4', 'Generator', '500 KVA', 'Monthly', 52000, 'Rental 500 KVA generator, monthly rate'),
+  rp('pr5', 'Generator', '1000 KVA', 'Monthly', 98000, 'Rental 1000 KVA generator, monthly rate'),
+  rp('pr6', 'Cable', '4 Core 185 mm', 'Monthly', 14, 'Rental power cable, per meter per month'),
+  rp('pr7', 'Panel', 'ATS Panel', 'Monthly', 6800, 'Rental ATS panel, monthly rate'),
+  rp('pr8', 'POD', '20 ft POD', 'Monthly', 7500, 'Rental 20 ft power container, monthly rate'),
+  rp('pr9', 'Vehicle', 'Low-bed Truck', 'Daily', 2400, 'Low-bed truck with driver, daily rate'),
+  tp('pr10', 'Generator', '100 KVA', 165000, 'New 100 KVA diesel generator, sale price'),
+  tp('pr11', 'Panel', 'ATS Panel', 61000, 'ATS panel 630A, sale price'),
+  tp('pr12', 'Cable', '4 Core 185 mm', 95, 'Power cable 4C x 185 mm, sale price per meter'),
 ];
 
 /* ------------------------------------------------------------------ items (existing Item Master + new fields) */

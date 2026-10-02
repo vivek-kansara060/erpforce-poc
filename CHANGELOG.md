@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 11:00 AM: Heavy Equipment Pricing separates Rental and Trading prices, with descriptions and bulk upload
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* In the 2 Oct call Ajin asked for rental pricing and trading (sales) pricing to be kept apart. A price had no Activity Type and no Description, frequency was treated as a minor attribute, and trading prices had nowhere to go.
+*What we did.* Every price now has an **Activity Type** (Rental or Trading) and a **Description**. A **rental** price needs a **Billing Frequency**, and each frequency is its own record. On a rental price, **Add Another Frequency** (in the row menu and on the view page) opens the form with Category, Sub-Category and the next unpriced billing frequency filled in, so the user only types the price and description. A **trading** price has no frequency, just a **Sales Price**. The list has **Rental / Trading** filter chips, a **Bulk Upload** button (choose Rental or Trading, see the spreadsheet columns, upload a file) and a Description column. The billing frequency preview table is shown for rental prices only.
+*Connected change.* Pricing now lives in its own file in the POC (`PricingPages.tsx`), so this change can be reverted on its own.
+*Be aware.* Bulk upload is a POC screen: the file is not processed, a message explains what the live system would do. Showing the billing frequency on rental orders is not done, because the POC has no rental order screens yet.
+
 ### 1 Oct, around 6:15 PM: The back arrow in the top bar now returns to the previous page, as in the existing ERP
 **Where:** POC Review Tools > Top bar > Back arrow
 **Type:** EXISTING WITH CHANGE
