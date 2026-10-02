@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 2:15 PM: Disposal requests now show the full lifecycle, including the sale or scrap outcome
+**Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* A disposal request stopped at "Approved, asset Disposed". Ajin asked for the request to show what happened next: for a scrap, the asset leaves normal use; for a sale, the buyer, sale value, Sales Invoice and finance reference.
+*What we did.* The request form follows the agreed order: **1. Asset**, **2. Disposal Method** (Scrap or Sale), Disposal Reason, **3. Supporting Documents**, **4. Submit for Approval** (an Expected Sale Value is optional for a sale). Only active owned assets without an open request can be picked. **Approving** inactivates the asset (Asset Status Disposed, record Inactive) and writes this to the asset's audit trail. The request then shows **Complete Sale** (sale date, buyer from the Customer master, sale value, Sales Invoice reference) or **Record Scrap** (scrap date, optional scrap reference). The outcome panel shows the sale or scrap details, Net Book Value at disposal, the gain or loss on disposal and a finance journal reference. A **lifecycle stepper** (Request Raised, Pending Approval, Approved, Asset Inactivated, Sale / Scrap Completed) sits at the top of the request and form, and the list has an **Outcome** column (Sold, Scrapped, Sale to complete, Scrap to record).
+*Be aware.* The Sales Invoice and journal are reference numbers only, clearly labelled: the POC has no Finance module. Cross-hired units cannot be disposed of; they are returned to their supplier instead.
+
 ### 2 Oct, around 1:45 PM: Usage Readings moved under the individual asset
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Where:** Inventory & Fixed Assets > Fixed Asset Management

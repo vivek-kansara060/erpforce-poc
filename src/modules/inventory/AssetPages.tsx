@@ -7,14 +7,14 @@ import { DataTable } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
-import { Timeline } from '@/components/Flow';
+import { LifecycleStepper, Timeline } from '@/components/Flow';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { employees, fmtNum } from '@/mock-data/masters';
+import { customers as customerSeed, employees, fmtNum } from '@/mock-data/masters';
 import {
   ASSET_ELSEWHERE_REASONS, ASSET_NOT_FOUND_REASONS, ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, settingsSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed, STOCK_DIFF_REASONS,
-  type AssetCountLine, type CertRec, type InventorySettings, type CountSession, type CountType, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
+  type AssetCountLine, type CertRec, type InventorySettings, type CountSession, type CountType, type DisposalOutcome, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
 } from './data';
 import { FileList, aed, isBlank, num, requireFields, type Errors } from './shared';
 import dayjs from 'dayjs';
@@ -451,6 +451,12 @@ export function CountView() {
 }
 
 /* ================================================================== Disposal / write-off */
+const REQ_DSP_FLOW = 'Asset Disposal (2 Oct call: select asset, method, documents, approval, then the sale or scrap outcome)';
+/** Where a disposal request is in its lifecycle. Approval inactivates the asset; the outcome (sale or scrap) completes it. */
+const disposalSteps = (r: Pick<DisposalRec, 'method'>) => ['Request Raised', 'Pending Approval', 'Approved', 'Asset Inactivated', r.method === 'Sale' ? 'Sale Completed' : 'Scrap Completed'];
+const disposalStep = (r: DisposalRec) => (r.status === 'Draft' ? 0 : r.status === 'Pending Approval' ? 1 : r.status === 'Rejected' ? 2 : r.outcome ? 5 : 4);
+const outcomeLabel = (r: DisposalRec) => (r.status === 'Rejected' ? 'Rejected' : r.status !== 'Approved' ? 'Awaiting approval' : r.outcome ? (r.method === 'Sale' ? 'Sold' : 'Scrapped') : r.method === 'Sale' ? 'Sale to complete' : 'Scrap to record');
+
 export function DisposalList() {
   const nav = useNavigate();
   const heavy = useHeavy();
@@ -465,10 +471,11 @@ export function DisposalList() {
         columns={[
           { key: 'number', label: 'Disposal Request Number' },
           { key: 'assetId', label: 'Asset', render: (r) => `${r.assetId} - ${assetName(heavy.rows, r.assetId)}` },
-          { key: 'reason', label: 'Disposal Reason' },
           { key: 'method', label: 'Disposal Method' },
-          { key: 'value', label: 'Scrap/Sale Value', align: 'right', render: (r) => (r.method === 'Sale' ? aed(r.value) : '-') },
+          { key: 'reason', label: 'Disposal Reason' },
           { key: 'status', label: 'Approval Status', render: (r) => <StatusChip status={r.status} /> },
+          { key: 'outcome', label: 'Outcome', change: 'new', req: REQ_DSP_FLOW, sortable: false, render: (r) => <StatusChip status={outcomeLabel(r)} tone={r.outcome ? 'green' : r.status === 'Approved' ? 'amber' : 'grey'} /> },
+          { key: 'value', label: 'Sale Value', align: 'right', sortable: false, render: (r) => (r.outcome?.saleValue !== undefined ? aed(r.outcome.saleValue) : '-') },
         ]}
         actions={[{ label: 'View', onClick: (r) => nav(`/inventory/disposals/${r.id}`) }]}
       />
@@ -483,21 +490,23 @@ export function DisposalForm() {
   const heavy = useHeavy();
   const disposals = useCollection<DisposalRec>('inventory.disposals', disposalSeed);
   const existing = id ? disposals.get(id) : undefined;
-  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? '', reason: existing?.reason ?? '', method: existing?.method ?? '', value: existing ? String(existing.value) : '', docs: existing?.docs ?? [] });
+  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? '', method: existing?.method ?? '', reason: existing?.reason ?? '', value: existing?.value ? String(existing.value) : '', docs: existing?.docs ?? [] });
   const [errors, setErrors] = useState<Errors>({});
   if (id && (!existing || existing.status !== 'Draft')) return <NotFound back="Disposal Requests" to="/inventory/disposals" />;
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
   const open = disposals.rows.filter((d) => d.id !== existing?.id && (d.status === 'Draft' || d.status === 'Pending Approval')).map((d) => d.assetId);
-  const options = heavy.rows.filter((h) => h.assetStatus !== 'Disposed' && !open.includes(h.assetId)).map((h) => ({ value: h.assetId, label: `${h.assetId} - ${h.name}` }));
+  // Only active owned units can be disposed of; cross-hired units go back to their supplier instead.
+  const options = heavy.rows.filter((h) => h.assetStatus !== 'Disposed' && h.status === 'Active' && h.ownership !== 'Cross-Hired' && !open.includes(h.assetId)).map((h) => ({ value: h.assetId, label: `${h.assetId} - ${h.name}` }));
   const sale = f.method === 'Sale';
+  const number = existing?.number ?? `DSP-26-${String(disposals.rows.length + 3).padStart(5, '0')}`;
   const save = (submit: boolean) => {
-    const e = requireFields(f, ['assetId', 'reason', 'method', ...(sale ? ['value'] : [])], { assetId: 'Linked Asset', reason: 'Disposal Reason', method: 'Disposal Method', value: 'Scrap/Sale Value' });
-    if (sale && !e.value && !(num(f.value) > 0)) e.value = 'Sale value must be greater than 0';
+    const e = requireFields(f, ['assetId', 'method', 'reason'], { assetId: 'Asset', method: 'Disposal Method', reason: 'Disposal Reason' });
+    if (sale && !isBlank(f.value) && !(num(f.value) > 0)) e.value = 'Expected sale value must be greater than 0';
     setErrors(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const log = [...(existing?.log ?? [{ when: NOW_STAMP, title: 'Request raised', by: 'Current User' }])];
     if (submit) log.push({ when: NOW_STAMP, title: 'Submitted for approval', by: 'Current User' });
-    const rec: DisposalRec = { id: existing?.id ?? `dp${Date.now()}`, number: existing?.number ?? `DSP-26-${String(disposals.rows.length + 3).padStart(5, '0')}`, assetId: f.assetId, reason: f.reason, method: f.method, value: sale ? Number(f.value) : 0, docs: f.docs, status: submit ? 'Pending Approval' : 'Draft', date: existing?.date ?? TODAY, log };
+    const rec: DisposalRec = { id: existing?.id ?? `dp${Date.now()}`, number, assetId: f.assetId, reason: f.reason, method: f.method, value: sale && !isBlank(f.value) ? Number(f.value) : 0, docs: f.docs, status: submit ? 'Pending Approval' : 'Draft', date: existing?.date ?? TODAY, log };
     if (existing) disposals.update(rec.id, rec); else disposals.add(rec);
     toast(submit ? 'Disposal request submitted for approval' : 'Disposal request saved as draft');
     nav(`/inventory/disposals/${rec.id}`);
@@ -507,15 +516,16 @@ export function DisposalForm() {
       <FormHeader crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: existing ? existing.number : 'Add Disposal Request' }]}
         actions={<><Button variant="text" onClick={() => nav('/inventory/disposals')}>Cancel</Button><Button variant="outlined" onClick={() => save(false)}>Save as draft</Button><Button variant="contained" onClick={() => save(true)}>Submit for Approval</Button></>} />
       <Page sx={{ pt: 2 }}>
+        <Box sx={{ mb: 2 }}><LifecycleStepper steps={disposalSteps({ method: f.method })} current={0} /></Box>
         <FormGrid>
-          <TextInput label="Disposal Request Number" change="new" req={REQ_DSP} value={existing?.number ?? `DSP-26-${String(disposals.rows.length + 3).padStart(5, '0')}`} disabled hint="Auto-generated" />
-          <SelectInput label="Linked Asset" required change="new" req={REQ_DSP} value={f.assetId} options={options} onChange={set('assetId')} error={errors.assetId} />
+          <TextInput label="Disposal Request Number" change="new" req={REQ_DSP} value={number} disabled hint="Auto-generated" />
+          <SelectInput label="1. Asset" required change="new" req={REQ_DSP_FLOW} value={f.assetId} options={options} onChange={set('assetId')} error={errors.assetId} hint="Active owned assets without an open request" />
+          <SelectInput label="2. Disposal Method" required change="new" req={REQ_DSP_FLOW} value={f.method} options={DISPOSAL_METHODS} onChange={set('method')} error={errors.method} hint="Scrap or Sale. Sale details (buyer, price, invoice) are captured after approval" />
           <SelectInput label="Disposal Reason" required change="new" req={REQ_DSP} value={f.reason} options={DISPOSAL_REASONS} onChange={set('reason')} error={errors.reason} />
-          <SelectInput label="Disposal Method" required change="new" req={REQ_DSP} value={f.method} options={DISPOSAL_METHODS} onChange={set('method')} error={errors.method} />
-          <NumberInput label="Scrap/Sale Value (AED)" required={sale} change="new" req={REQ_DSP} value={f.value} onChange={set('value')} error={errors.value} disabled={!sale} hint="Mandatory when the method is Sale" />
-          <TextInput label="Approval Status" change="new" req={REQ_DSP} value="Draft" disabled hint="Driven by the Approval Engine. Thresholds and roles to be confirmed with client" />
-          <FileInput label="Supporting Documents" change="new" req={REQ_DSP} value={f.docs} onChange={set('docs')} multiple />
+          {sale && <NumberInput label="Expected Sale Value (AED)" change="new" req={REQ_DSP} value={f.value} onChange={set('value')} error={errors.value} hint="Optional estimate for the approver; the actual sale value is entered when the sale is completed" />}
+          <FileInput label="3. Supporting Documents" change="new" req={REQ_DSP_FLOW} value={f.docs} onChange={set('docs')} multiple full />
         </FormGrid>
+        <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>4. Submit for approval. Once approved, the asset is inactivated and can no longer be used; the sale or scrap is then recorded on the request. Approval thresholds and roles to be confirmed with client.</Text>
       </Page>
     </>
   );
@@ -527,38 +537,93 @@ export function DisposalView() {
   const toast = useToast();
   const heavy = useHeavy();
   const disposals = useCollection<DisposalRec>('inventory.disposals', disposalSeed);
+  const customers = useCollection('customers', customerSeed);
   const [reject, setReject] = useState(false);
+  const [outDlg, setOutDlg] = useState(false);
+  const [o, setO] = useState<Record<string, any>>({ date: TODAY, buyer: '', saleValue: '', invoiceRef: '', scrapRef: '' });
+  const [oErr, setOErr] = useState<Errors>({});
   const r = disposals.get(id);
   if (!r) return <NotFound back="Disposal Requests" to="/inventory/disposals" />;
   const asset = heavy.rows.find((h) => h.assetId === r.assetId);
-  const push = (status: DisposalRec['status'], title: string, detail?: string) => disposals.update(r.id, { status, log: [...r.log, { when: NOW_STAMP, title, detail, by: 'Current User' }] });
+  const sale = r.method === 'Sale';
+  const push = (patch: Partial<DisposalRec>, title: string, detail?: string) => disposals.update(r.id, { ...patch, log: [...r.log, { when: NOW_STAMP, title, detail, by: 'Current User' }] });
   const approve = () => {
-    push('Approved', 'Approved', 'Asset marked Disposed');
-    if (asset) heavy.update(asset.id, { assetStatus: 'Disposed', status: 'Inactive', audit: [{ when: NOW_STAMP, title: 'Asset Status changed', detail: `${asset.assetStatus} to Disposed (${r.number})`, by: 'Current User' }, ...asset.audit] });
-    toast('Request approved, asset marked Disposed');
+    push({ status: 'Approved' }, 'Approved', 'Asset inactivated (Disposed)');
+    if (asset) heavy.update(asset.id, { assetStatus: 'Disposed', status: 'Inactive', statusOverride: undefined, audit: [{ when: NOW_STAMP, title: 'Asset inactivated', detail: `${asset.assetStatus} to Disposed (${r.number} approved); no longer available for use`, by: 'Current User' }, ...asset.audit] });
+    toast(`Request approved, asset inactivated. Next: record the ${sale ? 'sale' : 'scrap'}`);
   };
+  const seq = (prefix: string, base: number) => `${prefix}-26-${String(base + disposals.rows.length).padStart(5, '0')}`;
+  const openOutcome = () => { setO({ date: TODAY, buyer: '', saleValue: r.value ? String(r.value) : '', invoiceRef: seq('INV', 140), scrapRef: '' }); setOErr({}); setOutDlg(true); };
+  const completeOutcome = () => {
+    const e: Errors = isBlank(o.date) ? { date: 'Date is required' } : {};
+    if (sale) {
+      if (isBlank(o.buyer)) e.buyer = 'Buyer is required';
+      if (!(num(o.saleValue) > 0)) e.saleValue = 'Sale value must be greater than 0';
+      if (isBlank(o.invoiceRef)) e.invoiceRef = 'Sales Invoice reference is required';
+    }
+    setOErr(e);
+    if (Object.keys(e).length) return;
+    const nbv = asset?.nbv ?? 0;
+    const outcome: DisposalOutcome = { date: o.date, journalRef: seq('JV', 360), nbvAtDisposal: nbv, by: 'Current User', ...(sale ? { buyer: o.buyer, saleValue: Number(o.saleValue), invoiceRef: o.invoiceRef.trim() } : { scrapRef: o.scrapRef.trim() || undefined }) };
+    push({ outcome }, sale ? 'Sale completed' : 'Scrap completed', sale ? `Sold to ${o.buyer} for ${aed(o.saleValue)}; Sales Invoice ${outcome.invoiceRef}; journal ${outcome.journalRef}` : `Scrapped on ${o.date}; write-off journal ${outcome.journalRef}`);
+    setOutDlg(false);
+    toast(sale ? 'Sale recorded' : 'Scrap recorded');
+  };
+  const out = r.outcome;
+  const gain = out && sale ? (out.saleValue ?? 0) - out.nbvAtDisposal : out ? -out.nbvAtDisposal : 0;
   return (
     <>
       <FormHeader crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: r.number }]} status={<StatusChip status={r.status} />}
         actions={<>
-          {r.status === 'Draft' && <><Button variant="outlined" onClick={() => nav(`/inventory/disposals/${r.id}/edit`)}>Edit</Button><Button variant="contained" onClick={() => { push('Pending Approval', 'Submitted for approval'); toast('Submitted for approval'); }}>Submit for Approval</Button></>}
+          {r.status === 'Draft' && <><Button variant="outlined" onClick={() => nav(`/inventory/disposals/${r.id}/edit`)}>Edit</Button><Button variant="contained" onClick={() => { push({ status: 'Pending Approval' }, 'Submitted for approval'); toast('Submitted for approval'); }}>Submit for Approval</Button></>}
           {r.status === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve</Button></>}
+          {r.status === 'Approved' && !out && <Button variant="contained" onClick={openOutcome}>{sale ? 'Complete Sale' : 'Record Scrap'}</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
+        <Panel sx={{ mb: 2 }}>
+          <LifecycleStepper steps={disposalSteps(r)} current={disposalStep(r)} />
+          {r.status === 'Rejected' && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
+          {r.status === 'Approved' && !out && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The asset has been inactivated. {sale ? 'Complete the sale to record the buyer, sale value and Sales Invoice.' : 'Record the scrap to close the request.'}</Text>}
+        </Panel>
         <ValueGrid cols={4}>
           <ValueField label="Disposal Request Number" value={r.number} change="new" req={REQ_DSP} />
-          <ValueField label="Linked Asset" value={asset ? `${r.assetId} - ${asset.name}` : r.assetId} change="new" req={REQ_DSP} />
-          <ValueField label="Disposal Reason" value={r.reason} change="new" req={REQ_DSP} />
+          <ValueField label="Asset" value={asset ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/inventory/items/heavy/${asset.id}`)}>{r.assetId} - {asset.name}</Box> : r.assetId} change="new" req={REQ_DSP} />
           <ValueField label="Disposal Method" value={r.method} change="new" req={REQ_DSP} />
-          <ValueField label="Scrap/Sale Value" value={r.method === 'Sale' ? aed(r.value) : undefined} change="new" req={REQ_DSP} />
+          <ValueField label="Disposal Reason" value={r.reason} change="new" req={REQ_DSP} />
+          {sale && <ValueField label="Expected Sale Value" value={r.value ? aed(r.value) : undefined} change="new" req={REQ_DSP} />}
           <ValueField label="Approval Status" value={<StatusChip status={r.status} />} change="new" req={REQ_DSP} />
-          <ValueField label="Asset Status" value={asset ? <StatusChip status={asset.assetStatus} /> : undefined} />
+          <ValueField label="Asset Status" value={asset ? <><StatusChip status={asset.assetStatus} /> <StatusChip status={asset.status} /></> : undefined} />
         </ValueGrid>
-        {r.status !== 'Approved' && <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>The asset cannot be marked Disposed until this request is Approved.</Text>}
+        {out && (
+          <Panel title={sale ? 'Sale Outcome' : 'Scrap Outcome'} change="new" req={REQ_DSP_FLOW} sx={{ mt: 3 }}>
+            <ValueGrid cols={4}>
+              <ValueField label={sale ? 'Sale Date' : 'Scrap Date'} value={out.date} />
+              {sale && <ValueField label="Buyer" value={out.buyer} />}
+              {sale && <ValueField label="Sale Value" value={aed(out.saleValue)} />}
+              {sale && <ValueField label="Sales Invoice" value={out.invoiceRef} />}
+              {!sale && <ValueField label="Scrap Reference" value={out.scrapRef} />}
+              <ValueField label="Net Book Value at Disposal" value={aed(out.nbvAtDisposal)} />
+              <ValueField label={gain >= 0 ? 'Gain on Disposal' : 'Loss on Disposal'} value={aed(Math.abs(gain))} />
+              <ValueField label="Finance Journal" value={out.journalRef} />
+              <ValueField label="Recorded By" value={out.by} />
+            </ValueGrid>
+            <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>POC: the Sales Invoice and journal are reference numbers only. In the live system they are created in Finance & Accounting and linked here.</Text>
+          </Panel>
+        )}
         <Panel title="Supporting Documents" change="new" req={REQ_DSP} sx={{ mt: 3 }}><FileList names={r.docs} /></Panel>
-        <Panel title="Approval History" sx={{ mt: 2 }}><Timeline items={[...r.log].reverse().map((l) => ({ when: l.when, title: l.title, detail: l.detail, by: l.by, tone: l.title === 'Approved' ? 'green' as const : l.title === 'Rejected' ? 'red' as const : 'blue' as const }))} /></Panel>
+        <Panel title="History" sx={{ mt: 2 }}><Timeline items={[...r.log].reverse().map((l) => ({ when: l.when, title: l.title, detail: l.detail, by: l.by, tone: l.title === 'Approved' || l.title.endsWith('completed') ? 'green' as const : l.title === 'Rejected' ? 'red' as const : 'blue' as const }))} /></Panel>
       </Page>
-      <ConfirmDialog open={reject} danger title="Reject disposal request" description="The asset stays active on the Fixed Asset Register." confirmLabel="Reject" onClose={() => setReject(false)} onConfirm={() => { push('Rejected', 'Rejected'); toast('Request rejected'); }} />
+      <ConfirmDialog open={reject} danger title="Reject disposal request" description="The asset stays active on the Fixed Asset Register." confirmLabel="Reject" onClose={() => setReject(false)} onConfirm={() => { push({ status: 'Rejected' }, 'Rejected'); toast('Request rejected'); }} />
+      <AppDialog open={outDlg} title={sale ? 'Complete Sale' : 'Record Scrap'} onClose={() => setOutDlg(false)} onConfirm={completeOutcome} confirmLabel={sale ? 'Complete Sale' : 'Record Scrap'} maxWidth="md">
+        <FormGrid>
+          <DateInput label={sale ? 'Sale Date' : 'Scrap Date'} required value={o.date} onChange={(v) => setO({ ...o, date: v })} error={oErr.date} />
+          {sale && <SelectInput label="Buyer" required value={o.buyer} options={(customers.rows as any[]).filter((c) => c.active).map((c) => c.name)} onChange={(v) => setO({ ...o, buyer: v })} error={oErr.buyer} hint="From the Customer master" />}
+          {sale && <NumberInput label="Sale Value (AED)" required value={o.saleValue} onChange={(v) => setO({ ...o, saleValue: v })} error={oErr.saleValue} />}
+          {sale && <TextInput label="Sales Invoice Reference" required value={o.invoiceRef} onChange={(v) => setO({ ...o, invoiceRef: v })} error={oErr.invoiceRef} hint="Suggested next number; in the live system the invoice is raised in Finance" />}
+          {!sale && <TextInput label="Scrap Reference / Certificate" value={o.scrapRef} onChange={(v) => setO({ ...o, scrapRef: v })} hint="Optional, e.g. scrap dealer receipt number" />}
+          <TextInput label="Net Book Value at Disposal" value={aed(asset?.nbv ?? 0)} disabled hint="Used to work out the gain or loss" />
+        </FormGrid>
+      </AppDialog>
     </>
   );
 }
