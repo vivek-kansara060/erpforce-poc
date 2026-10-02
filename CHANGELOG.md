@@ -12,6 +12,16 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 1:30 PM: Compliance & Certificates moved onto the individual asset, with optional approval and Print QR
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Fixed Asset Management
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Certificates were kept on a separate sidebar screen, away from the asset they belong to. Ajin asked for them to live on the asset, to be enterable at purchase, for one asset to carry many records, for approval to be optional per client, and for the asset QR code to be printable.
+*What we did.* The asset page (and the asset edit form) has a **Compliance & Certificates** tab listing every certificate of that asset (type, reference, expiry date, reminder lead time, document, status). **Add Certificate** opens a dialog; clicking a row opens it to view or edit, with its edit history. When **creating** a Heavy Equipment Fixed Asset, the same tab lets the user add any number of certificates that came with the purchase; they are saved against the new asset. An **Approval required (client setting)** switch, off by default, makes new and edited certificates start as Pending Approval with an Approve action. Under the asset's QR code there is a **Print QR** button that opens a print-ready label (QR, Serialized ID, asset name). The separate Compliance and Certificates sidebar screen is removed.
+*Connected change.* The Certificate Expiry Report is unchanged and still lists certificates nearing or past expiry.
+*Be aware.* Print QR opens a new browser window; if pop-ups are blocked, a message asks to allow them. The QR pattern is a POC stand-in generated from the Serialized ID.
+
 ### 2 Oct, around 1:00 PM: Location is simplified, and stock at a location is shown per item with its unit
 **Where:** Inventory & Fixed Assets > Configuration > Location
 **Where:** Inventory & Fixed Assets > Product Management > Items

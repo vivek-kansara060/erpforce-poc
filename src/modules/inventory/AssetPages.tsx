@@ -1,24 +1,26 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Box, Button } from '@mui/material';
+import { Box, Button, FormControlLabel, Switch } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
 import { Timeline } from '@/components/Flow';
-import { ConfirmDialog, useToast } from '@/components/Dialogs';
+import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { employees, fmtNum } from '@/mock-data/masters';
 import {
-  ASSET_ELSEWHERE_REASONS, ASSET_NOT_FOUND_REASONS, ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed, STOCK_DIFF_REASONS,
-  type AssetCountLine, type CertRec, type CountSession, type CountType, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
+  ASSET_ELSEWHERE_REASONS, ASSET_NOT_FOUND_REASONS, ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, MOVEMENT_PLACES, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, settingsSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, nextMovementNo, readingSeed, STOCK_DIFF_REASONS,
+  type AssetCountLine, type CertRec, type InventorySettings, type CountSession, type CountType, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type Movement, type ReadingRec,
 } from './data';
 import { FileList, aed, isBlank, num, requireFields, type Errors } from './shared';
 import dayjs from 'dayjs';
 
 const REQ_CERT = 'Compliance & Certificates (Asset-Level)';
+const REQ_CERT_ASSET = 'Compliance & Certificates (2 Oct call: on the individual asset, many per asset, optional approval)';
 const REQ_USE = 'Manual Usage & Status Recording';
 const REQ_PSV = 'Physical Stock Verification';
 const REQ_DSP = 'Asset Disposal / Write-Off';
@@ -36,74 +38,84 @@ export function certStatus(c: Pick<CertRec, 'expiry' | 'leadDays'>): { label: st
   return { label: 'Valid', tone: 'green' };
 }
 
-export function CertificateList() {
-  const nav = useNavigate();
+/** Compliance & Certificates of one asset (2 Oct call: lives on the asset, many records per asset, optional approval). */
+export function AssetCertificates({ assetId, canEdit = true }: { assetId: string; canEdit?: boolean }) {
   const toast = useToast();
-  const heavy = useHeavy();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
+  const settings = useCollection<InventorySettings>('inventory.settings', settingsSeed);
+  const approvalOn = !!settings.get('settings')?.certApproval;
+  const [dlg, setDlg] = useState<{ open: boolean; rec?: CertRec }>({ open: false });
   const [del, setDel] = useState<CertRec | null>(null);
+  const rows = certs.rows.filter((c) => c.assetId === assetId);
   return (
-    <Page>
-      <PageTitle title="Compliance and Certificates" change="new" req={REQ_CERT} />
-      <DataTable<CertRec>
-        rows={certs.rows} searchPlaceholder="Search certificates..."
-        filter={{ key: 'type', options: CERT_TYPES }}
-        onAdd={() => nav('/inventory/certificates/add')} addLabel="Add Certificate" onRowClick={(r) => nav(`/inventory/certificates/${r.id}`)}
+    <Panel title="Compliance & Certificates" change="new" req={REQ_CERT_ASSET}
+      right={<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <FormControlLabel control={<Switch size="small" checked={approvalOn} disabled={!canEdit} onChange={(e) => { settings.update('settings', { certApproval: e.target.checked }); toast(e.target.checked ? 'Certificate approval switched on: new and edited certificates need approval' : 'Certificate approval switched off'); }} />}
+          label={<Text type="s5" color="theme.secondary.800">Approval required (client setting)</Text>} />
+        {canEdit && <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Certificate</Button>}
+      </Box>}>
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>One asset can carry any number of certificates (insurance, warranty, registration, inspection and others). Click a row to view or edit it.</Text>
+      <DataTable<CertRec> hideToolbar rows={rows} pageSize={50} emptyText="No certificates yet" onRowClick={(r) => setDlg({ open: true, rec: r })}
         columns={[
-          { key: 'assetId', label: 'Asset', render: (r) => `${r.assetId} - ${assetName(heavy.rows, r.assetId)}` },
           { key: 'type', label: 'Certificate / Document Type' },
+          { key: 'reference', label: 'Reference', render: (r) => r.reference || '-' },
           { key: 'expiry', label: 'Expiry Date' },
-          { key: 'leadDays', label: 'Reminder Lead Time (days)', align: 'right' },
-          { key: 'status', label: 'Status', sortable: false, render: (r) => { const s = certStatus(r); return <StatusChip status={s.label} tone={s.tone} />; } },
+          { key: 'leadDays', label: 'Reminder Lead Time', align: 'right', render: (r) => `${r.leadDays} days` },
+          { key: 'file', label: 'Document', sortable: false, render: (r) => (r.file.length ? r.file.join(', ') : '-') },
+          { key: 'status', label: 'Status', sortable: false, render: (r) => { const st = certStatus(r); return <StatusChip status={st.label} tone={st.tone} />; } },
+          ...(approvalOn ? [{ key: 'approval', label: 'Approval', render: (r: CertRec) => <StatusChip status={r.approval ?? 'Approved'} /> }] : []),
         ]}
-        actions={[{ label: 'Edit', onClick: (r) => nav(`/inventory/certificates/${r.id}`) }, { label: 'Delete', danger: true, onClick: setDel }]}
+        actions={canEdit ? [
+          { label: 'View / Edit', onClick: (r) => setDlg({ open: true, rec: r }) },
+          { label: 'Approve', hidden: (r) => !approvalOn || r.approval !== 'Pending Approval', onClick: (r) => { certs.update(r.id, { approval: 'Approved', history: [{ when: NOW_STAMP, title: 'Approved', by: 'Current User' }, ...r.history] }); toast(`${r.type} certificate approved`); } },
+          { label: 'Delete', danger: true, onClick: setDel },
+        ] : undefined}
       />
-      <ConfirmDialog open={!!del} danger title="Delete certificate" description={`Delete the ${del?.type} certificate of ${del?.assetId}?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { certs.remove(del.id); toast('Certificate deleted'); } }} />
-    </Page>
+      <CertificateDialog open={dlg.open} assetId={assetId} rec={dlg.rec} approvalOn={approvalOn} readOnly={!canEdit} onClose={() => setDlg({ open: false })} />
+      <ConfirmDialog open={!!del} danger title="Delete certificate" description={`Delete the ${del?.type} certificate (expiry ${del?.expiry})?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { certs.remove(del.id); toast('Certificate deleted'); } }} />
+    </Panel>
   );
 }
 
-export function CertificateForm() {
-  const { id } = useParams();
-  const nav = useNavigate();
+function CertificateDialog({ open, assetId, rec, approvalOn, readOnly, onClose }: { open: boolean; assetId: string; rec?: CertRec; approvalOn: boolean; readOnly?: boolean; onClose: () => void }) {
   const toast = useToast();
-  const heavy = useHeavy();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
-  const existing = id ? certs.get(id) : undefined;
-  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? '', type: existing?.type ?? '', expiry: existing?.expiry ?? '', leadDays: existing ? String(existing.leadDays) : '30', file: existing?.file ?? [] });
+  const init = () => ({ type: rec?.type ?? '', reference: rec?.reference ?? '', expiry: rec?.expiry ?? '', leadDays: rec ? String(rec.leadDays) : '30', file: rec?.file ?? [] });
+  const [f, setF] = useState<Record<string, any>>(init);
   const [errors, setErrors] = useState<Errors>({});
-  if (id && !existing) return <NotFound back="Certificates" to="/inventory/certificates" />;
-  const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
+  const [key, setKey] = useState('');
+  // Re-initialise the fields whenever the dialog opens for another record.
+  const k = `${open}-${rec?.id ?? 'new'}`;
+  if (k !== key) { setKey(k); setF(init()); setErrors({}); }
+  const set = (n: string) => (v: any) => setF((x) => ({ ...x, [n]: v }));
   const save = () => {
-    const e = requireFields(f, ['assetId', 'type', 'expiry', 'leadDays'], { assetId: 'Asset', type: 'Certificate / Document Type', expiry: 'Expiry Date', leadDays: 'Reminder Lead Time' });
+    const e = requireFields(f, ['type', 'expiry', 'leadDays'], { type: 'Certificate / Document Type', expiry: 'Expiry Date', leadDays: 'Reminder Lead Time' });
     if (!e.leadDays && !(num(f.leadDays) > 0)) e.leadDays = 'Must be greater than 0';
     setErrors(e);
-    if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const rec: CertRec = { id: existing?.id ?? `ce${Date.now()}`, assetId: f.assetId, type: f.type, reference: existing?.reference ?? '', expiry: f.expiry, leadDays: Number(f.leadDays), file: f.file,
-      history: [{ when: NOW_STAMP, title: existing ? 'Certificate updated' : 'Certificate added', detail: existing ? `Expiry ${existing.expiry} to ${f.expiry}; reminder ${f.leadDays} days` : `${f.type} valid to ${f.expiry}`, by: 'Current User' }, ...(existing?.history ?? [])] };
-    if (existing) certs.update(rec.id, rec); else certs.add(rec);
-    toast(existing ? 'Certificate updated' : 'Certificate added');
-    nav('/inventory/certificates');
+    if (Object.keys(e).length) return;
+    const next: CertRec = { id: rec?.id ?? `ce${Date.now()}`, assetId, type: f.type, reference: f.reference.trim(), expiry: f.expiry, leadDays: Number(f.leadDays), file: f.file,
+      approval: approvalOn ? 'Pending Approval' : rec?.approval,
+      history: [{ when: NOW_STAMP, title: rec ? 'Certificate updated' : 'Certificate added', detail: rec ? `Expiry ${rec.expiry} to ${f.expiry}; reminder ${f.leadDays} days${approvalOn ? '; sent for approval' : ''}` : `${f.type} valid to ${f.expiry}${approvalOn ? '; sent for approval' : ''}`, by: 'Current User' }, ...(rec?.history ?? [])] };
+    if (rec) certs.update(next.id, next); else certs.add(next);
+    toast(rec ? 'Certificate updated' : 'Certificate added');
+    onClose();
   };
   return (
-    <>
-      <FormHeader crumbs={[{ label: 'Compliance and Certificates', to: '/inventory/certificates' }, { label: existing ? 'Edit Certificate' : 'Add Certificate' }]}
-        actions={<><Button variant="outlined" onClick={() => nav('/inventory/certificates')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
-      <Page sx={{ pt: 2 }}>
-        <FormGrid>
-          <SelectInput label="Asset" required change="new" req={REQ_CERT} value={f.assetId} options={useAssetOptions(heavy.rows)} onChange={set('assetId')} error={errors.assetId} disabled={!!existing} />
-          <SelectInput label="Certificate / Document Type" required change="new" req={REQ_CERT} value={f.type} options={CERT_TYPES} onChange={set('type')} error={errors.type} hint="New document types can be added by an administrator" />
-          <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} />
-          <NumberInput label="Reminder Lead Time (days before expiry)" required change="new" req={REQ_CERT} value={f.leadDays} onChange={set('leadDays')} error={errors.leadDays} hint="Configurable per certificate" />
-          <FileInput label="Document Attachment" change="new" req={REQ_CERT} value={f.file} onChange={set('file')} multiple />
-        </FormGrid>
-        {existing && (
-          <FormSection title="Last Updated By / Edit History" change="new" req={REQ_CERT}>
-            <Timeline items={existing.history.map((h) => ({ when: h.when, title: h.title, detail: h.detail, by: h.by, tone: 'blue' as const }))} />
-          </FormSection>
-        )}
-      </Page>
-    </>
+    <AppDialog open={open} title={rec ? `${readOnly ? 'View' : 'Edit'} ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={readOnly ? undefined : save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
+      <FormGrid>
+        <SelectInput label="Certificate / Document Type" required change="new" req={REQ_CERT} value={f.type} options={CERT_TYPES} onChange={set('type')} error={errors.type} disabled={readOnly} hint="New document types can be added by an administrator" />
+        <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} disabled={readOnly} />
+        <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} disabled={readOnly} />
+        <NumberInput label="Reminder Lead Time (days before expiry)" required change="new" req={REQ_CERT} value={f.leadDays} onChange={set('leadDays')} error={errors.leadDays} disabled={readOnly} hint="Configurable per certificate" />
+        <FileInput label="Document" change="new" req={REQ_CERT} value={f.file} onChange={set('file')} multiple disabled={readOnly} />
+        {approvalOn && !readOnly && <Text type="s5" color="theme.secondary.700">Approval is switched on, so this certificate is saved as Pending Approval.</Text>}
+      </FormGrid>
+      {rec && rec.history.length > 0 && (
+        <FormSection title="Edit History" change="new" req={REQ_CERT}>
+          <Timeline items={rec.history.map((h) => ({ when: h.when, title: h.title, detail: h.detail, by: h.by, tone: 'blue' as const }))} />
+        </FormSection>
+      )}
+    </AppDialog>
   );
 }
 

@@ -324,7 +324,10 @@ export const qtyWithUnit = (qty: number, unit: string) => {
 
 /* ------------------------------------------------------------------ certificates, usage readings, stock verification, disposal */
 export const CERT_TYPES = ['Registration', 'Insurance', 'Inspection', 'Warranty', 'Other'];
-export interface CertRec { id: string; assetId: string; type: string; reference: string; expiry: string; leadDays: number; file: string[]; history: AuditEntry[] }
+export interface CertRec { id: string; assetId: string; type: string; reference: string; expiry: string; leadDays: number; file: string[]; history: AuditEntry[]; /** only used when certificate approval is switched on */ approval?: 'Pending Approval' | 'Approved' }
+/** Client-level settings for the Inventory POC (one record). Certificate approval is optional and off by default. */
+export interface InventorySettings { id: 'settings'; certApproval: boolean }
+export const settingsSeed: InventorySettings[] = [{ id: 'settings', certApproval: false }];
 const cert = (n: number, assetId: string, type: string, reference: string, expiry: string, leadDays: number): CertRec => ({ id: `ce${n}`, assetId, type, reference, expiry, leadDays, file: [`${type}-${assetId}.pdf`], history: [{ when: '2026-01-12 11:20', title: 'Certificate added', detail: `${type} valid to ${expiry}`, by: 'Sanjay Kumar' }] });
 export const certSeed: CertRec[] = [
   cert(1, 'AST-1015', 'Insurance', 'POL-GEN-55012', '2026-12-31', 30), cert(2, 'AST-1015', 'Warranty', 'WR-CUM-88231', '2026-10-20', 30), cert(3, 'AST-1018', 'Insurance', 'POL-GEN-55044', '2026-12-31', 30),

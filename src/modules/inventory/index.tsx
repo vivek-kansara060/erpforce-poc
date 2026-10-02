@@ -4,7 +4,7 @@ import type { ModuleDef } from '@/types';
 import { ItemList, ItemForm, ItemView } from './ItemPages';
 import { HeavyForm, HeavyView, MovementForm } from './HeavyEquipmentPages';
 import { LocationForm, LocationList, LocationView } from './LocationPages';
-import { CertificateForm, CertificateList, CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView, ReadingForm, ReadingList } from './AssetPages';
+import { CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView, ReadingForm, ReadingList } from './AssetPages';
 import { dashboards, reports } from './reports';
 import { dashboardRoutes, reportRoutes } from '@/components/ReportsAndDashboards';
 import { CategoryForm, CategoryList, CategoryView, SubCategoryForm, SubCategoryList, SubCategoryView } from './Masters';
@@ -29,7 +29,6 @@ const mod: ModuleDef = {
     },
     { label: 'Configuration', children: [{ label: 'Location', path: '/inventory/locations', change: 'changed' }] },
     { label: 'Fixed Asset Management', children: [
-      { label: 'Compliance and Certificates', path: '/inventory/certificates', change: 'new' },
       { label: 'Usage Readings', path: '/inventory/usage-readings', change: 'new' },
       { label: 'Disposal Requests', path: '/inventory/disposals', change: 'new' },
     ] },
@@ -66,9 +65,6 @@ const mod: ModuleDef = {
     { path: 'locations/add', element: <LocationForm /> },
     { path: 'locations/:id', element: <LocationView /> },
     { path: 'locations/:id/edit', element: <LocationForm /> },
-    { path: 'certificates', element: <CertificateList /> },
-    { path: 'certificates/add', element: <CertificateForm /> },
-    { path: 'certificates/:id', element: <CertificateForm /> },
     { path: 'usage-readings', element: <ReadingList /> },
     { path: 'usage-readings/add', element: <ReadingForm /> },
     { path: 'usage-readings/:id', element: <ReadingForm /> },
@@ -91,7 +87,7 @@ const mod: ModuleDef = {
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset type', classification: 'NEW', existing: '-', change: 'New always-serialized item type within Items, identified by an auto-generated Serialized ID (no typed name, item code or tracking method on the form), with its own listing view, add/edit form and view page (Basic Details, Depreciation Board, Movement History, Ownership)', ref: 'Item Master / Fixed Asset Register', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Activity Type (Rental / Trading) and Description. Rental prices are one record per billing frequency, with Add Another Frequency and a read-only preview of the price at every frequency; Trading prices are a single sales price. Rental / Trading filter, bulk upload and a view page', ref: 'Pricing Master (2 Oct call)', path: '/inventory/pricing' },
     { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Removes Parent Location, Company and the address block (City kept). Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional), a read-only per-item stock table with units (Stock Held, Consumed, Remaining, Remaining Value) and deliveries from supplier-held locations', ref: 'Location & Warehouse Master (2 Oct call)', path: '/inventory/locations' },
-    { module: 'Inventory & Fixed Assets', screen: 'Compliance and Certificates', classification: 'NEW', existing: '-', change: 'Asset-level certificates with type, expiry, reminder lead time, attachment and edit history', ref: 'Compliance & Certificates', path: '/inventory/certificates' },
+    { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Compliance & Certificates tab', classification: 'NEW', existing: '-', change: 'Certificates live on the individual asset (no separate sidebar screen): many per asset with type, reference, expiry, reminder lead time, document, status and edit history; can be added while creating the asset; optional approval switch; QR code with Print QR', ref: 'Compliance & Certificates (2 Oct call)', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Usage Readings', classification: 'NEW', existing: '-', change: 'Manual hour meter and status recording per asset', ref: 'Manual Usage & Status Recording', path: '/inventory/usage-readings' },
     { module: 'Inventory & Fixed Assets', screen: 'Physical Stock Verification', classification: 'NEW', existing: 'Only a Stock Reconciliation report', change: 'Count sessions with system snapshot, variance and Stock Adjustment approval (approve or reject, with approval history). A reason is recorded for every difference (list to be confirmed with client). Count Type: Stock Items or Fixed Assets (Found / Not Found / Found elsewhere per unit, to be confirmed with client)', ref: 'Physical Stock Verification', path: '/inventory/stock-verification' },
     { module: 'Inventory & Fixed Assets', screen: 'Asset Disposal Requests', classification: 'NEW', existing: 'Dispose page in Accounting with no approval', change: 'Disposal request with reason, method, value and approval before an asset can be Disposed', ref: 'Asset Disposal / Write-Off', path: '/inventory/disposals' },

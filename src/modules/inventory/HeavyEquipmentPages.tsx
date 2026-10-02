@@ -15,17 +15,20 @@ import { useCollection } from '@/store/store';
 import { neutral } from '@/theme/color';
 import {
   ACCOUNTS, ASSET_STATUSES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
-  attributesFor, buildBoard, categorySeed, crossHireSeed, crossHireStatus, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
-  type AuditEntry, type BoardRow, type CategoryRec, type CrossHireRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
+  CERT_TYPES, attributesFor, buildBoard, categorySeed, certSeed, settingsSeed, crossHireSeed, crossHireStatus, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
+  type AuditEntry, type BoardRow, type CategoryRec, type CertRec, type CrossHireRec, type InventorySettings, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
+import { AssetCertificates } from './AssetPages';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
 const REQ_ITEM_CODE = 'Item Master > Item Code';
 const REQ_FA = 'Fixed Asset Register';
 const REQ_MV = 'Movement History';
+const REQ_CERT_TAB = 'Compliance & Certificates (2 Oct call: on the individual asset)';
 const REQ_NAME = 'Fixed Asset > Asset Name (2 Oct call: suggested, editable by the client)';
 const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, manual change where needed)';
 /** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
@@ -71,23 +74,38 @@ function InsuranceTable({ rows }: { rows: InsuranceEntry[] }) {
   ]} />;
 }
 
-/** Deterministic QR-style tag generated from the Asset ID (Phase 1: scanning shows the Asset ID only). */
-function AssetTag({ assetId }: { assetId: string }) {
-  const n = 21;
+/** Deterministic QR-style cells generated from the Asset ID (Phase 1: scanning shows the Asset ID only). */
+const QR_N = 21;
+function qrCells(assetId: string): [number, number][] {
+  const n = QR_N;
   let h = 0;
   for (const ch of assetId) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   const bit = (x: number, y: number) => { h = (h * 1664525 + 1013904223 + x * 7 + y) >>> 0; return (h >>> 16) & 1; };
   const corners = [[0, 0], [n - 7, 0], [0, n - 7]];
   const finder = (x: number, y: number) => corners.some(([fx, fy]) => x >= fx && x < fx + 7 && y >= fy && y < fy + 7 && (x === fx || x === fx + 6 || y === fy || y === fy + 6 || (x >= fx + 2 && x <= fx + 4 && y >= fy + 2 && y <= fy + 4)));
   const inFinder = (x: number, y: number) => corners.some(([fx, fy]) => x >= fx - 1 && x <= fx + 7 && y >= fy - 1 && y <= fy + 7);
-  const cells: JSX.Element[] = [];
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (inFinder(x, y) ? finder(x, y) : bit(x, y)) cells.push(<rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />);
+  const out: [number, number][] = [];
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (inFinder(x, y) ? finder(x, y) : bit(x, y)) out.push([x, y]);
+  return out;
+}
+const qrSvg = (assetId: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${QR_N} ${QR_N}" width="180" height="180" fill="#1F2125" shape-rendering="crispEdges">${qrCells(assetId).map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('')}</svg>`;
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+/** Opens a print-ready label (QR, Serialized ID, asset name) in a new window and starts printing. */
+function printAssetLabel(assetId: string, name: string, onBlocked: () => void) {
+  const w = window.open('', '_blank', 'width=420,height=520');
+  if (!w) { onBlocked(); return; }
+  w.document.write(`<!doctype html><html><head><title>QR label ${esc(assetId)}</title><style>body{font-family:Arial,sans-serif;display:flex;justify-content:center;padding:24px}.l{border:1px dashed #999;padding:16px 20px;text-align:center;width:240px}.id{font-size:20px;font-weight:bold;margin-top:8px}.n{font-size:12px;color:#444;margin-top:4px}.c{font-size:11px;color:#777;margin-top:8px}</style></head><body><div class="l">${qrSvg(assetId)}<div class="id">${esc(assetId)}</div><div class="n">${esc(name)}</div><div class="c">Gulf Power Rentals LLC</div></div><script>window.onload=function(){window.print()}<\/script></body></html>`);
+  w.document.close();
+}
+function AssetTag({ assetId, name }: { assetId: string; name: string }) {
+  const toast = useToast();
   return (
     <Box sx={{ textAlign: 'center' }}>
       <Box sx={{ width: 104, height: 104, p: 0.75, border: `1px solid ${neutral[200]}`, borderRadius: '8px', bgcolor: '#fff' }}>
-        <svg viewBox={`0 0 ${n} ${n}`} width="100%" height="100%" fill="#1F2125" shapeRendering="crispEdges">{cells}</svg>
+        <svg viewBox={`0 0 ${QR_N} ${QR_N}`} width="100%" height="100%" fill="#1F2125" shapeRendering="crispEdges">{qrCells(assetId).map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />)}</svg>
       </Box>
       <Text type="s5" weight="medium" sx={{ mt: 0.5 }}>{assetId}</Text>
+      <Button size="small" variant="text" startIcon={<PrintOutlinedIcon sx={{ fontSize: 16 }} />} onClick={() => printAssetLabel(assetId, name, () => toast('Allow pop-ups for this site to print the QR label', 'error'))} sx={{ mt: 0.25, fontSize: 12 }}>Print QR</Button>
     </Box>
   );
 }
@@ -114,6 +132,10 @@ export function HeavyForm() {
   const items = useCollection<ItemRec>('items', itemSeed);
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const crossHires = useCrossHires();
+  const certs = useCollection<CertRec>('inventory.certificates', certSeed);
+  const settings = useCollection<InventorySettings>('inventory.settings', settingsSeed);
+  const [newCerts, setNewCerts] = useState<{ type: string; reference: string; expiry: string; leadDays: string; file: string[] }[]>([]);
+  const setCert = (i: number, p: Partial<(typeof newCerts)[number]>) => setNewCerts(newCerts.map((c, n) => (n === i ? { ...c, ...p } : c)));
   const existing = id ? heavy.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavy.rows.map((r) => r.code));
   const assetId = existing?.assetId ?? `AST-${1000 + Number(code.replace(/\D/g, ''))}`;
@@ -153,6 +175,7 @@ export function HeavyForm() {
     if (crossHired && !chId) e.crossHireId = 'Select the cross-hire record this unit came in on';
     if (f.putToUseDate && f.purchaseDate && f.putToUseDate < f.purchaseDate) e.putToUseDate = 'Cannot be before Purchase Date';
     if (dep && num(f.notDepreciable) > num(f.assetValue)) e.notDepreciable = 'Cannot exceed Asset Value';
+    if (newCerts.some((c) => !c.type || !c.expiry || !(num(c.leadDays) > 0))) e.certs = 'Complete every certificate (type, expiry date and a reminder lead time greater than 0), or remove it';
     if (insurance.some((x) => !x.amount || !x.date || !x.dueDate || !x.account || x.dueDate < x.date)) e.insurance = 'Complete every insurance entry (amount, date, due date after date, account)';
     return e;
   };
@@ -162,7 +185,7 @@ export function HeavyForm() {
     setErrors(e);
     const keys = Object.keys(e);
     if (keys.length) {
-      const initial = keys.some((k) => BASIC_KEYS.includes(k) || k.startsWith('attr:')) ? 0 : keys.some((k) => DEP_KEYS.includes(k)) ? 1 : 3;
+      const initial = keys.some((k) => BASIC_KEYS.includes(k) || k.startsWith('attr:')) ? 0 : keys.some((k) => DEP_KEYS.includes(k)) ? 1 : keys.includes('certs') ? (crossHired ? 1 : 4) : 3;
       setTab((t) => ({ key: t.key + 1, initial }));
       toast('Please complete the mandatory fields highlighted on the form', 'error');
       return;
@@ -183,6 +206,9 @@ export function HeavyForm() {
       insurance: crossHired ? [] : insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
     if (existing) heavy.update(existing.id, rec); else heavy.add(rec);
+    // Certificates entered while creating the asset are stored against it.
+    const approvalOn = !!settings.get('settings')?.certApproval;
+    newCerts.forEach((c, i) => certs.add({ id: `ce${Date.now()}-${i}`, assetId, type: c.type, reference: c.reference.trim(), expiry: c.expiry, leadDays: Number(c.leadDays), file: c.file, approval: approvalOn ? 'Pending Approval' : undefined, history: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Certificate added', detail: `${c.type} valid to ${c.expiry} (added with the asset)`, by: 'Current User' }] }));
     // Link the cross-hire record to this asset (and release a previously linked one).
     crossHires.replace(crossHires.rows.map((c) => (crossHired && c.id === chId ? { ...c, heavyId: rec.id } : c.heavyId === rec.id && c.id !== chId ? { ...c, heavyId: undefined } : c)));
     toast(existing ? 'Heavy equipment fixed asset updated' : 'Heavy equipment fixed asset created');
@@ -304,6 +330,23 @@ export function HeavyForm() {
           { label: 'Depreciation Board', content: depreciation, hidden: crossHired },
           { label: 'Movement History', hidden: crossHired, content: existing ? <><Note>Movement History is append-only. To record a new movement, use Add Movement on the view page.</Note><MovementTable rows={existing.movements} /></> : <><Note>The first entry is created automatically from the Initial Location once the equipment is saved.</Note><MovementTable rows={[]} /></> },
           { label: 'Ownership', content: ownership, hidden: crossHired },
+          { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: existing ? <AssetCertificates assetId={existing.assetId} /> : (
+            <FormSection title="Compliance & Certificates" change="new" req={REQ_CERT_TAB} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setNewCerts([...newCerts, { type: '', reference: '', expiry: '', leadDays: '30', file: [] }])}>Add Certificate</Button>}>
+              <Note>Add the certificates that come with the purchase (insurance, warranty, registration, inspection). More can be added or edited later on the asset page.</Note>
+              {errors.certs && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{errors.certs}</Text>}
+              {newCerts.length === 0 && <Text type="s5" color="theme.secondary.700">No certificates added</Text>}
+              {newCerts.map((c, i) => (
+                <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr 0.8fr 1.6fr 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
+                  <SelectInput label="Type" required value={c.type} options={CERT_TYPES} onChange={(v) => setCert(i, { type: v })} />
+                  <TextInput label="Reference" value={c.reference} onChange={(v) => setCert(i, { reference: v })} />
+                  <DateInput label="Expiry Date" required value={c.expiry} onChange={(v) => setCert(i, { expiry: v })} />
+                  <NumberInput label="Reminder (days)" required value={c.leadDays} onChange={(v) => setCert(i, { leadDays: v })} />
+                  <FileInput label="Document" value={c.file} onChange={(v) => setCert(i, { file: v })} />
+                  <IconButton size="small" onClick={() => setNewCerts(newCerts.filter((_, n) => n !== i))} sx={{ mb: 0.5 }}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                </Box>
+              ))}
+            </FormSection>
+          ) },
         ]} />
       </Page>
       <ConfirmDialog open={leave} info title="Discard changes" description="Leave this form? Unsaved changes will be lost." confirmLabel="Leave" onClose={() => setLeave(false)} onConfirm={() => nav('/inventory/items')} />
@@ -425,7 +468,7 @@ export function HeavyView() {
   };
   const dep = depreciationApplicable(r.ownership);
   const attrDefs = attributesFor(cats.rows, r.category, r.subCategory);
-  const tabs = crossHired ? ['Basic Details', 'Cross-Hire'] : ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership'];
+  const tabs = crossHired ? ['Basic Details', 'Cross-Hire', 'Compliance & Certificates'] : ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership', 'Compliance & Certificates'];
   const initial = Math.max(0, tabs.indexOf((loc.state as any)?.tab));
   return (
     <>
@@ -455,7 +498,7 @@ export function HeavyView() {
               <ValueField label="Current Location" value={currentLocation(r)} change="new" req={REQ_MV} />
             </ValueGrid>
           </Box>
-          <AssetTag assetId={r.assetId} />
+          <AssetTag assetId={r.assetId} name={r.name} />
         </Box>
         <TabPanels key={loc.key} initial={initial} tabs={[
           { label: 'Basic Details', content: (
@@ -534,6 +577,7 @@ export function HeavyView() {
               <Panel title="Insurance" change="new" req={REQ_FA} sx={{ mt: 3 }}><InsuranceTable rows={r.insurance} /></Panel>
             </>
           ) },
+          { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: <AssetCertificates assetId={r.assetId} /> },
         ]} />
       </Page>
       <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"
