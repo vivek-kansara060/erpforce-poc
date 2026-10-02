@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 2:45 PM: Physical Stock Verification simplified: one free-text reason, Found / Not Found, filters, Select All, no paging
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Reports
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* In the 2 Oct call Ajin found the count too heavy: a reason had to be picked from a dropdown on every differing line, fixed assets had a third result "Found elsewhere", the asset list paged with next-page arrows although it is already limited to one location, there was no way to filter or select many assets at once, and quantities were shown without units.
+*What we did.* **Stock Items count:** a single free-text **Reason for Differences** at the top of the session, needed only when a counted quantity differs from the system; quantities and variances always show their unit (for example "14 Nos", "-2 Nos", "1,760 Meters"). **Fixed Assets count:** each asset is **Found** or **Not Found** ("Found elsewhere" and its automatic location correction are removed); a free-text reason is asked for only when an asset is not found. The asset list has **filters** (Asset or Asset Name, Category, Ownership, Result), **Select All** (respects the filters) with **Mark selected Found / Not Found**, a running count of found, not found and not marked, and shows **every row without paging**. Only **active** assets are loaded, so scrapped, disposed and returned cross-hire units no longer appear. Approving a Fixed Assets adjustment logs each Not Found asset on its audit trail; status and location are never changed automatically. The session list gets a status filter and a Counted By column. The Physical Stock Variance Report shows the session reason and quantities with units.
+*Be aware.* The reason is free text, as asked; earlier reason lists are removed. Existing demo sessions were converted to one reason per session.
+
 ### 2 Oct, around 2:15 PM: Disposal requests now show the full lifecycle, including the sale or scrap outcome
 **Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
 **Type:** EXISTING WITH CHANGE
