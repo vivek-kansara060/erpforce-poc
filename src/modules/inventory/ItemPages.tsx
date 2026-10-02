@@ -14,7 +14,6 @@ import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
 import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, qtyWithUnit, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
-import { useCanEdit } from './permissions';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
@@ -30,7 +29,6 @@ export function ItemList() {
   const toast = useToast();
   const items = useItems();
   const heavy = useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
-  const canEdit = useCanEdit();
   const [type, setType] = useState('All');
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
@@ -76,13 +74,13 @@ export function ItemList() {
         rows={view} columns={cols}
         filter={heavyView ? { key: 'ownerGroup', options: ['Own Asset', 'Cross-Hire Asset'] } : undefined}
         searchPlaceholder="Search items..."
-        onAdd={canEdit ? () => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add') : undefined} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
+        onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add')} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
         onRowClick={open}
         actions={[
           { label: 'View', onClick: open },
-          { label: 'Edit', hidden: () => !canEdit, onClick: edit },
-          { label: 'Duplicate', hidden: (r) => !canEdit || r.kind === 'heavy', onClick: (r) => { const src = items.get(r.id); if (src) { items.add({ ...src, id: `i${Date.now()}`, code: nextItemCode(items.rows.map((x) => x.code), heavyCodes()), sku: `${src.sku}-COPY`, name: `${src.name} (Copy)` }); toast('Item duplicated'); } } },
-          { label: 'Delete', danger: true, hidden: () => !canEdit, onClick: setDel },
+          { label: 'Edit', onClick: edit },
+          { label: 'Duplicate', hidden: (r) => r.kind === 'heavy', onClick: (r) => { const src = items.get(r.id); if (src) { items.add({ ...src, id: `i${Date.now()}`, code: nextItemCode(items.rows.map((x) => x.code), heavyCodes()), sku: `${src.sku}-COPY`, name: `${src.name} (Copy)` }); toast('Item duplicated'); } } },
+          { label: 'Delete', danger: true, onClick: setDel },
         ]}
       />
       <ConfirmDialog open={!!del} danger title="Delete item" description={`Delete ${del?.name}? This cannot be undone.`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { (del.kind === 'heavy' ? heavy : items).remove(del.id); toast('Item deleted'); } }} />
@@ -206,7 +204,6 @@ export function ItemView() {
   const items = useItems();
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const locStock = useCollection<LocationStock>('inventory.locationStock', locationStockSeed);
-  const canEdit = useCanEdit();
   const r = items.get(id);
   if (!r) return <Page><PageTitle title="Item not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const serial = isSerialized(r.tracking);
@@ -217,8 +214,8 @@ export function ItemView() {
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: r.code }]}
         status={<StatusChip status={r.status} />}
         actions={<>
-          {canEdit && <Button variant="outlined" onClick={() => { items.update(r.id, { status: r.status === 'Active' ? 'Inactive' : 'Active' }); toast(`Item marked ${r.status === 'Active' ? 'Inactive' : 'Active'}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>}
-          {canEdit && <Button variant="contained" onClick={() => nav(`/inventory/items/${r.id}/edit`)}>Edit</Button>}
+          <Button variant="outlined" onClick={() => { items.update(r.id, { status: r.status === 'Active' ? 'Inactive' : 'Active' }); toast(`Item marked ${r.status === 'Active' ? 'Inactive' : 'Active'}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
+          <Button variant="contained" onClick={() => nav(`/inventory/items/${r.id}/edit`)}>Edit</Button>
         </>}
       />
       <Page sx={{ pt: 2 }}>

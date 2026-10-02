@@ -13,7 +13,6 @@ import { useToast } from '@/components/Dialogs';
 import { fmtAED } from '@/mock-data/masters';
 import { neutral, primaryGreen } from '@/theme/color';
 import type { ChangeKind } from '@/types';
-import { AccessSwitch } from './permissions';
 
 /** Inventory report definition. Rows are built from live POC data each time the report opens. */
 export interface InvReportColumn {
@@ -87,7 +86,6 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
       <Page>
         <PageTitle title={report.title} subtitle={report.purpose} change={report.change} req={report.req}
           right={<Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <AccessSwitch />
             <Badge color="primary" badgeContent={active} invisible={!active}><Button variant={showFilters ? 'contained' : 'outlined'} startIcon={<FilterListIcon />} onClick={() => setShowFilters(!showFilters)}>Filter</Button></Badge>
             <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={print}>Print</Button>
             <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />} onClick={() => toast(`${report.title} exported (POC: no file generated)`, 'info')}>Export</Button>
@@ -162,7 +160,7 @@ export function ReportsIndexPage({ reports, basePath }: { reports: InvReportDef[
   const groups = Array.from(new Set(reports.map((r) => r.group ?? 'Reports')));
   return (
     <Page>
-      <PageTitle title="Reports" subtitle={`${reports.length} reports. Every report has filters, column search, totals and print.`} right={<AccessSwitch />} />
+      <PageTitle title="Reports" subtitle={`${reports.length} reports. Every report has filters, column search, totals and print.`} />
       {groups.map((g) => (
         <Box key={g} sx={{ mb: 3 }}>
           <Text type="s2" weight="medium" sx={{ mb: 1 }}>{g}</Text>

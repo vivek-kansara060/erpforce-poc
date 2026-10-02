@@ -39,7 +39,7 @@ export function certStatus(c: Pick<CertRec, 'expiry' | 'leadDays'>): { label: st
 }
 
 /** Compliance & Certificates of one asset (2 Oct call: lives on the asset, many records per asset, optional approval). */
-export function AssetCertificates({ assetId, canEdit = true }: { assetId: string; canEdit?: boolean }) {
+export function AssetCertificates({ assetId }: { assetId: string }) {
   const toast = useToast();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const settings = useCollection<InventorySettings>('inventory.settings', settingsSeed);
@@ -50,9 +50,9 @@ export function AssetCertificates({ assetId, canEdit = true }: { assetId: string
   return (
     <Panel title="Compliance & Certificates" change="new" req={REQ_CERT_ASSET}
       right={<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <FormControlLabel control={<Switch size="small" checked={approvalOn} disabled={!canEdit} onChange={(e) => { settings.update('settings', { certApproval: e.target.checked }); toast(e.target.checked ? 'Certificate approval switched on: new and edited certificates need approval' : 'Certificate approval switched off'); }} />}
+        <FormControlLabel control={<Switch size="small" checked={approvalOn} onChange={(e) => { settings.update('settings', { certApproval: e.target.checked }); toast(e.target.checked ? 'Certificate approval switched on: new and edited certificates need approval' : 'Certificate approval switched off'); }} />}
           label={<Text type="s5" color="theme.secondary.800">Approval required (client setting)</Text>} />
-        {canEdit && <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Certificate</Button>}
+        <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Certificate</Button>
       </Box>}>
       <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>One asset can carry any number of certificates (insurance, warranty, registration, inspection and others). Click a row to view or edit it.</Text>
       <DataTable<CertRec> hideToolbar rows={rows} pageSize={50} emptyText="No certificates yet" onRowClick={(r) => setDlg({ open: true, rec: r })}
@@ -65,19 +65,19 @@ export function AssetCertificates({ assetId, canEdit = true }: { assetId: string
           { key: 'status', label: 'Status', sortable: false, render: (r) => { const st = certStatus(r); return <StatusChip status={st.label} tone={st.tone} />; } },
           ...(approvalOn ? [{ key: 'approval', label: 'Approval', render: (r: CertRec) => <StatusChip status={r.approval ?? 'Approved'} /> }] : []),
         ]}
-        actions={canEdit ? [
+        actions={[
           { label: 'View / Edit', onClick: (r) => setDlg({ open: true, rec: r }) },
           { label: 'Approve', hidden: (r) => !approvalOn || r.approval !== 'Pending Approval', onClick: (r) => { certs.update(r.id, { approval: 'Approved', history: [{ when: NOW_STAMP, title: 'Approved', by: 'Current User' }, ...r.history] }); toast(`${r.type} certificate approved`); } },
           { label: 'Delete', danger: true, onClick: setDel },
-        ] : undefined}
+        ]}
       />
-      <CertificateDialog open={dlg.open} assetId={assetId} rec={dlg.rec} approvalOn={approvalOn} readOnly={!canEdit} onClose={() => setDlg({ open: false })} />
+      <CertificateDialog open={dlg.open} assetId={assetId} rec={dlg.rec} approvalOn={approvalOn} onClose={() => setDlg({ open: false })} />
       <ConfirmDialog open={!!del} danger title="Delete certificate" description={`Delete the ${del?.type} certificate (expiry ${del?.expiry})?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { certs.remove(del.id); toast('Certificate deleted'); } }} />
     </Panel>
   );
 }
 
-function CertificateDialog({ open, assetId, rec, approvalOn, readOnly, onClose }: { open: boolean; assetId: string; rec?: CertRec; approvalOn: boolean; readOnly?: boolean; onClose: () => void }) {
+function CertificateDialog({ open, assetId, rec, approvalOn, onClose }: { open: boolean; assetId: string; rec?: CertRec; approvalOn: boolean; onClose: () => void }) {
   const toast = useToast();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const init = () => ({ type: rec?.type ?? '', reference: rec?.reference ?? '', expiry: rec?.expiry ?? '', leadDays: rec ? String(rec.leadDays) : '30', file: rec?.file ?? [] });
@@ -101,14 +101,14 @@ function CertificateDialog({ open, assetId, rec, approvalOn, readOnly, onClose }
     onClose();
   };
   return (
-    <AppDialog open={open} title={rec ? `${readOnly ? 'View' : 'Edit'} ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={readOnly ? undefined : save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
+    <AppDialog open={open} title={rec ? `Edit ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
       <FormGrid>
-        <SelectInput label="Certificate / Document Type" required change="new" req={REQ_CERT} value={f.type} options={CERT_TYPES} onChange={set('type')} error={errors.type} disabled={readOnly} hint="New document types can be added by an administrator" />
-        <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} disabled={readOnly} />
-        <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} disabled={readOnly} />
-        <NumberInput label="Reminder Lead Time (days before expiry)" required change="new" req={REQ_CERT} value={f.leadDays} onChange={set('leadDays')} error={errors.leadDays} disabled={readOnly} hint="Configurable per certificate" />
-        <FileInput label="Document" change="new" req={REQ_CERT} value={f.file} onChange={set('file')} multiple disabled={readOnly} />
-        {approvalOn && !readOnly && <Text type="s5" color="theme.secondary.700">Approval is switched on, so this certificate is saved as Pending Approval.</Text>}
+        <SelectInput label="Certificate / Document Type" required change="new" req={REQ_CERT} value={f.type} options={CERT_TYPES} onChange={set('type')} error={errors.type} hint="New document types can be added by an administrator" />
+        <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} />
+        <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} />
+        <NumberInput label="Reminder Lead Time (days before expiry)" required change="new" req={REQ_CERT} value={f.leadDays} onChange={set('leadDays')} error={errors.leadDays} hint="Configurable per certificate" />
+        <FileInput label="Document" change="new" req={REQ_CERT} value={f.file} onChange={set('file')} multiple />
+        {approvalOn && <Text type="s5" color="theme.secondary.700">Approval is switched on, so this certificate is saved as Pending Approval.</Text>}
       </FormGrid>
       {rec && rec.history.length > 0 && (
         <FormSection title="Edit History" change="new" req={REQ_CERT}>
@@ -121,7 +121,7 @@ function CertificateDialog({ open, assetId, rec, approvalOn, readOnly, onClose }
 
 /* ================================================================== Usage readings */
 /** Usage readings of one asset (2 Oct call: kept under the asset, manual entry for now, optional). */
-export function AssetReadings({ assetId, canEnter = true }: { assetId: string; canEnter?: boolean }) {
+export function AssetReadings({ assetId }: { assetId: string }) {
   const toast = useToast();
   const readings = useCollection<ReadingRec>('inventory.readings', readingSeed);
   const [dlg, setDlg] = useState<{ open: boolean; rec?: ReadingRec }>({ open: false });
@@ -129,9 +129,9 @@ export function AssetReadings({ assetId, canEnter = true }: { assetId: string; c
   const rows = readings.rows.filter((r) => r.assetId === assetId).sort((a, b) => b.date.localeCompare(a.date));
   return (
     <Panel title="Usage Readings" change="new" req={REQ_USE_ASSET}
-      right={canEnter ? <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Reading</Button> : <Text type="s5" color="theme.secondary.700">You do not have permission to enter readings</Text>}>
+      right={<Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => setDlg({ open: true })}>Add Reading</Button>}>
       <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>Readings are optional and entered manually in this phase. The Reading Source field is kept so a future IoT or telematics feed can fill the same records. Reading frequency rule to be confirmed with client ({READING_FREQUENCY_DAYS} days assumed for the overdue report).</Text>
-      <DataTable<ReadingRec> hideToolbar rows={rows} pageSize={50} emptyText="No readings recorded yet" onRowClick={canEnter ? (r) => setDlg({ open: true, rec: r }) : undefined}
+      <DataTable<ReadingRec> hideToolbar rows={rows} pageSize={50} emptyText="No readings recorded yet" onRowClick={(r) => setDlg({ open: true, rec: r })}
         columns={[
           { key: 'date', label: 'Reading Date/Time', render: (r) => r.date.replace('T', ' ') },
           { key: 'hmr', label: 'Hour Meter Reading', align: 'right', render: (r) => `${fmtNum(r.hmr)} hours` },
@@ -141,7 +141,7 @@ export function AssetReadings({ assetId, canEnter = true }: { assetId: string; c
           { key: 'notes', label: 'Condition Notes', render: (r) => r.notes || '-' },
           { key: 'source', label: 'Reading Source', sortable: false, render: () => 'Manual' },
         ]}
-        actions={canEnter ? [{ label: 'Edit', onClick: (r) => setDlg({ open: true, rec: r }) }, { label: 'Delete', danger: true, onClick: setDel }] : undefined}
+        actions={[{ label: 'Edit', onClick: (r) => setDlg({ open: true, rec: r }) }, { label: 'Delete', danger: true, onClick: setDel }]}
       />
       <ReadingDialog open={dlg.open} assetId={assetId} rec={dlg.rec} onClose={() => setDlg({ open: false })} />
       <ConfirmDialog open={!!del} danger title="Delete reading" description={`Delete the reading taken on ${del?.date.replace('T', ' ')}?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { readings.remove(del.id); toast('Reading deleted'); } }} />

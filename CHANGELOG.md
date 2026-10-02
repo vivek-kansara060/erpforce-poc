@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 5:00 PM: "My access" (Can edit / View only) switch removed; the POC assumes full access
+**Where:** Inventory & Fixed Assets > Reports
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** REMOVED
+
+*The problem.* For the review the team works as a superadmin with full access, so the Can edit / View only switch only added clutter.
+*What we did.* Removed the switch from the Reports pages and the asset page, and removed every view-only behaviour it controlled. Edit, Activate / Deactivate, Change Status, Mark Ready for Hire, Add Movement, cross-hire actions, certificate and reading entry, and the Items list Add, Edit, Duplicate and Delete actions are always available again.
+*Be aware.* Permission-based editing is still a requirement for the live system; it is simply not shown in the POC.
+
 ### 2 Oct, around 4:45 PM: Delivery Orders list removed from supplier-held locations
 **Where:** Inventory & Fixed Assets > Configuration > Location
 **Type:** REMOVED
