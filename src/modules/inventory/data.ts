@@ -17,7 +17,15 @@ export const FREQUENCIES = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly']
 export const OWNERSHIP = ['Owned', 'Cross-Hired', 'Spare-Standby'];
 export const DEPRECIATION_METHODS = ['Straight line', 'Declining'];
 export const COMPUTATIONS = ['Constant periods', 'Based on days per period'];
-export const ASSET_TYPES = ['Plant & Machinery', 'Vehicles', 'Power Equipment', 'Containers & Shelters', 'Tools & Accessories'];
+/** Asset Type master (2 Oct call: client-specific, not a fixed list). The seed rows are demo data and can be edited, deactivated or extended. */
+export interface AssetTypeRec { id: string; name: string; description: string; status: 'Active' | 'Inactive' }
+export const assetTypeSeed: AssetTypeRec[] = [
+  { id: 'at1', name: 'Plant & Machinery', description: 'Engines, workshop machinery and other plant', status: 'Active' },
+  { id: 'at2', name: 'Vehicles', description: 'Delivery and support vehicles', status: 'Active' },
+  { id: 'at3', name: 'Power Equipment', description: 'Generators and power distribution equipment', status: 'Active' },
+  { id: 'at4', name: 'Containers & Shelters', description: 'Power containers (PODs) and shelters', status: 'Active' },
+  { id: 'at5', name: 'Tools & Accessories', description: 'Trolleys, trays and small accessories', status: 'Active' },
+];
 export const MOVEMENT_TYPES = ['Delivery', 'Return', 'Internal Transfer', 'Sent for Repair', 'Cross-Hire Stage Change'];
 export const ATTRIBUTE_TYPES = ['Text', 'Number', 'Date', 'Picklist'];
 export const BRANDS = ['Cummins', 'Perkins', 'Mercedes', 'Volvo', 'Isuzu', 'Emirates Cable & Panel', 'Local'];
@@ -161,6 +169,8 @@ export interface HeavyRec {
   department: string; company: string; status: 'Active' | 'Inactive'; assetStatus: string;
   method: string; decliningFactor: number; computation: string; usefulLifeYears: number; usefulLifeHours?: number; accFixedAsset: string; accDepreciation: string; accExpense: string; journal: string;
   ownership: string; supplier: string; crossHireIdle: boolean; insurance: InsuranceEntry[]; movements: Movement[]; audit: AuditEntry[];
+  /** Present when Asset Status was last set by hand (not by delivery, return, cross-hire or disposal). */
+  statusOverride?: { by: string; when: string; reason: string };
   utilization: number; idleDays: number; profitability: number; attrs: Record<string, string>;
   image?: string; attachments: string[];
 }

@@ -9,23 +9,28 @@ import { CheckInput, DateInput, FileInput, FormGrid, FormSection, NumberInput, S
 import { StatusChip } from '@/components/StatusChip';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
 import { Timeline } from '@/components/Flow';
-import { ConfirmDialog, useToast } from '@/components/Dialogs';
+import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
-import { getCollection, useCollection } from '@/store/store';
+import { useCollection } from '@/store/store';
 import { suppliers } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  ACCOUNTS, ASSET_STATUSES, ASSET_TYPES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
+  ACCOUNTS, ASSET_STATUSES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
   attributesFor, buildBoard, categorySeed, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
-  type AuditEntry, type BoardRow, type DisposalRec, type CategoryRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
+  type AuditEntry, type BoardRow, type CategoryRec, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
+import { AssetTypeSelect } from './AssetTypePages';
 import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
 const REQ_ITEM_CODE = 'Item Master > Item Code';
 const REQ_FA = 'Fixed Asset Register';
 const REQ_MV = 'Movement History';
+const REQ_NAME = 'Fixed Asset > Asset Name (2 Oct call: suggested, editable by the client)';
+const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, manual change where needed)';
+/** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
+const READY_FROM = ['Yard', 'Off Hire', 'Under Maintenance', 'Breakdown', 'Hold'];
 const useHeavy = () => useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
 const tone = (s: string) => (s === 'In Stock' ? 'green' : 'amber') as 'green' | 'amber';
 
@@ -93,7 +98,9 @@ const blank: Record<string, any> = {
   method: 'Straight line', decliningFactor: '', computation: 'Constant periods', usefulLifeYears: '', usefulLifeHours: '', accFixedAsset: '', accDepreciation: '', accExpense: '', journal: ACCOUNTS.journals[0],
   ownership: 'Owned', supplier: '', crossHireIdle: false, insurance: [],
 };
-const BASIC_KEYS = ['name', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'assetStatus', 'putToUseDate', 'notDepreciable'];
+const BASIC_KEYS = ['name', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'putToUseDate', 'notDepreciable'];
+/** Suggested asset name built from the record's Category, Sub-Category, Brand and Model. */
+const suggestedName = (f: Record<string, any>) => [f.category, f.subCategory, f.brand, f.model].filter(Boolean).join(' ');
 const DEP_KEYS = ['method', 'decliningFactor', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense'];
 const TRACKED: [string, string][] = [['name', 'Name'], ['assetStatus', 'Asset Status'], ['ownership', 'Ownership Type'], ['assetValue', 'Asset Value'], ['nbv', 'Current Net Book Value'], ['usefulLifeYears', 'Useful Life (Years)'], ['method', 'Depreciation Method'], ['department', 'Department']];
 
@@ -108,7 +115,7 @@ export function HeavyForm() {
   const existing = id ? heavy.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavy.rows.map((r) => r.code));
   const assetId = existing?.assetId ?? `AST-${1000 + Number(code.replace(/\D/g, ''))}`;
-  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, image: existing.image } : blank));
+  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, image: existing.image, nameAuto: existing.name === suggestedName(existing) } : { ...blank, nameAuto: true }));
   const [errors, setErrors] = useState<Errors>({});
   const [tab, setTab] = useState({ key: 0, initial: 0 });
   const [leave, setLeave] = useState(false);
@@ -121,16 +128,17 @@ export function HeavyForm() {
   const months = (num(f.usefulLifeYears) || 0) * 12;
   const startDate = f.putToUseDate || f.purchaseDate;
   const catDefault = cats.rows.find((c) => isTopCategory(c) && c.name === f.category)?.depMethod;
+  const assetName: string = f.nameAuto ? suggestedName(f) : f.name;
 
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
   const validate = (): Errors => {
-    const req = ['category', 'assetType', 'assetStatus', 'ownership'];
+    const req = ['category', 'assetType', 'ownership'];
     if (!existing) req.push('initialLocation');
     if (dep) req.push('method', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense');
-    const e = requireFields(f, req, { assetType: 'Asset Type', assetStatus: 'Asset Status', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
+    const e = requireFields(f, req, { assetType: 'Asset Type', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
     Object.assign(e, validateSerialized(f, !dep), validateAttrs(attrDefs, f.attrs));
-    if (f.assetStatus === 'Disposed' && existing?.assetStatus !== 'Disposed' && !getCollection<DisposalRec>('inventory.disposals').some((d) => d.assetId === assetId && d.status === 'Approved')) e.assetStatus = 'Disposed requires an Approved Disposal Request';
+    if (!assetName.trim()) e.name = 'Asset Name is required (or fill in Category, Sub-Category, Brand and Model to get a suggestion)';
     if (dep && !e.usefulLifeYears && num(f.usefulLifeYears) <= 0) e.usefulLifeYears = 'Useful Life must be greater than 0';
     if (dep && f.method === 'Declining' && !(num(f.decliningFactor) > 0)) e.decliningFactor = 'Declining Factor is required';
     if (f.ownership === 'Cross-Hired' && !f.supplier) e.supplier = 'Cross-Hire Supplier is required';
@@ -152,17 +160,16 @@ export function HeavyForm() {
     }
     const n = (k: string) => Number(f[k]);
     const first: Movement = { id: `m${Date.now()}`, entryNo: nextMovementNo(100 + heavy.rows.length), date: `${f.purchaseDate || TODAY}T10:00`, type: dep ? 'Internal Transfer' : 'Cross-Hire Stage Change', from: dep ? 'Purchase Receipt' : `Supplier: ${f.supplier}`, to: f.initialLocation, reference: `GRN-26-${String(heavy.rows.length * 7 + 100).padStart(5, '0')}`, by: 'Current User' };
-    const changed = existing ? TRACKED.filter(([k]) => String((existing as any)[k] ?? '') !== String(f[k] ?? '')).map(([k, l]) => `${l}: ${(existing as any)[k] ?? '-'} to ${f[k] || '-'}`) : [];
+    const after: Record<string, any> = { ...f, name: assetName.trim() };
+    const changed = existing ? TRACKED.filter(([k]) => k !== 'assetStatus' && String((existing as any)[k] ?? '') !== String(after[k] ?? '')).map(([k, l]) => `${l}: ${(existing as any)[k] ?? '-'} to ${after[k] || '-'}`) : [];
     const audit: AuditEntry[] = existing
       ? changed.length ? [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Record updated', detail: changed.join('; '), by: 'Current User' }, ...existing.audit] : existing.audit
       : [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset record created', detail: `Asset ID ${assetId} generated`, by: 'Current User' }];
-    // No name is typed in: the display name is built from Category, Sub-Category, Brand and Model (an existing record keeps its name unless one of those changes).
-    const unchanged = !!existing && existing.category === f.category && existing.subCategory === f.subCategory && existing.brand === f.brand && existing.model === f.model;
-    const displayName = unchanged ? existing!.name : [f.category, f.subCategory, f.brand, f.model].filter(Boolean).join(' ');
+    const displayName = assetName.trim();
     const rec: HeavyRec = {
       id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: 'Rental', tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
       specification: f.specification, assetType: f.assetType, purchaseDate: f.purchaseDate, putToUseDate: f.putToUseDate, assetValue: n('assetValue') || 0, notDepreciable: n('notDepreciable') || 0, nbv: n('nbv') || 0, deprPct: n('deprPct') || 0, deprAmount: n('deprAmount') || 0, capex: n('capex') || 0,
-      department: f.department, company: COMPANY, status: f.status, assetStatus: f.assetStatus, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
+      department: f.department, company: COMPANY, status: f.status, assetStatus: existing?.assetStatus ?? 'Ready for Hire', statusOverride: existing?.statusOverride, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
       accFixedAsset: f.accFixedAsset, accDepreciation: f.accDepreciation, accExpense: f.accExpense, journal: f.journal, ownership: f.ownership, supplier: f.ownership === 'Cross-Hired' ? f.supplier : '', crossHireIdle: f.ownership === 'Cross-Hired' && !!f.crossHireIdle,
       insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
@@ -174,10 +181,15 @@ export function HeavyForm() {
   const basic = (
     <>
       <FormGrid>
-        <SelectInput label="Asset Type" required change="new" req={REQ_FA} value={f.assetType} options={ASSET_TYPES} onChange={set('assetType')} error={errors.assetType} />
+        <AssetTypeSelect value={f.assetType} onChange={set('assetType')} error={errors.assetType} />
         <CategorySelect value={f.category} error={errors.category} req={REQ_HE}
           onChange={(v) => { const dm = cats.rows.find((c) => isTopCategory(c) && c.name === v)?.depMethod; upd({ category: v, subCategory: '', attrs: {}, ...(dm ? { method: dm } : {}) }); }} />
         <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_HE} onChange={(v) => upd({ subCategory: v, attrs: {} })} />
+        <Box sx={{ position: 'relative' }}>
+          <TextInput label="Asset Name" required change="new" req={REQ_NAME} value={assetName} onChange={(v) => upd({ name: v, nameAuto: false })} error={errors.name}
+            hint={f.nameAuto ? 'Suggested from Category, Sub-Category, Brand and Model. Type to change it.' : 'Custom name'} />
+          {!f.nameAuto && <Button size="small" variant="text" onClick={() => upd({ nameAuto: true })} sx={{ position: 'absolute', top: -6, right: 0, minWidth: 0, px: 0.75, py: 0, fontSize: 12 }}>Use suggested name</Button>}
+        </Box>
         <TextInput label="Specification" change="new" req={REQ_FA} value={f.specification} onChange={set('specification')} multiline rows={2} full />
       </FormGrid>
       <AttributeFields defs={attrDefs} values={f.attrs} onChange={set('attrs')} errors={errors} />
@@ -187,7 +199,7 @@ export function HeavyForm() {
       </FormSection>
       <FormSection title="Status and Location" change="new" req={REQ_FA}>
         <FormGrid>
-          <SelectInput label="Asset Status" required change="new" req={REQ_FA} value={f.assetStatus} options={[...ASSET_STATUSES]} onChange={set('assetStatus')} error={errors.assetStatus} hint="Unified Asset Status master" />
+          <TextInput label="Asset Status" change="changed" req={REQ_STATUS} value={existing?.assetStatus ?? 'Ready for Hire'} disabled hint={existing ? 'Set by the system; use Change Status on the asset page when it must be changed by hand' : 'A new asset starts as Ready for Hire'} />
           {existing
             ? <TextInput label="Current Location" change="new" req={REQ_MV} value={currentLocation(existing)} disabled hint="Derived from Movement History, add a movement to change it" />
             : <SelectInput label="Initial Location" required change="new" req={REQ_MV} value={f.initialLocation} options={LOCATION_NAMES} onChange={set('initialLocation')} error={errors.initialLocation} hint="Creates the first Movement History entry" />}
@@ -341,10 +353,18 @@ export function HeavyView() {
   const heavy = useHeavy();
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const r = heavy.get(id);
+  const [statusDlg, setStatusDlg] = useState(false);
+  const [sf, setSf] = useState({ to: '', reason: '' });
+  const [sfErr, setSfErr] = useState<Errors>({});
   const board = useMemo(() => (r ? buildBoard({ start: r.putToUseDate || r.purchaseDate, assetValue: r.assetValue, notDepreciable: r.notDepreciable, months: r.usefulLifeYears * 12, method: r.method, factor: r.decliningFactor }) : []), [r]);
   if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
+  const setStatus = (to: string, reason: string) => {
+    heavy.update(r.id, { assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
+    toast(`Asset Status changed to ${to}`);
+  };
+  const canReady = r.status === 'Active' && READY_FROM.includes(r.assetStatus);
   const dep = depreciationApplicable(r.ownership);
   const attrDefs = attributesFor(cats.rows, r.category, r.subCategory);
   const tabs = ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership'];
@@ -356,6 +376,8 @@ export function HeavyView() {
         status={<><StatusChip status={r.status} /><StatusChip status={stock} tone={tone(stock)} /></>}
         actions={<>
           <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
+          {r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
+          {canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
           <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>
         </>}
       />
@@ -371,7 +393,7 @@ export function HeavyView() {
               <ValueField label="Asset Type" value={r.assetType} change="new" req={REQ_FA} />
               <ValueField label="Category" value={r.category} change="new" req={REQ_HE} />
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_HE} />
-              <ValueField label="Asset Status" value={<StatusChip status={r.assetStatus} />} change="new" req={REQ_FA} />
+              <ValueField label="Asset Status" change="changed" req={REQ_STATUS} value={<><StatusChip status={r.assetStatus} /><Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{r.statusOverride ? `Set manually by ${r.statusOverride.by} on ${r.statusOverride.when}: ${r.statusOverride.reason}` : 'Set by the system (delivery, return, cross-hire, disposal)'}</Text></>} />
               <ValueField label="Current Location" value={currentLocation(r)} change="new" req={REQ_MV} />
             </ValueGrid>
           </Box>
@@ -455,6 +477,24 @@ export function HeavyView() {
           ) },
         ]} />
       </Page>
+      <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"
+        onConfirm={() => {
+          const e: Errors = {};
+          if (!sf.to) e.to = 'New Asset Status is required';
+          else if (sf.to === r.assetStatus) e.to = 'The asset already has this status';
+          if (!sf.reason.trim()) e.reason = 'Reason is required for a manual change';
+          setSfErr(e);
+          if (Object.keys(e).length) return;
+          setStatus(sf.to, sf.reason.trim());
+          setStatusDlg(false); setSf({ to: '', reason: '' });
+        }}>
+        <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>Asset Status is normally set by the system from deliveries, returns, cross-hire and disposal. Use this only when the business process needs a manual change, for example after a yard check. Disposed is set only by an approved Disposal Request.</Text>
+        <FormGrid cols={1}>
+          <TextInput label="Current Asset Status" value={r.assetStatus} disabled />
+          <SelectInput label="New Asset Status" required change="new" req={REQ_STATUS} value={sf.to} options={ASSET_STATUSES.filter((s) => s !== 'Disposed')} onChange={(v) => setSf({ ...sf, to: v })} error={sfErr.to} />
+          <TextInput label="Reason" required change="new" req={REQ_STATUS} value={sf.reason} onChange={(v) => setSf({ ...sf, reason: v })} error={sfErr.reason} multiline rows={2} />
+        </FormGrid>
+      </AppDialog>
     </>
   );
 }

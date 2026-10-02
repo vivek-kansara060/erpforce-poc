@@ -21,7 +21,7 @@ const isSerialized = (t?: string) => t === 'Serialized';
 const TRACK_LABEL: Record<string, string> = { Serialized: 'Serialized', Quantity: 'Quantity', Length: 'Length (or applicable UOM)' };
 
 /* ------------------------------------------------------------------ list */
-interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
+interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; assetStatus?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
 export const HEAVY_PATH = '/inventory/items/heavy';
 
 export function ItemList() {
@@ -33,7 +33,7 @@ export function ItemList() {
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
     ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status })),
-    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
+    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, assetStatus: r.assetStatus, code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
   const open = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}` : `/inventory/items/${r.id}`);
@@ -45,6 +45,7 @@ export function ItemList() {
         { key: 'category', label: 'Category', change: 'new', req: REQ_HE },
         { key: 'subCategory', label: 'Sub-Category', change: 'new', req: REQ_HE },
         { key: 'name', label: 'Name' },
+        { key: 'assetStatus', label: 'Asset Status', change: 'new', req: REQ_HE, render: (r) => <StatusChip status={r.assetStatus ?? '-'} /> },
         { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
         { key: 'stockStatus', label: 'Stock Status', change: 'new', req: REQ_HE, render: (r) => <StatusChip status={r.stockStatus ?? '-'} tone={r.stockStatus === 'In Stock' ? 'green' : 'amber'} /> },
       ]

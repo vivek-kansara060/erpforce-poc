@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 2 Oct, around 12:00 PM: Asset Type is a master, the asset name can be changed, and Asset Status is set by the system with a manual override
+**Where:** Inventory & Fixed Assets > Product Management > Asset Type
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Asset Type was a fixed list in the code, so a client could not use its own types. The asset name was always generated and could not be changed. Asset Status had to be picked by hand on the form, although Ajin wants it to follow the workflow (delivery, return) with a manual change only where the process needs it, for example Ready for Hire after a yard check.
+*What we did.* A new **Asset Type** master (Product Management > Asset Type) lists the types with how many assets use each, and supports add, edit, activate / deactivate and delete (delete is blocked while assets use the type). The Asset Type dropdown on the Heavy Equipment Fixed Asset form has **+ Add**. The form has an **Asset Name** field again: it is suggested from Category, Sub-Category, Brand and Model and follows them as they change, until the user types their own name; **Use suggested name** switches back. **Asset Status** is no longer picked on the form: a new asset starts as Ready for Hire and an existing one keeps its status. On the asset page, **Change Status** (with a required reason) and **Mark Ready for Hire** (shown when the asset is in Yard, Off Hire, Under Maintenance, Breakdown or Hold) change it by hand. Under the status the page says whether it was set by the system or set manually, by whom, when and why, and every manual change is written to the audit trail. The heavy equipment listing shows an **Asset Status** column.
+*Be aware.* Disposed cannot be set by hand; it still needs an approved Disposal Request. The demo asset types are seed data and can be edited.
+
 ### 2 Oct, around 11:30 AM: Category and Sub-Category are now two simple masters, without Level or Category Type
 **Where:** Inventory & Fixed Assets > Product Management > Item Category
 **Where:** Inventory & Fixed Assets > Product Management > Item Sub-Category
