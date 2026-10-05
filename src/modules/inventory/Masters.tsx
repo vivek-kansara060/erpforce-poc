@@ -19,7 +19,7 @@ const CAT_BASE = '/inventory/categories';
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/* ------------------------------------------------------------------ dropdowns with "+ Add" (used by the item, asset and pricing forms) */
+/* ------------------------------------------------------------------ dropdowns with "Create New" as their last row (used by the item, asset and pricing forms) */
 export function CategorySelect({ value, onChange, error, disabled, hint, label = 'Category', required = true, change = 'new', req = REQ_CAT }: { value: string; onChange: (v: string) => void; error?: string; disabled?: boolean; hint?: string; label?: string; required?: boolean; change?: 'new' | 'changed'; req?: string }) {
   const cats = useCats();
   const toast = useToast();
@@ -48,7 +48,7 @@ export function SubCategorySelect({ category, value, onChange, disabled, error, 
   return (
     <>
       <AddableSelect label={label} change={change} req={req} value={value} options={options} onChange={onChange} disabled={disabled || !category} error={error}
-        hint={!category ? 'Select a Category first' : subs.length === 0 ? 'No sub-categories yet, use + Add' : 'Optional, depends on Category'} onAdd={() => setOpen(true)} />
+        hint={!category ? 'Select a Category first' : subs.length === 0 ? 'No sub-categories yet, use Create New Sub-Category in the list' : 'Optional, depends on Category'} onAdd={() => setOpen(true)} />
       <QuickAddDialog open={open} title="Add Sub-Category" label="Sub-Category Name" context={`Under Category: ${category}`} onClose={() => setOpen(false)}
         onSave={(name) => {
           if (cats.rows.some((c) => c.parent === category && same(c.name, name))) return `A sub-category with this name already exists under ${category}`;

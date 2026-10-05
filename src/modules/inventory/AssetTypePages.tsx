@@ -15,7 +15,7 @@ const BASE = '/inventory/asset-types';
 export const useAssetTypes = () => useCollection<AssetTypeRec>('inventory.assetTypes', assetTypeSeed);
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/** Asset Type dropdown with "+ Add" (used on the Heavy Equipment Fixed Asset form). */
+/** Asset Type dropdown with "Create New Asset Type" as its last row (used on the Heavy Equipment Fixed Asset form). */
 export function AssetTypeSelect({ value, onChange, error, req = REQ_AT }: { value: string; onChange: (v: string) => void; error?: string; req?: string }) {
   const types = useAssetTypes();
   const toast = useToast();

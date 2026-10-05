@@ -12,6 +12,16 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 5 Oct, around 11:30 AM: "Create New" is now the last row inside the dropdown, replacing the "+ Add" link above it
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Where:** Inventory & Fixed Assets > Product Management > Asset Type
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The quick-add for master values was a small "+ Add" link sitting above the field. The existing ERP puts this action inside the dropdown itself (for example "Create New Fixed Asset"), and the team wants the same here.
+*What we did.* The **Asset Type**, **Category** and **Sub-Category** dropdowns on the Heavy Equipment Fixed Asset form, the normal Item form and the Heavy Equipment Pricing form now end with a **Create New Asset Type / Create New Category / Create New Sub-Category** row, separated by a line. Choosing it opens the same small dialog as before; after saving, the new value is selected in the field. The "+ Add" link above the field is gone.
+*Be aware.* Choosing the Create New row does not change the field until the new value is saved. Sub-Category still needs a Category to be picked first, and the new sub-category is created under that category.
+
 ### 5 Oct, around 11:00 AM: Item Category is one screen again (categories and sub-categories together), without the Level field
 **Where:** Inventory & Fixed Assets > Product Management > Item Category
 **Type:** EXISTING WITH CHANGE

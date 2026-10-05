@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Box, Button } from '@mui/material';
+import { Box, Button, MenuItem, Select } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import { AppDialog } from '@/components/Dialogs';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { Text } from '@/components/Text';
@@ -136,13 +137,26 @@ export function Note({ children }: { children: ReactNode }) {
   return <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>{children}</Text>;
 }
 
-/** A master-data dropdown with a "+ Add" link above it, so a new master value can be created without leaving the form. */
-export function AddableSelect({ onAdd, addLabel = '+ Add', ...p }: Parameters<typeof SelectInput>[0] & { onAdd: () => void; addLabel?: string }) {
+const CREATE = '__create_new__';
+/**
+ * A master-data dropdown whose last row is "Create New <label>", the same pattern as the existing ERP's form select
+ * (enable_footer / onFooterClick): the new master value is created in a dialog without leaving the form.
+ */
+export function AddableSelect({ onAdd, addLabel, options, value, onChange, placeholder = 'Select', ...b }: Parameters<typeof SelectInput>[0] & { onAdd: () => void; addLabel?: string }) {
+  const val = (o: string | { value: string; label: string }) => (typeof o === 'string' ? o : o.value);
+  const lab = (o: string | { value: string; label: string }) => (typeof o === 'string' ? o : o.label);
   return (
-    <Box sx={{ position: 'relative', gridColumn: p.full ? '1 / -1' : undefined, minWidth: 0 }}>
-      <SelectInput {...p} />
-      {!p.disabled && <Button size="small" variant="text" onClick={onAdd} sx={{ position: 'absolute', top: -6, right: 0, minWidth: 0, px: 0.75, py: 0, fontSize: 12 }}>{addLabel}</Button>}
-    </Box>
+    <FieldShell {...b}>
+      <Select fullWidth size="small" displayEmpty value={value ?? ''} disabled={b.disabled} error={!!b.error}
+        onChange={(e) => { const v = e.target.value as string; if (v === CREATE) { onAdd(); return; } onChange?.(v); }}
+        renderValue={(v) => (v ? lab(options.find((o) => val(o) === v) ?? (v as string)) : <span style={{ color: neutral[700] }}>{placeholder}</span>)}>
+        {options.map((o) => <MenuItem key={val(o)} value={val(o)}>{lab(o)}</MenuItem>)}
+        <MenuItem value={CREATE} sx={{ gap: 1, borderTop: options.length ? `1px solid ${neutral[200]}` : undefined, mt: options.length ? 0.5 : 0 }}>
+          <AddIcon fontSize="small" />
+          <Text type="s4" color="theme.secondary.1000">{addLabel ?? `Create New ${b.label}`}</Text>
+        </MenuItem>
+      </Select>
+    </FieldShell>
   );
 }
 
