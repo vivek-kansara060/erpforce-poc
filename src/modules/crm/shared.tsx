@@ -6,8 +6,9 @@ import { AppDialog, useToast } from '@/components/Dialogs';
 import { SelectInput, TextInput } from '@/components/Form';
 import { fmtAED } from '@/mock-data/masters';
 import { useCollection } from '@/store/store';
+import { itemSeed, type ItemRec } from '@/modules/inventory/data';
 import {
-  COL, availability,
+  COL, availability, toServiceCharge,
   type CrossHire, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
@@ -21,7 +22,11 @@ export const useCrossHire = () => useCollection<CrossHire>(COL.crossHire);
 export const useReplacements = () => useCollection<Replacement>(COL.replacements);
 export const useExtensions = () => useCollection<Extension>(COL.extensions);
 export const useFleet = () => useCollection<HeavyRec>(COL.fleet);
-export const useServiceCharges = () => useCollection<ServiceCharge>(COL.serviceCharges);
+/** Service lines come from the Inventory service items (Item Type = Service), not from a CRM-owned master. */
+export const useServiceCharges = () => {
+  const items = useCollection<ItemRec>('items', itemSeed);
+  return { rows: items.rows.filter((i) => i.type === 'Service' && i.status === 'Active' && i.serviceType).map((i): ServiceCharge => toServiceCharge(i)), get: (id: string) => items.get(id) };
+};
 export const useJobCards = () => useCollection<JobCard>(COL.jobCards);
 export const usePricing = () => useCollection<PricingRec>(COL.pricing);
 

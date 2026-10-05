@@ -51,3 +51,13 @@ Instruction: keep the Lead, Opportunity, Quotation, Sales Order and Delivery Ord
 | E | AMC job card | AMC Orders menu, one Job Card per visit (materials, services, technician, consumption location, invoice), contract value split across visits, project cost and profit, consolidated report. No Delivery Order for AMC |
 
 Also from the call: label "Entity" first; item dialog order Category, Subcategory, Pricing, Description (large printed text), UOM, Quantity, FOC, with frequency and dates last and auto-filled, and a "Save and Add another" button; service lines come from the Service master (type, billing, frequency follows the quotation); no department, narration, delivery dates or replacement cost on service lines; header Cost Centre / Project is mandatory, items can override it; Fuel Trading delivered from an own or supplier yard with the supplier's own Delivery Order number.
+
+## Revisions 6 Oct
+
+| # | Topic | Decision |
+|---|---|---|
+| F | Lead to Order in Rental | Removed from the Rental sidebar. They are managed in CRM only, filtered by Activity Type = Rental. Rental keeps Replacement Orders, Renewals, Cross Hire and the other existing screens |
+| G | Service lines | Come from the Inventory service items (Item Type = Service). The Item form gets Service Type and Billing (NEW). The CRM Service Charges master is removed; the CRM Masters list links to Inventory |
+| H | Start and End Date | Set once in the main form (Contract Start / End). Equipment lines no longer ask for them and follow the header |
+| I | UOM | Dropdown fed by the Inventory UOM list (Fuel Trading keeps its fuel units) |
+

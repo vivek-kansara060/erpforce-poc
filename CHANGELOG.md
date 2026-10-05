@@ -12,6 +12,20 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 10:00 AM: Rental no longer holds Lead to Order, service lines come from Inventory service items, contract dates move to the main form, UOM is a dropdown
+**Where:** Rental > Rental (Leads, Opportunity, Quotations, Orders)
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Settings > Masters
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Rental showed its own copy of Lead, Opportunity, Quotation and Order, the CRM kept a separate Service Charges master, rental dates were asked again on every equipment line, and UOM was free text.
+*What we did.* Removed Leads, Opportunity, Quotations and Orders from the Rental sidebar; they live in CRM only (filter by Activity Type = Rental). The Inventory Item form now has Service Type, Billing and Description when Type = Service (marked NEW), the rental service items (Delivery, Return, Transportation, Damage Waiver, Insurance, Operator) are seeded there, and the CRM item dialog and AMC job cards read them from Inventory. The CRM Service Charges master is gone. Contract Start and End Date are set once in the main form and every rental and recurring service line follows them; the item dialog and table no longer carry them. UOM in the item dialog is a dropdown fed by the Inventory UOM list.
+*Sync.* CRM item pickers, stock and default prices, and AMC job card materials now read the live Inventory Items, so an item added or edited in Inventory shows in CRM straight away. Category and Subcategory (CRM "Category" and "Subcategory" fields) and every Location and Yard dropdown in CRM now read Inventory Item Category and Locations live. Pricing and the Fixed Asset Register were already shared. The Inventory Items list shows Service Type, Billing and Default Price on the Service tab.
+*Be aware.* Inventory is changed only for the service item fields and the Service list columns. Changing a contract date overwrites the dates on all rental lines. Decisions are in `docs/crm-decisions.md`.
+
 ### 5 Oct, around 9:30 PM: CRM forms rebuilt on the existing ERP, second call with Ajin applied, Rental module kept as the existing system
 **Where:** CRM / Sales > Orders > Lead
 **Where:** CRM / Sales > Orders > Opportunity

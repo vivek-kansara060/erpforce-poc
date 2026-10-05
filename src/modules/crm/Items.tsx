@@ -8,19 +8,21 @@ import { AppDialog } from '@/components/Dialogs';
 import { CheckInput, DateInput, FormGrid, NumberInput, SelectInput, TextInput } from '@/components/Form';
 import { fmtAED as _fmt } from '@/mock-data/masters';
 void _fmt;
-import { itemMaster, fmtAED } from '@/mock-data/masters';
+import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  ALL_LOCATIONS, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
+  allLocations, yards, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
   type ActivityType, type HeavyRec, type Line, type PricingRec,
 } from './data';
 import { ChangeTag } from '@/components/ChangeTag';
 import { deliveredQty } from './flow';
+import { UOMS } from '@/modules/inventory/data';
+import { liveItems } from './data';
 import { AvailabilityBadge, R, TO_CONFIRM, aed, useServiceCharges } from './shared';
 
 type Mode = 'opp' | 'quote' | 'order';
 const kindLabel = (a: string) => (a === 'Rental' ? 'Equipment' : a === 'Fixed Asset Trading' ? 'Asset' : a === 'Service' ? 'Service charge' : a);
-const stock = (l: Line) => itemMaster.find((i) => i.name === l.item)?.stock ?? 0;
+const stock = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 
 interface Col { id: string; label: string; change?: 'new' | 'changed'; vis: boolean; right?: boolean; only?: Mode[]; render: (l: Line, i: number, c: Ctx) => ReactNode }
 interface Ctx { vat: string; fleet?: HeavyRec[] }
@@ -36,8 +38,6 @@ const COLS: Col[] = [
   { id: 'uom', label: 'UoM', vis: true, render: (l) => l.unit },
   { id: 'rate', label: 'Rate', vis: true, right: true, render: (l) => aed(l.foc ? 0 : l.price) },
   { id: 'frequency', label: 'Frequency', change: 'new', vis: true, render: (l) => (isPeriodic(l) ? l.frequency : '-') },
-  { id: 'start', label: 'Start Date', change: 'new', vis: true, render: (l) => (isPeriodic(l) ? l.start : '-') },
-  { id: 'end', label: 'End Date', change: 'new', vis: true, render: (l) => (isPeriodic(l) ? l.end : '-') },
   { id: 'periods', label: 'Periods', change: 'new', vis: true, right: true, render: (l) => (isPeriodic(l) ? linePeriods(l) : '-') },
   { id: 'gross', label: 'Gross Amount', vis: false, right: true, render: (l) => aed(lineGross(l)) },
   { id: 'dItem', label: 'Discounted Item', vis: false, render: (l) => ((l.discount ?? 0) > 0 ? 'Yes' : 'No') },
@@ -129,7 +129,7 @@ export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pr
 
 /**
  * Item dialog. Existing fields kept (Item, UOM, Description, Quantity, Rate, Discount, Tax, Location, dates). Field order follows the 5 Oct call: what the user types
- * comes first (Category, Subcategory, Pricing, Description, UOM, Quantity, FOC); frequency and dates are derived and sit below. Service lines come from the Service master.
+ * comes first (Category, Subcategory, Pricing, Description, UOM, Quantity, FOC); frequency and dates are derived and sit below. Service lines come from the Inventory service items.
  */
 function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, docFrequency, onClose, onSave }: { line: Line; isNew: boolean; header: string; mode: Mode; vat: string; pricing: PricingRec[]; fleet?: HeavyRec[]; contract?: { start?: string; end?: string }; docFrequency?: string; onClose: () => void; onSave: (l: Line, again: boolean) => void }) {
   const services = useServiceCharges().rows;
@@ -140,7 +140,8 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
   const service = l.activity === 'Service';
   const rental = l.activity === 'Rental';
   const priceOpts = pricing.filter((p) => p.category === l.group && (!l.category || p.subCategory === l.category));
-  const itemList = itemMaster.filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.classification === 'AMC' : ['Trading', 'Inventory'].includes(i.classification)));
+  const inv = liveItems();
+  const itemList = inv.filter((i) => i.type !== 'Service').filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.classification === 'AMC' : ['Trading', 'Inventory'].includes(i.classification)));
   const pick = (pid: string) => { const p = pricing.find((x) => x.id === pid); if (p) set({ pricingId: pid, item: pricingName(p), price: l.foc ? 0 : p.price, frequency: p.frequency, desc: !l.desc || l.desc === l.item ? pricingName(p) : l.desc }); };
   const pickService = (name: string) => {
     const m = services.find((x) => x.name === name);
@@ -156,11 +157,10 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
     if (!(l.qty > 0)) e.qty = 'Quantity must be above zero';
     if (rental) {
       if (!l.frequency) e.frequency = 'Required';
-      if (!l.start) e.start = 'Required';
-      if (!l.end) e.end = 'Required'; else if (l.start && l.end < l.start) e.end = 'End Date must be after Start Date';
+      if (!contract?.start || !contract?.end) e.item = 'Set the Contract Start and End Date in the main form first';
     }
     setErr(e);
-    if (!Object.keys(e).length) onSave(l, again);
+    if (!Object.keys(e).length) onSave(rental ? { ...l, start: contract?.start, end: contract?.end } : l, again);
   };
   const g = lineGross(l); const net = lineTaxable(l);
   const foc = <CheckInput label="FOC" change="new" req={R.quote} checked={l.foc} onChange={(v) => set({ foc: v, price: v ? 0 : l.price })} hint={service ? 'Amount is zero' : 'Rate is set to zero, the asset is still tracked'} />;
@@ -168,31 +168,30 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
     <AppDialog open title={`${isNew ? 'Add' : 'Edit'} ${kindLabel(l.activity)}`} onClose={onClose} maxWidth="lg" confirmLabel="Save" onConfirm={() => save(false)}
       actions={isNew ? <Button variant="outlined" onClick={() => save(true)}>Save and Add another</Button> : undefined}>
       <FormGrid cols={3}>
-        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={groupOptions} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
+        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={groupOptions()} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
         {equipment && <SelectInput label={SUBCATEGORY_LABEL} required change="new" req={R.meet} value={l.category} options={categoryOptions(l.group)} onChange={(v) => set({ category: v, pricingId: undefined, item: rental ? `Rental ${l.group} ${v}` : `${l.group} ${v} (sale)` })} error={err.category} hint="The exact serialized asset is chosen at Delivery" />}
         {rental && (priceOpts.length
           ? <SelectInput label="Pricing" required change="new" req={R.meet} value={l.pricingId} options={priceOpts.map((p) => ({ value: p.id, label: `${pricingName(p)} (${fmtAED(p.price)})` }))} onChange={pick} error={err.item} hint="From Inventory, Heavy Equipment Pricing" />
           : <TextInput label="Pricing" required value={l.item} onChange={(v) => set({ item: v })} error={err.item} hint="No pricing line for this Category and Subcategory yet" />)}
-        {service && <SelectInput label="Service" required change="new" req={R.meet} value={l.item} options={services.map((m) => ({ value: m.name, label: `${m.name} (${m.type}, ${m.billing})` }))} onChange={pickService} error={err.item} hint="From the Service master (Masters, Service Charges)" />}
-        {!equipment && !service && <SelectInput label="Item" required value={l.item} options={itemList.map((i) => i.name)} onChange={(v) => { const m = itemMaster.find((i) => i.name === v); set({ item: v, desc: v, unit: l.activity === 'Fuel Trading' ? l.unit : m?.unit ?? l.unit, price: l.foc ? 0 : m?.price ?? l.price }); }} error={err.item} hint={l.activity === 'AMC' ? 'AMC items from Inventory' : undefined} />}
+        {service && <SelectInput label="Service" required change="new" req={R.meet} value={l.item} options={services.map((m) => ({ value: m.name, label: `${m.name} (${m.type}, ${m.billing})` }))} onChange={pickService} error={err.item} hint="From the Inventory service items (Type = Service)" />}
+        {!equipment && !service && <SelectInput label="Item" required value={l.item} options={itemList.map((i) => i.name)} onChange={(v) => { const m = inv.find((i) => i.name === v); set({ item: v, desc: v, unit: l.activity === 'Fuel Trading' ? l.unit : m?.unit ?? l.unit, price: l.foc ? 0 : m?.price ?? l.price }); }} error={err.item} hint={l.activity === 'AMC' ? 'AMC items from Inventory' : undefined} />}
         {l.activity === 'Fixed Asset Trading' && <NumberInput label="Rate (sale price)" required disabled={l.foc} value={l.foc ? 0 : l.price} onChange={(v) => set({ price: Number(v) })} />}
         <Box sx={{ gridColumn: '1 / -1' }}><TextInput label="Description" change="changed" req={R.meet} multiline rows={4} value={l.desc} onChange={(v) => set({ desc: v })} hint="Prints on the document, any length. Defaults to the item name, never written back to the item" /></Box>
-        {!service && (l.activity === 'Fuel Trading' ? <SelectInput label="UOM" value={l.unit} options={FUEL_UNITS} onChange={(v) => set({ unit: v })} /> : <TextInput label="UOM" value={l.unit} onChange={(v) => set({ unit: v })} />)}
+        {!service && <SelectInput label="UOM" change="changed" req={R.meet} value={l.unit} options={l.activity === 'Fuel Trading' ? FUEL_UNITS : UOMS} onChange={(v) => set({ unit: v })} hint="From the UOM master in Inventory" />}
         <NumberInput label="Quantity" required value={l.qty} onChange={(v) => set({ qty: Number(v) })} error={err.qty} />
         {foc}
         {l.activity !== 'Fixed Asset Trading' && <NumberInput label="Rate" required disabled={l.foc} value={l.foc ? 0 : l.price} onChange={(v) => set({ price: Number(v) })} />}
         <NumberInput label="Discount Rate (%)" value={l.discount ?? 0} onChange={(v) => set({ discount: Number(v) })} />
-        {service && <TextInput label="Billing" disabled change="new" req={R.meet} value={l.billing ?? '-'} hint="Set in the Service master" />}
+        {service && <TextInput label="Billing" disabled change="new" req={R.meet} value={l.billing ?? '-'} hint="Set on the Inventory service item" />}
         {service && l.billing === 'Recurring' && <TextInput label="Frequency" disabled change="new" req={R.meet} value={docFrequency ?? l.frequency ?? 'Monthly'} hint="Follows the frequency of the rental item" />}
+        {rental && <TextInput label="Contract Period" disabled change="new" req={R.meet} value={contract?.start && contract?.end ? `${contract.start} to ${contract.end} (${linePeriods({ ...l, start: contract.start, end: contract.end })} period(s))` : 'Not set'} hint="Start and End Date are set once in the main form" />}
         {rental && <SelectInput label="Frequency" required change="new" req={R.meet} value={l.frequency} options={[...new Set(['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'])]} onChange={(v) => set({ frequency: v })} error={err.frequency} hint="Taken from the pricing line" />}
-        {rental && <DateInput label="Start Date" required change="new" req={R.meet} value={l.start} onChange={(v) => set({ start: v })} error={err.start} hint="Auto-filled from the contract dates" />}
-        {rental && <DateInput label="End Date" required change="new" req={R.meet} value={l.end} onChange={(v) => set({ end: v })} error={err.end} hint={`${linePeriods(l)} period(s)`} />}
         <TextInput label="Gross Amount" disabled value={aed(g)} />
         <TextInput label="Net Amount" disabled value={aed(net)} />
         <TextInput label="Tax Template" disabled value={vat.startsWith('Export') ? 'Zero Rated' : 'VAT 5%'} />
         <TextInput label="Tax Amount" disabled value={aed(lineVat(l, vat))} />
         <TextInput label="Total Amount" disabled value={aed(net + lineVat(l, vat))} />
-        {!service && <SelectInput label="Location" value={l.location} options={l.activity === 'Fuel Trading' || l.activity === 'Trading' ? ALL_LOCATIONS : ALL_LOCATIONS.slice(0, 3)} onChange={(v) => set({ location: v })} hint={l.activity === 'Fuel Trading' ? 'Own yard or a supplier yard' : undefined} />}
+        {!service && <SelectInput label="Location" value={l.location} options={l.activity === 'Fuel Trading' || l.activity === 'Trading' ? allLocations() : yards()} onChange={(v) => set({ location: v })} hint={l.activity === 'Fuel Trading' ? 'Own yard or a supplier yard' : undefined} />}
         {!service && l.activity !== 'AMC' && <DateInput label="Delivery Commitment Date" value={l.deliveryDate} onChange={(v) => set({ deliveryDate: v })} hint="One date per item, as there may be several delivery commitments" />}
         {!service && l.activity !== 'AMC' && <DateInput label="Expected Shipping Date" value={l.shipDate} onChange={(v) => set({ shipDate: v })} />}
         {mode === 'quote' && rental && <NumberInput label="Replacement Cost" value={l.replacementCost ?? 0} onChange={(v) => set({ replacementCost: Number(v) })} />}

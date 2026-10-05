@@ -2,10 +2,7 @@ import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import { Navigate } from 'react-router-dom';
 import type { ChangeEntry, ModuleDef } from '@/types';
 import { liveRoutes } from '@/modules/crm/reports';
-import { LeadList } from '@/modules/crm/LeadPages';
-import { OpportunityList } from '@/modules/crm/OpportunityPages';
-import { QuotationList } from '@/modules/crm/QuotationPages';
-import { CrossHireList, CrossHireView, RenewalsPage, RentalOrders, ReplacementForm, ReplacementList } from './RentalPages';
+import { CrossHireList, CrossHireView, RenewalsPage, ReplacementForm, ReplacementList } from './RentalPages';
 import { ExistingScreen } from './ExistingScreen';
 
 const M = 'Rental';
@@ -13,8 +10,8 @@ const c = (screen: string, classification: ChangeEntry['classification'], existi
 const ex = (title: string, columns: string[], extra: Partial<Parameters<typeof ExistingScreen>[0]> = {}) => <ExistingScreen title={title} columns={columns} {...extra} />;
 
 /**
- * Rental keeps the sidebar and screens of the existing ERP (5 Oct instruction). Leads, Opportunity, Quotations and Orders are the same CRM records filtered to
- * Activity Type = Rental, so the new fields appear here without a second copy of the data.
+ * Rental keeps the sidebar and screens of the existing ERP (5 Oct instruction), except Leads, Opportunity, Quotations and Orders: those are managed in CRM only
+ * (6 Oct), where Activity Type = Rental gives the rental view.
  */
 const mod: ModuleDef = {
   id: 'rental',
@@ -28,10 +25,6 @@ const mod: ModuleDef = {
     { label: 'Demand Planning', path: '/rental/demand-planning' },
     { label: 'Invoicing', children: [{ label: 'Invoicing Rental Order', path: '/rental/invoicing' }, { label: 'Previous Jobs', path: '/rental/previous-jobs' }] },
     { label: 'Rental', children: [
-      { label: 'Leads', path: '/rental/leads', change: 'changed' },
-      { label: 'Opportunity', path: '/rental/opportunities', change: 'changed' },
-      { label: 'Quotations', path: '/rental/quotations', change: 'changed' },
-      { label: 'Orders', path: '/rental/orders', change: 'changed' },
       { label: 'Replacement Orders', path: '/rental/replacements', change: 'changed' },
       { label: 'Renewals and Expiry', path: '/rental/renewals', change: 'new' },
     ] },
@@ -57,10 +50,6 @@ const mod: ModuleDef = {
     { path: 'demand-planning', element: ex('Demand Planning', ['Item', 'Demand', 'On Hand', 'On Order', 'Available', 'Committed', 'PR', 'Required']) },
     { path: 'invoicing', element: ex('Invoicing Rental Order', ['Rental Order', 'Date', 'Customer', 'Invoice', 'Start Date', 'End Date', 'Next Invoice Date', 'Billing Cycle', 'Currency', 'Narration']) },
     { path: 'previous-jobs', element: ex('Previous Jobs', ['Job', 'Rental Order', 'Status', 'Run At', 'Message']) },
-    { path: 'leads', element: <LeadList activity="Rental" /> },
-    { path: 'opportunities', element: <OpportunityList activity="Rental" /> },
-    { path: 'quotations', element: <QuotationList activity="Rental" /> },
-    { path: 'orders', element: <RentalOrders /> },
     { path: 'replacements', element: <ReplacementList /> }, { path: 'replacements/add', element: <ReplacementForm /> },
     { path: 'renewals', element: <RenewalsPage /> },
     { path: 'agreements', element: ex('Agreements', ['ID', 'Date', 'Name', 'Type', 'Vendor', 'Valid Up To', 'Company', 'Currency', 'Status']) },
@@ -79,8 +68,7 @@ const mod: ModuleDef = {
   ],
   changes: [
     c('Rental sidebar', 'EXISTING', 'Rental Dashboard, Product Management, Demand Planning, Invoicing, Rental, Agreements, Purchase, Cross Hire, Settings, Reports', 'Kept as in the existing ERP. Screens the requirement does not change show their existing columns and are not rebuilt; Items and Category open the shared Inventory masters', 'Instruction 5 Oct'),
-    c('Rental Leads, Opportunity, Quotations', 'EXISTING WITH CHANGE', 'Separate rental leads, opportunities and quotations (is_rental)', 'Same CRM records filtered to Activity Type = Rental, with all new fields, so rental has no second copy of the sales flow (meeting 5 Oct: one set of CRM screens)', 'Rental > Rental Order & Status Lifecycle; meeting 5 Oct', '/rental/leads'),
-    c('Rental Orders', 'EXISTING WITH CHANGE', 'Rental Orders list with the Replacement Orders toggle, period and billing columns', 'One row per Sales Order with Activity Type = Rental, existing columns kept, plus Contract Type, Cost Centre / Project and assets on hire', 'Rental > Rental Order & Status Lifecycle', '/rental/orders'),
+    c('Rental Leads, Opportunity, Quotations, Orders', 'REMOVED', 'Separate rental leads, opportunities, quotations and orders', 'Not in the Rental module any more: the whole sales flow is managed in CRM, filtered by Activity Type = Rental. Rental keeps Replacement Orders, Renewals, Cross Hire and the operational screens', 'Meeting 5 Oct (rental module does not hold Lead, Opportunity, Quotation, Order)', '/crm/sales-orders'),
     c('Replacement Orders', 'EXISTING WITH CHANGE', 'Replacement Orders list and replacement quotation', 'Asset-in / asset-out transaction started from the order: same-category check, Cross-Hire fallback, reason, price adjustment, old asset to Under Maintenance, billing not paused', 'Rental > Replacement Processing', '/rental/replacements'),
     c('Renewals and Expiry', 'NEW', 'Upcoming Expiry report only', 'Notification, client confirmation, Extend the existing Sales Order, Early Termination or Proceed to Return, overdue fault attribution and escalation', 'Rental > Overdue On-Hire & Contract Expiry', '/rental/renewals'),
     c('Cross Hire Requests', 'EXISTING WITH CHANGE', 'Cross hire requests, process, RFQ, orders, profitability', 'Five-stage lifecycle (Request, Received, Allocated, Returned to Us, Returned to Supplier), condition check, dispute charge, asset in the register without depreciation, profitability roll-up', 'Procurement > Cross-Hire Suppliers', '/rental/cross-hire'),

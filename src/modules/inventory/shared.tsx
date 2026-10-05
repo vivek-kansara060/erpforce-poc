@@ -10,6 +10,7 @@ import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 
 export const REQ_ITEM = 'Item Master > New Fields';
+export const REQ_SERVICE = 'Meeting 5 Oct: rental service lines come from Inventory service items';
 export const REQ_HE = 'Product Management > Heavy Equipment Fixed Asset';
 
 export type Errors = Record<string, string>;

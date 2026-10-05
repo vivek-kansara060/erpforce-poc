@@ -16,32 +16,6 @@ import { R, aed, useCrossHire, useExtensions, useFleet, useOrders, useReplacemen
 import { CrossHireDialog, ExpiryDialog } from '@/modules/crm/ActionDialogs';
 import { expiryRows } from '@/modules/crm/reports';
 
-/* ------------------------------------------------------------------ Rental Orders (existing list, one row per rental Sales Order) */
-export function RentalOrders() {
-  const nav = useNavigate();
-  const orders = useOrders();
-  const rows = orders.rows.filter((o) => o.activity === 'Rental');
-  const total = (o: SalesOrder) => docTotals(o.lines, o.discountPct, o.vatType).total;
-  const delivery = (o: SalesOrder) => { const r = o.lines.filter((l) => l.activity === 'Rental'); const d = r.filter((l) => deliveredQty(l) >= l.qty).length; return d === 0 ? 'Pending delivery' : d === r.length ? 'Fully delivered' : 'Partially delivered'; };
-  return (
-    <Page>
-      <PageTitle title="Rental Orders" subtitle="Same list as the existing ERP, now fed by the Sales Orders with Activity Type = Rental. Open an order to work on it in CRM." change="changed" req={R.rental} />
-      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-        {[['Rental Orders', '/rental/orders'], ['Replacement Orders', '/rental/replacements']].map(([t, to]) => <Box key={t} onClick={() => nav(to)} sx={{ cursor: 'pointer', px: 1.5, py: 0.5, borderRadius: '1.5rem', fontSize: 13, fontWeight: 500, bgcolor: t === 'Rental Orders' ? '#B6E9D6' : '#EEEFF1' }}>{t}</Box>)}
-      </Box>
-      <DataTable<SalesOrder> rows={rows} searchPlaceholder="Search rental orders..." onRowClick={(r) => nav(`/crm/sales-orders/${r.id}`)}
-        columns={[
-          { key: 'number', label: 'Series Number' }, { key: 'date', label: 'Date' }, { key: 'cust', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'pt', label: 'Payment Term', render: (r) => r.paymentTerms }, { key: 'entity', label: 'Company', render: (r) => r.entity },
-          { key: 'cur', label: 'Currency', render: (r) => r.currency }, { key: 'exp', label: 'Expiration Date', render: (r) => r.lpoExpiry }, { key: 'sp', label: 'Salesperson', render: (r) => r.owner }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
-          { key: 'inv', label: 'Invoice Status', render: (r) => <StatusChip status="Pending Invoice" /> }, { key: 'del', label: 'Delivery Status', render: (r) => <StatusChip status={delivery(r)} /> },
-          { key: 'amt', label: 'Total Amount', align: 'right', render: (r) => aed(total(r)) }, { key: 'start', label: 'Start Date', render: (r) => r.contractStart }, { key: 'end', label: 'End Date', render: (r) => r.contractEnd },
-          { key: 'ct', label: 'Contract Type', change: 'new', req: R.rental, render: (r) => r.contractType }, { key: 'cc', label: 'Cost Centre / Project', change: 'new', req: R.meet, render: (r) => r.costCentre || '-' },
-          { key: 'assets', label: 'Assets On Hire', change: 'new', req: R.rental, render: (r) => r.lines.flatMap((l) => outstanding(l)).map((a) => assetById(a.assetId)?.assetId).join(', ') || '-' },
-        ]} />
-    </Page>
-  );
-}
-
 /* ------------------------------------------------------------------ Replacements */
 export function ReplacementList() {
   const nav = useNavigate();

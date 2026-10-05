@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, YARDS, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 
@@ -58,7 +58,7 @@ export const contractSpecs: Spec[] = [
   { key: 'amcEnd', label: 'AMC End Date', type: 'date', required: true, show: (f) => f.activity === 'AMC', hint: 'Start + 1 year by default, editable' },
   { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order' },
 ];
-const classification: Spec[] = [{ key: 'location', label: 'Location', type: 'select', options: YARDS, required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }];
+const classification: Spec[] = [{ key: 'location', label: 'Location', type: 'select', options: yards, required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }];
 const discounts: Spec[] = [
   { key: 'discountOn', label: 'Apply Additional Discount On', type: 'select', options: DISCOUNT_ON },
   { key: 'discountPct', label: 'Additional Discount Percentage', type: 'number' },
@@ -74,14 +74,14 @@ const shipping: Spec[] = [
   { key: 'shippingRule', label: 'Shipping Rule' }, { key: 'shippingCost', label: 'Shipping Cost', type: 'number' }, { key: 'handlingCost', label: 'Handling Cost', type: 'number' }, { key: 'incoterm', label: 'Incoterm', type: 'select', options: INCOTERMS },
 ];
 
-/** Date changes in the header move the rental / recurring lines that followed them. */
+/** Contract Start / End live in the main form only (6 Oct); every rental and recurring service line follows them. */
 export function withHeaderCascade(x: F, k: string, v: any): F {
   const n: F = { ...x, [k]: v };
   if (k === 'contractType' && v === 'Open PO' && !x.contractEnd) n.contractEnd = yearEnd(x.contractStart || undefined);
   if (k === 'amcStart' && v) n.amcEnd = plusYear(v);
   if (k === 'contractStart' || k === 'contractEnd') {
     const lk = k === 'contractStart' ? 'start' : 'end';
-    n.lines = (x.lines as Line[]).map((l) => ((l.activity === 'Rental' || l.billing === 'Recurring') && (!l[lk] || l[lk] === x[k]) ? { ...l, [lk]: v } : l));
+    n.lines = (x.lines as Line[]).map((l) => (l.activity === 'Rental' || (l.activity === 'Service' && l.billing === 'Recurring') ? { ...l, [lk]: v } : l));
   }
   return n;
 }

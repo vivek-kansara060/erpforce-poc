@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import dayjs from 'dayjs';
-import { employees, itemMaster, locations } from '@/mock-data/masters';
+import { employees, locations } from '@/mock-data/masters';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
@@ -12,12 +12,12 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { ALL_LOCATIONS, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
+import { allLocations, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
 import { createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { Note, R, aed, useDeliveries, useFleet, useOrders } from './shared';
 
-const stockOf = (l: Line) => itemMaster.find((i) => i.name === l.item)?.stock ?? 0;
+const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
 const serial = (l: Line) => l.activity === 'Rental' || l.activity === 'Fixed Asset Trading';
 const remainingOf = (l: Line) => (serial(l) ? l.qty - deliveredQty(l) : l.activity === 'Trading' || l.activity === 'Fuel Trading' ? (l.fulfilment ? 0 : l.qty) : 0);
@@ -48,7 +48,7 @@ const headerSpecs = (soOptions: { value: string; label: string }[]): Spec[] => [
   { key: 'number', label: 'ID', hint: 'Auto-generated on save, editable', change: 'changed', req: R.del },
   { key: 'date', label: 'Date Time', type: 'datetime', required: true, change: 'changed', req: R.del, hint: 'Actual dispatch date and time, editable' },
   { key: 'customerName', label: 'Customer', type: 'readonly' },
-  { key: 'location', label: 'Location', type: 'select', options: ALL_LOCATIONS, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
+  { key: 'location', label: 'Location', type: 'select', options: allLocations, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
   { key: 'supplierDoNo', label: "Supplier's Delivery Order No.", required: true, change: 'new', req: R.meet, show: (f) => supplierHeld(f.location), hint: 'The supplier delivers on your behalf and shares their own DO, recorded here for tracking' },
   { key: 'soId', label: 'Sales Order', type: 'select', options: soOptions, required: true },
   { key: 'operationType', label: 'Operation Type', type: 'readonly' },

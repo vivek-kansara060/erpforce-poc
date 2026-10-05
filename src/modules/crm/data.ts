@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
-import { costCentres, customers, equipmentGroups, locations } from '@/mock-data/masters';
-import { FREQUENCIES, heavySeed, pricingSeed, TODAY, type HeavyRec, type PricingRec } from '@/modules/inventory/data';
+import { costCentres, customers } from '@/mock-data/masters';
+import { FREQUENCIES, categorySeed, heavySeed, isTopCategory, itemSeed, locationSeed, pricingSeed, TODAY, type CategoryRec, type HeavyRec, type ItemRec, type LocationRec, type PricingRec } from '@/modules/inventory/data';
 import { getCollection, seedCollection, setCollection } from '@/store/store';
 
 export { FREQUENCIES, TODAY };
@@ -31,7 +31,6 @@ export const BILLING_STRUCTURES = ['Milestone', 'Lump Sum'];
 export const LINE_TYPES = ['Individual', 'Package'];
 export const VAT_TYPES = ['Standard (With VAT)', 'Export (Zero-Rated)'];
 export const TRANSACTION_TYPES = ['Cash', 'Credit'];
-export const YARDS = ['Jebel Ali Main Yard', 'Sharjah Yard', 'Abu Dhabi Mussafah Yard'];
 export const LEAD_PROBABILITY: Record<string, number> = { 'Cold call': 10, 'Quotation sent': 30, 'Contact in progress': 70, 'Follow up': 80, Converted: 100, Lost: 0, Negotiating: 50, 'Not qualified': 0, New: 10, Contacted: 30, Qualified: 50, Unqualified: 0 };
 export const OPP_PROBABILITY: Record<string, number> = { Enquiry: 10, Qualified: 30, Quoted: 40, Proposal: 50, Negotiation: 70, Won: 100, Lost: 0 };
 export const PRIORITIES = ['Low', 'Medium', 'High'];
@@ -43,7 +42,10 @@ export const INCOTERMS = ['EXW', 'FCA', 'CPT', 'CIF', 'DAP', 'DDP'];
 export const DISCOUNT_ON = ['Gross Amount', 'Proportional Allocation'];
 export const DEPARTMENTS = ['Sales', 'Operations', 'Logistics', 'Workshop', 'Finance'];
 /** Own yards first, then supplier-held locations (fuel stock held at a supplier). */
-export const ALL_LOCATIONS = locations.map((l) => l.name);
+const liveLocations = (): LocationRec[] => { seedCollection('locations', locationSeed); return getCollection<LocationRec>('locations').filter((l) => l.status === 'Active'); };
+/** Locations and Category / Subcategory are read live from Inventory (Locations, Item Category), so a change there shows here. */
+export const allLocations = () => liveLocations().map((l) => l.name);
+export const yards = () => liveLocations().filter((l) => l.type === 'Own Yard').map((l) => l.name);
 export const COST_CENTRES = costCentres.filter((c) => c.active).map((c) => c.name);
 export const SERVICE_BILLING = ['One-time', 'Recurring', 'Lump sum'];
 export const SERVICE_TYPES = ['Charge', 'Waiver', 'Insurance', 'Other'];
@@ -132,7 +134,7 @@ export interface Quotation extends Commercial {
   preparedBy: string; designation: string; mobile: string; email: string; template: string; pushToOpp: boolean; salesOrderId?: string; log: LogItem[];
 }
 export interface Visit { date: string; done?: string; ref?: string; type?: string; amount?: number; jobCardId?: string }
-export interface ServiceCharge { id: string; name: string; type: string; billing: string; price: number; desc: string; source: 'CRM' | 'Inventory' }
+export interface ServiceCharge { id: string; name: string; type: string; billing: string; price: number; desc: string; source: 'Inventory' }
 export interface JobCard {
   id: string; number: string; soId: string; soNumber: string; customerId: string; visitIdx: number; plannedDate: string; doneOn?: string; technician: string; location: string; item: string;
   materials: { item: string; qty: number; unit: string; price: number; cost?: number }[]; services: { name: string; amount: number }[]; notes: string; visitAmount: number;
@@ -200,8 +202,9 @@ export const isRentalLine = (l: Line) => l.activity === 'Rental' || l.activity =
 export const hasWaiver = (lines: Line[]) => lines.some((l) => l.activity === 'Service' && (l.serviceType === 'Waiver' || /damage waiver/i.test(l.item)) && !l.foc);
 export const nowStamp = () => `${TODAY} ${dayjs().format('HH:mm')}`;
 export const log = (title: string, detail?: string, tone?: LogItem['tone']): LogItem => ({ when: nowStamp(), title, detail, by: ACTOR, tone });
-export const groupOptions = equipmentGroups.map((g) => g.group);
-export const categoryOptions = (group?: string) => equipmentGroups.find((g) => g.group === group)?.categories ?? [];
+const liveCategories = (): CategoryRec[] => { seedCollection('inventory.categories', categorySeed); return getCollection<CategoryRec>('inventory.categories').filter((c) => c.status === 'Active'); };
+export const groupOptions = () => { const rows = liveCategories(); return rows.filter(isTopCategory).filter((t) => rows.some((c) => c.parent === t.name)).map((t) => t.name); };
+export const categoryOptions = (group?: string) => (group ? liveCategories().filter((c) => c.parent === group).map((c) => c.name) : []);
 export const yearEnd = (from: string = TODAY) => `${from.slice(0, 4)}-12-31`;
 export const plusYear = (d: string) => dayjs(d).add(1, 'year').subtract(1, 'day').format('YYYY-MM-DD');
 export const mkLine = (over: Partial<Line> & Pick<Line, 'activity' | 'item'>): Line => ({
@@ -246,16 +249,11 @@ const L = (id: string, over: Partial<Line> & Pick<Line, 'activity' | 'item'>): L
 /** A rental equipment line priced Monthly between two dates. */
 const R = (id: string, group: string, category: string, price: number, start: string, end: string, over: Partial<Line> = {}): Line =>
   L(id, { activity: 'Rental', item: `Rental ${group} ${category} Monthly`, group, category, frequency: 'Monthly', start, end, unit: 'Nos', price, pricingId: pricingSeed.find((p) => p.category === group && p.subCategory === category && p.frequency === 'Monthly')?.id, desc: `${group} ${category}, rental, monthly billing`, ...over });
-export const serviceSeed: ServiceCharge[] = [
-  { id: 'sv1', name: 'Delivery Charge', type: 'Charge', billing: 'One-time', price: 1500, desc: 'Delivery of equipment to site, billed on the first invoice', source: 'CRM' },
-  { id: 'sv2', name: 'Return Charge', type: 'Charge', billing: 'One-time', price: 2000, desc: 'Collection of equipment from site, billed on the final invoice', source: 'CRM' },
-  { id: 'sv3', name: 'Transportation', type: 'Charge', billing: 'One-time', price: 1200, desc: 'Transport service charge', source: 'CRM' },
-  { id: 'sv4', name: 'Damage Waiver (Monthly)', type: 'Waiver', billing: 'Recurring', price: 150, desc: 'Damage waiver billed with every rental cycle; if paid, damage is not invoiced at return', source: 'CRM' },
-  { id: 'sv5', name: 'Damage Waiver (Lump Sum)', type: 'Waiver', billing: 'Lump sum', price: 400, desc: 'One-time damage waiver for the whole contract', source: 'CRM' },
-  { id: 'sv6', name: 'Equipment Insurance (Monthly)', type: 'Insurance', billing: 'Recurring', price: 300, desc: 'Insurance cover billed with every rental cycle', source: 'CRM' },
-  { id: 'sv7', name: 'Operator Charge (Monthly)', type: 'Charge', billing: 'Recurring', price: 4500, desc: 'Operator provided with the equipment', source: 'CRM' },
-  { id: 'sv8', name: 'Generator Installation & Commissioning', type: 'Charge', billing: 'One-time', price: 3500, desc: 'From the Inventory service items', source: 'Inventory' },
-];
+/** Service lines are the Inventory service items (Type = Service); this is the CRM view of them. */
+export const toServiceCharge = (i: ItemRec): ServiceCharge => ({ id: i.id, name: i.name, type: i.serviceType ?? 'Charge', billing: i.billing ?? 'One-time', price: i.price, desc: i.description ?? i.name, source: 'Inventory' });
+/** Live Inventory items (what is added or edited in Inventory > Items shows in CRM item pickers, stock and prices). */
+export function liveItems(): ItemRec[] { seedCollection('items', itemSeed); return getCollection<ItemRec>('items').filter((i) => i.status === 'Active'); }
+export const serviceSeed: ServiceCharge[] = itemSeed.filter((i) => i.type === 'Service' && i.serviceType).map(toServiceCharge);
 const S = (id: string, item: string, price: number, billing: 'One-time' | 'Recurring' | 'Lump sum', over: Partial<Line> = {}): Line => {
   const m = serviceSeed.find((x) => x.name === item);
   return L(id, { activity: 'Service', item, unit: 'Nos', price, billing, serviceId: m?.id, serviceType: m?.type, desc: m?.desc ?? item, ...over });
@@ -400,6 +398,6 @@ export function seedAll() {
   seedCollection(COL.fleet, heavySeed); seedCollection(COL.pricing, pricingSeed); seedCollection(COL.masters, masterSeed);
   seedCollection(COL.leads, leadSeed); seedCollection(COL.opps, oppSeed); seedCollection(COL.quotes, quoteSeed); seedCollection(COL.orders, orderSeed);
   seedCollection(COL.deliveries, deliverySeed); seedCollection(COL.returns, returnSeed); seedCollection(COL.replacements, replacementSeed);
-  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.serviceCharges, serviceSeed); seedCollection(COL.jobCards, jobCardSeed);
+  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.jobCards, jobCardSeed);
 }
 seedAll();

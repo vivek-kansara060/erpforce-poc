@@ -10,7 +10,7 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { FAULT_ATTRIBUTION, RETURN_METHODS, TODAY, YARDS, assetById, custName, hasWaiver, type ReturnEntry } from './data';
+import { FAULT_ATTRIBUTION, RETURN_METHODS, TODAY, yards, assetById, custName, hasWaiver, type ReturnEntry } from './data';
 import { failedCollection, getOrder, inspect, outstanding, raiseReturn, reachYard } from './flow';
 import { R, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns } from './shared';
 
@@ -157,7 +157,7 @@ export function ReturnView() {
         </Box>
       </Page>
       <AppDialog open={yard} title="Asset reached the Yard" onClose={() => setYard(false)} confirmLabel="Confirm" onConfirm={() => { reachYard(r, yardName); toast('Asset is now in the Yard, inspection pending'); setYard(false); }}>
-        <SelectInput label="Yard" value={yardName} options={YARDS} onChange={setYardName} hint="Off-Hire assets go to the Yard first, never straight to Ready for Hire" />
+        <SelectInput label="Yard" value={yardName} options={yards()} onChange={setYardName} hint="Off-Hire assets go to the Yard first, never straight to Ready for Hire" />
       </AppDialog>
       <AppDialog open={insp} title="Yard inspection" onClose={() => setInsp(false)} maxWidth="md" confirmLabel="Save inspection" confirmDisabled={!okInspect}
         onConfirm={() => { inspect(r, res as any, checks, res === 'Damage Found' ? { amount: Number(amount), note } : undefined); toast(res === 'Passed' ? 'Inspection passed, asset is Ready for Hire' : 'Damage recorded, asset sent to Maintenance'); setInsp(false); }}>

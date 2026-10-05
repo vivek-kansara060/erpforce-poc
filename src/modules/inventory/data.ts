@@ -13,6 +13,9 @@ export const TRACKING_METHODS = [
 ];
 export const ITEM_TYPES = ['Inventory', 'Non Inventory', 'Assembly (Finished product)', 'Service', 'Package', 'Inventory Fixed Asset', 'Heavy Equipment Fixed Asset'];
 export const UOMS = ['Nos', 'Meter', 'Litre', 'Drum', 'Visit', 'Job', 'Kg', 'Set'];
+/** Service items (Type = Service) carry a Service Type and a Billing type, used by Rental, AMC and Fixed Asset Trading documents in CRM. */
+export const SERVICE_TYPES = ['Charge', 'Waiver', 'Insurance', 'AMC'];
+export const SERVICE_BILLING = ['One-time', 'Recurring', 'Lump sum'];
 export const FREQUENCIES = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
 export const OWNERSHIP = ['Owned', 'Cross-Hired', 'Spare-Standby'];
 export const DEPRECIATION_METHODS = ['Straight line', 'Declining'];
@@ -132,6 +135,8 @@ export interface ItemRec extends ItemMaster {
   brand?: string; model?: string; engineNo?: string; capacity?: string;
   purchaseDate?: string; assetValue?: number; nbv?: number; deprPct?: number; deprAmount?: number; capex?: number;
   image?: string; attachments?: string[]; attrs?: Record<string, string>;
+  /** Type = Service only (NEW): what the service is and how it is billed on a CRM document */
+  serviceType?: string; billing?: string; description?: string;
 }
 const SERIAL_SEED: Record<string, Partial<ItemRec>> = {
   i1: { brand: 'Cummins', model: 'C100D5', engineNo: 'CUM-4BT-44102', capacity: '100 KVA', purchaseDate: '2024-02-10', assetValue: 165000, nbv: 138000, deprPct: 16.36, deprAmount: 27000, capex: 165000, attachments: ['Cummins-C100D5-datasheet.pdf'], attrs: { 'at-g1': 'Diesel', 'at-g2': 'Three Phase' } },
@@ -158,7 +163,25 @@ const stockTotal = (itemId: string, fallback: number) => {
   const rows = locationStockSeed.filter((r) => r.itemId === itemId);
   return rows.length ? rows.reduce((t, r) => t + r.qty, 0) : fallback;
 };
-export const itemSeed: ItemRec[] = itemMaster.map((m) => ({
+const SERVICE_SEED: Record<string, Partial<ItemRec>> = {
+  i9: { serviceType: 'AMC', billing: 'One-time', description: 'Scheduled AMC visit' },
+  i10: { serviceType: 'Charge', billing: 'One-time', description: 'Generator installation and commissioning' },
+};
+/** Rental related service items, kept in Inventory with the other service items (6 Oct: service lines come from the Inventory service items). */
+const svc = (n: number, id: string, name: string, serviceType: string, billing: string, price: number, description: string, unit = 'Nos'): ItemRec => ({
+  id, code: `ITM-${String(n).padStart(4, '0')}`, name, classification: 'Trading', category: 'Service', tracking: 'Quantity', unit, price, stock: 0,
+  type: 'Service', sku: `SKU-${String(n).padStart(4, '0')}`, status: 'Active', costingMethod: 'Average Cost', traceability: 'No Tracking', costPrice: Math.round(price * 0.72 * 100) / 100, serviceType, billing, description,
+});
+export const serviceItemSeed: ItemRec[] = [
+  svc(13, 'sv1', 'Delivery Charge', 'Charge', 'One-time', 1500, 'Delivery of equipment to site, billed on the first invoice'),
+  svc(14, 'sv2', 'Return Charge', 'Charge', 'One-time', 2000, 'Collection of equipment from site, billed on the final invoice'),
+  svc(15, 'sv3', 'Transportation', 'Charge', 'One-time', 1200, 'Transport service charge'),
+  svc(16, 'sv4', 'Damage Waiver (Monthly)', 'Waiver', 'Recurring', 150, 'Damage waiver billed with every rental cycle; if paid, damage is not invoiced at return'),
+  svc(17, 'sv5', 'Damage Waiver (Lump Sum)', 'Waiver', 'Lump sum', 400, 'One-time damage waiver for the whole contract'),
+  svc(18, 'sv6', 'Equipment Insurance (Monthly)', 'Insurance', 'Recurring', 300, 'Insurance cover billed with every rental cycle'),
+  svc(19, 'sv7', 'Operator Charge (Monthly)', 'Charge', 'Recurring', 4500, 'Operator provided with the equipment'),
+];
+export const itemSeed: ItemRec[] = [...itemMaster.map((m): ItemRec => ({
   ...m,
   stock: stockTotal(m.id, m.stock),
   type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.category === 'Service' ? 'Service' : 'Inventory',
@@ -169,7 +192,8 @@ export const itemSeed: ItemRec[] = itemMaster.map((m) => ({
   useBins: m.tracking === 'Quantity' && !!m.spare,
   costPrice: Math.round(m.price * 0.72 * 100) / 100,
   ...SERIAL_SEED[m.id],
-}));
+  ...SERVICE_SEED[m.id],
+})), ...serviceItemSeed];
 
 /** Next sequential Item Code across the item master and Heavy Equipment records. */
 export function nextItemCode(...codeLists: string[][]): string {

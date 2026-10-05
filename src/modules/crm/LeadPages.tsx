@@ -9,7 +9,7 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { TabPanels } from '@/components/Widgets';
 import { nextNumber } from '@/store/store';
-import { ACTIVITY_TYPES, ACTOR, ADDRESS_TYPES, DEPARTMENTS, FOLLOW_TYPES, LEAD_PROBABILITY, LEAD_STATUSES, PRIORITIES, SALESPEOPLE, TODAY, YARDS, log, masterValues, type Addr, type ContactRow, type FollowUp, type Lead } from './data';
+import { ACTIVITY_TYPES, ACTOR, ADDRESS_TYPES, DEPARTMENTS, FOLLOW_TYPES, LEAD_PROBABILITY, LEAD_STATUSES, PRIORITIES, SALESPEOPLE, TODAY, yards, log, masterValues, type Addr, type ContactRow, type FollowUp, type Lead } from './data';
 import { convertLead } from './flow';
 import { Section, RowsEditor, SpecForm, SpecView, type Spec } from './FormKit';
 import { ActivityChip, R, useLeads } from './shared';
@@ -53,7 +53,7 @@ const owner: Spec[] = [
   { key: 'narration', label: 'Narration', type: 'textarea' },
 ];
 const classification: Spec[] = [
-  { key: 'location', label: 'Location', type: 'select', options: YARDS }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS },
+  { key: 'location', label: 'Location', type: 'select', options: yards }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS },
 ];
 export const followCols = [{ key: 'type', label: 'Follow Up Type', type: 'select' as const, options: FOLLOW_TYPES }, { key: 'date', label: 'Follow Up Date & Time', type: 'datetime' as const }, { key: 'remind', label: 'Remind Me', type: 'datetime' as const }, { key: 'desc', label: 'Description', width: 260 }];
 export const addrCols = [{ key: 'type', label: 'Address Type', type: 'select' as const, options: ADDRESS_TYPES }, { key: 'addressee', label: 'Addressee' }, { key: 'line1', label: 'Address 1', width: 220 }, { key: 'city', label: 'City' }, { key: 'state', label: 'State' }, { key: 'country', label: 'Country' }, { key: 'zip', label: 'Zip Code' }, { key: 'phone', label: 'Contact Number' }, { key: 'defaultShipping', label: 'Default shipping address', type: 'check' as const }, { key: 'defaultBilling', label: 'Default Billing address', type: 'check' as const }];

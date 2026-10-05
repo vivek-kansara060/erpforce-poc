@@ -10,7 +10,7 @@ import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
 import { nextNumber } from '@/store/store';
-import { ACTIVITY_TYPES, DEPARTMENTS, OPP_PROBABILITY, OPP_STAGES, PRIORITIES, RATINGS, SALESPEOPLE, TODAY, WIN_LOSS_REASONS, YARDS, availability, custName, isRentalLine, masterValues, type Line, type Opportunity } from './data';
+import { ACTIVITY_TYPES, DEPARTMENTS, OPP_PROBABILITY, OPP_STAGES, PRIORITIES, RATINGS, SALESPEOPLE, TODAY, WIN_LOSS_REASONS, yards, availability, custName, isRentalLine, masterValues, type Line, type Opportunity } from './data';
 import { duplicateOpportunity, quoteFromOpportunity } from './flow';
 import { ItemsTable } from './Items';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from './FormKit';
@@ -67,7 +67,7 @@ const specs = (): { basic: Spec[]; owner: Spec[]; classification: Spec[] } => ({
     { key: 'owner', label: 'Salesperson', type: 'select', options: SALESPEOPLE, required: true }, { key: 'phone', label: 'Phone Number', type: 'readonly' }, { key: 'emailId', label: 'Email ID', type: 'readonly' }, { key: 'entity', label: 'Company', type: 'readonly' },
     { key: 'source', label: 'Source', type: 'master', master: 'leadSource' }, { key: 'industry', label: 'Industry', type: 'master', master: 'industry' }, { key: 'narration', label: 'Narration', type: 'textarea' },
   ],
-  classification: [{ key: 'location', label: 'Location', type: 'select', options: YARDS }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }],
+  classification: [{ key: 'location', label: 'Location', type: 'select', options: yards }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }],
 });
 
 export function OpportunityList({ activity }: { activity?: string } = {}) {

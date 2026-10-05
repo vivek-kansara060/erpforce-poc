@@ -10,10 +10,11 @@ import type { ChangeKind } from '@/types';
 import { MasterSelect } from './shared';
 
 type Opt = string | { value: string; label: string };
+export const optsOf = (s: { options?: Opt[] | (() => Opt[]) }): Opt[] => (typeof s.options === 'function' ? s.options() : s.options ?? []);
 export interface Spec {
   key: string; label: string;
   type?: 'text' | 'number' | 'date' | 'datetime' | 'select' | 'master' | 'multi' | 'textarea' | 'toggle' | 'check' | 'radio' | 'readonly' | 'file';
-  options?: Opt[]; master?: string; required?: boolean; change?: ChangeKind; req?: string; hint?: string;
+  options?: Opt[] | (() => Opt[]); master?: string; required?: boolean; change?: ChangeKind; req?: string; hint?: string;
   show?: (f: Record<string, any>) => boolean; disabled?: boolean | ((f: Record<string, any>) => boolean); full?: boolean; rows?: number; value?: (f: Record<string, any>) => any;
   onLabel?: string; offLabel?: string;
 }
@@ -32,9 +33,9 @@ export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs:
           case 'number': return <NumberInput key={s.key} {...base} value={v} onChange={(x) => on(x === '' ? '' : Number(x))} />;
           case 'date': return <DateInput key={s.key} {...base} value={v} onChange={on} />;
           case 'datetime': return <DateInput key={s.key} {...base} label={s.label.includes('Time') ? s.label : `${s.label} Time`} value={v} onChange={on} />;
-          case 'select': return <SelectInput key={s.key} {...base} value={v} options={s.options ?? []} onChange={on} />;
+          case 'select': return <SelectInput key={s.key} {...base} value={v} options={optsOf(s)} onChange={on} />;
           case 'master': return <MasterSelect key={s.key} master={s.master!} {...base} value={v} onChange={on} />;
-          case 'multi': return <MultiSelectInput key={s.key} {...base} value={v ?? []} options={s.options ?? []} onChange={on} />;
+          case 'multi': return <MultiSelectInput key={s.key} {...base} value={v ?? []} options={optsOf(s)} onChange={on} />;
           case 'textarea': return <TextInput key={s.key} {...base} multiline rows={s.rows ?? 2} value={v} onChange={on} full />;
           case 'toggle': return <ToggleInput key={s.key} label={s.label} change={s.change} req={s.req} disabled={dis} checked={!!v} onChange={on} onLabel={s.onLabel} offLabel={s.offLabel} full={s.full} />;
           case 'check': return <CheckInput key={s.key} label={s.label} change={s.change} req={s.req} hint={s.hint} disabled={dis} checked={!!v} onChange={on} full={s.full} />;
@@ -44,7 +45,7 @@ export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs:
               <Box key={s.key} sx={{ gridColumn: s.full ? '1 / -1' : undefined }}>
                 <Text type="s5" weight="medium" color="theme.secondary.800">{s.label}{s.required && <span style={{ color: '#C64D4D' }}> *</span>}<ChangeTag kind={s.change} req={s.req} /></Text>
                 <RadioGroup row value={v ?? ''} onChange={(e) => on(e.target.value)}>
-                  {(s.options ?? []).map((o) => { const ov = typeof o === 'string' ? o : o.value; return <FormControlLabel key={ov} value={ov} disabled={dis} control={<Radio size="small" />} label={<Text type="s3">{typeof o === 'string' ? o : o.label}</Text>} />; })}
+                  {optsOf(s).map((o) => { const ov = typeof o === 'string' ? o : o.value; return <FormControlLabel key={ov} value={ov} disabled={dis} control={<Radio size="small" />} label={<Text type="s3">{typeof o === 'string' ? o : o.label}</Text>} />; })}
                 </RadioGroup>
               </Box>
             );
@@ -62,7 +63,7 @@ export function SpecView({ specs, f, cols = 4 }: { specs: Spec[]; f: F; cols?: n
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 3 }}>
       {specs.filter((s) => (!s.show || s.show(f)) && s.type !== 'file').map((s) => {
         const raw = s.value ? s.value(f) : f[s.key];
-        const lab = s.type === 'select' || s.type === 'radio' ? (s.options ?? []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o)).find((o) => o.value === raw)?.label : undefined;
+        const lab = s.type === 'select' || s.type === 'radio' ? optsOf(s).map((o) => (typeof o === 'string' ? { value: o, label: o } : o)).find((o) => o.value === raw)?.label : undefined;
         const val = lab ?? (Array.isArray(raw) ? raw.join(', ') : typeof raw === 'boolean' ? (raw ? 'Yes' : 'No') : raw);
         return <ValueField key={s.key} label={s.label} change={s.change} req={s.req} value={val as ReactNode} />;
       })}

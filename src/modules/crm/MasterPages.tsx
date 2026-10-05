@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
-import { FormGrid, NumberInput, SelectInput, TextInput } from '@/components/Form';
+import { TextInput } from '@/components/Form';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
-import { StatusChip } from '@/components/StatusChip';
-import { SERVICE_BILLING, SERVICE_TYPES, type ServiceCharge } from './data';
 import { R, useMaster, useServiceCharges } from './shared';
 
 /** Every dropdown in CRM is backed by a master with a list view (5 Oct: "where is the list?"). */
@@ -48,7 +46,7 @@ export function MastersIndex() {
   const nav = useNavigate();
   const sv = useServiceCharges();
   const keys = Object.keys(MASTER_LABELS);
-  const rows = [{ id: 'service-charges', label: 'Service Charges', used: 'Quotation, Sales Order (service items, waivers), AMC job cards', count: sv.rows.length }, ...keys.map((k) => ({ id: k, label: MASTER_LABELS[k].label, used: MASTER_LABELS[k].used, count: -1 }))];
+  const rows = [{ id: 'service-charges', label: 'Service Items (Inventory, Type = Service)', used: 'Quotation, Sales Order (service lines, waivers), AMC job cards. Managed in Inventory > Items', count: sv.rows.length }, ...keys.map((k) => ({ id: k, label: MASTER_LABELS[k].label, used: MASTER_LABELS[k].used, count: -1 }))];
   return (
     <Page>
       <PageTitle title="Masters" subtitle="Every list used in the CRM screens. Values can also be added from the dropdown itself with Create New." change="new" req={R.meet} />
@@ -60,43 +58,12 @@ export function MastersIndex() {
 export function MasterView() {
   const { key } = useParams();
   const nav = useNavigate();
-  if (key === 'service-charges') return <ServiceChargePage />;
+  if (key === 'service-charges') return <Navigate to="/inventory/items" replace />;
   if (!key || !MASTER_LABELS[key]) return <Page><PageTitle title="Master not found" right={<Button variant="outlined" onClick={() => nav('/crm/masters')}>Back</Button>} /></Page>;
   return (
     <>
       <FormHeader crumbs={[{ label: 'Masters', to: '/crm/masters' }, { label: MASTER_LABELS[key].label }]} />
       <Page sx={{ pt: 2 }}><MasterRows k={key} /></Page>
-    </>
-  );
-}
-
-/** Service master: name, type (waiver, insurance, charge), billing (one-time, recurring, lump sum) and default price. Frequency is taken from the quotation. */
-function ServiceChargePage() {
-  const sv = useServiceCharges();
-  const toast = useToast();
-  const [d, setD] = useState<ServiceCharge | null>(null);
-  const isNew = d && !sv.get(d.id);
-  const save = () => { if (!d) return; if (isNew) sv.add(d); else sv.update(d.id, d); toast(isNew ? 'Service charge added' : 'Service charge updated'); setD(null); };
-  return (
-    <>
-      <FormHeader crumbs={[{ label: 'Masters', to: '/crm/masters' }, { label: 'Service Charges' }]} />
-      <Page sx={{ pt: 2 }}>
-        <PageTitle title="Service Charges" subtitle="Used for service lines on Quotations and Sales Orders. The billing type is set here, so it is not asked again on the document." />
-        <DataTable<ServiceCharge> rows={sv.rows} searchPlaceholder="Search service charges..." onAdd={() => setD({ id: `sv${Date.now()}`, name: '', type: 'Charge', billing: 'One-time', price: 0, desc: '', source: 'CRM' })} addLabel="Add Service Charge"
-          columns={[{ key: 'name', label: 'Service' }, { key: 'type', label: 'Type' }, { key: 'billing', label: 'Billing', render: (r) => <StatusChip status={r.billing} tone="grey" /> }, { key: 'price', label: 'Default price (AED)', align: 'right' }, { key: 'desc', label: 'Description' }, { key: 'source', label: 'Source' }]}
-          actions={[{ label: 'Edit', onClick: setD }, { label: 'Delete', danger: true, onClick: (r) => { sv.remove(r.id); toast('Service charge deleted'); } }]} />
-      </Page>
-      <AppDialog open={!!d} title={isNew ? 'Add Service Charge' : 'Edit Service Charge'} onClose={() => setD(null)} confirmLabel="Save" confirmDisabled={!d?.name.trim()} onConfirm={save}>
-        {d && (
-          <FormGrid>
-            <TextInput label="Service" required value={d.name} onChange={(v) => setD({ ...d, name: v })} />
-            <SelectInput label="Type" required value={d.type} options={SERVICE_TYPES} onChange={(v) => setD({ ...d, type: v })} hint="A waiver blocks the damage charge at return" />
-            <SelectInput label="Billing" required value={d.billing} options={SERVICE_BILLING} onChange={(v) => setD({ ...d, billing: v })} hint="Recurring follows the frequency of the quotation" />
-            <NumberInput label="Default price (AED)" value={d.price} onChange={(v) => setD({ ...d, price: Number(v) })} />
-            <TextInput label="Description" multiline rows={2} value={d.desc} onChange={(v) => setD({ ...d, desc: v })} full />
-          </FormGrid>
-        )}
-      </AppDialog>
     </>
   );
 }
