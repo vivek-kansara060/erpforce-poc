@@ -12,6 +12,14 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 5 Oct, around 11:00 AM: Item Category is one screen again (categories and sub-categories together), without the Level field
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* On 2 Oct categories and sub-categories were split into two screens. The team prefers the original single Item Category screen, only without the unexplained Level field.
+*What we did.* **Item Category** is again one list holding categories and sub-categories, with **Category Name, Parent, Status and Sub Categories** columns. The form has the **Parent Category** field back: leave it empty for a top-level category, pick one to create a sub-category (a category that already has sub-categories stays top-level). **Level** is not shown anywhere. The page of a category lists its sub-categories with an **Add Sub-Category** button (which opens the form with the parent filled in); the page of a sub-category links to its parent. The separate **Item Sub-Category** screen is removed from the side menu.
+*Be aware.* Category Type (Normal / Heavy Equipment) stays removed, as agreed on 2 Oct.
+
 ### 2 Oct, around 5:30 PM: A disposal by sale or scrap now ends with an invoice to a selected party
 **Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
 **Where:** Inventory & Fixed Assets > Reports

@@ -8,7 +8,7 @@ import { CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalVi
 import { dashboards, reports } from './reports';
 import { dashboardRoutes } from '@/components/ReportsAndDashboards';
 import { invReportRoutes } from './ReportPages';
-import { CategoryForm, CategoryList, CategoryView, SubCategoryForm, SubCategoryList, SubCategoryView } from './Masters';
+import { CategoryForm, CategoryList, CategoryView } from './Masters';
 import { PricingForm, PricingList, PricingView } from './PricingPages';
 import { AssetTypeForm, AssetTypeList } from './AssetTypePages';
 
@@ -23,7 +23,6 @@ const mod: ModuleDef = {
       label: 'Product Management', icon: <Inventory2OutlinedIcon />, children: [
         { label: 'Items', path: '/inventory/items' },
         { label: 'Item Category', path: '/inventory/categories', change: 'changed' },
-        { label: 'Item Sub-Category', path: '/inventory/sub-categories', change: 'new' },
         { label: 'Asset Type', path: '/inventory/asset-types', change: 'new' },
         { label: 'Heavy Equipment Pricing', path: '/inventory/pricing', change: 'new' },
       ],
@@ -53,10 +52,6 @@ const mod: ModuleDef = {
     { path: 'asset-types', element: <AssetTypeList /> },
     { path: 'asset-types/add', element: <AssetTypeForm /> },
     { path: 'asset-types/:id/edit', element: <AssetTypeForm /> },
-    { path: 'sub-categories', element: <SubCategoryList /> },
-    { path: 'sub-categories/add', element: <SubCategoryForm /> },
-    { path: 'sub-categories/:id', element: <SubCategoryView /> },
-    { path: 'sub-categories/:id/edit', element: <SubCategoryForm /> },
     { path: 'pricing', element: <PricingList /> },
     { path: 'pricing/add', element: <PricingForm /> },
     { path: 'pricing/:id', element: <PricingView /> },
@@ -78,9 +73,8 @@ const mod: ModuleDef = {
   ],
   changes: [
     { module: 'Inventory & Fixed Assets', screen: 'Items', classification: 'EXISTING WITH CHANGE', existing: 'Items list and multi-tab form with type, SKU, name, category, traceability, prices', change: 'Adds Item Code (auto), Product Classification, Category/Sub-Category from master, Tracking Method, serialized asset fields, photo and attachments', ref: 'Item Master > New Fields', path: '/inventory/items' },
-    { module: 'Inventory & Fixed Assets', screen: 'Item Category', classification: 'EXISTING WITH CHANGE', existing: 'Parent, Level, Category Name, Brand, Description, SKU Prefix, Unique Items, Status, Attributes', change: 'Lists categories only (Level and Category Type removed). Adds Custom Attributes with Required flag and Depreciation Method Override, a view page with its sub-categories, and + Add from the item, asset and pricing forms', ref: 'Category & Sub-Category Master (2 Oct call)', path: '/inventory/categories' },
+    { module: 'Inventory & Fixed Assets', screen: 'Item Category', classification: 'EXISTING WITH CHANGE', existing: 'Parent, Level, Category Name, Brand, Description, SKU Prefix, Unique Items, Status, Attributes', change: 'One screen for categories and sub-categories as before (Parent field makes a sub-category); Level and Category Type removed. Adds Custom Attributes with Required flag, Depreciation Method Override, sub-categories on the category page, and Create New from the item, asset and pricing dropdowns', ref: 'Category & Sub-Category Master', path: '/inventory/categories' },
     { module: 'Inventory & Fixed Assets', screen: 'Asset Type', classification: 'NEW', existing: 'Fixed list of asset types in the accounting asset form', change: 'Client-specific Asset Type master with list, add, edit, activate / deactivate and delete (blocked while in use), and + Add from the Heavy Equipment Fixed Asset form', ref: 'Asset Type Master (2 Oct call)', path: '/inventory/asset-types' },
-    { module: 'Inventory & Fixed Assets', screen: 'Item Sub-Category', classification: 'NEW', existing: '-', change: 'Separate master for sub-categories, each linked to one category, with list, add, edit, view, deactivate and delete', ref: 'Category & Sub-Category Master (2 Oct call)', path: '/inventory/sub-categories' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset type', classification: 'NEW', existing: '-', change: 'New always-serialized item type within Items, identified by an auto-generated Serialized ID (no typed name, item code or tracking method on the form), with its own listing view, add/edit form and view page (Basic Details, Depreciation Board, Movement History, Ownership)', ref: 'Item Master / Fixed Asset Register', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Activity Type (Rental / Trading) and Description. A rental price is one record per Category / Sub-Category storing a price for every billing frequency: one is entered, the others are calculated and can be changed by hand. Trading prices are a single sales price. Listing shows rental prices for a chosen billing frequency; Rental / Trading filter, bulk upload and a view page with all frequencies', ref: 'Pricing Master (2 Oct call)', path: '/inventory/pricing' },
     { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Removes Parent Location, Company and the address block (City kept). Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional), a read-only per-item stock table with units (Stock Held, Consumed, Remaining, Remaining Value)', ref: 'Location & Warehouse Master (2 Oct call)', path: '/inventory/locations' },
