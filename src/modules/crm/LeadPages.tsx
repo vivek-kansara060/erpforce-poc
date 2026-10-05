@@ -59,13 +59,13 @@ export const followCols = [{ key: 'type', label: 'Follow Up Type', type: 'select
 export const addrCols = [{ key: 'type', label: 'Address Type', type: 'select' as const, options: ADDRESS_TYPES }, { key: 'addressee', label: 'Addressee' }, { key: 'line1', label: 'Address 1', width: 220 }, { key: 'city', label: 'City' }, { key: 'state', label: 'State' }, { key: 'country', label: 'Country' }, { key: 'zip', label: 'Zip Code' }, { key: 'phone', label: 'Contact Number' }, { key: 'defaultShipping', label: 'Default shipping address', type: 'check' as const }, { key: 'defaultBilling', label: 'Default Billing address', type: 'check' as const }];
 export const contactCols = [{ key: 'name', label: 'Name' }, { key: 'email', label: 'Email' }, { key: 'code', label: 'Country Code', width: 90 }, { key: 'phone', label: 'Contact Number' }];
 
-export function LeadList() {
+export function LeadList({ activity }: { activity?: string } = {}) {
   const nav = useNavigate();
   const leads = useLeads();
   return (
     <Page>
       <PageTitle title="Lead" />
-      <DataTable<Lead> rows={leads.rows} searchPlaceholder="Search leads..." filter={{ key: 'status', options: LEAD_STATUSES }}
+      <DataTable<Lead> rows={activity ? leads.rows.filter((l) => l.activity === activity) : leads.rows} searchPlaceholder="Search leads..." filter={{ key: 'status', options: LEAD_STATUSES }}
         onAdd={() => nav('/crm/leads/add')} addLabel="Add Lead" onRowClick={(r) => nav(`/crm/leads/${r.id}`)}
         columns={[
           { key: 'number', label: 'ID' }, { key: 'contact', label: 'Name' }, { key: 'company', label: 'Company' },

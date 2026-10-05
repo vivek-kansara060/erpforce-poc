@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import dayjs from 'dayjs';
-import { employees, itemMaster } from '@/mock-data/masters';
+import { employees, itemMaster, locations } from '@/mock-data/masters';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
@@ -12,14 +12,16 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, YARDS, assetById, availability, categoryOptions, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
+import { ALL_LOCATIONS, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
 import { createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { Note, R, aed, useDeliveries, useFleet, useOrders } from './shared';
 
 const stockOf = (l: Line) => itemMaster.find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
-const remainingOf = (l: Line) => (l.activity === 'Rental' ? l.qty - deliveredQty(l) : l.activity === 'Trading' || l.activity === 'Fuel Trading' ? (l.fulfilment ? 0 : l.qty) : 0);
+const serial = (l: Line) => l.activity === 'Rental' || l.activity === 'Fixed Asset Trading';
+const remainingOf = (l: Line) => (serial(l) ? l.qty - deliveredQty(l) : l.activity === 'Trading' || l.activity === 'Fuel Trading' ? (l.fulfilment ? 0 : l.qty) : 0);
+const supplierHeld = (name?: string) => locations.find((x) => x.name === name)?.type === 'Supplier-Held Location';
 
 export function DeliveryList() {
   const nav = useNavigate();
@@ -32,7 +34,7 @@ export function DeliveryList() {
           { key: 'number', label: 'ID' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'soNumber', label: 'Sale Order' },
           { key: 'status', label: 'Status', change: 'changed', req: R.del, render: (r) => <StatusChip status={r.status} /> },
           { key: 'salesperson', label: 'Salesperson', render: (r) => r.salesperson ?? getOrder(r.soId)?.owner ?? '-' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) },
-          { key: 'location', label: 'Location', render: (r) => r.location ?? 'Jebel Ali Main Yard' }, { key: 'company', label: 'Company', render: (r) => getOrder(r.soId)?.entity ?? '-' },
+          { key: 'location', label: 'Location', render: (r) => r.location ?? 'Jebel Ali Main Yard' }, { key: 'supplierDoNo', label: "Supplier's DO No.", change: 'new', req: R.meet, render: (r) => r.supplierDoNo ?? '-' }, { key: 'company', label: 'Company', render: (r) => getOrder(r.soId)?.entity ?? '-' },
           { key: 'assets', label: 'Assigned Asset(s)', change: 'new', req: R.del, render: (r) => r.assetIds.map((h) => assetById(h)?.assetId).join(', ') || '-' },
           { key: 'type', label: 'Delivery Type', change: 'new', req: R.del }, { key: 'transport', label: 'Transport Type', change: 'new', req: R.del },
           { key: 'closed', label: 'DO Closure', change: 'new', req: R.rreturn, render: (r) => (r.closed ? 'Closed' : 'Open') },
@@ -46,7 +48,8 @@ const headerSpecs = (soOptions: { value: string; label: string }[]): Spec[] => [
   { key: 'number', label: 'ID', hint: 'Auto-generated on save, editable', change: 'changed', req: R.del },
   { key: 'date', label: 'Date Time', type: 'datetime', required: true, change: 'changed', req: R.del, hint: 'Actual dispatch date and time, editable' },
   { key: 'customerName', label: 'Customer', type: 'readonly' },
-  { key: 'location', label: 'Location', type: 'select', options: YARDS, required: true },
+  { key: 'location', label: 'Location', type: 'select', options: ALL_LOCATIONS, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
+  { key: 'supplierDoNo', label: "Supplier's Delivery Order No.", required: true, change: 'new', req: R.meet, show: (f) => supplierHeld(f.location), hint: 'The supplier delivers on your behalf and shares their own DO, recorded here for tracking' },
   { key: 'soId', label: 'Sales Order', type: 'select', options: soOptions, required: true },
   { key: 'operationType', label: 'Operation Type', type: 'readonly' },
   { key: 'salesperson', label: 'Salesperson', type: 'readonly' },
@@ -78,7 +81,7 @@ export function DeliveryForm() {
     const out: Record<string, DoItem> = {};
     pendingOf(so).forEach((l) => {
       if (sp.get('line') && sp.get('line') !== l.id && !quick) return;
-      if (l.activity === 'Rental') {
+      if (serial(l)) {
         if (quick || sp.get('line') === l.id) { const av = availability(l.group, l.category, fleet.rows); const ids = [...av.owned, ...av.cross].slice(0, remainingOf(l)).map((a) => a.id); out[l.id] = { lineId: l.id, qty: ids.length, assetIds: ids, deliveredSub: l.category }; }
       } else out[l.id] = { lineId: l.id, qty: remainingOf(l), assetIds: [] };
     });
@@ -95,6 +98,7 @@ export function DeliveryForm() {
   const set = (k: string, v: any) => setF((x) => (k === 'soId' ? { ...x, soId: v, items: autoItems(orders.get(v)), poNumber: orders.get(v)?.lpo ?? '', poDate: orders.get(v)?.lpoDate ?? '' } : { ...x, [k]: v }));
   const items = f.items as Record<string, DoItem>;
   const rentalSel = pending.filter((l) => l.activity === 'Rental' && (items[l.id]?.assetIds.length ?? 0) > 0);
+  const supplierSite = supplierHeld(f.location);
   const late = rentalSel.length > 0 && f.rentalStart > f.date.slice(0, 10);
   const early = f.rentalStart < f.date.slice(0, 10);
   const view = { ...f, customerName: so ? custName(so.customerId) : '', operationType: 'Delivery', salesperson: so?.owner ?? '', entity: so?.entity ?? '' };
@@ -111,6 +115,7 @@ export function DeliveryForm() {
       else if (early) e.rentalStart = 'Rental Start Date cannot be before the delivery date';
       if (late && (!f.startReason || !f.startBy)) e.late = 'A reason and who is responsible are required when the Rental Start Date differs from the delivery date';
     }
+    if (supplierSite && !String(f.supplierDoNo ?? '').trim()) e.supplierDoNo = "Enter the supplier's Delivery Order number";
     if (f.iqama && !/^\d{10}$/.test(f.iqama)) e.iqama = 'Iqama / Resident Number must be 10 digits';
     if (['Delivered', 'Acknowledged'].includes(f.status) && !f.signed && !f.manual.length) e.signature = 'A Delivery Order cannot be completed without a customer e-signature or an attached manual confirmation';
     setErr(e);
@@ -118,7 +123,7 @@ export function DeliveryForm() {
     const d = createDelivery({ soId: so!.id, date: f.date, type: f.type, items: chosen, description: f.description, transport: f.transport, extCost: Number(f.extCost) || 0, conditionFiles: f.conditionFiles,
       signature: f.signed ? 'E-signature' : f.manual.length ? 'Manual attachment' : '', foc: f.foc, status: f.status, number: f.number || undefined, driver: f.driver, narration: f.narration, rentalStart: rentalSel.length ? f.rentalStart : f.date.slice(0, 10),
       startReason: late ? f.startReason : undefined, startBy: late ? f.startBy : undefined, waitingCharge: late ? Number(f.waitingCharge) || undefined : undefined, serviceLineIds: f.serviceLineIds,
-      reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: f.transportedBy, vehicleNumber: f.vehicleNumber, iqama: f.iqama, mobile: f.mobile, department: f.department, salesperson: so!.owner });
+      supplierDoNo: supplierSite ? f.supplierDoNo : undefined, reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: f.transportedBy, vehicleNumber: f.vehicleNumber, iqama: f.iqama, mobile: f.mobile, department: f.department, salesperson: so!.owner });
     toast(`${d.number} created. ${rentalSel.length ? (late ? `Assets are on Hold, billing starts ${f.rentalStart}` : 'Assets are On Hire and the billing cycle has started') : 'Stock delivered, ready to invoice'}`);
     nav(`/crm/delivery-orders/${d.id}`);
   };
@@ -190,7 +195,7 @@ function ItemsGrid({ pending, items, fleetRows, onTrace, onQty }: { pending: Lin
           {pending.length === 0 && <TableRow><TableCell colSpan={head.length}><Text type="s4" color="theme.secondary.700">Select a Sales Order with items still to deliver.</Text></TableCell></TableRow>}
           {pending.map((l, n) => {
             const it = items[l.id];
-            const rental = l.activity === 'Rental';
+            const rental = serial(l);
             const av = rental ? availability(l.group, l.category, fleetRows) : { owned: [], cross: [] };
             const onHand = rental ? av.owned.length + av.cross.length : stockOf(l);
             return (
@@ -200,7 +205,7 @@ function ItemsGrid({ pending, items, fleetRows, onTrace, onQty }: { pending: Lin
                 <TableCell sx={{ fontSize: 13 }}>{l.qty}</TableCell><TableCell sx={{ fontSize: 13 }}>{onHand}</TableCell><TableCell sx={{ fontSize: 13 }}>0</TableCell><TableCell sx={{ fontSize: 13 }}>{remainingOf(l)}</TableCell>
                 <TableCell sx={{ fontSize: 13 }}>{rental ? (it?.qty ?? 0) : <input type="number" min={0} max={remainingOf(l)} value={it?.qty ?? 0} onChange={(e) => onQty(l.id, Number(e.target.value))} style={{ width: 70, padding: 4 }} />}</TableCell>
                 <TableCell sx={{ fontSize: 13 }}>{l.location ?? 'Jebel Ali Main Yard'}</TableCell><TableCell sx={{ fontSize: 13 }}>-</TableCell>
-                <TableCell sx={{ fontSize: 13 }}>{rental ? <Button size="small" variant={it?.assetIds.length ? 'outlined' : 'contained'} onClick={() => onTrace(l.id)}>{it?.assetIds.length ? it.assetIds.map((h) => assetById(h)?.assetId).join(', ') : 'Trace'}</Button> : <Text type="s5" color="theme.secondary.700">Not serialized</Text>}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}>{rental ? <Button size="small" variant={it?.assetIds.length ? 'outlined' : 'contained'} onClick={() => onTrace(l.id)}>{it?.assetIds.length ? it.assetIds.map((h) => assetById(h)?.assetId).join(', ') : 'Trace'}</Button> : <Text type="s5" color="theme.secondary.700">Allocated from stock</Text>}</TableCell>
               </TableRow>
             );
           })}
@@ -270,7 +275,7 @@ export function DeliveryView() {
                 <DataTable hideToolbar rows={items.map((it) => ({ id: it.lineId, ...it }))} columns={[
                   { key: 'item', label: 'Item', render: (r) => so?.lines.find((l) => l.id === r.lineId)?.item },
                   { key: 'qty', label: 'Delivered Quantity', align: 'right' },
-                  { key: 'sub', label: 'Requested / Delivered', change: 'new', req: R.meet, render: (r) => { const l = so?.lines.find((x) => x.id === r.lineId); return l?.activity === 'Rental' ? `${l.category} / ${r.deliveredSub ?? l.category}` : '-'; } },
+                  { key: 'sub', label: 'Requested / Delivered', change: 'new', req: R.meet, render: (r) => { const l = so?.lines.find((x) => x.id === r.lineId); return l && (l.activity === 'Rental' || l.activity === 'Fixed Asset Trading') ? `${l.category} / ${r.deliveredSub ?? l.category}` : '-'; } },
                   { key: 'trace', label: 'Trace Details', change: 'new', req: R.del, render: (r) => r.assetIds.map((h: string) => assetById(h)?.assetId).join(', ') || '-' },
                 ]} />
               </Section>

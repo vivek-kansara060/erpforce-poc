@@ -10,27 +10,33 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { CROSS_STAGES, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, FAULT_ATTRIBUTION, masterValues, assetById, availability, custName, type CrossHire, type Replacement } from '@/modules/crm/data';
+import { CROSS_STAGES, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, FAULT_ATTRIBUTION, masterValues, assetById, availability, custName, docTotals, type CrossHire, type Replacement, type SalesOrder } from '@/modules/crm/data';
 import { deliveredQty, getOrder, outstanding, receiveCrossHire, replaceAsset, returnToSupplier, returnToUs } from '@/modules/crm/flow';
 import { R, aed, useCrossHire, useExtensions, useFleet, useOrders, useReplacements } from '@/modules/crm/shared';
 import { CrossHireDialog, ExpiryDialog } from '@/modules/crm/ActionDialogs';
 import { expiryRows } from '@/modules/crm/reports';
 
-/* ------------------------------------------------------------------ Rental Orders (rental lines of the Sales Orders) */
+/* ------------------------------------------------------------------ Rental Orders (existing list, one row per rental Sales Order) */
 export function RentalOrders() {
   const nav = useNavigate();
   const orders = useOrders();
-  const rows = orders.rows.flatMap((o) => o.lines.filter((l) => l.activity === 'Rental').map((l) => ({ id: `${o.id}-${l.id}`, o, l })));
+  const rows = orders.rows.filter((o) => o.activity === 'Rental');
+  const total = (o: SalesOrder) => docTotals(o.lines, o.discountPct, o.vatType).total;
+  const delivery = (o: SalesOrder) => { const r = o.lines.filter((l) => l.activity === 'Rental'); const d = r.filter((l) => deliveredQty(l) >= l.qty).length; return d === 0 ? 'Pending delivery' : d === r.length ? 'Fully delivered' : 'Partially delivered'; };
   return (
     <Page>
-      <PageTitle title="Rental Orders" subtitle="Rental lines of the Sales Orders. A Rental Order is a Sales Order line with Activity Type = Rental, there is no separate order." change="changed" req={R.rental} />
-      <DataTable<(typeof rows)[number]> rows={rows} searchPlaceholder="Search rental orders..." onRowClick={(r) => nav(`/crm/sales-orders/${r.o.id}`)}
+      <PageTitle title="Rental Orders" subtitle="Same list as the existing ERP, now fed by the Sales Orders with Activity Type = Rental. Open an order to work on it in CRM." change="changed" req={R.rental} />
+      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+        {[['Rental Orders', '/rental/orders'], ['Replacement Orders', '/rental/replacements']].map(([t, to]) => <Box key={t} onClick={() => nav(to)} sx={{ cursor: 'pointer', px: 1.5, py: 0.5, borderRadius: '1.5rem', fontSize: 13, fontWeight: 500, bgcolor: t === 'Rental Orders' ? '#B6E9D6' : '#EEEFF1' }}>{t}</Box>)}
+      </Box>
+      <DataTable<SalesOrder> rows={rows} searchPlaceholder="Search rental orders..." onRowClick={(r) => nav(`/crm/sales-orders/${r.id}`)}
         columns={[
-          { key: 'so', label: 'Series Number', render: (r) => r.o.number }, { key: 'cust', label: 'Customer', render: (r) => custName(r.o.customerId) }, { key: 'item', label: 'Item', render: (r) => r.l.item },
-          { key: 'ct', label: 'Contract Type', change: 'new', req: R.rental, render: (r) => r.o.contractType }, { key: 'end', label: 'End Date', render: (r) => r.o.contractEnd ?? 'Open' },
-          { key: 'assets', label: 'Assets On Hire', change: 'new', req: R.rental, render: (r) => outstanding(r.l).map((a) => assetById(a.assetId)?.assetId).join(', ') || '-' },
-          { key: 'del', label: 'Delivery Status', render: (r) => <StatusChip status={deliveredQty(r.l) >= r.l.qty ? 'Fully delivered' : deliveredQty(r.l) ? 'Partially delivered' : 'Pending delivery'} /> },
-          { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.o.status} /> },
+          { key: 'number', label: 'Series Number' }, { key: 'date', label: 'Date' }, { key: 'cust', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'pt', label: 'Payment Term', render: (r) => r.paymentTerms }, { key: 'entity', label: 'Company', render: (r) => r.entity },
+          { key: 'cur', label: 'Currency', render: (r) => r.currency }, { key: 'exp', label: 'Expiration Date', render: (r) => r.lpoExpiry }, { key: 'sp', label: 'Salesperson', render: (r) => r.owner }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
+          { key: 'inv', label: 'Invoice Status', render: (r) => <StatusChip status="Pending Invoice" /> }, { key: 'del', label: 'Delivery Status', render: (r) => <StatusChip status={delivery(r)} /> },
+          { key: 'amt', label: 'Total Amount', align: 'right', render: (r) => aed(total(r)) }, { key: 'start', label: 'Start Date', render: (r) => r.contractStart }, { key: 'end', label: 'End Date', render: (r) => r.contractEnd },
+          { key: 'ct', label: 'Contract Type', change: 'new', req: R.rental, render: (r) => r.contractType }, { key: 'cc', label: 'Cost Centre / Project', change: 'new', req: R.meet, render: (r) => r.costCentre || '-' },
+          { key: 'assets', label: 'Assets On Hire', change: 'new', req: R.rental, render: (r) => r.lines.flatMap((l) => outstanding(l)).map((a) => assetById(a.assetId)?.assetId).join(', ') || '-' },
         ]} />
     </Page>
   );

@@ -8,7 +8,7 @@ import { fmtAED } from '@/mock-data/masters';
 import { useCollection } from '@/store/store';
 import {
   COL, availability,
-  type CrossHire, type Delivery, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type CrossHire, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 export const useLeads = () => useCollection<Lead>(COL.leads);
@@ -21,6 +21,8 @@ export const useCrossHire = () => useCollection<CrossHire>(COL.crossHire);
 export const useReplacements = () => useCollection<Replacement>(COL.replacements);
 export const useExtensions = () => useCollection<Extension>(COL.extensions);
 export const useFleet = () => useCollection<HeavyRec>(COL.fleet);
+export const useServiceCharges = () => useCollection<ServiceCharge>(COL.serviceCharges);
+export const useJobCards = () => useCollection<JobCard>(COL.jobCards);
 export const usePricing = () => useCollection<PricingRec>(COL.pricing);
 
 /** Requirement references used on NEW / CHANGED badges. */
@@ -47,7 +49,8 @@ export function useMaster(key: string) {
   const m = useCollection<MasterRec>(COL.masters);
   const values = m.get(key)?.values ?? [];
   const add = (v: string) => { const rec = m.get(key); if (rec) m.update(key, { values: [...rec.values, v] }); else m.add({ id: key, values: [v] }); };
-  return { values, add };
+  const replace = (vals: string[]) => { const rec = m.get(key); if (rec) m.update(key, { values: vals }); else m.add({ id: key, values: vals }); };
+  return { values, add, replace };
 }
 function AddValueDialog({ open, title, onClose, onAdd }: { open: boolean; title: string; onClose: () => void; onAdd: (v: string) => void }) {
   const [v, setV] = useState('');
@@ -57,14 +60,14 @@ function AddValueDialog({ open, title, onClose, onAdd }: { open: boolean; title:
     </AppDialog>
   );
 }
-/** SelectInput fed by a master list, with "+ Add new" as the last option. */
+/** SelectInput fed by a master list, with "Create New" as the last option. */
 export function MasterSelect({ master, value, onChange, ...p }: Omit<Parameters<typeof SelectInput>[0], 'options'> & { master: string }) {
   const m = useMaster(master);
   const toast = useToast();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <SelectInput {...p} value={value} options={[...m.values, { value: ADD, label: '+ Add new' }]} onChange={(v) => (v === ADD ? setOpen(true) : onChange?.(v))} />
+      <SelectInput {...p} value={value} options={[...m.values, { value: ADD, label: 'Create New' }]} onChange={(v) => (v === ADD ? setOpen(true) : onChange?.(v))} />
       <AddValueDialog open={open} title={p.label} onClose={() => setOpen(false)} onAdd={(v) => { m.add(v); onChange?.(v); toast(`"${v}" added to ${p.label}`); }} />
     </>
   );

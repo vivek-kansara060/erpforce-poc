@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { BILLING_STRUCTURES, CONTRACT_TYPES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, YARDS, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, YARDS, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 
@@ -15,12 +15,13 @@ export type Kind = 'quote' | 'order';
  * every other existing field keeps its label and order. NEW fields are marked.
  */
 export const generalSpecs = (kind: Kind): Spec[] => [
-  { key: 'entity', label: 'Company (Entity)', type: 'master', master: 'entity', required: true, change: 'changed', req: R.meet, hint: 'Our own company, first field' },
+  { key: 'entity', label: 'Entity', type: 'master', master: 'entity', required: true, change: 'changed', req: R.meet, hint: 'Our own company, first field' },
   { key: 'number', label: 'ID', type: 'readonly' },
   { key: 'oppNo', label: 'Opportunity', type: 'readonly' },
   ...(kind === 'order' ? [{ key: 'quoteNo', label: 'Quotation', type: 'readonly' } as Spec] : []),
   { key: 'title', label: kind === 'quote' ? 'Opportunity Title' : 'Order Title', type: 'readonly', change: 'new', req: R.meet, hint: 'Carried from the Opportunity' },
   { key: 'activity', label: 'Activity Type', type: 'readonly', change: 'new', req: R.meet, hint: 'Inherited from the Opportunity. A Rental document may also carry Service and Fuel Trading items' },
+  { key: 'costCentre', label: 'Cost Centre / Project', type: 'select', options: COST_CENTRES, required: true, change: 'new', req: R.meet, hint: 'Mandatory in the header; an item can override it' },
   { key: 'transactionType', label: 'Transaction Type', type: 'select', options: TRANSACTION_TYPES, required: true },
   { key: 'customerId', label: 'Customer', type: 'select', options: customers.map((c) => ({ value: c.id, label: c.name })), required: true, disabled: true },
   { key: 'paymentTerms', label: 'Payment Terms', type: 'master', master: 'paymentTerms', required: true },
@@ -94,6 +95,7 @@ export function commercialErrors(f: F): Record<string, string> {
   if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
   if (f.transactionType === 'Credit' && !String(f.contactPerson ?? '').trim()) e.contactPerson = 'Contact Person is required for Credit';
   if (!f.location) e.location = 'Location is required';
+  if (!f.costCentre) e.costCentre = 'Cost Centre / Project is required in the header';
   if (f.activity === 'Rental') {
     if (!f.contractType) e.contractType = 'Contract Type is required';
     if (!f.contractStart) e.contractStart = 'Contract Start Date is required';

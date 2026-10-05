@@ -12,6 +12,21 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 5 Oct, around 9:30 PM: CRM forms rebuilt on the existing ERP, second call with Ajin applied, Rental module kept as the existing system
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Settings > Masters
+**Where:** Rental > Rental > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The first CRM build reorganised the existing screens, and the 5 Oct call changed several earlier decisions.
+*What we did.* Lead, Opportunity, Quotation, Sales Order and Delivery Order now keep the existing tabs, field order and item-table columns, with the new items marked NEW or CHANGED. From the call: Activity Types are Rental, Fixed Asset Trading, Trading, Fuel Trading, AMC, Service and Other, and Fuel Trading is not allowed on a Rental document. "Entity" is the first field of Quotation and Sales Order and Cost Centre / Project is mandatory in the header. The item dialog follows the call (Category, Subcategory, Pricing, Description, UOM, Quantity, FOC, then derived frequency and dates) and has Save and Add another. Service lines come from a new Service Charges master. Fixed Asset Trading traces the asset at Delivery and the asset leaves the active fleet. Fuel Trading can be delivered from a supplier yard with the supplier's own Delivery Order number. AMC has an AMC Orders menu with a Job Card per visit, the contract split across visits, project cost and profit, and a consolidated report. A Masters area gives every dropdown a list view; "Create New" is the last row of the dropdown. The Rental module again has the full existing sidebar; its Leads, Opportunity, Quotations and Orders are the CRM records filtered to Rental.
+*Be aware.* Inventory was not changed. The Employee location type, the Service master in Inventory and the AMC / Fuel Trading / Trading classification remain Inventory work. Decisions are in `docs/crm-decisions.md`. Rental screens such as Agreements, Billing Cycle and Settings show their existing columns only and are not rebuilt.
+
 ### 5 Oct, around 11:30 AM: "Create New" is now the last row inside the dropdown, replacing the "+ Add" link above it
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing

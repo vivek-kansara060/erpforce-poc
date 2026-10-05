@@ -8,6 +8,8 @@ import { SalesOrderForm, SalesOrderList, SalesOrderView } from './SalesOrderPage
 import { DeliveryForm, DeliveryList, DeliveryView } from './DeliveryPages';
 import { ReturnForm, ReturnList, ReturnView } from './ReturnPages';
 import { liveRoutes } from './reports';
+import { AmcList, AmcView, JobCardPage } from './AmcPages';
+import { MasterView, MastersIndex } from './MasterPages';
 
 const M = 'CRM / Sales';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -27,9 +29,11 @@ const mod: ModuleDef = {
         { label: 'Quotation', path: '/crm/quotations', change: 'changed' },
         { label: 'Sales Orders', path: '/crm/sales-orders', change: 'changed' },
         { label: 'Delivery Orders', path: '/crm/delivery-orders', change: 'changed' },
+        { label: 'AMC Orders', path: '/crm/amc-orders', change: 'new' },
         { label: 'Customer Returns', path: '/crm/customer-returns', change: 'changed' },
       ],
     },
+    { label: 'Settings', children: [{ label: 'Masters', path: '/crm/masters', change: 'new' }] },
     { label: 'Reports', path: '/crm/reports', change: 'new' },
   ],
   routes: [
@@ -40,6 +44,8 @@ const mod: ModuleDef = {
     { path: 'sales-orders', element: <SalesOrderList /> }, { path: 'sales-orders/:id', element: <SalesOrderView /> }, { path: 'sales-orders/:id/edit', element: <SalesOrderForm /> },
     { path: 'delivery-orders', element: <DeliveryList /> }, { path: 'delivery-orders/add', element: <DeliveryForm /> }, { path: 'delivery-orders/:id', element: <DeliveryView /> },
     { path: 'customer-returns', element: <ReturnList /> }, { path: 'customer-returns/add', element: <ReturnForm /> }, { path: 'customer-returns/:id', element: <ReturnView /> },
+    { path: 'amc-orders', element: <AmcList /> }, { path: 'amc-orders/:id', element: <AmcView /> }, { path: 'job-cards/:id', element: <JobCardPage /> },
+    { path: 'masters', element: <MastersIndex /> }, { path: 'masters/:key', element: <MasterView /> },
     ...liveRoutes('crm'),
   ],
   changes: [
@@ -48,6 +54,8 @@ const mod: ModuleDef = {
     c('Quotation', 'EXISTING WITH CHANGE', 'Quotation form (General Details, Address and Contact, Shipping, Promotion), item table and item dialog, Discounts, totals summary, approval, revision, direct Send by Email', 'Form and flow kept as is. Company shown first as the Entity. Added: Activity Type, header Contract Type / Start / End and AMC fields, Document Template, Prepared By, VAT Type, Quotation Description, rental item columns (Category, Subcategory, pricing line, Frequency, Start, End, Periods), FOC, Allocation Tag, editable description, Send by Email dialog', 'CRM > Quotation; meetings 17, 18, 22, 25 Sep', '/crm/quotations'),
     c('Sales Order', 'EXISTING WITH CHANGE', 'Sales Order form (Basic Details, Address & Contact, Shipping, Promotions), item table, Delivery, Discounts; Create (Quick Delivery, Delivery, Advance, Invoice) and View menus', 'Form and flow kept as is. Added: Activity Type and header contract, LPO expiry alert with Extend, per-item next step by Activity Type, Traceability, Asset Ledger, AMC visit plan, Charges, Live DO, Return and Replacement in Create, Send by Email dialog', 'CRM > Sales Order; meetings 17, 22, 30 Sep', '/crm/sales-orders'),
     c('Delivery Order', 'EXISTING WITH CHANGE', 'Delivery Order form (Basic Details, Package, Address and Contact, Shipping, Promotion), item table with Trace Details, Transportation', 'Form and flow kept as is. Trace Details picks the exact asset for rental items (Ready for Hire only, Category locked, Subcategory substitution with warning). Added: Delivery Type, Transport Type and external cost, Rental Start Date with reason, responsibility and waiting charge (Hold until start), service lines, e-signature, Acknowledged status', 'CRM > Delivery Order; meetings 17, 22, 30 Sep', '/crm/delivery-orders'),
+    c('AMC Orders and Job Cards', 'NEW', '-', 'AMC Orders list and order page (planned visits, contract split, project cost and profit, consolidated report). One Job Card per visit with materials, services and an invoice raised against it; no Delivery Order for AMC', 'CRM > AMC; meeting 5 Oct', '/crm/amc-orders'),
+    c('Masters', 'NEW', 'Settings screens (Shipping Rule, Promotions, Templates)', 'List views for every CRM dropdown, including the Service Charges master (type, billing, price). Dropdowns also keep + Add new', 'Meeting 5 Oct', '/crm/masters'),
     c('Customer Returns', 'EXISTING WITH CHANGE', 'RMA with GRN, credit note flow', 'Rental Returns from the Sales Order with DO reference, off-hire date earlier or later than today, failed collection, collection note print, two-stage inspection, damage charge blocked by a paid damage waiver (not part of the 5 Oct form rework)', 'CRM > Customer Returns; meetings 17, 22, 30 Sep', '/crm/customer-returns'),
     c('Reports', 'NEW', '15 sales reports', '8 reports with a search box per column, filters, sticky totals, print and drill-down to the record', 'CRM > Reports; meeting 2 Oct', '/crm/reports'),
     c('Dashboards', 'REMOVED', 'Static CRM dashboard', 'Removed until the screens are agreed; the Dashboard menu opens Sales Orders (2 Oct: prepare the screens first)', 'Meeting 2 Oct'),

@@ -25,13 +25,13 @@ const toForm = (q: Partial<Quotation>, oppNo = '', title = ''): Record<string, a
   number: q.number ?? 'Auto-generated', status: q.status ?? 'Draft', version: q.version ?? 1, oppNo, title: title || q.description || '', contactPerson: q.contactPerson ?? cust(q.customerId ?? '')?.contact ?? '',
 });
 
-export function QuotationList() {
+export function QuotationList({ activity }: { activity?: string } = {}) {
   const nav = useNavigate();
   const quotes = useQuotes();
   return (
     <Page>
       <PageTitle title="Quotation" />
-      <DataTable<Quotation> rows={quotes.rows} searchPlaceholder="Search quotations..." filter={{ key: 'status', options: QUOTE_STATUSES }} onAdd={() => nav('/crm/quotations/add')} addLabel="Add Quotation" onRowClick={(r) => nav(`/crm/quotations/${r.id}`)}
+      <DataTable<Quotation> rows={activity ? quotes.rows.filter((q) => q.activity === activity) : quotes.rows} searchPlaceholder="Search quotations..." filter={{ key: 'status', options: QUOTE_STATUSES }} onAdd={() => nav('/crm/quotations/add')} addLabel="Add Quotation" onRowClick={(r) => nav(`/crm/quotations/${r.id}`)}
         columns={[
           { key: 'number', label: 'Series Number' }, { key: 'date', label: 'Date' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) },
           { key: 'activity', label: 'Activity Type', change: 'new', req: R.meet, render: (r) => <ActivityChip activity={r.activity} /> },
@@ -68,7 +68,7 @@ export function QuotationForm() {
     if (Object.keys(e).length || le.length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const { oppNo, title, ...rest } = f;
     void oppNo; void title;
-    const rec = { ...(ex ?? { version: 1, status: 'Draft', log: [log('Quotation created')] }), ...rest, id: ex?.id ?? `qt${Date.now()}`, number: ex?.number ?? nextNumber('QT', 88), date: ex?.date ?? TODAY, customerId: opp!.customerId, discountPct: Number(f.discountPct) || 0 } as Quotation;
+    const rec = { ...(ex ?? { version: 1, status: 'Draft', log: [log('Quotation created')] }), ...rest, id: ex?.id ?? `qt${Date.now()}`, number: ex?.number ?? nextNumber('QT', 90), date: ex?.date ?? TODAY, customerId: opp!.customerId, discountPct: Number(f.discountPct) || 0 } as Quotation;
     if (ex) quotes.update(rec.id, { ...rec, log: [log('Quotation edited', 'Field changes recorded in the audit trail'), ...ex.log] }); else { quotes.add(rec); opps.update(opp!.id, { quotationId: rec.id, stage: ['Enquiry', 'Qualified'].includes(opp!.stage) ? 'Quoted' : opp!.stage }); }
     if (f.pushToOpp) opps.update(opp!.id, { estimated: Math.round(docTotals(f.lines, f.discountPct, f.vatType).total) });
     toast(ex ? 'Quotation updated' : 'Quotation created');
@@ -84,7 +84,7 @@ export function QuotationForm() {
         {f.oppId && (
           <CommercialTabs kind="quote" f={f} set={set} err={err} locked={locked}
             items={f.activity ? <>
-              <ItemsTable lines={f.lines} onChange={(l) => set('lines', l)} header={f.activity} vatType={f.vatType} locked={locked} fleet={fleet.rows} pricing={pricing.rows} mode="quote" />
+              <ItemsTable lines={f.lines} onChange={(l) => set('lines', l)} header={f.activity} vatType={f.vatType} locked={locked} fleet={fleet.rows} pricing={pricing.rows} mode="quote" contract={{ start: f.contractStart, end: f.contractEnd }} />
               <Totals lines={f.lines} discountPct={Number(f.discountPct) || 0} vatType={f.vatType} currency={f.currency} shipping={(Number(f.shippingCost) || 0) + (Number(f.handlingCost) || 0)} />
             </> : null} />
         )}

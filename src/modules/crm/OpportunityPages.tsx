@@ -70,14 +70,14 @@ const specs = (): { basic: Spec[]; owner: Spec[]; classification: Spec[] } => ({
   classification: [{ key: 'location', label: 'Location', type: 'select', options: YARDS }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }],
 });
 
-export function OpportunityList() {
+export function OpportunityList({ activity }: { activity?: string } = {}) {
   const nav = useNavigate();
   const opps = useOpps();
   const [pipe, setPipe] = useState(false);
   return (
     <Page>
       <PageTitle title="Opportunity" />
-      <DataTable<Opportunity> rows={opps.rows} searchPlaceholder="Search by title, customer, project..." filter={{ key: 'stage', options: OPP_STAGES }} onAdd={() => nav('/crm/opportunities/add')} addLabel="Add Opportunity"
+      <DataTable<Opportunity> rows={activity ? opps.rows.filter((o) => o.activity === activity) : opps.rows} searchPlaceholder="Search by title, customer, project..." filter={{ key: 'stage', options: OPP_STAGES }} onAdd={() => nav('/crm/opportunities/add')} addLabel="Add Opportunity"
         toolbarRight={<Button variant="outlined" onClick={() => setPipe(true)}>View Sales Pipeline</Button>} onRowClick={(r) => nav(`/crm/opportunities/${r.id}`)}
         columns={[
           { key: 'number', label: 'ID' }, { key: 'title', label: 'Opportunity Title', change: 'new', req: R.meet }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'entity', label: 'Company', render: (r) => r.entity ?? 'Gulf Power Rentals LLC' },
@@ -112,7 +112,7 @@ export function OpportunityForm() {
   });
   const zero = (f.lines as Line[]).filter(isRentalLine).filter((l) => l.group && l.category && (() => { const a = availability(l.group, l.category, fleet.rows); return a.owned.length + a.cross.length === 0; })());
   const write = () => {
-    const rec = { ...(ex ?? {}), ...f, id: ex?.id ?? `op${Date.now()}`, number: ex?.number ?? nextNumber('OP', 28), date: ex?.date ?? TODAY, estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 } as Opportunity;
+    const rec = { ...(ex ?? {}), ...f, id: ex?.id ?? `op${Date.now()}`, number: ex?.number ?? nextNumber('OP', 30), date: ex?.date ?? TODAY, estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 } as Opportunity;
     if (ex) opps.update(rec.id, rec); else opps.add(rec);
     toast(ex ? 'Opportunity updated' : 'Opportunity created');
     nav(`/crm/opportunities/${rec.id}`);

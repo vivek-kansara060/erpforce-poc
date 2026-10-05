@@ -13,7 +13,7 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
-import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, recordVisit, releaseHold } from './flow';
+import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseHold } from './flow';
 import { ActivityChip, R, aed, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes } from './shared';
 import { ItemsTable } from './Items';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
@@ -61,7 +61,7 @@ const soForm = (so: SalesOrder, oppNo = '', quoteNo = ''): Record<string, any> =
   transactionType: 'Credit', postingTime: '09:00', exchangeRate: 1, location: 'Jebel Ali Main Yard', salesperson: so.owner, discountOn: 'Gross Amount', ...so,
   oppNo, quoteNo, contactPerson: so.contactPerson ?? cust(so.customerId)?.contact ?? '', deliveryCommitment: so.deliveryCommitment ?? so.lines.find((l) => l.deliveryDate)?.deliveryDate,
 });
-const deliverySpecs = [{ key: 'deliveryDate', label: 'Delivery Date', type: 'date' as const }, { key: 'deliveryMethod', label: 'Delivery Method', type: 'select' as const, options: ['Own Fleet', 'External Transporter'], hint: 'Informational here, finalised at the Delivery Order' }, { key: 'costCentre', label: 'Cost Centre / Project', change: 'new' as const, req: 'CRM > Sales Order', hint: 'Each Sales Order is a Project / Cost Centre' }, { key: 'site', label: 'Location / Site' }];
+const deliverySpecs = [{ key: 'deliveryDate', label: 'Delivery Date', type: 'date' as const }, { key: 'deliveryMethod', label: 'Delivery Method', type: 'select' as const, options: ['Own Fleet', 'External Transporter'], hint: 'Informational here, finalised at the Delivery Order' }, { key: 'site', label: 'Location / Site' }];
 
 /** Existing Sales Order form. Commercial terms of confirmed items are frozen; header details stay editable (number, date, LPO, expiry, site). */
 export function SalesOrderForm() {
@@ -153,7 +153,6 @@ export function SalesOrderView() {
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
   const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step'; lineId?: string } | null>(null);
-  const [visit, setVisit] = useState<{ idx: number; type: string } | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [mail, setMail] = useState(false);
   const [closeAsk, setCloseAsk] = useState(false);
@@ -181,7 +180,7 @@ export function SalesOrderView() {
         </Box>
       );
     }
-    if (l.activity === 'AMC') return <Text type="s5">See AMC Visits</Text>;
+    if (l.activity === 'AMC') return <Button size="small" variant="outlined" onClick={() => nav(`/crm/amc-orders/${so.id}`)}>AMC Order</Button>;
     if (l.activity === 'Service' && l.billing === 'Recurring') return <Text type="s5">Billed with each rental cycle</Text>;
     if (l.fulfilment === 'Delivered') return <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}><StatusChip status="Delivered" /><Text type="s5">{l.fulfilmentRef}</Text><Button size="small" variant="contained" onClick={() => setDlg({ kind: 'step', lineId: l.id })}>Invoice</Button></Box>;
     if (l.fulfilment) return <Box><StatusChip status={l.fulfilment} /><Text type="s5" color="theme.secondary.700">{l.fulfilmentRef}</Text></Box>;
@@ -196,8 +195,8 @@ export function SalesOrderView() {
           {so.activity === 'Rental' && rentalOut > 0 && <Button variant="outlined" onClick={() => setDlg({ kind: 'expiry' })}>Extend / Terminate</Button>}
           <Button variant="outlined" onClick={() => setDrawer(true)}>Live DO</Button>
           <MenuButton label="Create" variant="outlined" items={[
-            { label: 'Quick Delivery', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&quick=1`) },
-            { label: 'Delivery', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
+            { label: 'Quick Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&quick=1`) },
+            { label: 'Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
             { label: 'Advance', onClick: () => { orders.update(so.id, { log: [log('Advance invoice raised', `Against ${so.number}`, 'blue'), ...so.log] }); toast('Advance invoice raised against the order'); } },
             { label: 'Invoice', disabled: !so.lines.some((l) => !['Rental', 'AMC'].includes(l.activity) && (!l.fulfilment || l.fulfilment === 'Delivered')), onClick: () => { const l = so.lines.find((x) => !['Rental', 'AMC'].includes(x.activity) && (!x.fulfilment || x.fulfilment === 'Delivered')); if (l) setDlg({ kind: 'step', lineId: l.id }); } },
             { label: 'Return (Customer Returns)', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}`), disabled: rentalOut === 0 },
@@ -225,8 +224,8 @@ export function SalesOrderView() {
             { label: 'Asset Ledger', change: 'new', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
             { label: 'AMC Visits', change: 'new', req: R.meet, hidden: so.activity !== 'AMC', content: (
               <DataTable hideToolbar rows={(so.visitPlan ?? []).map((v, i) => ({ id: String(i), i, ...v }))} columns={[
-                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'type', label: 'Service Type', render: (r) => r.type ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
-                { key: 'act', label: '', render: (r) => (r.done ? <StatusChip status="Completed" /> : <Button size="small" variant="outlined" onClick={() => setVisit({ idx: r.i, type: '' })}>Record Visit</Button>) },
+                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'amount', label: 'Visit value', align: 'right', render: (r) => aed(r.amount) }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
+                { key: 'act', label: '', render: (r) => <Button size="small" variant="outlined" onClick={() => nav(`/crm/amc-orders/${so.id}`)}>Job Card</Button> },
               ]} />) },
             { label: 'Compliance Status', change: 'new', req: R.so, hidden: so.activity !== 'Rental', content: compliance.length ? <DataTable hideToolbar rows={compliance.flatMap((c) => (c.certs.length ? c.certs.map((x) => ({ id: x.id, asset: `${c.h.assetId} - ${c.h.name}`, type: x.type, expiry: x.expiry, status: certStatus(x).label })) : [{ id: c.h.id, asset: `${c.h.assetId} - ${c.h.name}`, type: 'No certificate on record', expiry: '-', status: '-' }]))}
               columns={[{ key: 'asset', label: 'Asset' }, { key: 'type', label: 'Certificate' }, { key: 'expiry', label: 'Expiry' }, { key: 'status', label: 'Status', render: (r) => (r.status === '-' ? '-' : <StatusChip status={r.status} />) }]} /> : <Text type="s4">No assets are out against this order.</Text> },
@@ -250,10 +249,6 @@ export function SalesOrderView() {
       <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
       <EmailDialog open={mail} onClose={() => setMail(false)} docNo={so.number} customerId={so.customerId} onSent={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
-      <AppDialog open={!!visit} title={`Record AMC visit ${(visit?.idx ?? 0) + 1}`} onClose={() => setVisit(null)} confirmLabel="Save visit" confirmDisabled={!visit?.type}
-        onConfirm={() => { if (visit) { const ref = recordVisit(so.id, visit.idx, visit.type); toast(`Visit recorded, reference ${ref}`); setVisit(null); } }}>
-        <SelectInput label="Service Type" required value={visit?.type} options={NEXT_STEP.AMC.options!} onChange={(v) => visit && setVisit({ ...visit, type: v })} hint="The scheduled visit is never billed; consumables and additional tasks are billed to the AMC project" />
-      </AppDialog>
     </>
   );
 }

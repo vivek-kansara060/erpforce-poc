@@ -4,8 +4,8 @@ import { customers } from '@/mock-data/masters';
 import { heavySeed } from '@/modules/inventory/data';
 import {
   ACTOR, COL, TODAY, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
-  hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType,
-  type CrossHire, type Delivery, type DoItem, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType,
+  type CrossHire, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 /* Small collection helpers (modules share the same in-memory collections through the store). */
@@ -21,7 +21,8 @@ export const getLine = (so: SalesOrder | undefined, lineId?: string) => so?.line
 export const deliveredQty = (l: Line) => l.assigned.filter((a) => a.state !== 'Replaced').length;
 export const outstanding = (l: Line) => l.assigned.filter((a) => a.state === 'On Hire' || a.state === 'Hold');
 export const lineState = (l: Line): string => {
-  if (isRentalLine(l) && l.activity === 'Rental') {
+  if (l.activity === 'Fixed Asset Trading') return deliveredQty(l) >= l.qty ? 'Sold and delivered' : 'Pending Delivery';
+  if (l.activity === 'Rental') {
     if (outstanding(l).some((a) => a.state === 'Hold')) return 'On Hold';
     if (outstanding(l).length) return deliveredQty(l) >= l.qty ? 'On Hire' : 'Partially Delivered';
     if (l.assigned.some((a) => a.state === 'Returned')) return 'Returned';
@@ -32,9 +33,10 @@ export const lineState = (l: Line): string => {
 /** Sales Order status follows its lines. AMC visits and Service charge lines on a Rental order are not deliveries and do not drive it. */
 export function recalcStatus(so: SalesOrder): string {
   if (['Draft', 'Pending', 'Closed', 'Cancelled', 'Rejected'].includes(so.status)) return so.status;
-  const lines = so.lines.filter((l) => l.activity !== 'AMC' && !(so.activity === 'Rental' && l.activity === 'Service'));
-  const done = (l: Line) => (l.activity === 'Rental' ? deliveredQty(l) >= l.qty : !!l.fulfilment);
-  const any = lines.some((l) => (l.activity === 'Rental' ? deliveredQty(l) > 0 : !!l.fulfilment));
+  const lines = so.lines.filter((l) => l.activity !== 'AMC' && !(l.activity === 'Service' && so.activity !== 'Service'));
+  const asset = (l: Line) => l.activity === 'Rental' || l.activity === 'Fixed Asset Trading';
+  const done = (l: Line) => (asset(l) ? deliveredQty(l) >= l.qty : !!l.fulfilment);
+  const any = lines.some((l) => (asset(l) ? deliveredQty(l) > 0 : !!l.fulfilment));
   if (!any) return 'Confirmed';
   return lines.every(done) ? 'Fully Delivered' : 'Partially Delivered';
 }
@@ -52,7 +54,7 @@ export function convertLead(l: Lead): { ok: boolean; message: string; id?: strin
   const customer = customers.find((c) => c.name === l.company);
   const id = uid('op');
   const opp: Opportunity = {
-    id, number: nextNumber('OP', 28), date: TODAY, customerId: customer?.id ?? 'c1', contact: l.contact, project: '', owner: l.owner, title: `${l.activity}: ${l.company}`, activity: l.activity, stage: 'Enquiry', rating: 'Warm',
+    id, number: nextNumber('OP', 30), date: TODAY, customerId: customer?.id ?? 'c1', contact: l.contact, project: '', owner: l.owner, title: `${l.activity}: ${l.company}`, activity: l.activity, stage: 'Enquiry', rating: 'Warm',
     lines: [], estimated: 0, probability: l.probability ?? 30, expectedClose: dayjs(TODAY).add(30, 'day').format('YYYY-MM-DD'), leadId: l.id, approvalRequired: false, source: l.source,
   };
   put(COL.opps, opp);
@@ -74,7 +76,7 @@ export function quoteFromOpportunity(o: Opportunity): string {
     ? o.lines.map((l) => ({ ...l, id: uid('ln'), assigned: [], crossHire: [], ...(l.activity === 'Rental' ? { frequency: 'Monthly', start: TODAY, end, item: `Rental ${l.group} ${l.category} Monthly`, desc: l.desc || l.item } : {}) }))
     : [act === 'Rental' ? mkLine({ activity: 'Rental', item: '', group: 'Generator', frequency: 'Monthly', start: TODAY, end }) : mkLine({ activity: act, item: '' })];
   const quote: Quotation = {
-    id, number: nextNumber('QT', 88), date: TODAY, oppId: o.id, customerId: o.customerId, activity: act, entity: masterValues('entity')[0], paymentTerms: '30 days', currency: 'AED',
+    id, number: nextNumber('QT', 90), date: TODAY, oppId: o.id, customerId: o.customerId, activity: act, entity: masterValues('entity')[0], paymentTerms: '30 days', currency: 'AED',
     contractType: act === 'Rental' ? 'Open PO' : undefined, contractStart: act === 'Rental' ? TODAY : undefined, contractEnd: act === 'Rental' ? end : undefined,
     amcStart: act === 'AMC' ? TODAY : undefined, amcEnd: act === 'AMC' ? plusYear(TODAY) : undefined, visits: act === 'AMC' ? 4 : undefined,
     description: o.title, validUntil: dayjs(TODAY).add(30, 'day').format('YYYY-MM-DD'), status: 'Draft', version: 1,
@@ -89,7 +91,7 @@ export function quoteFromOpportunity(o: Opportunity): string {
 
 export function reviseQuotation(q: Quotation): string {
   const id = uid('qt');
-  put(COL.quotes, { ...q, id, number: nextNumber('QT', 88), version: q.version + 1, prevId: q.id, status: 'Draft', date: TODAY, salesOrderId: undefined, log: [log(`Revision ${q.version + 1} created`, `From ${q.number}; previous version retained in full`)] });
+  put(COL.quotes, { ...q, id, number: nextNumber('QT', 90), version: q.version + 1, prevId: q.id, status: 'Draft', date: TODAY, salesOrderId: undefined, log: [log(`Revision ${q.version + 1} created`, `From ${q.number}; previous version retained in full`)] });
   patch<Quotation>(COL.quotes, q.id, (x) => ({ ...x, status: 'Revised', log: [log('Superseded by a revision'), ...x.log] }));
   patch<Opportunity>(COL.opps, q.oppId, (x) => ({ ...x, quotationId: id }));
   return id;
@@ -99,10 +101,10 @@ export function orderFromQuotation(q: Quotation): string {
   const id = uid('so');
   const opp = all<Opportunity>(COL.opps).find((o) => o.id === q.oppId);
   const order: SalesOrder = {
-    id, number: nextNumber('SO', 54), date: TODAY, quoteId: q.id, oppId: q.oppId, customerId: q.customerId, owner: opp?.owner ?? q.preparedBy, title: opp?.title ?? q.description, reference: opp?.lpo ?? '', status: 'Confirmed',
+    id, number: nextNumber('SO', 55), date: TODAY, quoteId: q.id, oppId: q.oppId, customerId: q.customerId, owner: opp?.owner ?? q.preparedBy, title: opp?.title ?? q.description, reference: opp?.lpo ?? '', status: 'Confirmed',
     activity: q.activity, entity: q.entity, paymentTerms: q.paymentTerms, currency: q.currency, contractType: q.contractType, contractStart: q.contractStart, contractEnd: q.contractEnd, billingStructure: q.billingStructure,
-    amcStart: q.amcStart, amcEnd: q.amcEnd, visits: q.visits, visitPlan: q.activity === 'AMC' ? planVisits(q.amcStart, q.amcEnd, q.visits) : undefined,
-    lpo: opp?.lpo ?? '', lpoDate: opp?.lpoDate ?? '', lpoExpiry: q.contractEnd ?? q.amcEnd ?? '', site: opp?.site ?? '', costCentre: '', deliveryMethod: 'Own Fleet', vatType: q.vatType, discountPct: q.discountPct, terms: q.terms,
+    amcStart: q.amcStart, amcEnd: q.amcEnd, visits: q.visits, visitPlan: q.activity === 'AMC' ? planVisits(q.amcStart, q.amcEnd, q.visits, docTotals(q.lines, q.discountPct, q.vatType).sub) : undefined,
+    lpo: opp?.lpo ?? '', lpoDate: opp?.lpoDate ?? '', lpoExpiry: q.contractEnd ?? q.amcEnd ?? '', site: opp?.site ?? '', costCentre: q.costCentre ?? '', deliveryMethod: 'Own Fleet', vatType: q.vatType, discountPct: q.discountPct, terms: q.terms,
     lines: q.lines.map((l) => ({ ...l, id: uid('ln'), assigned: [], crossHire: [], fulfilment: undefined })), docs: [], damageCharges: [], logisticsCost: 0,
     log: [log(`Sales Order created from ${q.number}`, 'Commercial terms are frozen; only a formal revision can change them')],
   };
@@ -119,6 +121,8 @@ export const NEXT_STEP: Record<string, { label: string; done: string; options?: 
   Service: { label: 'Charge / Invoice', done: 'Charged and invoiced' },
   AMC: { label: 'Record Visit / Billing', done: 'Visit recorded', options: ['Scheduled visit (non-chargeable)', 'Consumable (chargeable)', 'Additional task (chargeable)'] },
   Other: { label: 'Charge / Invoice', done: 'Charged and invoiced' },
+  Rental: { label: 'Charge / Invoice', done: 'Charged and invoiced' },
+  'Fixed Asset Trading': { label: 'Invoice', done: 'Asset sale invoiced' },
 };
 export function fulfilLine(soId: string, lineId: string, detail?: string): string {
   const o = getOrder(soId)!;
@@ -135,7 +139,7 @@ export interface DeliveryInput {
   soId: string; date: string; type: string; items: DoItem[]; description: string; transport: string; extCost: number; conditionFiles: string[];
   signature: string; foc: boolean; status: string; number?: string; driver?: string; vehicle?: string; narration?: string;
   rentalStart: string; startReason?: string; startBy?: string; waitingCharge?: number; serviceLineIds?: string[];
-  reference?: string; poNumber?: string; poDate?: string; location?: string; transportedBy?: string; vehicleNumber?: string; iqama?: string; mobile?: string; department?: string; salesperson?: string; accessories?: string[];
+  reference?: string; poNumber?: string; poDate?: string; location?: string; transportedBy?: string; vehicleNumber?: string; iqama?: string; mobile?: string; department?: string; salesperson?: string; accessories?: string[]; supplierDoNo?: string;
 }
 /**
  * One Delivery Order covers any number of Sales Order items. Rental items assign the exact serialized assets (billing starts on the Rental Start Date; when that is
@@ -148,15 +152,21 @@ export function createDelivery(i: DeliveryInput): Delivery {
   const first = rentalItems[0] ?? i.items[0];
   const firstLine = getLine(o, first.lineId);
   const hold = rentalItems.length > 0 && i.rentalStart.slice(0, 10) > i.date.slice(0, 10);
-  const allAssets = rentalItems.flatMap((it) => it.assetIds);
+  const saleItems = i.items.filter((it) => getLine(o, it.lineId)?.activity === 'Fixed Asset Trading');
+  const allAssets = [...rentalItems, ...saleItems].flatMap((it) => it.assetIds);
   const d: Delivery = { id, number: i.number || nextNumber('DO', 132), soId: o.id, soNumber: o.number, lineId: first.lineId, customerId: o.customerId, date: i.date, type: i.type, assetIds: allAssets, accessories: i.accessories ?? [], description: i.description,
     transport: i.transport, extCost: i.extCost, conditionFiles: i.conditionFiles, signature: i.signature, foc: i.foc, status: i.status, closed: false, driver: i.driver, vehicle: i.vehicle, narration: i.narration,
     rentalStart: i.rentalStart, startReason: i.startReason, startBy: i.startBy, waitingCharge: i.waitingCharge, requestedSub: firstLine?.category, deliveredSub: first.deliveredSub ?? firstLine?.category, serviceLineIds: i.serviceLineIds, siteReady: !hold,
-    items: i.items, reference: i.reference, poNumber: i.poNumber, poDate: i.poDate, location: i.location, operationType: 'Delivery', transportedBy: i.transportedBy, vehicleNumber: i.vehicleNumber, iqama: i.iqama, mobile: i.mobile, department: i.department, salesperson: i.salesperson };
+    items: i.items, reference: i.reference, poNumber: i.poNumber, poDate: i.poDate, location: i.location, operationType: 'Delivery', supplierDoNo: i.supplierDoNo, transportedBy: i.transportedBy, vehicleNumber: i.vehicleNumber, iqama: i.iqama, mobile: i.mobile, department: i.department, salesperson: i.salesperson };
   put(COL.deliveries, d);
   const dest = `Client: ${custName(o.customerId)}`;
+  const soldIds = saleItems.flatMap((it) => it.assetIds);
   allAssets.forEach((hid) => {
     const a = assetById(hid)!;
+    if (soldIds.includes(hid)) {
+      patchAsset(hid, { assetStatus: 'Disposed', status: 'Inactive' }, { title: 'Sold to a client', detail: `Fixed Asset Trading, delivery ${d.number}. The asset leaves the active fleet` }, { type: 'Delivery', from: 'Jebel Ali Main Yard', to: dest, reference: d.number });
+      return;
+    }
     patchAsset(hid, { assetStatus: hold ? 'Hold' : 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `${a.assetStatus} to ${hold ? 'Hold' : 'On Hire'} (${d.number})` }, { type: 'Delivery', from: 'Jebel Ali Main Yard', to: dest, reference: d.number });
     if (a.ownership === 'Cross-Hired') {
       const ch = all<CrossHire>(COL.crossHire).find((c) => c.assetId === hid && c.stage < 2);
@@ -171,6 +181,9 @@ export function createDelivery(i: DeliveryInput): Delivery {
       if (l.activity === 'Rental') {
         lines = lines.map((y) => (y.id === it.lineId ? { ...y, assigned: [...y.assigned, ...it.assetIds.map((hid) => ({ assetId: hid, deliveryId: id, start: i.rentalStart.slice(0, 10), state: (hold ? 'Hold' : 'On Hire') as 'Hold' | 'On Hire' }))] } : y));
         if (it.deliveredSub && it.deliveredSub !== l.category) notes.push(log('Allocation differs from the request', `Requested ${l.group} ${l.category}, delivered ${l.group} ${it.deliveredSub}. Client documents keep the requested spec`, 'amber'));
+      } else if (l.activity === 'Fixed Asset Trading') {
+        lines = lines.map((y) => (y.id === it.lineId ? { ...y, assigned: [...y.assigned, ...it.assetIds.map((hid) => ({ assetId: hid, deliveryId: id, start: i.date.slice(0, 10), state: 'Sold' as const }))] } : y));
+        if (it.deliveredSub && it.deliveredSub !== l.category) notes.push(log('Allocation differs from the request', `Requested ${l.group} ${l.category}, delivered ${l.group} ${it.deliveredSub}`, 'amber'));
       } else {
         lines = lines.map((y) => (y.id === it.lineId ? { ...y, fulfilment: 'Delivered', fulfilmentRef: d.number } : y));
       }
@@ -331,3 +344,31 @@ export function closeOrder(o: SalesOrder): { ok: boolean; message: string } {
 export const confirmOrder = (o: SalesOrder) => saveOrder(o.id, (x) => ({ ...x, status: 'Confirmed', log: [log('Sales Order confirmed', 'Commercial terms frozen'), ...x.log] }));
 
 export { availability };
+
+/* ------------------------------------------------------------------ AMC: job cards (one per visit), invoiced separately */
+export const jobCardsOf = (soId: string) => all<JobCard>(COL.jobCards).filter((j) => j.soId === soId).sort((a, b) => a.visitIdx - b.visitIdx);
+export function createJobCard(soId: string, visitIdx: number): string {
+  const existing = all<JobCard>(COL.jobCards).find((j) => j.soId === soId && j.visitIdx === visitIdx);
+  if (existing) return existing.id;
+  const o = getOrder(soId)!;
+  const v = o.visitPlan![visitIdx];
+  const id = uid('jc');
+  const jc: JobCard = { id, number: nextNumber('JC', 118), soId, soNumber: o.number, customerId: o.customerId, visitIdx, plannedDate: v.date, technician: o.owner, location: 'Jebel Ali Main Yard', item: o.lines[0]?.item ?? 'AMC',
+    materials: [], services: [], notes: '', visitAmount: v.amount ?? 0, status: 'Open', log: [log(`Job card created for visit ${visitIdx + 1}`)] };
+  put(COL.jobCards, jc);
+  saveOrder(soId, (x) => ({ ...x, visitPlan: (x.visitPlan ?? []).map((p, k) => (k === visitIdx ? { ...p, jobCardId: id } : p)), log: [log(`Job card ${jc.number} created`, `AMC visit ${visitIdx + 1}`, 'blue'), ...x.log] }));
+  return id;
+}
+export const saveJobCard = (jc: JobCard) => patch<JobCard>(COL.jobCards, jc.id, () => jc);
+export const jobCardTotal = (jc: JobCard) => jc.visitAmount + jc.materials.reduce((s, m) => s + m.qty * m.price, 0) + jc.services.reduce((s, m) => s + m.amount, 0);
+export const jobCardCost = (jc: JobCard) => jc.materials.reduce((s, m) => s + m.qty * (m.cost ?? Math.round(m.price * 0.7 * 100) / 100), 0);
+export function completeJobCard(jc: JobCard) {
+  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Completed', doneOn: TODAY, log: [...x.log, log('Visit completed', 'Materials and services recorded', 'green')] }));
+  saveOrder(jc.soId, (o) => ({ ...o, visitPlan: (o.visitPlan ?? []).map((v, k) => (k === jc.visitIdx ? { ...v, done: TODAY, ref: jc.number, type: 'Job card' } : v)), log: [log(`AMC visit ${jc.visitIdx + 1} completed`, jc.number, 'green'), ...o.log] }));
+}
+export function invoiceJobCard(jc: JobCard): string {
+  const ref = nextNumber('INV', 415);
+  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Invoiced', invoiceRef: ref, log: [...x.log, log('Invoice raised', `${ref}, total AED ${jobCardTotal(jc)}`, 'blue')] }));
+  saveOrder(jc.soId, (o) => ({ ...o, log: [log(`Job card ${jc.number} invoiced`, `${ref}, AED ${jobCardTotal(jc)}`, 'blue'), ...o.log] }));
+  return ref;
+}

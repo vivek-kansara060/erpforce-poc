@@ -81,6 +81,31 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
       columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer' }, { key: 'item', label: 'Line' }, { key: 'end', label: 'Contract End' }, { key: 'left', label: 'Days left', align: 'right' }, { key: 'state', label: 'State', status: true }],
       rows: exp.map((e) => ({ so: e.so.number, customer: custName(e.so.customerId), item: e.line.item, end: e.so.contractEnd, left: e.left, state: e.state })) },
   ];
+  /* Existing Rental reports (unchanged names), now fed by the same Sales Orders and Fixed Asset Register. */
+  const rentalOrders = d.orders.filter((o) => o.activity === 'Rental');
+  const existing: ReportDef[] = [
+    { slug: 'active-rentals', title: 'Active Rentals', purpose: 'Rental orders with assets currently on hire.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'so', label: 'Rental Order' }, { key: 'customer', label: 'Customer' }, { key: 'assets', label: 'Assets On Hire' }, { key: 'start', label: 'Start' }, { key: 'end', label: 'End' }, { key: 'type', label: 'Contract Type' }],
+      rows: rentalOrders.filter((o) => o.lines.some((l) => outstanding(l).length)).map((o) => ({ so: o.number, customer: custName(o.customerId), assets: o.lines.flatMap((l) => outstanding(l)).map((a) => assetById(a.assetId)?.assetId).join(', '), start: o.contractStart, end: o.contractEnd, type: o.contractType })) },
+    { slug: 'rental-revenue', title: 'Rental Revenue', purpose: 'Rental order value by customer.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'customer', label: 'Customer' }, { key: 'orders', label: 'Orders', align: 'right' }, { key: 'revenue', label: 'Order Value', align: 'right' }],
+      rows: Array.from(new Set(rentalOrders.map((o) => o.customerId))).map((c) => { const m = rentalOrders.filter((o) => o.customerId === c); return { customer: custName(c), orders: m.length, revenue: aed(Math.round(m.reduce((n, o) => n + docTotals(o.lines, o.discountPct, o.vatType).sub, 0))) }; }) },
+    { slug: 'customer-rental', title: 'Customer Rental', purpose: 'Rental lines per customer.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'customer', label: 'Customer' }, { key: 'so', label: 'Rental Order' }, { key: 'item', label: 'Item' }, { key: 'qty', label: 'Quantity', align: 'right' }, { key: 'status', label: 'Status', status: true }],
+      rows: rentalOrders.flatMap((o) => o.lines.filter((l) => l.activity === 'Rental').map((l) => ({ customer: custName(o.customerId), so: o.number, item: l.item, qty: l.qty, status: o.status }))) },
+    { slug: 'asset-availability', title: 'Asset Availability', purpose: 'Ready for Hire units by Category and Subcategory.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'category', label: 'Category' }, { key: 'sub', label: 'Subcategory' }, { key: 'ready', label: 'Ready for Hire', align: 'right' }, { key: 'onHire', label: 'On Hire', align: 'right' }, { key: 'other', label: 'Other statuses', align: 'right' }],
+      rows: Array.from(new Set(live.map((a) => `${a.category}|${a.subCategory}`))).map((k) => { const [g, c] = k.split('|'); const m = live.filter((a) => a.category === g && a.subCategory === c); return { category: g, sub: c, ready: m.filter((a) => a.assetStatus === 'Ready for Hire').length, onHire: m.filter((a) => a.assetStatus === 'On Hire').length, other: m.filter((a) => !['Ready for Hire', 'On Hire'].includes(a.assetStatus)).length }; }) },
+    { slug: 'asset-utilization', title: 'Asset Utilization', purpose: 'On-hire share of time per asset.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'asset', label: 'Asset' }, { key: 'category', label: 'Category' }, { key: 'util', label: 'Utilization %', align: 'right' }],
+      rows: live.map((a) => ({ asset: `${a.assetId} - ${a.name}`, category: `${a.category} ${a.subCategory}`, util: `${a.utilization}%` })) },
+    { slug: 'asset-category-performance', title: 'Asset Category Performance', purpose: 'Order value by Category and Subcategory.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'category', label: 'Category' }, { key: 'sub', label: 'Subcategory' }, { key: 'lines', label: 'Order Lines', align: 'right' }, { key: 'value', label: 'Order Value', align: 'right' }],
+      rows: Array.from(new Set(rentalOrders.flatMap((o) => o.lines.filter((l) => l.activity === 'Rental').map((l) => `${l.group}|${l.category}`)))).map((k) => { const [g, c] = k.split('|'); const m = rentalOrders.flatMap((o) => o.lines).filter((l) => l.activity === 'Rental' && l.group === g && l.category === c); return { category: g, sub: c, lines: m.length, value: aed(Math.round(m.reduce((n, l) => n + lineTotal(l), 0))) }; }) },
+    { slug: 'rental-cancellations-amendments', title: 'Rental Cancellations and Amendments', purpose: 'Extensions, early terminations and replacements.', group: 'Rental reports (existing)', req: RR,
+      columns: [{ key: 'ref', label: 'Reference' }, { key: 'type', label: 'Type' }, { key: 'so', label: 'Rental Order' }, { key: 'date', label: 'Date' }, { key: 'detail', label: 'Detail' }],
+      rows: [...d.ext.map((e) => ({ ref: e.number, type: e.kind, so: d.orders.find((o) => o.id === e.soId)?.number, date: e.date, detail: `${e.oldEnd} to ${e.newEnd}` })), ...d.rep.map((r) => ({ ref: r.number, type: 'Replacement', so: d.orders.find((o) => o.id === r.soId)?.number, date: r.date, detail: `${assetById(r.oldAssetId)?.assetId} replaced by ${assetById(r.newAssetId)?.assetId}` }))] },
+  ];
   const stat = ASSET_STATUSES.map((s, i) => ({ label: s, value: live.filter((a) => a.assetStatus === s).length, color: GROUP_COLORS[i % 6] })).filter((x) => x.value);
   const cats = Array.from(new Set(live.map((a) => `${a.category} ${a.subCategory}`)));
   const dashboards: DashboardDef[] = [
@@ -95,7 +120,7 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
     { slug: 'cross-hire-cost-revenue', title: 'Cross-Hire Cost vs. Rental Revenue Dashboard', purpose: 'Cost of cross-hired units vs. revenue earned.', change: 'new', req: RR,
       widgets: [{ type: 'bar', title: 'Cost vs revenue per request (AED)', data: d.ch.flatMap((c) => [{ label: `${c.number} cost`, value: c.rate + (c.dispute ?? 0), color: '#C64D4D' }, { label: `${c.number} revenue`, value: c.revenue, color: '#2EB273' }]), format: (n) => `${Math.round(n / 1000)}k` }, { type: 'table', title: 'Cross-hire profitability', columns: [{ key: 'n', label: 'Request' }, { key: 'cost', label: 'Cost', align: 'right' }, { key: 'rev', label: 'Revenue', align: 'right' }, { key: 'm', label: 'Margin', align: 'right' }], rows: d.ch.map((c) => ({ n: c.number, cost: aed(c.rate + (c.dispute ?? 0)), rev: aed(c.revenue), m: aed(c.revenue - c.rate - (c.dispute ?? 0)) })) }] },
   ];
-  return { reports, dashboards };
+  return { reports: [...existing, ...reports], dashboards };
 }
 
 const base = (scope: string) => (scope === 'crm' ? '/crm' : '/rental');
