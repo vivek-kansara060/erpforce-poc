@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
-import { Box, Button } from '@mui/material';
+import { useState, type ReactNode } from 'react';
+import { Box, Button, MenuItem, Select } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { AppDialog } from '@/components/Dialogs';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { Text } from '@/components/Text';
 import { FieldShell, FormGrid, FormSection, NumberInput, SelectInput, TextInput, DateInput, ValueField, ValueGrid } from '@/components/Form';
@@ -101,7 +103,7 @@ export function SerializedFields({ f, upd, errors, req, withNotDepreciable, hide
 }
 
 /** Read-only counterpart used on the view pages. */
-export function SerializedView({ r, req }: { r: Record<string, any>; req: string }) {
+export function SerializedView({ r, req, hideValues }: { r: Record<string, any>; req: string; hideValues?: boolean }) {
   return (
     <>
       <ValueGrid cols={4}>
@@ -110,7 +112,7 @@ export function SerializedView({ r, req }: { r: Record<string, any>; req: string
         <ValueField label="Engine Number" value={r.engineNo} change="new" req={req} />
         <ValueField label="Capacity" value={r.capacity} change="new" req={req} />
       </ValueGrid>
-      <Box sx={{ mt: 3 }}>
+      {!hideValues && <Box sx={{ mt: 3 }}>
         <Text type="s3" weight="medium" sx={{ mb: 1.5 }}>Asset Value Details</Text>
         <ValueGrid cols={4}>
           <ValueField label="Purchase Date" value={r.purchaseDate} change="new" req={req} />
@@ -121,7 +123,7 @@ export function SerializedView({ r, req }: { r: Record<string, any>; req: string
           <ValueField label="Depreciated Amount" value={aed(r.deprAmount)} change="new" req={req} />
           <ValueField label="CapEx Value" value={aed(r.capex)} change="new" req={req} />
         </ValueGrid>
-      </Box>
+      </Box>}
     </>
   );
 }
@@ -133,6 +135,49 @@ export function FileList({ names }: { names?: string[] }) {
 
 export function Note({ children }: { children: ReactNode }) {
   return <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>{children}</Text>;
+}
+
+const CREATE = '__create_new__';
+/**
+ * A master-data dropdown whose last row is "Create New <label>", the same pattern as the existing ERP's form select
+ * (enable_footer / onFooterClick): the new master value is created in a dialog without leaving the form.
+ */
+export function AddableSelect({ onAdd, addLabel, options, value, onChange, placeholder = 'Select', ...b }: Parameters<typeof SelectInput>[0] & { onAdd: () => void; addLabel?: string }) {
+  const val = (o: string | { value: string; label: string }) => (typeof o === 'string' ? o : o.value);
+  const lab = (o: string | { value: string; label: string }) => (typeof o === 'string' ? o : o.label);
+  return (
+    <FieldShell {...b}>
+      <Select fullWidth size="small" displayEmpty value={value ?? ''} disabled={b.disabled} error={!!b.error}
+        onChange={(e) => { const v = e.target.value as string; if (v === CREATE) { onAdd(); return; } onChange?.(v); }}
+        renderValue={(v) => (v ? lab(options.find((o) => val(o) === v) ?? (v as string)) : <span style={{ color: neutral[700] }}>{placeholder}</span>)}>
+        {options.map((o) => <MenuItem key={val(o)} value={val(o)}>{lab(o)}</MenuItem>)}
+        <MenuItem value={CREATE} sx={{ gap: 1, borderTop: options.length ? `1px solid ${neutral[200]}` : undefined, mt: options.length ? 0.5 : 0 }}>
+          <AddIcon fontSize="small" />
+          <Text type="s4" color="theme.secondary.1000">{addLabel ?? `Create New ${b.label}`}</Text>
+        </MenuItem>
+      </Select>
+    </FieldShell>
+  );
+}
+
+/** Small "add a master value" dialog: one name field plus an optional fixed context line (e.g. the parent category). */
+export function QuickAddDialog({ open, title, label, context, onClose, onSave }: { open: boolean; title: string; label: string; context?: string; onClose: () => void; onSave: (name: string) => string | undefined }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string>();
+  const close = () => { setName(''); setError(undefined); onClose(); };
+  const save = () => {
+    if (!name.trim()) { setError(`${label} is required`); return; }
+    const e = onSave(name.trim());
+    if (e) { setError(e); return; }
+    close();
+  };
+  return (
+    <AppDialog open={open} title={title} onClose={close} onConfirm={save} confirmLabel="Add" maxWidth="xs">
+      {context && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>{context}</Text>}
+      <TextInput label={label} required value={name} onChange={(v) => { setName(v); setError(undefined); }} error={error} />
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>It is added as Active and can be edited later in its master screen.</Text>
+    </AppDialog>
+  );
 }
 
 export const REQ_ATTR = 'Category Master > Custom Attributes';

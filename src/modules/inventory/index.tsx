@@ -4,10 +4,13 @@ import type { ModuleDef } from '@/types';
 import { ItemList, ItemForm, ItemView } from './ItemPages';
 import { HeavyForm, HeavyView, MovementForm } from './HeavyEquipmentPages';
 import { LocationForm, LocationList, LocationView } from './LocationPages';
-import { CertificateForm, CertificateList, CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView, ReadingForm, ReadingList } from './AssetPages';
+import { CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView } from './AssetPages';
 import { dashboards, reports } from './reports';
-import { dashboardRoutes, reportRoutes } from '@/components/ReportsAndDashboards';
-import { CategoryForm, CategoryList, CategoryView, PricingForm, PricingList, PricingView } from './Masters';
+import { dashboardRoutes } from '@/components/ReportsAndDashboards';
+import { invReportRoutes } from './ReportPages';
+import { CategoryForm, CategoryList, CategoryView } from './Masters';
+import { PricingForm, PricingList, PricingView } from './PricingPages';
+import { AssetTypeForm, AssetTypeList } from './AssetTypePages';
 
 const mod: ModuleDef = {
   id: 'inventory',
@@ -19,14 +22,13 @@ const mod: ModuleDef = {
     {
       label: 'Product Management', icon: <Inventory2OutlinedIcon />, children: [
         { label: 'Items', path: '/inventory/items' },
-        { label: 'Item Category', path: '/inventory/categories' },
+        { label: 'Item Category', path: '/inventory/categories', change: 'changed' },
+        { label: 'Asset Type', path: '/inventory/asset-types', change: 'new' },
         { label: 'Heavy Equipment Pricing', path: '/inventory/pricing', change: 'new' },
       ],
     },
     { label: 'Configuration', children: [{ label: 'Location', path: '/inventory/locations', change: 'changed' }] },
     { label: 'Fixed Asset Management', children: [
-      { label: 'Compliance and Certificates', path: '/inventory/certificates', change: 'new' },
-      { label: 'Usage Readings', path: '/inventory/usage-readings', change: 'new' },
       { label: 'Disposal Requests', path: '/inventory/disposals', change: 'new' },
     ] },
     { label: 'Operations', children: [{ label: 'Physical Stock Verification', path: '/inventory/stock-verification', change: 'new' }] },
@@ -47,6 +49,9 @@ const mod: ModuleDef = {
     { path: 'categories/add', element: <CategoryForm /> },
     { path: 'categories/:id', element: <CategoryView /> },
     { path: 'categories/:id/edit', element: <CategoryForm /> },
+    { path: 'asset-types', element: <AssetTypeList /> },
+    { path: 'asset-types/add', element: <AssetTypeForm /> },
+    { path: 'asset-types/:id/edit', element: <AssetTypeForm /> },
     { path: 'pricing', element: <PricingList /> },
     { path: 'pricing/add', element: <PricingForm /> },
     { path: 'pricing/:id', element: <PricingView /> },
@@ -55,12 +60,6 @@ const mod: ModuleDef = {
     { path: 'locations/add', element: <LocationForm /> },
     { path: 'locations/:id', element: <LocationView /> },
     { path: 'locations/:id/edit', element: <LocationForm /> },
-    { path: 'certificates', element: <CertificateList /> },
-    { path: 'certificates/add', element: <CertificateForm /> },
-    { path: 'certificates/:id', element: <CertificateForm /> },
-    { path: 'usage-readings', element: <ReadingList /> },
-    { path: 'usage-readings/add', element: <ReadingForm /> },
-    { path: 'usage-readings/:id', element: <ReadingForm /> },
     { path: 'stock-verification', element: <CountList /> },
     { path: 'stock-verification/add', element: <CountForm /> },
     { path: 'stock-verification/:id', element: <CountView /> },
@@ -69,21 +68,22 @@ const mod: ModuleDef = {
     { path: 'disposals/add', element: <DisposalForm /> },
     { path: 'disposals/:id', element: <DisposalView /> },
     { path: 'disposals/:id/edit', element: <DisposalForm /> },
-    ...reportRoutes('/inventory', reports),
+    ...invReportRoutes('/inventory', reports),
     ...dashboardRoutes('/inventory', dashboards),
   ],
   changes: [
     { module: 'Inventory & Fixed Assets', screen: 'Items', classification: 'EXISTING WITH CHANGE', existing: 'Items list and multi-tab form with type, SKU, name, category, traceability, prices', change: 'Adds Item Code (auto), Product Classification, Category/Sub-Category from master, Tracking Method, serialized asset fields, photo and attachments', ref: 'Item Master > New Fields', path: '/inventory/items' },
-    { module: 'Inventory & Fixed Assets', screen: 'Item Category', classification: 'EXISTING WITH CHANGE', existing: 'Parent, Level, Category Name, Brand, Description, SKU Prefix, Unique Items, Status, Attributes', change: 'Adds Custom Attributes with Required flag (shown on items) and Depreciation Method Override; remains the source for Category and Sub-Category. Adds Category Type (Normal or Heavy Equipment) so the Heavy Equipment Fixed Asset form offers only heavy equipment categories', ref: 'Item Master > Existing masters', path: '/inventory/categories' },
+    { module: 'Inventory & Fixed Assets', screen: 'Item Category', classification: 'EXISTING WITH CHANGE', existing: 'Parent, Level, Category Name, Brand, Description, SKU Prefix, Unique Items, Status, Attributes', change: 'One screen for categories and sub-categories as before (Parent field makes a sub-category); Level and Category Type removed. Adds Custom Attributes with Required flag, Depreciation Method Override, sub-categories on the category page, and Create New from the item, asset and pricing dropdowns', ref: 'Category & Sub-Category Master', path: '/inventory/categories' },
+    { module: 'Inventory & Fixed Assets', screen: 'Asset Type', classification: 'NEW', existing: 'Fixed list of asset types in the accounting asset form', change: 'Client-specific Asset Type master with list, add, edit, activate / deactivate and delete (blocked while in use), and Create New from the Asset Type dropdown on the Heavy Equipment Fixed Asset form', ref: 'Asset Type Master (2 Oct call)', path: '/inventory/asset-types' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset type', classification: 'NEW', existing: '-', change: 'New always-serialized item type within Items, identified by an auto-generated Serialized ID (no typed name, item code or tracking method on the form), with its own listing view, add/edit form and view page (Basic Details, Depreciation Board, Movement History, Ownership)', ref: 'Item Master / Fixed Asset Register', path: '/inventory/items' },
-    { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Category / Sub-Category price with frequency, a view page, and a read-only preview of the price converted into every billing frequency', ref: 'Pricing Master', path: '/inventory/pricing' },
-    { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional) and calculated Stock Held, Consumption and Remaining Value', ref: 'Location & Warehouse Master', path: '/inventory/locations' },
-    { module: 'Inventory & Fixed Assets', screen: 'Compliance and Certificates', classification: 'NEW', existing: '-', change: 'Asset-level certificates with type, expiry, reminder lead time, attachment and edit history', ref: 'Compliance & Certificates', path: '/inventory/certificates' },
-    { module: 'Inventory & Fixed Assets', screen: 'Usage Readings', classification: 'NEW', existing: '-', change: 'Manual hour meter and status recording per asset', ref: 'Manual Usage & Status Recording', path: '/inventory/usage-readings' },
-    { module: 'Inventory & Fixed Assets', screen: 'Physical Stock Verification', classification: 'NEW', existing: 'Only a Stock Reconciliation report', change: 'Count sessions with system snapshot, variance and Stock Adjustment approval (approve or reject, with approval history). A reason is recorded for every difference (list to be confirmed with client). Count Type: Stock Items or Fixed Assets (Found / Not Found / Found elsewhere per unit, to be confirmed with client)', ref: 'Physical Stock Verification', path: '/inventory/stock-verification' },
-    { module: 'Inventory & Fixed Assets', screen: 'Asset Disposal Requests', classification: 'NEW', existing: 'Dispose page in Accounting with no approval', change: 'Disposal request with reason, method, value and approval before an asset can be Disposed', ref: 'Asset Disposal / Write-Off', path: '/inventory/disposals' },
-    { module: 'Inventory & Fixed Assets', screen: 'Reports', classification: 'NEW', existing: '16 inventory reports', change: '12 fixed asset and stock reports', ref: 'Reports', path: '/inventory/reports' },
-    { module: 'Inventory & Fixed Assets', screen: 'Dashboards', classification: 'NEW', existing: 'Customizable widget dashboard', change: '5 fleet dashboards', ref: 'Dashboards', path: '/inventory/dashboards' },
+    { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Activity Type (Rental / Trading) and Description. A rental price is one record per Category / Sub-Category storing a price for every billing frequency: one is entered, the others are calculated and can be changed by hand. Trading prices are a single sales price. Listing shows rental prices for a chosen billing frequency; Rental / Trading filter, bulk upload and a view page with all frequencies', ref: 'Pricing Master (2 Oct call)', path: '/inventory/pricing' },
+    { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Removes Parent Location, Company and the address block (City kept). Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional), a read-only per-item stock table with units (Stock Held, Consumed, Remaining, Remaining Value)', ref: 'Location & Warehouse Master (2 Oct call)', path: '/inventory/locations' },
+    { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Compliance & Certificates tab', classification: 'NEW', existing: '-', change: 'Certificates live on the individual asset (no separate sidebar screen): many per asset with type, reference, expiry, reminder lead time, document, status and edit history; can be added while creating the asset; optional approval switch; QR code with Print QR', ref: 'Compliance & Certificates (2 Oct call)', path: '/inventory/items' },
+    { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Usage Readings tab', classification: 'NEW', existing: '-', change: 'Manual hour meter readings kept under the individual asset (no separate sidebar screen): optional, add / edit / delete in a dialog, entry limited to users allowed to enter readings, Reading Source reserved for a future IoT feed', ref: 'Manual Usage & Status Recording (2 Oct call)', path: '/inventory/items' },
+    { module: 'Inventory & Fixed Assets', screen: 'Physical Stock Verification', classification: 'NEW', existing: 'Only a Stock Reconciliation report', change: 'Count sessions with system snapshot, quantities with units, variance and Stock Adjustment approval (approve or reject, with approval history). Stock Items: one free-text reason for the session. Fixed Assets: Found / Not Found per unit with a reason only when not found, filters, Select All with bulk marking, inactive assets excluded, no paging', ref: 'Physical Stock Verification (2 Oct call)', path: '/inventory/stock-verification' },
+    { module: 'Inventory & Fixed Assets', screen: 'Asset Disposal Requests', classification: 'NEW', existing: 'Dispose page in Accounting with no approval', change: 'Disposal request (asset, method, reason, documents) with approval; approval inactivates the asset, then an invoice is created for the sale or the scrap (invoice number, date, invoice to from the customer list or entered by hand, amount; journal, gain or loss); lifecycle stepper and history', ref: 'Asset Disposal / Write-Off (2 Oct call)', path: '/inventory/disposals' },
+    { module: 'Inventory & Fixed Assets', screen: 'Reports', classification: 'NEW', existing: '16 inventory reports', change: '12 fixed asset and stock reports built from live data, each with a visible Filter panel, column search, sorting, a sticky totals row, Print, Export and assets that open the asset page', ref: 'Reports (2 Oct call)', path: '/inventory/reports' },
+    { module: 'Inventory & Fixed Assets', screen: 'Dashboards', classification: 'NEW', existing: 'Customizable widget dashboard', change: '3 dashboards counted live from the asset records (Fleet Status, Owned vs. Cross-Hire, End-of-Life Planning), each linking to the underlying records; Asset Profitability and Location-Wise Stock dashboards held back until their source data exists', ref: 'Dashboards (2 Oct call)', path: '/inventory/dashboards' },
   ],
 };
 export default mod;

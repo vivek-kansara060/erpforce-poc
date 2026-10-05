@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Box, Button, Checkbox, FormControlLabel, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { ConfirmDialog, useToast } from '@/components/Dialogs';
@@ -12,15 +11,93 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { ATTRIBUTE_TYPES, BRANDS, CATEGORY_TYPES, DEPRECIATION_METHODS, FREQUENCIES, categorySeed, categoryTypeOf, pricingSeed, subCategoriesOf, topCategories, type AttributeDef, type CategoryRec, type CategoryType, type PricingRec } from './data';
-import { aed, isBlank, type Errors } from './shared';
+import { ATTRIBUTE_TYPES, BRANDS, DEPRECIATION_METHODS, categoryOptions, categorySeed, isTopCategory, subCategoriesOf, type AttributeDef, type CategoryRec } from './data';
+import { AddableSelect, QuickAddDialog, type Errors } from './shared';
 
-const REQ_PRICING = 'Heavy Equipment Pricing > Category / Sub-Category Pricing';
 const REQ_CAT = 'Category & Sub-Category Master';
-const REQ_CAT_TYPE = 'Category & Sub-Category Master > Category Type (Normal / Heavy Equipment)';
+const CAT_BASE = '/inventory/categories';
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/* ------------------------------------------------------------------ Item Category list (existing columns and actions) */
+/* ------------------------------------------------------------------ dropdowns with "Create New" as their last row (used by the item, asset and pricing forms) */
+export function CategorySelect({ value, onChange, error, disabled, hint, label = 'Category', required = true, change = 'new', req = REQ_CAT }: { value: string; onChange: (v: string) => void; error?: string; disabled?: boolean; hint?: string; label?: string; required?: boolean; change?: 'new' | 'changed'; req?: string }) {
+  const cats = useCats();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <AddableSelect label={label} required={required} change={change} req={req} value={value} options={categoryOptions(cats.rows, value)} onChange={onChange} disabled={disabled} error={error} hint={hint} onAdd={() => setOpen(true)} />
+      <QuickAddDialog open={open} title="Add Category" label="Category Name" onClose={() => setOpen(false)}
+        onSave={(name) => {
+          if (cats.rows.some((c) => isTopCategory(c) && same(c.name, name))) return 'A category with this name already exists';
+          cats.add({ id: `cat${Date.now()}`, name, parent: '-', status: 'Active', uniqueItems: 1, attributes: [] });
+          onChange(name);
+          toast(`Category ${name} added`);
+          return undefined;
+        }} />
+    </>
+  );
+}
+
+export function SubCategorySelect({ category, value, onChange, disabled, error, label = 'Sub-Category', change = 'new', req = REQ_CAT }: { category: string; value: string; onChange: (v: string) => void; disabled?: boolean; error?: string; label?: string; change?: 'new' | 'changed'; req?: string }) {
+  const cats = useCats();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const subs = subCategoriesOf(cats.rows, category);
+  const options = value && !subs.includes(value) ? [...subs, value] : subs;
+  return (
+    <>
+      <AddableSelect label={label} change={change} req={req} value={value} options={options} onChange={onChange} disabled={disabled || !category} error={error}
+        hint={!category ? 'Select a Category first' : subs.length === 0 ? 'No sub-categories yet, use Create New Sub-Category in the list' : 'Optional, depends on Category'} onAdd={() => setOpen(true)} />
+      <QuickAddDialog open={open} title="Add Sub-Category" label="Sub-Category Name" context={`Under Category: ${category}`} onClose={() => setOpen(false)}
+        onSave={(name) => {
+          if (cats.rows.some((c) => c.parent === category && same(c.name, name))) return `A sub-category with this name already exists under ${category}`;
+          cats.add({ id: `cat${Date.now()}`, name, parent: category, status: 'Active', uniqueItems: 1, attributes: [] });
+          onChange(name);
+          toast(`Sub-Category ${name} added under ${category}`);
+          return undefined;
+        }} />
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ attributes editor (shared by both forms) */
+function AttributesEditor({ attributes, onChange, error, req }: { attributes: AttributeDef[]; onChange: (a: AttributeDef[]) => void; error?: string; req: string }) {
+  const setAttr = (i: number, p: Partial<AttributeDef>) => onChange(attributes.map((a, n) => (n === i ? { ...a, ...p } : a)));
+  return (
+    <FormSection title="Attributes" change="changed" req={req} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => onChange([...attributes, { id: `at${Date.now()}`, name: '', type: 'Text', options: '', required: false }])}>Add Attribute</Button>}>
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Attributes defined here become extra fields on every item in this category, without a code change.</Text>
+      {attributes.length === 0 && <Text type="s5" color="theme.secondary.700">No attributes added</Text>}
+      {error && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{error}</Text>}
+      {attributes.map((a, i) => (
+        <Box key={a.id} sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.6fr auto 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
+          <TextInput label="Attribute Name" value={a.name} onChange={(v) => setAttr(i, { name: v })} />
+          <SelectInput label="Field Type" value={a.type} options={ATTRIBUTE_TYPES} onChange={(v) => setAttr(i, { type: v })} />
+          <TextInput label="Values" value={a.options} disabled={a.type !== 'Picklist'} placeholder={a.type === 'Picklist' ? 'Comma separated' : 'Not applicable'} onChange={(v) => setAttr(i, { options: v })} />
+          <FormControlLabel sx={{ mb: 0.5 }} control={<Checkbox size="small" checked={a.required} onChange={(e) => setAttr(i, { required: e.target.checked })} />} label={<Text type="s3">Required</Text>} />
+          <IconButton size="small" sx={{ mb: 0.5 }} onClick={() => onChange(attributes.filter((_, n) => n !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton>
+        </Box>
+      ))}
+    </FormSection>
+  );
+}
+const attributeError = (attributes: AttributeDef[]) =>
+  attributes.some((a) => !a.name.trim()) ? 'Every attribute needs a name' : attributes.some((a) => a.type === 'Picklist' && !a.options.trim()) ? 'Picklist attributes need at least one value' : undefined;
+
+function AttributesTable({ attributes }: { attributes: AttributeDef[] }) {
+  return (
+    <Panel title="Attributes" change="changed" req={`${REQ_CAT} > Custom Attributes`} sx={{ mt: 3 }}>
+      {attributes.length === 0 ? <Text type="s5" color="theme.secondary.700">No attributes defined</Text> : (
+        <DataTable<AttributeDef> rows={attributes} hideToolbar columns={[
+          { key: 'name', label: 'Attribute' }, { key: 'type', label: 'Field Type' }, { key: 'options', label: 'Values', render: (a) => a.options || '-' },
+          { key: 'required', label: 'Required', change: 'new', req: `${REQ_CAT} > Custom Attributes`, render: (a) => (a.required ? 'Yes' : 'No') },
+        ]} />
+      )}
+    </Panel>
+  );
+}
+
+/* ================================================================== Item Category (one screen for categories and sub-categories, no Level) */
 export function CategoryList() {
   const nav = useNavigate();
   const toast = useToast();
@@ -28,80 +105,70 @@ export function CategoryList() {
   const [del, setDel] = useState<CategoryRec | null>(null);
   return (
     <Page>
-      <PageTitle title="Item Category" />
+      <PageTitle title="Item Category" subtitle="Categories and their sub-categories. A sub-category has a Parent, for example Generator > 100 KVA." />
       <DataTable<CategoryRec>
-        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12} filter={{ key: 'categoryType', options: [...CATEGORY_TYPES] }}
-        onAdd={() => nav('/inventory/categories/add')} addLabel="Add Category" onRowClick={(r) => nav(`/inventory/categories/${r.id}`)}
+        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12}
+        onAdd={() => nav(`${CAT_BASE}/add`)} addLabel="Add Category" onRowClick={(r) => nav(`${CAT_BASE}/${r.id}`)}
         columns={[
           { key: 'name', label: 'Category Name' },
-          { key: 'parent', label: 'Parent' },
-          { key: 'categoryType', label: 'Category Type', change: 'new', req: REQ_CAT_TYPE, render: (r) => categoryTypeOf(r) },
+          { key: 'parent', label: 'Parent', render: (r) => (isTopCategory(r) ? '-' : r.parent) },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
-          { key: 'level', label: 'Level', align: 'right' },
-          { key: 'sub', label: 'Sub Categories', sortable: false, align: 'right', render: (r) => (r.level === 1 ? cats.rows.filter((c) => c.parent === r.name).length : 0) },
+          { key: 'sub', label: 'Sub Categories', sortable: false, align: 'right', render: (r) => (isTopCategory(r) ? cats.rows.filter((c) => c.parent === r.name).length : 0) },
         ]}
         actions={[
-          { label: 'View', onClick: (r) => nav(`/inventory/categories/${r.id}`) },
-          { label: 'Edit', onClick: (r) => nav(`/inventory/categories/${r.id}/edit`) },
+          { label: 'View', onClick: (r) => nav(`${CAT_BASE}/${r.id}`) },
+          { label: 'Edit', onClick: (r) => nav(`${CAT_BASE}/${r.id}/edit`) },
           { label: 'Delete', danger: true, onClick: setDel },
         ]}
       />
-      <ConfirmDialog open={!!del} danger title="Delete category" description={`Delete ${del?.name}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(null)}
-        onConfirm={() => { if (del) { cats.replace(cats.rows.filter((c) => c.id !== del.id && c.parent !== del.name)); toast('Category deleted'); } }} />
+      <ConfirmDialog open={!!del} danger title="Delete category" description={`Delete ${del?.name}${del && isTopCategory(del) ? ' and its sub-categories' : ''}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(null)}
+        onConfirm={() => { if (del) { cats.replace(cats.rows.filter((c) => c.id !== del.id && !(isTopCategory(del) && c.parent === del.name))); toast('Category deleted'); } }} />
     </Page>
   );
 }
 
-/* ------------------------------------------------------------------ Item Category form */
 export function CategoryForm() {
   const { id } = useParams();
+  const [params] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
   const cats = useCats();
   const existing = id ? cats.get(id) : undefined;
   const [f, setF] = useState(() => ({
-    categoryType: (existing ? categoryTypeOf(existing) : 'Normal') as string,
-    parent: existing && existing.parent !== '-' ? existing.parent : '', name: existing?.name ?? '', brand: existing?.brand ?? '', description: existing?.description ?? '', skuPrefix: existing?.skuPrefix ?? '',
+    parent: existing ? (isTopCategory(existing) ? '' : existing.parent) : params.get('parent') ?? '',
+    name: existing?.name ?? '', brand: existing?.brand ?? '', description: existing?.description ?? '', skuPrefix: existing?.skuPrefix ?? '',
     uniqueItems: String(existing?.uniqueItems ?? 1), active: existing ? existing.status === 'Active' : true, depMethod: existing?.depMethod ?? '', attributes: existing?.attributes ?? ([] as AttributeDef[]),
   }));
   const [errors, setErrors] = useState<Errors>({});
   const set = <K extends keyof typeof f>(k: K) => (v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
-  const level = f.parent ? 2 : 1;
-  // A sub-category always follows its parent category's type.
-  const parentRec = cats.rows.find((c) => c.level === 1 && c.name === f.parent);
-  const effectiveType = (parentRec ? categoryTypeOf(parentRec) : f.categoryType) as CategoryType;
   const skuPreview = f.skuPrefix && Number.isInteger(Number(f.uniqueItems || 1)) ? `${f.skuPrefix}-${String(Number(f.uniqueItems || 1)).padStart(5, '0')}` : '-';
-  const setAttr = (i: number, p: Partial<AttributeDef>) => set('attributes')(f.attributes.map((a, n) => (n === i ? { ...a, ...p } : a)));
-
+  // A category that already has sub-categories stays a top-level category.
+  const hasChildren = !!existing && isTopCategory(existing) && cats.rows.some((c) => c.parent === existing.name);
+  const parentOptions = cats.rows.filter((c) => isTopCategory(c) && c.id !== existing?.id && (c.status === 'Active' || c.name === f.parent)).map((c) => c.name);
   const save = () => {
     const e: Errors = {};
     if (!f.name.trim()) e.name = 'Category Name is required';
-    else if (cats.rows.some((c) => c.name.toLowerCase() === f.name.trim().toLowerCase() && c.id !== existing?.id)) e.name = 'A category with this name already exists';
-    if (f.attributes.some((a) => !a.name.trim())) e.attributes = 'Every attribute needs a name';
-    else if (f.attributes.some((a) => a.type === 'Picklist' && !a.options.trim())) e.attributes = 'Picklist attributes need at least one value';
+    else if (cats.rows.some((c) => c.id !== existing?.id && same(c.name, f.name) && (f.parent ? c.parent === f.parent : isTopCategory(c)))) e.name = f.parent ? `A sub-category with this name already exists under ${f.parent}` : 'A category with this name already exists';
+    const ae = attributeError(f.attributes);
+    if (ae) e.attributes = ae;
     setErrors(e);
     if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', level, categoryType: effectiveType, status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
-    if (existing) {
-      cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : c.parent === existing.name ? { ...c, parent: rec.name, categoryType: rec.categoryType } : c)));
-    } else cats.add(rec);
+    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
+    // Renaming a category keeps its sub-categories attached to it.
+    if (existing) cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : isTopCategory(existing) && c.parent === existing.name ? { ...c, parent: rec.name } : c)));
+    else cats.add(rec);
     toast(existing ? 'Category updated' : 'Category created');
-    nav('/inventory/categories');
+    nav(`${CAT_BASE}/${rec.id}`);
   };
-
   return (
     <>
-      <FormHeader
-        crumbs={[{ label: 'Item Category', to: '/inventory/categories' }, { label: existing ? `Edit ${existing.name}` : 'Add Category' }]}
-        actions={<><Button variant="outlined" onClick={() => nav('/inventory/categories')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
-      />
+      <FormHeader crumbs={[{ label: 'Item Category', to: CAT_BASE }, { label: existing ? `Edit ${existing.name}` : 'Add Category' }]}
+        actions={<><Button variant="outlined" onClick={() => nav(CAT_BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
           <FormGrid>
-            <SelectInput label="Parent Category" value={f.parent} options={topCategories(cats.rows).filter((c) => c !== existing?.name)} onChange={set('parent')} hint="Leave empty for a top-level category, select one to create a Sub-Category" />
-            <TextInput label="Level" value={String(level)} disabled />
-            <SelectInput label="Category Type" required change="new" req={REQ_CAT_TYPE} value={effectiveType} options={[...CATEGORY_TYPES]} disabled={!!f.parent} onChange={set('categoryType')}
-              hint={f.parent ? 'A sub-category follows its parent category' : 'Heavy Equipment categories are offered in the Heavy Equipment Fixed Asset form, Normal categories in the standard Item form. Rule to be confirmed with client'} />
+            <SelectInput label="Parent Category" value={f.parent} options={['', ...parentOptions].map((o) => ({ value: o, label: o || 'None (top-level category)' }))} placeholder="None (top-level category)" onChange={set('parent')} disabled={hasChildren}
+              hint={hasChildren ? 'This category has sub-categories, so it stays a top-level category' : 'Leave empty for a top-level category, select one to create a Sub-Category'} />
             <TextInput label="Category Name" required value={f.name} onChange={set('name')} error={errors.name} />
             <SelectInput label="Brand" value={f.brand} options={BRANDS} onChange={set('brand')} />
             <TextInput label="Description" value={f.description} onChange={set('description')} full multiline rows={2} />
@@ -114,27 +181,13 @@ export function CategoryForm() {
             <Text type="s4" weight="medium" color="theme.secondary.700">SKU Preview</Text>
             <Text type="s4">{skuPreview}</Text>
           </Box>
-          <FormSection title="Attributes" change="changed" req={`${REQ_CAT} > Custom Attributes`} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => set('attributes')([...f.attributes, { id: `at${Date.now()}`, name: '', type: 'Text', options: '', required: false }])}>Add Attribute</Button>}>
-            <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Attributes defined here become extra fields on every item in this category, without a code change.</Text>
-            {f.attributes.length === 0 && <Text type="s5" color="theme.secondary.700">No attributes added</Text>}
-            {errors.attributes && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{errors.attributes}</Text>}
-            {f.attributes.map((a, i) => (
-              <Box key={a.id} sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.6fr auto 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
-                <TextInput label="Attribute Name" value={a.name} onChange={(v) => setAttr(i, { name: v })} />
-                <SelectInput label="Field Type" value={a.type} options={ATTRIBUTE_TYPES} onChange={(v) => setAttr(i, { type: v })} />
-                <TextInput label="Values" value={a.options} disabled={a.type !== 'Picklist'} placeholder={a.type === 'Picklist' ? 'Comma separated' : 'Not applicable'} onChange={(v) => setAttr(i, { options: v })} />
-                <FormControlLabel sx={{ mb: 0.5 }} control={<Checkbox size="small" checked={a.required} onChange={(e) => setAttr(i, { required: e.target.checked })} />} label={<Text type="s3">Required</Text>} />
-                <IconButton size="small" sx={{ mb: 0.5 }} onClick={() => set('attributes')(f.attributes.filter((_, n) => n !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton>
-              </Box>
-            ))}
-          </FormSection>
+          <AttributesEditor attributes={f.attributes} onChange={set('attributes')} error={errors.attributes} req={`${REQ_CAT} > Custom Attributes`} />
         </Box>
       </Page>
     </>
   );
 }
 
-/* ------------------------------------------------------------------ Item Category view */
 export function CategoryView() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -142,20 +195,25 @@ export function CategoryView() {
   const cats = useCats();
   const r = cats.get(id);
   const [del, setDel] = useState(false);
-  if (!r) return <Page><PageTitle title="Category not found" right={<Button variant="outlined" onClick={() => nav('/inventory/categories')}>Back to Item Category</Button>} /></Page>;
-  const subs = subCategoriesOf(cats.rows, r.name);
+  if (!r) return <Page><PageTitle title="Category not found" right={<Button variant="outlined" onClick={() => nav(CAT_BASE)}>Back to Item Category</Button>} /></Page>;
+  const top = isTopCategory(r);
+  const subs = cats.rows.filter((c) => top && c.parent === r.name);
+  const parent = cats.rows.find((c) => isTopCategory(c) && c.name === r.parent);
+  const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Item Category', to: '/inventory/categories' }, { label: r.name }]}
+        crumbs={[{ label: 'Item Category', to: CAT_BASE }, { label: top ? r.name : `${r.parent} / ${r.name}` }]}
         status={<StatusChip status={r.status} />}
-        actions={<><Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button><Button variant="contained" onClick={() => nav(`/inventory/categories/${r.id}/edit`)}>Edit</Button></>}
+        actions={<>
+          <Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button>
+          <Button variant="outlined" onClick={() => { cats.update(r.id, { status: flip }); toast(`Category marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
+          <Button variant="contained" onClick={() => nav(`${CAT_BASE}/${r.id}/edit`)}>Edit</Button>
+        </>}
       />
       <Page sx={{ pt: 2 }}>
         <ValueGrid cols={4}>
-          <ValueField label="Parent Category" value={r.parent === '-' ? undefined : r.parent} />
-          <ValueField label="Level" value={String(r.level)} />
-          <ValueField label="Category Type" value={categoryTypeOf(r)} change="new" req={REQ_CAT_TYPE} />
+          <ValueField label="Parent Category" value={top ? undefined : parent ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`${CAT_BASE}/${parent.id}`)}>{r.parent}</Box> : r.parent} />
           <ValueField label="Category Name" value={r.name} />
           <ValueField label="Brand" value={r.brand} />
           <ValueField label="Description" value={r.description} />
@@ -163,165 +221,21 @@ export function CategoryView() {
           <ValueField label="Unique Items" value={r.uniqueItems === undefined ? undefined : String(r.uniqueItems)} />
           <ValueField label="Status" value={<StatusChip status={r.status} />} />
           <ValueField label="Depreciation Method Override" value={r.depMethod} change="new" req="Depreciation & Valuation > Method Override (per Category)" />
-          {r.level === 1 && <ValueField label="Sub Categories" value={subs.length ? subs.join(', ') : undefined} />}
+          {top && <ValueField label="Sub Categories" value={subs.length ? subs.map((x) => x.name).join(', ') : undefined} />}
         </ValueGrid>
-        <Panel title="Attributes" change="changed" req={`${REQ_CAT} > Custom Attributes`} sx={{ mt: 3 }}>
-          {r.attributes.length === 0 ? <Text type="s5" color="theme.secondary.700">No attributes defined</Text> : (
-            <DataTable<AttributeDef> rows={r.attributes} hideToolbar columns={[
-              { key: 'name', label: 'Attribute' }, { key: 'type', label: 'Field Type' }, { key: 'options', label: 'Values', render: (a) => a.options || '-' },
-              { key: 'required', label: 'Required', change: 'new', req: `${REQ_CAT} > Custom Attributes`, render: (a) => (a.required ? 'Yes' : 'No') },
-            ]} />
-          )}
-        </Panel>
+        {top && (
+          <Panel title="Sub-Categories" sx={{ mt: 3 }} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => nav(`${CAT_BASE}/add?parent=${encodeURIComponent(r.name)}`)}>Add Sub-Category</Button>}>
+            {subs.length === 0 ? <Text type="s5" color="theme.secondary.700">No sub-categories yet</Text> : (
+              <DataTable<CategoryRec> rows={subs} hideToolbar onRowClick={(x) => nav(`${CAT_BASE}/${x.id}`)} columns={[
+                { key: 'name', label: 'Sub-Category Name' }, { key: 'status', label: 'Status', render: (x) => <StatusChip status={x.status} /> },
+              ]} />
+            )}
+          </Panel>
+        )}
+        <AttributesTable attributes={r.attributes} />
       </Page>
-      <ConfirmDialog open={del} danger title="Delete category" description={`Delete ${r.name}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(false)}
-        onConfirm={() => { cats.replace(cats.rows.filter((c) => c.id !== r.id && c.parent !== r.name)); toast('Category deleted'); nav('/inventory/categories'); }} />
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ Heavy Equipment Pricing (new) */
-const REQ_PREVIEW = 'Heavy Equipment Pricing > Billing Frequency Preview (POC review aid)';
-/** Days each billing frequency stands for in the preview: 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months, 1 year = 12 months. */
-const FREQ_DAYS: Record<string, number> = { Daily: 1, Weekly: 7, Monthly: 30, Quarterly: 90, Yearly: 360 };
-const fmtN = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-/** How a frequency's price is derived from the set price, in words (e.g. "600 × 7 days", "18,000 ÷ 30 days"). */
-function howDerived(price: number, from: number, to: number) {
-  if (from === to) return 'Price you entered';
-  if (to % from === 0) return `${fmtN(price)} × ${to / from}${from === 1 ? ' days' : ''}`;
-  if (from % to === 0) return `${fmtN(price)} ÷ ${from / to}${to === 1 ? ' days' : ''}`;
-  return `${fmtN(price)} ÷ ${from} days × ${to} days`;
-}
-
-/** Read-only preview of the set price converted into every billing frequency. Nothing here is saved. */
-function FrequencyPreview({ price, frequency }: { price: number; frequency: string }) {
-  const from = FREQ_DAYS[frequency];
-  const ready = !!from && price > 0;
-  const rows = FREQUENCIES.map((fq) => ({ id: fq, frequency: fq, price: ready ? round2((price / from) * FREQ_DAYS[fq]) : 0, how: ready ? howDerived(price, from, FREQ_DAYS[fq]) : '', set: fq === frequency }));
-  return (
-    <Panel title="Billing Frequency Preview" change="new" req={REQ_PREVIEW} sx={{ mt: 3 }}>
-      {!ready ? <Text type="s5" color="theme.secondary.700">Enter a price and select a frequency to see the preview.</Text> : (
-        <>
-          <DataTable<(typeof rows)[number]> rows={rows} hideToolbar columns={[
-            { key: 'frequency', label: 'Frequency', render: (r) => <Text type="s4" weight={r.set ? 'medium' : undefined}>{r.frequency}{r.set ? ' (set)' : ''}</Text> },
-            { key: 'price', label: 'Price', align: 'right', render: (r) => <Text type="s4" weight={r.set ? 'medium' : undefined}>{aed(r.price)}</Text> },
-            { key: 'how', label: 'How it is worked out', render: (r) => r.how },
-          ]} />
-          <Box sx={{ mt: 1.5, display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-            <InfoOutlinedIcon sx={{ fontSize: 18, mt: '2px', color: 'text.secondary' }} />
-            <Box>
-              <Text type="s5" color="theme.secondary.700">Preview only. Actual invoices follow the rental dates on the order.</Text>
-              <Text type="s5" color="theme.secondary.700">
-                Converted using 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months and 1 year = 12 months (360 days), and rounded to 2 decimals.
-                Because of this, figures can differ by a few fils from what you get by multiplying a rounded figure back (for example AED 14 monthly is AED 0.47 daily, but 0.47 × 30 = AED 14.10).
-                Real calendar months (28 to 31 days) and years (365 days) are not reflected here.
-              </Text>
-            </Box>
-          </Box>
-        </>
-      )}
-    </Panel>
-  );
-}
-
-export function PricingList() {
-  const nav = useNavigate();
-  const toast = useToast();
-  const pricing = useCollection<PricingRec>('inventory.pricing', pricingSeed);
-  const [del, setDel] = useState<PricingRec | null>(null);
-  return (
-    <Page>
-      <PageTitle title="Heavy Equipment Pricing" change="new" req={REQ_PRICING} />
-      <DataTable<PricingRec>
-        rows={pricing.rows} searchPlaceholder="Search pricing..."
-        onAdd={() => nav('/inventory/pricing/add')} addLabel="Add Price" onRowClick={(r) => nav(`/inventory/pricing/${r.id}`)}
-        columns={[
-          { key: 'category', label: 'Category' },
-          { key: 'subCategory', label: 'Sub-Category' },
-          { key: 'price', label: 'Price', align: 'right', render: (r) => aed(r.price) },
-          { key: 'frequency', label: 'Frequency' },
-        ]}
-        actions={[{ label: 'Edit', onClick: (r) => nav(`/inventory/pricing/${r.id}/edit`) }, { label: 'Delete', danger: true, onClick: setDel }]}
-      />
-      <ConfirmDialog open={!!del} danger title="Delete price" description={`Delete the ${del?.frequency} price for ${del?.category}${del?.subCategory ? ` / ${del.subCategory}` : ''}?`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { pricing.remove(del.id); toast('Price deleted'); } }} />
-    </Page>
-  );
-}
-
-export function PricingForm() {
-  const { id } = useParams();
-  const nav = useNavigate();
-  const toast = useToast();
-  const cats = useCats();
-  const pricing = useCollection<PricingRec>('inventory.pricing', pricingSeed);
-  const existing = id ? pricing.get(id) : undefined;
-  const [f, setF] = useState({ category: existing?.category ?? '', subCategory: existing?.subCategory ?? '', price: existing ? String(existing.price) : '', frequency: existing?.frequency ?? '' });
-  const [err, setErr] = useState<Errors>({});
-  const subs = subCategoriesOf(cats.rows, f.category);
-  const save = () => {
-    const e: Errors = {};
-    if (isBlank(f.category)) e.category = 'Category is required';
-    if (isBlank(f.price) || Number(f.price) <= 0) e.price = 'Price must be greater than 0';
-    if (isBlank(f.frequency)) e.frequency = 'Frequency is required';
-    if (!Object.keys(e).length && pricing.rows.some((p) => p.id !== existing?.id && p.category === f.category && p.subCategory === f.subCategory && p.frequency === f.frequency)) e.frequency = 'A price already exists for this Category, Sub-Category and Frequency';
-    setErr(e);
-    if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: PricingRec = { id: existing?.id ?? `pr${Date.now()}`, category: f.category, subCategory: f.subCategory, price: Number(f.price), frequency: f.frequency };
-    if (existing) pricing.update(rec.id, rec); else pricing.add(rec);
-    toast(existing ? 'Price updated' : 'Price added');
-    nav(`/inventory/pricing/${rec.id}`);
-  };
-  return (
-    <>
-      <FormHeader
-        crumbs={[{ label: 'Heavy Equipment Pricing', to: '/inventory/pricing' }, { label: existing ? 'Edit Price' : 'Add Price' }]}
-        actions={<><Button variant="outlined" onClick={() => nav('/inventory/pricing')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
-      />
-      <Page sx={{ pt: 2 }}>
-        <Box sx={{ maxWidth: 1100 }}>
-          <FormGrid>
-            <SelectInput label="Category" required change="new" req={REQ_PRICING} value={f.category} options={topCategories(cats.rows)} onChange={(v) => setF({ ...f, category: v, subCategory: '' })} error={err.category} />
-            <SelectInput label="Sub-Category" change="new" req={REQ_PRICING} value={f.subCategory} options={subs} disabled={!f.category || subs.length === 0} onChange={(v) => setF({ ...f, subCategory: v })} />
-            <NumberInput label="Price (AED)" required change="new" req={REQ_PRICING} value={f.price} onChange={(v) => setF({ ...f, price: v })} error={err.price} />
-            <SelectInput label="Frequency" required change="new" req={REQ_PRICING} value={f.frequency} options={FREQUENCIES} onChange={(v) => setF({ ...f, frequency: v })} error={err.frequency} />
-          </FormGrid>
-          <FrequencyPreview price={Number(f.price) || 0} frequency={f.frequency} />
-        </Box>
-      </Page>
-    </>
-  );
-}
-
-export function PricingView() {
-  const { id } = useParams();
-  const nav = useNavigate();
-  const toast = useToast();
-  const pricing = useCollection<PricingRec>('inventory.pricing', pricingSeed);
-  const r = pricing.get(id);
-  const [del, setDel] = useState(false);
-  if (!r) return <Page><PageTitle title="Price not found" right={<Button variant="outlined" onClick={() => nav('/inventory/pricing')}>Back to Heavy Equipment Pricing</Button>} /></Page>;
-  const label = `${r.category}${r.subCategory ? ` / ${r.subCategory}` : ''}`;
-  return (
-    <>
-      <FormHeader
-        crumbs={[{ label: 'Heavy Equipment Pricing', to: '/inventory/pricing' }, { label: `${label} (${r.frequency})` }]}
-        actions={<><Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button><Button variant="contained" onClick={() => nav(`/inventory/pricing/${r.id}/edit`)}>Edit</Button></>}
-      />
-      <Page sx={{ pt: 2 }}>
-        <Box sx={{ maxWidth: 1100 }}>
-          <ValueGrid cols={4}>
-            <ValueField label="Category" value={r.category} change="new" req={REQ_PRICING} />
-            <ValueField label="Sub-Category" value={r.subCategory || undefined} change="new" req={REQ_PRICING} />
-            <ValueField label="Price" value={aed(r.price)} change="new" req={REQ_PRICING} />
-            <ValueField label="Frequency" value={r.frequency} change="new" req={REQ_PRICING} />
-          </ValueGrid>
-          <FrequencyPreview price={r.price} frequency={r.frequency} />
-        </Box>
-      </Page>
-      <ConfirmDialog open={del} danger title="Delete price" description={`Delete the ${r.frequency} price for ${label}?`} confirmLabel="Delete" onClose={() => setDel(false)}
-        onConfirm={() => { pricing.remove(r.id); toast('Price deleted'); nav('/inventory/pricing'); }} />
+      <ConfirmDialog open={del} danger title="Delete category" description={`Delete ${r.name}${top ? ' and its sub-categories' : ''}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(false)}
+        onConfirm={() => { cats.replace(cats.rows.filter((c) => c.id !== r.id && !(top && c.parent === r.name))); toast('Category deleted'); nav(CAT_BASE); }} />
     </>
   );
 }

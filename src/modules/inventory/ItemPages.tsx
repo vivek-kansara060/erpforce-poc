@@ -12,7 +12,8 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categoryOptions, categorySeed, topCategories, subCategoriesOf, nextItemCode, locationStockSeed, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, qtyWithUnit, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { CategorySelect, SubCategorySelect } from './Masters';
 import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
@@ -20,7 +21,7 @@ const isSerialized = (t?: string) => t === 'Serialized';
 const TRACK_LABEL: Record<string, string> = { Serialized: 'Serialized', Quantity: 'Quantity', Length: 'Length (or applicable UOM)' };
 
 /* ------------------------------------------------------------------ list */
-interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
+interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; assetStatus?: string; ownerGroup?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
 export const HEAVY_PATH = '/inventory/items/heavy';
 
 export function ItemList() {
@@ -32,7 +33,7 @@ export function ItemList() {
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
     ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status })),
-    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
+    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, assetStatus: r.assetStatus, ownerGroup: r.ownership === 'Cross-Hired' ? 'Cross-Hire Asset' : 'Own Asset', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
   const open = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}` : `/inventory/items/${r.id}`);
@@ -44,6 +45,7 @@ export function ItemList() {
         { key: 'category', label: 'Category', change: 'new', req: REQ_HE },
         { key: 'subCategory', label: 'Sub-Category', change: 'new', req: REQ_HE },
         { key: 'name', label: 'Name' },
+        { key: 'assetStatus', label: 'Asset Status', change: 'new', req: REQ_HE, render: (r) => <StatusChip status={r.assetStatus ?? '-'} /> },
         { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
         { key: 'stockStatus', label: 'Stock Status', change: 'new', req: REQ_HE, render: (r) => <StatusChip status={r.stockStatus ?? '-'} tone={r.stockStatus === 'In Stock' ? 'green' : 'amber'} /> },
       ]
@@ -70,6 +72,7 @@ export function ItemList() {
       <DataTable<Row>
         key={heavyView ? 'heavy' : 'all'}
         rows={view} columns={cols}
+        filter={heavyView ? { key: 'ownerGroup', options: ['Own Asset', 'Cross-Hire Asset'] } : undefined}
         searchPlaceholder="Search items..."
         onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add')} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
         onRowClick={open}
@@ -137,9 +140,8 @@ export function ItemForm() {
           options={PRODUCT_CLASSIFICATIONS.filter((c) => c !== 'Rental' || f.classification === 'Rental')} onChange={set('classification')} error={errors.classification}
           hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
-        <SelectInput label="Category" required change="new" req={REQ_ITEM} value={f.category} options={categoryOptions(cats.rows, 'Normal', f.category)} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
-        <SelectInput label="Sub-Category" change="new" req={REQ_ITEM} value={f.subCategory} options={subCategoriesOf(cats.rows, f.category)} disabled={!f.category || subCategoriesOf(cats.rows, f.category).length === 0}
-          hint={f.category && subCategoriesOf(cats.rows, f.category).length === 0 ? 'No sub-categories under this category' : 'Optional, depends on Category'} onChange={set('subCategory')} />
+        <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
+        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={set('subCategory')} />
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}
           hint={f.tracking === 'Length' ? 'Select the applicable UOM, e.g. Meter' : undefined} />
         <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
@@ -249,13 +251,13 @@ export function ItemView() {
                 <ValueField label="Reorder Point" value={r.minStock === undefined ? undefined : fmtNum(r.minStock)} />
                 <ValueField label="Reorder Quantity" value={r.reorderQty === undefined ? undefined : fmtNum(r.reorderQty)} />
                 <ValueField label="Use Bins" value={r.useBins ? 'Yes' : 'No'} />
-                <ValueField label="Stock on Hand (all locations)" value={`${fmtNum(r.stock)} ${r.unit}`} />
+                <ValueField label="Stock on Hand (all locations)" value={qtyWithUnit(r.stock, r.unit)} />
               </ValueGrid>
               {stockRows.length > 0 && (
                 <Panel title="Location wise stock" sx={{ mt: 2 }}>
                   <DataTable<LocationStock> hideToolbar rows={stockRows} pageSize={10} columns={[
                     { key: 'location', label: 'Location' },
-                    { key: 'qty', label: `Quantity (${r.unit})`, align: 'right', render: (x) => fmtNum(x.qty) },
+                    { key: 'qty', label: 'Quantity', align: 'right', render: (x) => qtyWithUnit(x.qty, r.unit) },
                   ]} />
                 </Panel>
               )}
