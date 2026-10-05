@@ -22,7 +22,7 @@ import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
 import { AssetCertificates, AssetReadings } from './AssetPages';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
-import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
+import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, followBrand, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
 const REQ_FA = 'Fixed Asset Register';
@@ -139,7 +139,7 @@ export function HeavyForm() {
   const existing = id ? heavy.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavy.rows.map((r) => r.code));
   const assetId = existing?.assetId ?? `AST-${1000 + Number(code.replace(/\D/g, ''))}`;
-  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, image: existing.image, nameAuto: existing.name === suggestedName(existing) } : { ...blank, nameAuto: true }));
+  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, image: existing.image, nameAuto: existing.name === suggestedName(existing) } : { ...blank, nameAuto: true, brandAuto: true }));
   const [errors, setErrors] = useState<Errors>({});
   const [tab, setTab] = useState({ key: 0, initial: 0 });
   const [leave, setLeave] = useState(false);
@@ -159,7 +159,7 @@ export function HeavyForm() {
   const chRec = crossHires.rows.find((c) => c.id === chId);
   const chOptions = crossHires.rows.filter((c) => (!c.heavyId || c.heavyId === existing?.id) && c.stage !== 'Returned to Supplier').map((c) => ({ value: c.id, label: chLabel(c) }));
   // Picking the cross-hire record fills everything it already knows, so nothing is typed twice.
-  const pickCrossHire = (cid: string) => { const c = crossHires.rows.find((x) => x.id === cid); if (!c) return; upd({ crossHireId: cid, supplier: c.supplier, category: c.category, subCategory: c.subCategory, brand: c.brand, model: c.model, capacity: c.capacity, engineNo: c.engineNo, initialLocation: c.receivedAt, purchaseDate: c.hireStart, nameAuto: true, attrs: {} }); };
+  const pickCrossHire = (cid: string) => { const c = crossHires.rows.find((x) => x.id === cid); if (!c) return; upd({ crossHireId: cid, supplier: c.supplier, category: c.category, subCategory: c.subCategory, brand: c.brand, brandAuto: false, model: c.model, capacity: c.capacity, engineNo: c.engineNo, initialLocation: c.receivedAt, purchaseDate: c.hireStart, nameAuto: true, attrs: {} }); };
 
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
@@ -224,8 +224,8 @@ export function HeavyForm() {
         {crossHired && chRec && <TextInput label="Hire Period" change="new" req={REQ_CH} value={`${chRec.hireStart} to ${chRec.expectedReturn} (expected return)`} disabled hint="From the cross-hire record" />}
         <AssetTypeSelect value={f.assetType} onChange={set('assetType')} error={errors.assetType} />
         <CategorySelect value={f.category} error={errors.category} req={REQ_HE} disabled={crossHired && !!chRec}
-          onChange={(v) => { const dm = cats.rows.find((c) => isTopCategory(c) && c.name === v)?.depMethod; upd({ category: v, subCategory: '', attrs: {}, ...(dm ? { method: dm } : {}) }); }} />
-        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_HE} disabled={crossHired && !!chRec} onChange={(v) => upd({ subCategory: v, attrs: {} })} />
+          onChange={(v) => { const dm = cats.rows.find((c) => isTopCategory(c) && c.name === v)?.depMethod; upd({ category: v, subCategory: '', attrs: {}, ...(dm ? { method: dm } : {}), ...followBrand(cats.rows, f, v, '') }); }} />
+        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_HE} disabled={crossHired && !!chRec} onChange={(v) => upd({ subCategory: v, attrs: {}, ...followBrand(cats.rows, f, f.category, v) })} />
         <Box sx={{ position: 'relative' }}>
           <TextInput label="Asset Name" required change="new" req={REQ_NAME} value={assetName} onChange={(v) => upd({ name: v, nameAuto: false })} error={errors.name}
             hint={f.nameAuto ? 'Suggested from Category, Sub-Category, Brand and Model. Type to change it.' : 'Custom name'} />

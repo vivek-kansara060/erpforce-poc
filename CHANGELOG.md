@@ -12,6 +12,15 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 5 Oct, around 4:00 PM: Brand is set on the category or sub-category and filled into the asset and item forms, where it can still be changed
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Brand existed on the Item Category form and on the asset form, but the two were not connected: the category's brand was never used, and Brand on the asset was an empty free-text box.
+*What we did.* On the **Heavy Equipment Fixed Asset** form and on the **Item** form (serialized items), picking a Category or Sub-Category now fills **Brand**: the sub-category's brand first, otherwise the category's brand. A note under the field says where it came from ("Filled from Sub-Category, you can change it"). The user can still pick another brand. Once they do, changing the category no longer overwrites it. An asset or item that is being edited keeps its saved brand. Cross-hired units still take Brand from the cross-hire record. Brand is now a dropdown on the category, asset and item forms, all reading one shared brand list, with **Create New Brand** as the last row. On **Item Category**, the Brand field explains that it fills the asset and item forms. The sample data now has brands on several categories and sub-categories (for example Generator > 500 KVA is Cummins, Generator > 200 KVA is Perkins, Panel is Emirates Cable & Panel); Vehicle has none, because its trucks are of mixed brands.
+*Be aware.* Brand on the asset form was free text before. It is now picked from the brand list, and a missing brand is added with Create New Brand.
+
 ### 5 Oct, around 9:30 PM: CRM forms rebuilt on the existing ERP, second call with Ajin applied, Rental module kept as the existing system
 **Where:** CRM / Sales > Orders > Lead
 **Where:** CRM / Sales > Orders > Opportunity

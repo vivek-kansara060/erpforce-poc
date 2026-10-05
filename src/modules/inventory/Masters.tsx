@@ -11,8 +11,8 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { ATTRIBUTE_TYPES, BRANDS, DEPRECIATION_METHODS, categoryOptions, categorySeed, isTopCategory, subCategoriesOf, type AttributeDef, type CategoryRec } from './data';
-import { AddableSelect, QuickAddDialog, type Errors } from './shared';
+import { ATTRIBUTE_TYPES, DEPRECIATION_METHODS, categoryOptions, categorySeed, isTopCategory, subCategoriesOf, type AttributeDef, type CategoryRec } from './data';
+import { AddableSelect, BrandSelect, QuickAddDialog, type Errors } from './shared';
 
 const REQ_CAT = 'Category & Sub-Category Master';
 const CAT_BASE = '/inventory/categories';
@@ -170,7 +170,8 @@ export function CategoryForm() {
             <SelectInput label="Parent Category" value={f.parent} options={['', ...parentOptions].map((o) => ({ value: o, label: o || 'None (top-level category)' }))} placeholder="None (top-level category)" onChange={set('parent')} disabled={hasChildren}
               hint={hasChildren ? 'This category has sub-categories, so it stays a top-level category' : 'Leave empty for a top-level category, select one to create a Sub-Category'} />
             <TextInput label="Category Name" required value={f.name} onChange={set('name')} error={errors.name} />
-            <SelectInput label="Brand" value={f.brand} options={BRANDS} onChange={set('brand')} />
+            <BrandSelect value={f.brand} onChange={set('brand')} change="changed" req={`${REQ_CAT} > Brand (fills the asset and item forms)`}
+              hint={f.parent ? 'Filled into Brand on the asset and item forms for this sub-category, editable there' : "Filled into Brand on the asset and item forms, editable there (a sub-category's own brand is used first)"} />
             <TextInput label="Description" value={f.description} onChange={set('description')} full multiline rows={2} />
             <TextInput label="SKU Prefix" value={f.skuPrefix} onChange={set('skuPrefix')} />
             <NumberInput label="Unique Items" value={f.uniqueItems} onChange={set('uniqueItems')} />
