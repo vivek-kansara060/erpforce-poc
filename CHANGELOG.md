@@ -12,6 +12,53 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 5 Oct, around 4:30 PM: Lead, Opportunity, Quotation, Sales Order and Delivery Order rebuilt on the existing ERP forms
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The previous CRM build reorganised the existing screens into new layouts. The instruction is to keep the existing flow and forms and add only the new and related changes.
+*What we did.* Each screen now has the existing tabs, sections, field order and item-table columns. Lead: Basic Details, Address and Contact tabs, Owner Details, Follow Up, Classifications. Opportunity: four tabs and an item table. Quotation and Sales Order: General Details or Basic Details, Address and Contact, Shipping and Promotion tabs, an item table with the existing columns and a column chooser, an item dialog, Discounts and the totals summary. Delivery Order: header fields, an item table with Trace Details, Transportation. The new items sit inside those places and are marked NEW or CHANGED: Activity Type, Lost Reason, Next Follow-Up, Opportunity Title, Project, Contact Person, Company as the Entity, header contract and AMC fields, Document Template, Prepared By, VAT Type, rental columns (Category, Subcategory, Frequency, dates, periods), Allocation Tag, FOC, Rental Start Date, Subcategory substitution, Transport Type and cost, e-signature.
+*Be aware.* The header Delivery Commitment Date on the Quotation is kept (earlier removed) and Opportunity items are optional. Both are recorded in `docs/crm-decisions.md`. The Delivery Order now also delivers trading and fuel items.
+
+### 2 Oct, around 6:30 PM: CRM screens reworked after the client meetings: one Activity Type per document, contract in the header, ERP-style line table
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Reports
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The first CRM build followed the requirement document literally: Activity Type per line, Contract Type per line, duplicate check on the Lead, "Group / Category" wording and dashboards. In the meetings from 17 Sep to 2 Oct the client moved away from several of these points, and he asked that every list be a master with an add option and that reports have per-column filters and totals.
+*What we did.* The eight open questions and the decision applied to each are in `docs/crm-decisions.md`. In short: one Activity Type chosen at the top of the Lead, Opportunity, Quotation and Sales Order (a Rental document may also carry Service and Fuel Trading lines). Contract Type, Start and End Date sit in the header, and Open PO defaults to 31 December. The duplicate warning moved to the Opportunity (Title, Project, Customer and Contact all the same). Quotation and Sales Order have an ERP-style line table (Category, Subcategory, pricing line, frequency, dates, periods, qty, price, discount, taxable, VAT, total) with an editable description. Other changes: Entity (Company) is the first field, service and damage waiver lines, a Send by Email dialog, an LPO expiry alert with Extend, traceability on the Sales Order, AMC visit plan, Rental Start Date on the Delivery Order, failed collection and a collection note on returns, and eight filterable reports with sticky totals. The CRM dashboards were removed for now.
+*Be aware.* No Inventory file was changed; the quotation only reads the existing Heavy Equipment Pricing list. Rental screens were touched only where they read the order data. The period calculation (days, weeks, months between dates) is to be confirmed with the client.
+
+### 2 Oct, around 2:00 PM: Activity Type and the Sales to Rental workflow now run through the existing Sales Order and the existing Fixed Asset Register
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Rental > Orders
+**Where:** Rental > Rental > Replacement Orders
+**Where:** Rental > Rental > Renewals and Expiry
+**Where:** Rental > Cross Hire > Requests
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The CRM and Rental modules were empty placeholders, so the new workflow (Enquiry, Opportunity, Quotation, Sales Order, then Rental, Trading, Service or AMC) could not be shown on top of the existing ERP, and the Activity Type concept did not exist anywhere.
+*What we did.* Built the screens by extending the existing ones rather than adding a separate rental system. A mapping of Existing, New Requirement and Combined POC is in `docs/poc-mapping.md`.
+- **Activity Type** is chosen on the Lead and Opportunity (multi-select) and then on every Quotation and Sales Order line (Rental, Trading, Fuel Trading, AMC, Service, Other). The line decides which fields apply and which next step the Sales Order offers.
+- **Sales Order** is the hub. Each line shows its status and one next step: Rental lines go to Deliver or Return, Trading and Fuel Trading to Issue Stock / Invoice, Service to Charge / Invoice, AMC to Record Visit / Billing. A rental line also shows how many units of its Group and Category are Ready for Hire right now.
+- **Rental flow.** If no owned unit is available, Raise Cross-Hire appears; a received cross-hired unit becomes selectable at Delivery. Delivery assigns the exact serialized asset from the confirmed Category only, sets it On Hire (or Hold if the site is not ready) and starts that delivery's billing. Replacement swaps assets in one transaction, sends the old one to Under Maintenance and does not pause billing. Renewals and Expiry notifies, then Extends the same Sales Order, records an Early Termination or goes to Return. Return stops billing at the entered time, goes through the Yard and two-stage inspection, and ends in Ready for Hire or Under Maintenance with a damage charge.
+- **One asset record.** All of this reads and updates the Fixed Asset Register already in Inventory (status, Movement History, audit), so Inventory screens show the effect immediately.
+*Be aware.* Lead statuses, sources and Opportunity stages keep the existing values and add the document's values. Customer Management, Agreements, RFQ, Billing Cycle, Procurement, Accounting and HRMS screens are not rebuilt in this POC. Items marked "to be confirmed with client" in the document carry the same visible note. Amounts in the Asset Ledger and the checklists' content are sample values.
+
 ### 1 Oct, around 6:15 PM: The back arrow in the top bar now returns to the previous page, as in the existing ERP
 **Where:** POC Review Tools > Top bar > Back arrow
 **Type:** EXISTING WITH CHANGE
