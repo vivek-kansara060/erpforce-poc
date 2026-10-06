@@ -1,3 +1,4 @@
+import { PrintDialog } from './ActionDialogs';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
@@ -10,7 +11,7 @@ import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
 import { nextNumber } from '@/store/store';
-import { ACTIVITY_TYPES, DEPARTMENTS, OPP_PROBABILITY, OPP_STAGES, PRIORITIES, RATINGS, SALESPEOPLE, TODAY, WIN_LOSS_REASONS, YARDS, availability, custName, isRentalLine, masterValues, type Line, type Opportunity } from './data';
+import { ACTIVITY_TYPES, DEPARTMENTS, OPP_PROBABILITY, OPP_STAGES, PRIORITIES, RATINGS, SALESPEOPLE, TODAY, WIN_LOSS_REASONS, yards, availability, custName, isRentalLine, masterValues, type Line, type Opportunity } from './data';
 import { duplicateOpportunity, quoteFromOpportunity } from './flow';
 import { ItemsTable } from './Items';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from './FormKit';
@@ -41,33 +42,32 @@ function Pipeline({ open, onClose, rows }: { open: boolean; onClose: () => void;
 const specs = (): { basic: Spec[]; owner: Spec[]; classification: Spec[] } => ({
   /* existing Opportunity fields in the existing order; NEW items are marked */
   basic: [
+    { key: 'entity', label: 'Entity', type: 'master', master: 'entity', required: true, change: 'changed', req: R.meet, hint: 'First field, as agreed on the 5 Oct call' },
     { key: 'number', label: 'ID', type: 'readonly' },
     { key: 'customerId', label: 'Customer', type: 'select', options: customers.map((c) => ({ value: c.id, label: c.name })), required: true, value: (f) => f.customerId },
     { key: 'title', label: 'Opportunity Title', required: true, change: 'new', req: R.opp, hint: 'Searchable, carried to the Quotation, e.g. Rent 120 KVA for LGME Contracting' },
     { key: 'project', label: 'Project', required: true, change: 'new', req: R.meet, hint: "The client's project or site" },
     { key: 'contact', label: 'Contact Person', required: true, change: 'new', req: R.meet },
-    { key: 'activity', label: 'Activity Type', type: 'select', options: [...ACTIVITY_TYPES], required: true, change: 'new', req: R.meet, hint: 'One Activity Type per opportunity' },
+    { key: 'activity', label: 'Activity Type', type: 'select', options: [...ACTIVITY_TYPES], change: 'new', req: R.meet, hint: 'Optional here, the detail is known at the Quotation. One Activity Type per opportunity' },
     { key: 'expectedClose', label: 'Expected Closing Date', type: 'date', required: true },
     { key: 'estimated', label: 'Expected Revenue', type: 'number' },
     { key: 'stage', label: 'Stage', type: 'select', options: OPP_STAGES, required: true, change: 'changed', req: R.opp, hint: 'Existing stages kept; Enquiry, Quoted and Won added' },
     { key: 'probability', label: 'Probability', type: 'number', hint: 'Filled from the Stage, editable' },
     { key: 'winLossReason', label: 'Win/Loss Reason', type: 'select', options: WIN_LOSS_REASONS, show: (f) => ['Won', 'Lost'].includes(f.stage) },
     { key: 'phone', label: 'Phone Number' }, { key: 'emailId', label: 'Email ID' },
-    { key: 'entity', label: 'Company', type: 'master', master: 'entity', required: true },
     { key: 'website', label: 'Website' }, { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
     { key: 'vat', label: 'VAT Number', hint: '15 digits' }, { key: 'crn', label: 'CRN', hint: '10 digits' }, { key: 'reference', label: 'Reference No.' },
     { key: 'priority', label: 'Priority', type: 'select', options: PRIORITIES },
     { key: 'rating', label: 'Rating', type: 'select', options: RATINGS, change: 'new', req: R.opp },
     { key: 'forecast', label: 'Sales Forecast Value', type: 'readonly', change: 'new', req: R.opp, value: (f) => aed(forecast({ estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 })), hint: 'Expected Revenue x Probability. Formula and period to be confirmed with client' },
     { key: 'approvalRequired', label: 'Approval Required', type: 'check', change: 'new', req: R.opp, hint: 'Off by default. Thresholds to be confirmed with client' },
-    { key: 'lpo', label: 'LPO Number', change: 'new', req: R.opp }, { key: 'lpoDate', label: 'LPO Date', type: 'date', change: 'new', req: R.opp },
     { key: 'site', label: 'Location / Site', change: 'new', req: R.opp }, { key: 'nextAction', label: 'Next Action', change: 'new', req: R.opp },
   ],
   owner: [
-    { key: 'owner', label: 'Salesperson', type: 'select', options: SALESPEOPLE, required: true }, { key: 'phone', label: 'Phone Number', type: 'readonly' }, { key: 'emailId', label: 'Email ID', type: 'readonly' }, { key: 'entity', label: 'Company', type: 'readonly' },
+    { key: 'owner', label: 'Salesperson', type: 'select', options: SALESPEOPLE, required: true }, { key: 'phone', label: 'Phone Number', type: 'readonly' }, { key: 'emailId', label: 'Email ID', type: 'readonly' },
     { key: 'source', label: 'Source', type: 'master', master: 'leadSource' }, { key: 'industry', label: 'Industry', type: 'master', master: 'industry' }, { key: 'narration', label: 'Narration', type: 'textarea' },
   ],
-  classification: [{ key: 'location', label: 'Location', type: 'select', options: YARDS }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }],
+  classification: [{ key: 'location', label: 'Location', type: 'select', options: yards }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }],
 });
 
 export function OpportunityList({ activity }: { activity?: string } = {}) {
@@ -80,7 +80,7 @@ export function OpportunityList({ activity }: { activity?: string } = {}) {
       <DataTable<Opportunity> rows={activity ? opps.rows.filter((o) => o.activity === activity) : opps.rows} searchPlaceholder="Search by title, customer, project..." filter={{ key: 'stage', options: OPP_STAGES }} onAdd={() => nav('/crm/opportunities/add')} addLabel="Add Opportunity"
         toolbarRight={<Button variant="outlined" onClick={() => setPipe(true)}>View Sales Pipeline</Button>} onRowClick={(r) => nav(`/crm/opportunities/${r.id}`)}
         columns={[
-          { key: 'number', label: 'ID' }, { key: 'title', label: 'Opportunity Title', change: 'new', req: R.meet }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'entity', label: 'Company', render: (r) => r.entity ?? 'Gulf Power Rentals LLC' },
+          { key: 'number', label: 'ID' }, { key: 'title', label: 'Opportunity Title', change: 'new', req: R.meet }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'entity', label: 'Entity', render: (r) => r.entity ?? 'Gulf Power Rentals LLC' },
           { key: 'project', label: 'Project', change: 'new', req: R.meet }, { key: 'activity', label: 'Activity Type', change: 'new', req: R.meet, render: (r) => <ActivityChip activity={r.activity} /> },
           { key: 'estimated', label: 'Expected Revenue', align: 'right', render: (r) => aed(r.estimated) },
           { key: 'stage', label: 'Stage', render: (r) => <StatusChip status={r.stage} /> }, { key: 'expectedClose', label: 'Closing Date' }, { key: 'contact', label: 'Contact Name' }, { key: 'owner', label: 'Salesperson' },
@@ -100,7 +100,7 @@ export function OpportunityForm() {
   const pricing = usePricing();
   const ex = id ? opps.get(id) : undefined;
   const S = specs();
-  const [f, setF] = useState<Record<string, any>>(() => ({ number: ex?.number ?? 'Auto-generated', customerId: '', contact: '', project: '', title: '', owner: 'Leena Thomas', activity: '', stage: 'Enquiry', rating: 'Warm', lines: [] as Line[], estimated: 0, probability: 10, expectedClose: '', source: '', lpo: '', lpoDate: '', site: '', approvalRequired: false, nextAction: '', entity: masterValues('entity')[0], currency: 'AED', priority: 'Medium', phone: '', emailId: '', website: '', vat: '', crn: '', reference: '', industry: '', narration: '', location: '', department: '', recordStatus: 'Active', attachments: [], followUps: [], addresses: [], contacts: [], ...(ex ?? {}) }));
+  const [f, setF] = useState<Record<string, any>>(() => ({ number: ex?.number ?? 'Auto-generated', customerId: '', contact: '', project: '', title: '', owner: 'Leena Thomas', activity: '', stage: 'Enquiry', rating: 'Warm', lines: [] as Line[], estimated: 0, probability: 10, expectedClose: '', source: '', site: '', approvalRequired: false, nextAction: '', entity: masterValues('entity')[0], currency: 'AED', priority: 'Medium', phone: '', emailId: '', website: '', vat: '', crn: '', reference: '', industry: '', narration: '', location: '', department: '', recordStatus: 'Active', attachments: [], followUps: [], addresses: [], contacts: [], ...(ex ?? {}) }));
   const [err, setErr] = useState<Record<string, string>>({});
   const [dup, setDup] = useState<Opportunity | undefined>();
   const set = (k: string, v: any) => setF((x) => {
@@ -119,7 +119,7 @@ export function OpportunityForm() {
   };
   const save = () => {
     const e: Record<string, string> = {};
-    ['customerId', 'contact', 'project', 'title', 'owner', 'activity', 'stage', 'expectedClose', 'entity', 'currency'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
+    ['customerId', 'contact', 'project', 'title', 'owner', 'stage', 'expectedClose', 'entity', 'currency'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
     if (f.vat && !/^\d{15}$/.test(f.vat)) e.vat = 'VAT Number must be 15 digits';
     if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
     setErr(e);
@@ -159,6 +159,7 @@ export function OpportunityView() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [printOpen, setPrintOpen] = useState(false);
   const opps = useOpps();
   const quotes = useQuotes();
   const fleet = useFleet();
@@ -172,7 +173,7 @@ export function OpportunityView() {
     <>
       <FormHeader crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: o.number }]} status={<StatusChip status={o.stage} />}
         actions={<>
-          <MenuButton label="Actions" items={[{ label: 'Edit', disabled: !!qt || o.stage === 'Won', onClick: () => nav(`/crm/opportunities/${o.id}/edit`) }, { label: 'Duplicate', onClick: () => toast('Opportunity duplicated as a draft', 'info') }, { label: 'Delete', disabled: !!qt, onClick: () => { opps.remove(o.id); nav('/crm/opportunities'); } }]} />
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Opportunity" /><MenuButton label="Actions" items={[{ label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Edit', disabled: !!qt || o.stage === 'Won', onClick: () => nav(`/crm/opportunities/${o.id}/edit`) }, { label: 'Duplicate', onClick: () => toast('Opportunity duplicated as a draft', 'info') }, { label: 'Delete', disabled: !!qt, onClick: () => { opps.remove(o.id); nav('/crm/opportunities'); } }]} />
           {o.leadId && <Button variant="outlined" onClick={() => nav(`/crm/leads/${o.leadId}`)}>View Lead</Button>}
           {qt ? <Button variant="contained" onClick={() => nav(`/crm/quotations/${qt.id}`)}>View Quotation</Button> : <Button variant="contained" onClick={() => { const q = quoteFromOpportunity(o); toast('Quotation created from the Opportunity'); nav(`/crm/quotations/${q}/edit`); }}>Make Quotation</Button>}
         </>} />

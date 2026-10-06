@@ -12,16 +12,16 @@ import { ConfirmDialog, useToast } from '@/components/Dialogs';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { fmtNum } from '@/mock-data/masters';
-import { PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, qtyWithUnit, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
+import { SERVICE_BILLING, SERVICE_TYPES, PRODUCT_CLASSIFICATIONS, TRACKING_METHODS, ITEM_TYPES, UOMS, itemSeed, heavySeed, heavyCodes, stockStatusOf, attributesFor, categorySeed, nextItemCode, locationStockSeed, qtyWithUnit, type LocationStock, type ItemRec, type CategoryRec, type HeavyRec } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
-import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_HE, SerializedFields, SerializedView, followBrand, requireFields, validateSerialized, aed, type Errors } from './shared';
+import { AttributeFields, AttributeValues, validateAttrs, FileList, PhotoBox, PhotoInput, REQ_ITEM, REQ_SERVICE, REQ_HE, SerializedFields, SerializedView, requireFields, validateSerialized, aed, type Errors } from './shared';
 
 const useItems = () => useCollection<ItemRec>('items', itemSeed);
 const isSerialized = (t?: string) => t === 'Serialized';
 const TRACK_LABEL: Record<string, string> = { Serialized: 'Serialized', Quantity: 'Quantity', Length: 'Length (or applicable UOM)' };
 
 /* ------------------------------------------------------------------ list */
-interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; assetStatus?: string; ownerGroup?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string }
+interface Row { id: string; kind: 'item' | 'heavy'; assetId?: string; assetStatus?: string; ownerGroup?: string; code: string; sku: string; name: string; type: string; classification: string; category: string; subCategory: string; minStock?: number; status: string; stockStatus?: string; serviceType?: string; billing?: string; price?: number }
 export const HEAVY_PATH = '/inventory/items/heavy';
 
 export function ItemList() {
@@ -32,7 +32,7 @@ export function ItemList() {
   const [type, setType] = useState('All');
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
-    ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status })),
+    ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status, serviceType: r.serviceType, billing: r.billing, price: r.price })),
     ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, assetStatus: r.assetStatus, ownerGroup: r.ownership === 'Cross-Hired' ? 'Cross-Hire Asset' : 'Own Asset', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
@@ -56,7 +56,13 @@ export function ItemList() {
         { key: 'type', label: 'Type' },
         { key: 'classification', label: 'Product Classification', change: 'new', req: REQ_ITEM },
         { key: 'category', label: 'Category', change: 'new', req: REQ_ITEM },
-        { key: 'minStock', label: 'Reorder Level', align: 'right', render: (r) => (r.minStock === undefined ? '-' : fmtNum(r.minStock)) },
+        ...(type === 'Service'
+          ? [
+              { key: 'serviceType', label: 'Service Type', change: 'new' as const, req: REQ_SERVICE },
+              { key: 'billing', label: 'Billing', change: 'new' as const, req: REQ_SERVICE },
+              { key: 'price', label: 'Default Price (AED)', align: 'right' as const, render: (r: Row) => aed(r.price ?? 0) },
+            ]
+          : [{ key: 'minStock', label: 'Reorder Level', align: 'right' as const, render: (r: Row) => (r.minStock === undefined ? '-' : fmtNum(r.minStock)) }]),
         { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
       ];
   return (
@@ -90,7 +96,7 @@ export function ItemList() {
 
 /* ------------------------------------------------------------------ form */
 const blank = { type: 'Inventory', sku: '', name: '', classification: '', category: '', subCategory: '', tracking: '', unit: '', costingMethod: 'Average Cost', traceability: 'No Tracking', useBins: false, price: '', costPrice: '', minStock: '', reorderQty: '', status: 'Active',
-  brand: '', model: '', engineNo: '', capacity: '', purchaseDate: '', assetValue: '', nbv: '', deprPct: '', deprAmount: '', capex: '', image: undefined as string | undefined, attachments: [] as string[], attrs: {} as Record<string, string> };
+  serviceType: '', billing: '', description: '', brand: '', model: '', engineNo: '', capacity: '', purchaseDate: '', assetValue: '', nbv: '', deprPct: '', deprAmount: '', capex: '', image: undefined as string | undefined, attachments: [] as string[], attrs: {} as Record<string, string> };
 
 export function ItemForm() {
   const { id } = useParams();
@@ -110,6 +116,7 @@ export function ItemForm() {
 
   const save = (draft: boolean) => {
     const e = requireFields(f, ['name', 'sku', 'type', 'classification', 'category', 'tracking', 'unit'], { classification: 'Product Classification', tracking: 'Tracking Method', unit: 'UOM' });
+    if (f.type === 'Service') Object.assign(e, requireFields(f, ['serviceType', 'billing'], { serviceType: 'Service Type', billing: 'Billing' }));
     if (serial) Object.assign(e, validateSerialized(f));
     Object.assign(e, validateAttrs(attrDefs, f.attrs));
     setErrors(e);
@@ -121,6 +128,7 @@ export function ItemForm() {
       price: n('price') ?? 0, stock: existing?.stock ?? 0, minStock: n('minStock'), reorderQty: n('reorderQty'), spare: existing?.spare, status: draft ? 'Inactive' : f.status,
       costingMethod: f.costingMethod, traceability: f.traceability, useBins: f.useBins, costPrice: n('costPrice'),
       ...(serial ? { brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity, purchaseDate: f.purchaseDate, assetValue: n('assetValue'), nbv: n('nbv'), deprPct: n('deprPct'), deprAmount: n('deprAmount'), capex: n('capex') } : {}),
+      ...(f.type === 'Service' ? { serviceType: f.serviceType || undefined, billing: f.billing || undefined, description: f.description || undefined } : {}),
       image: f.image, attachments: f.attachments, attrs: f.attrs,
     };
     if (existing) items.update(existing.id, rec); else items.add(rec);
@@ -133,7 +141,6 @@ export function ItemForm() {
       <FormGrid>
         <SelectInput label="Type" required value={f.type} options={existing ? ITEM_TYPES.filter((t) => t !== 'Heavy Equipment Fixed Asset') : ITEM_TYPES} error={errors.type}
           onChange={(v) => { if (v === 'Heavy Equipment Fixed Asset') { toast('Heavy Equipment Fixed Assets are created in the Heavy Equipment Fixed Asset form'); nav(`${HEAVY_PATH}/add`); return; } set('type')(v); }} />
-        <TextInput label="Item Code" change="new" req={REQ_ITEM} value={code} disabled hint="Auto-generated" />
         <TextInput label="SKU" required value={f.sku} onChange={set('sku')} error={errors.sku} />
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
         <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification}
@@ -145,6 +152,9 @@ export function ItemForm() {
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}
           hint={f.tracking === 'Length' ? 'Select the applicable UOM, e.g. Meter' : undefined} />
         <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
+        {f.type === 'Service' && <SelectInput label="Service Type" required change="new" req={REQ_SERVICE} value={f.serviceType} options={SERVICE_TYPES} onChange={set('serviceType')} error={errors.serviceType} hint="A Waiver blocks the damage charge at return" />}
+        {f.type === 'Service' && <SelectInput label="Billing" required change="new" req={REQ_SERVICE} value={f.billing} options={SERVICE_BILLING} onChange={set('billing')} error={errors.billing} hint="Recurring follows the frequency of the quotation" />}
+        {f.type === 'Service' && <TextInput label="Description" change="new" req={REQ_SERVICE} multiline rows={2} full value={f.description} onChange={set('description')} />}
       </FormGrid>
       <AttributeFields defs={attrDefs} values={f.attrs} onChange={set('attrs')} errors={errors} />
       {serial ? (
@@ -232,6 +242,8 @@ export function ItemView() {
               <ValueField label="Category" value={r.category} change="new" req={REQ_ITEM} />
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_ITEM} />
               <ValueField label="UOM" value={r.unit} />
+              {r.type === 'Service' && <ValueField label="Service Type" value={r.serviceType} change="new" req={REQ_SERVICE} />}
+              {r.type === 'Service' && <ValueField label="Billing" value={r.billing} change="new" req={REQ_SERVICE} />}
             </ValueGrid>
           </Box>
         </Box>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { MenuButton, useToast } from '@/components/Dialogs';
@@ -15,7 +15,7 @@ import { orderFromQuotation, reviseQuotation } from './flow';
 import { ActivityChip, R, aed, useFleet, useOpps, usePricing, useQuotes } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
 import { ItemsTable, lineErrors } from './Items';
-import { EmailDialog } from './ActionDialogs';
+import { EmailDialog, PrintDialog } from './ActionDialogs';
 
 export { Totals };
 
@@ -52,6 +52,8 @@ export function QuotationForm() {
   const opps = useOpps();
   const fleet = useFleet();
   const pricing = usePricing();
+  const [sp] = useSearchParams();
+  const onlyActivity = sp.get('activity');
   const ex = id ? quotes.get(id) : undefined;
   const locked = !!ex && !['Draft', 'Rejected'].includes(ex.status);
   const [f, setF] = useState<Record<string, any>>(() => ex ? toForm(ex, opps.get(ex.oppId)?.number, opps.get(ex.oppId)?.title) : toForm({ oppId: '', activity: undefined, entity: '', customerId: '', description: '', validUntil: '', preparedBy: 'Leena Thomas', designation: 'Sales Representative', mobile: '+971 50 400 1101', email: 'sales@gulfpowerrentals.ae', template: '', terms: 'Payment: as per the payment terms from invoice date. Fuel is not included in the rental rate and is billed separately.', vatType: VAT_TYPES[0], discountPct: 0, pushToOpp: false, lines: [] as Line[] } as any));
@@ -59,7 +61,7 @@ export function QuotationForm() {
   const [lineErr, setLineErr] = useState<string[]>([]);
   const set = (k: string, v: any) => setF((x) => withHeaderCascade(x, k, v));
   const opp = opps.get(f.oppId);
-  const pickOpp = (v: string) => { const o = opps.get(v); setF((x) => ({ ...x, oppId: v, oppNo: o?.number, title: o?.title, customerId: o?.customerId ?? '', activity: o?.activity, entity: o?.entity ?? x.entity, currency: o?.currency ?? x.currency, description: x.description || o?.title || '', contactPerson: o?.contact ?? '', lines: [] })); };
+  const pickOpp = (v: string) => { const o = opps.get(v); setF((x) => ({ ...x, oppId: v, oppNo: o?.number, title: o?.title, customerId: o?.customerId ?? '', activity: o?.activity || onlyActivity || undefined, entity: o?.entity ?? x.entity, currency: o?.currency ?? x.currency, description: x.description || o?.title || '', contactPerson: o?.contact ?? '', lines: [] })); };
   const save = () => {
     const e: Record<string, string> = { ...commercialErrors(f) };
     ['oppId', 'validUntil', 'preparedBy', 'designation', 'mobile', 'email', 'template'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
@@ -80,7 +82,7 @@ export function QuotationForm() {
       <Page sx={{ pt: 2 }}>
         {locked && <Alert severity="info" sx={{ mb: 2 }}>This quotation is {ex!.status}. Use Create Revision on the view page to change it; the previous version is retained in full.</Alert>}
         {lineErr.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>{lineErr.map((m) => <div key={m}>{m}</div>)}</Alert>}
-        {!ex && <Box sx={{ mb: 2, maxWidth: 640 }}><SelectInput label="Opportunity" required value={f.oppId} options={opps.rows.filter((o) => !o.quotationId || o.id === f.oppId).map((o) => ({ value: o.id, label: `${o.number} - ${o.title}` }))} onChange={pickOpp} error={err.oppId} hint="A Quotation is generated from an Opportunity; Customer, Company and Activity Type come from it" /></Box>}
+        {!ex && <Box sx={{ mb: 2, maxWidth: 640 }}><SelectInput label="Opportunity Title" required value={f.oppId} options={opps.rows.filter((o) => (!o.quotationId || o.id === f.oppId) && (!onlyActivity || !o.activity || o.activity === onlyActivity)).map((o) => ({ value: o.id, label: `${o.title} (${custName(o.customerId)})` }))} onChange={pickOpp} error={err.oppId} hint="Search by Opportunity Title. A Quotation is generated from an Opportunity; Customer and Entity come from it" /></Box>}
         {f.oppId && (
           <CommercialTabs kind="quote" f={f} set={set} err={err} locked={locked}
             items={f.activity ? <>
@@ -97,6 +99,7 @@ export function QuotationView() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [printOpen, setPrintOpen] = useState(false);
   const quotes = useQuotes();
   const opps = useOpps();
   const fleet = useFleet();
@@ -117,9 +120,10 @@ export function QuotationView() {
           {['Draft', 'Rejected'].includes(q.status) && <Button variant="outlined" onClick={() => nav(`/crm/quotations/${q.id}/edit`)}>Edit</Button>}
           {q.status === 'Draft' && <Button variant="outlined" onClick={() => setStatus('Submitted for Approval', 'Submitted for approval')}>Submit for Approval</Button>}
           {q.status === 'Submitted for Approval' && <><Button variant="outlined" color="error" onClick={() => setStatus('Rejected', 'Quotation rejected')}>Reject</Button><Button variant="outlined" onClick={() => setStatus('Approved', 'Quotation approved')}>Approve</Button></>}
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Quotation" />
           <MenuButton label="Actions" items={[
             { label: 'Create Revision', disabled: !['Approved', 'Converted to Sales Order', 'Submitted for Approval', 'Rejected'].includes(q.status), onClick: () => { const n = reviseQuotation(q); toast('Revision created, the previous version is retained'); nav(`/crm/quotations/${n}/edit`); } },
-            { label: 'Print', onClick: () => toast('Print preview generated with the item descriptions (Allocation Tag is never printed)', 'info') },
+            { label: 'Print', onClick: () => setPrintOpen(true) },
             { label: 'Proforma Invoice', onClick: () => toast('Proforma Invoice generated', 'info') },
             { label: 'Send by Email', onClick: () => setMail(true) },
           ]} />

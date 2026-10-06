@@ -57,7 +57,6 @@ export function LocationList() {
           { key: 'code', label: 'Location Code', change: 'new', req: REQ },
           { key: 'name', label: 'Name' },
           { key: 'type', label: 'Location Type', change: 'new', req: REQ },
-          { key: 'city', label: 'City', render: (r) => r.city || '-' },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status ?? 'Active'} /> },
         ]}
         actions={[
@@ -79,7 +78,7 @@ export function LocationForm() {
   const sup = useCollection('suppliers', suppliers);
   const existing = id ? locs.get(id) : undefined;
   const code = existing?.code ?? `LOC-${String(locs.rows.reduce((m, l) => Math.max(m, Number(l.code.replace(/\D/g, '')) || 0), 0) + 1).padStart(4, '0')}`;
-  const [f, setF] = useState<Record<string, any>>(() => ({ name: existing?.name ?? '', shortName: existing?.shortName ?? '', type: existing?.type ?? '', supplierId: existing?.supplierId ?? '', city: existing?.city ?? '', inventoryAvailable: existing ? existing.inventoryAvailable : true, status: existing?.status ?? 'Active' }));
+  const [f, setF] = useState<Record<string, any>>(() => ({ name: existing?.name ?? '', shortName: existing?.shortName ?? '', type: existing?.type ?? '', supplierId: existing?.supplierId ?? '', inventoryAvailable: existing ? existing.inventoryAvailable : true, status: existing?.status ?? 'Active' }));
   const [errors, setErrors] = useState<Errors>({});
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
   const held = f.type === SUPPLIER_HELD;
@@ -88,7 +87,7 @@ export function LocationForm() {
     if (!e.name && locs.rows.some((l) => l.id !== existing?.id && l.name.toLowerCase() === f.name.trim().toLowerCase())) e.name = 'A location with this name already exists';
     setErrors(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const rec: LocationRec = { id: existing?.id ?? `l${Date.now()}`, code, name: f.name.trim(), shortName: f.shortName.trim(), type: f.type, supplierId: held ? f.supplierId : undefined, city: f.city.trim(), inventoryAvailable: !!f.inventoryAvailable, status: f.status };
+    const rec: LocationRec = { id: existing?.id ?? `l${Date.now()}`, code, name: f.name.trim(), shortName: f.shortName.trim(), type: f.type, supplierId: held ? f.supplierId : undefined, inventoryAvailable: !!f.inventoryAvailable, status: f.status };
     if (existing) locs.update(rec.id, rec); else locs.add(rec);
     toast(existing ? 'Location updated' : 'Location created');
     nav(`/inventory/locations/${rec.id}`);
@@ -101,11 +100,9 @@ export function LocationForm() {
         <FormGrid>
           <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
           <TextInput label="Short Name" value={f.shortName} onChange={set('shortName')} />
-          <TextInput label="Location Code" change="new" req={REQ} value={code} disabled hint="Auto-generated" />
           <SelectInput label="Location Type" required change="new" req={REQ} value={f.type} options={LOCATION_TYPES} onChange={(v) => setF((x) => ({ ...x, type: v, supplierId: '' }))} error={errors.type}
             hint="A client project site is not a location, it is tracked in Movement History" />
           {held && <SelectInput label="Linked Supplier" required change="new" req={REQ} value={f.supplierId} options={sup.rows.map((s: any) => ({ value: s.id, label: s.name }))} onChange={set('supplierId')} error={errors.supplierId} hint="Supplier whose premises hold the business's own stock" />}
-          <TextInput label="City" change="changed" req={REQ_SIMPLE} value={f.city} onChange={set('city')} />
           <CheckInput label="Inventory Available" checked={f.inventoryAvailable} onChange={set('inventoryAvailable')} />
           <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
         </FormGrid>
@@ -137,7 +134,6 @@ export function LocationView() {
           <ValueField label="Location Code" value={r.code} change="new" req={REQ} />
           <ValueField label="Location Type" value={r.type} change="new" req={REQ} />
           {held && <ValueField label="Linked Supplier" value={(sup.rows as any[]).find((s) => s.id === r.supplierId)?.name} change="new" req={REQ} />}
-          <ValueField label="City" value={r.city} />
           <ValueField label="Inventory Available" value={r.inventoryAvailable ? 'Yes' : 'No'} />
         </ValueGrid>
         <LocationStockTable location={r.name} supplierHeld={held} />

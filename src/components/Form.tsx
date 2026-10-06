@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Box, Checkbox, Chip, FormControlLabel, MenuItem, Select, Switch, TextField, Button, OutlinedInput } from '@mui/material';
+import { Box, Checkbox, Chip, FormControlLabel, MenuItem, Select, Switch, TextField, Button, OutlinedInput, Tooltip } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { Text } from './Text';
 import { ChangeTag, Marked } from './ChangeTag';
@@ -26,9 +26,10 @@ export function FieldShell({ label, required, hint, change, req, full, error, ch
       <Text type="s5" weight="medium" color={error ? '#C64D4D' : 'theme.secondary.800'} sx={{ mb: 0.5 }}>
         {label}{required && <span style={{ color: '#C64D4D' }}> *</span>}
         <ChangeTag kind={change} req={req} />
+        {hint && <Tooltip title={hint} arrow placement="top"><Box component="span" aria-label="Help" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ml: 0.75, width: 15, height: 15, borderRadius: '50%', border: '1px solid #8C8FB0', color: '#6B6E94', fontSize: 10, fontWeight: 700, lineHeight: 1, cursor: 'help', verticalAlign: 'middle' }}>?</Box></Tooltip>}
       </Text>
       {children}
-      {(hint || error) && <Text type="s5" color={error ? '#C64D4D' : 'theme.secondary.700'} sx={{ mt: 0.5 }}>{error ?? hint}</Text>}
+      {error && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5 }}>{error}</Text>}
     </Box>
   );
 }

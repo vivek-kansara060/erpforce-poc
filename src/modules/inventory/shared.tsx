@@ -6,11 +6,14 @@ import { useCollection } from '@/store/store';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { Text } from '@/components/Text';
 import { FieldShell, FormGrid, FormSection, NumberInput, SelectInput, TextInput, DateInput, ValueField, ValueGrid } from '@/components/Form';
-import { brandFor, brandSeed, type AttributeDef, type BrandRec, type CategoryRec } from './data';
+import { useCollection } from '@/store/store';
+import { brandSeed, certTypeSeed, type AttributeDef, type BrandRec, type CertTypeRec } from './data';
 import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 
 export const REQ_ITEM = 'Item Master > New Fields';
+export const REQ_SERVICE = 'Meeting 5 Oct: rental service lines come from Inventory service items';
+export const REQ_BRAND = 'Meeting 5 Oct: Brand is a global master chosen on the asset or item';
 export const REQ_HE = 'Product Management > Heavy Equipment Fixed Asset';
 
 export type Errors = Record<string, string>;
@@ -28,7 +31,7 @@ export function requireFields(f: Record<string, any>, keys: string[], labels: Re
 
 /** Validation shared by the serialized / asset-tracked field group. */
 export function validateSerialized(f: Record<string, any>, skipValues = false): Errors {
-  const e = requireFields(f, ['brand', 'model', 'engineNo', 'capacity', ...(skipValues ? [] : ['purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex'])]);
+  const e = requireFields(f, ['brand', 'model', 'engineNo', 'capacity', ...(skipValues ? [] : ['purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount'])]);
   if (skipValues) return e;
   const av = num(f.assetValue), nbv = num(f.nbv), pct = num(f.deprPct);
   if (!e.assetValue && av <= 0) e.assetValue = 'Asset Value must be greater than 0';
@@ -74,14 +77,51 @@ export function PhotoInput({ label = 'Item Image / Photo', value, onChange, chan
   );
 }
 
+/** Brand dropdown backed by the Brand master, with Create New as the last row. */
+export function BrandSelect({ value, onChange, error, req, required = true }: { value: string; onChange: (v: string) => void; error?: string; req?: string; required?: boolean }) {
+  const brands = useCollection<BrandRec>('inventory.brands', brandSeed);
+  const [open, setOpen] = useState(false);
+  const names = brands.rows.filter((b) => b.status === 'Active').map((b) => b.name);
+  return (
+    <>
+      <AddableSelect label="Brand" required={required} change="changed" req={req ?? REQ_BRAND} value={value} options={value && !names.includes(value) ? [...names, value] : names} onChange={onChange} error={error} onAdd={() => setOpen(true)} />
+      <QuickAddDialog open={open} title="Add Brand" label="Brand Name" onClose={() => setOpen(false)}
+        onSave={(name) => {
+          if (brands.rows.some((b) => b.name.trim().toLowerCase() === name.toLowerCase())) return 'This brand already exists';
+          brands.add({ id: `br${Date.now()}`, name, status: 'Active' });
+          onChange(name);
+          return undefined;
+        }} />
+    </>
+  );
+}
+
+/** Certificate / Document Type dropdown backed by a master, with Create New as the last row. */
+export function CertTypeSelect({ value, onChange, error, req, hint }: { value: string; onChange: (v: string) => void; error?: string; req: string; hint?: string }) {
+  const types = useCollection<CertTypeRec>('inventory.certTypes', certTypeSeed);
+  const [open, setOpen] = useState(false);
+  const names = types.rows.filter((t) => t.status === 'Active').map((t) => t.name);
+  return (
+    <>
+      <AddableSelect label="Certificate / Document Type" required change="changed" req={req} value={value} options={value && !names.includes(value) ? [...names, value] : names} onChange={onChange} error={error} hint={hint} onAdd={() => setOpen(true)} />
+      <QuickAddDialog open={open} title="Add Certificate Type" label="Type Name" onClose={() => setOpen(false)}
+        onSave={(name) => {
+          if (types.rows.some((t) => t.name.trim().toLowerCase() === name.toLowerCase())) return 'This type already exists';
+          types.add({ id: `ct${Date.now()}`, name, status: 'Active' });
+          onChange(name);
+          return undefined;
+        }} />
+    </>
+  );
+}
+
 /** Brand / Model / Engine Number / Capacity and the asset value group (form). Mandatory for serialized items. */
 export function SerializedFields({ f, upd, errors, req, withNotDepreciable, hideValues }: { f: Record<string, any>; upd: (patch: Record<string, any>) => void; errors: Errors; req: string; withNotDepreciable?: boolean; hideValues?: boolean }) {
   const s = (k: string) => (v: string) => upd({ [k]: v });
   return (
     <>
       <FormGrid>
-        <BrandSelect required change="new" req={req} value={f.brand} onChange={(v) => upd({ brand: v, brandAuto: false })} error={errors.brand}
-          hint={f.brandAuto && f.brand && f.brandFrom ? `Filled from ${f.brandFrom}, you can change it` : undefined} />
+        <BrandSelect value={f.brand} onChange={s('brand')} error={errors.brand} req={req} />
         <TextInput label="Model" required change="new" req={req} value={f.model} onChange={s('model')} error={errors.model} />
         <TextInput label="Engine Number" required change="new" req={req} value={f.engineNo} onChange={s('engineNo')} error={errors.engineNo} />
         <TextInput label="Capacity" required change="new" req={req} value={f.capacity} onChange={s('capacity')} error={errors.capacity} hint="e.g. 500 KVA, 40 Ton" />
@@ -91,13 +131,13 @@ export function SerializedFields({ f, upd, errors, req, withNotDepreciable, hide
         <FormGrid>
           <DateInput label="Purchase Date" required change="new" req={req} value={f.purchaseDate} onChange={s('purchaseDate')} error={errors.purchaseDate} />
           <NumberInput label="Asset Value (AED)" required change="new" req={req} value={f.assetValue} error={errors.assetValue}
-            onChange={(v) => upd({ assetValue: v, ...deriveDepreciation(v, f.nbv) })} />
+            onChange={(v) => upd({ assetValue: v, capex: v, ...deriveDepreciation(v, f.nbv) })} />
           {withNotDepreciable && <NumberInput label="Not Depreciable Value (AED)" change="new" req={req} value={f.notDepreciable} onChange={s('notDepreciable')} />}
           <NumberInput label="Current Net Book Value (AED)" required change="new" req={req} value={f.nbv} error={errors.nbv}
             onChange={(v) => upd({ nbv: v, ...deriveDepreciation(f.assetValue, v) })} />
           <NumberInput label="Depreciation %" required change="new" req={req} value={f.deprPct} onChange={s('deprPct')} error={errors.deprPct} />
           <NumberInput label="Depreciated Amount (AED)" required change="new" req={req} value={f.deprAmount} onChange={s('deprAmount')} error={errors.deprAmount} />
-          <NumberInput label="CapEx Value (AED)" required change="new" req={req} value={f.capex} onChange={s('capex')} error={errors.capex} />
+          <NumberInput label="CapEx Value (AED)" disabled change="changed" req={req} value={f.capex || f.assetValue} hint="Auto-fetched from the purchase entry and any later modification in Accounting, not typed here" />
         </FormGrid>
       </Box>}
     </>

@@ -60,6 +60,8 @@ export const suppliers: Supplier[] = [
   { id: 's6', code: 'SUP-0006', name: 'Gulf Genset Rentals', type: 'Cross-Hire Company', classification: 'New', tradeLicense: 'SHJ-331200', trn: '100777023400003', contact: 'Ravi Menon', phone: '+971 55 210 4471', email: 'ops@gulfgenset.ae', creditPeriod: 30, creditLimit: 500000, rating: 3.6, active: true, paymentTerms: 'Net 30' },
   { id: 's7', code: 'SUP-0007', name: 'Emirates Cable & Panel Works', type: 'Equipment Manufacturer', classification: '', tradeLicense: 'DED-410093', trn: '100340118800003', contact: 'Peter Dsouza', phone: '+971 4 285 6601', email: 'info@ecpworks.ae', creditPeriod: 45, creditLimit: 600000, rating: 3.9, active: true, paymentTerms: 'Net 45' },
   { id: 's8', code: 'SUP-0008', name: 'Prime Field Services', type: 'Service Provider', classification: 'Blacklisted', tradeLicense: 'DED-118872', trn: '100290014400003', contact: 'Ali Reza', phone: '+971 56 902 1188', email: 'ali@primefield.ae', creditPeriod: 0, creditLimit: 0, rating: 2.1, active: false, paymentTerms: 'Advance' },
+  { id: 's9', code: 'SUP-0009', name: 'Gulf Haulage and Transport LLC', type: 'Service Provider', classification: 'Preferred', tradeLicense: 'DED-552310', trn: '100290014400011', contact: 'Ali Reza', phone: '+971 56 902 1188', email: 'ali@primefield.ae', creditPeriod: 0, creditLimit: 0, rating: 2.1, active: false, paymentTerms: 'Advance' },
+  { id: 's10', code: 'SUP-0010', name: 'Al Safeer Heavy Transport', type: 'Service Provider', classification: 'New', tradeLicense: 'DED-660218', trn: '100290014400029', contact: 'Ali Reza', phone: '+971 56 902 1188', email: 'ali@primefield.ae', creditPeriod: 0, creditLimit: 0, rating: 2.1, active: false, paymentTerms: 'Advance' },
 ];
 
 export interface LocationMaster {

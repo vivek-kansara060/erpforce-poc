@@ -11,11 +11,14 @@ import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
-import { ATTRIBUTE_TYPES, DEPRECIATION_METHODS, categoryOptions, categorySeed, isTopCategory, subCategoriesOf, type AttributeDef, type CategoryRec } from './data';
-import { AddableSelect, BrandSelect, QuickAddDialog, type Errors } from './shared';
+import { ATTRIBUTE_TYPES, brandSeed, DEPRECIATION_METHODS, categoryOptions, categorySeed, isTopCategory, subCategoriesOf, type AttributeDef, type BrandRec, type CategoryRec } from './data';
+import { AddableSelect, QuickAddDialog, REQ_BRAND, type Errors } from './shared';
+import { AppDialog } from '@/components/Dialogs';
 
 const REQ_CAT = 'Category & Sub-Category Master';
 const CAT_BASE = '/inventory/categories';
+const SUB_BASE = '/inventory/sub-categories';
+const baseOf = (r: Pick<CategoryRec, 'parent'>) => (isTopCategory(r) ? CAT_BASE : SUB_BASE);
 const useCats = () => useCollection<CategoryRec>('inventory.categories', categorySeed);
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -97,43 +100,48 @@ function AttributesTable({ attributes }: { attributes: AttributeDef[] }) {
   );
 }
 
-/* ================================================================== Item Category (one screen for categories and sub-categories, no Level) */
-export function CategoryList() {
+/* ================================================================== Item Category and Item Sub-Category: two separate masters (5 Oct call) */
+export function CategoryList({ sub = false }: { sub?: boolean }) {
   const nav = useNavigate();
   const toast = useToast();
   const cats = useCats();
   const [del, setDel] = useState<CategoryRec | null>(null);
+  const base = sub ? SUB_BASE : CAT_BASE;
+  const rows = cats.rows.filter((c) => (sub ? !isTopCategory(c) : isTopCategory(c)));
   return (
     <Page>
-      <PageTitle title="Item Category" subtitle="Categories and their sub-categories. A sub-category has a Parent, for example Generator > 100 KVA." />
+      <PageTitle title={sub ? 'Item Sub-Category' : 'Item Category'} subtitle={sub ? 'Sub-categories, each under a Category, for example 100 KVA under Generator. Brand is chosen on the asset, not here.' : 'Top-level categories such as Generator. Sub-categories have their own master.'} change="changed" req={REQ_CAT} />
       <DataTable<CategoryRec>
-        rows={cats.rows} searchPlaceholder="Search categories..." pageSize={12}
-        onAdd={() => nav(`${CAT_BASE}/add`)} addLabel="Add Category" onRowClick={(r) => nav(`${CAT_BASE}/${r.id}`)}
+        rows={rows} searchPlaceholder={sub ? 'Search sub-categories...' : 'Search categories...'} pageSize={12}
+        onAdd={() => nav(`${base}/add`)} addLabel={sub ? 'Add Sub-Category' : 'Add Category'} onRowClick={(r) => nav(`${base}/${r.id}`)}
         columns={[
-          { key: 'name', label: 'Category Name' },
-          { key: 'parent', label: 'Parent', render: (r) => (isTopCategory(r) ? '-' : r.parent) },
+          { key: 'name', label: sub ? 'Sub-Category Name' : 'Category Name' },
+          ...(sub ? [{ key: 'parent', label: 'Category' }] : []),
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
-          { key: 'sub', label: 'Sub Categories', sortable: false, align: 'right', render: (r) => (isTopCategory(r) ? cats.rows.filter((c) => c.parent === r.name).length : 0) },
+          ...(sub ? [] : [{ key: 'sub', label: 'Sub Categories', sortable: false, align: 'right' as const, render: (r: CategoryRec) => cats.rows.filter((c) => c.parent === r.name).length }]),
         ]}
         actions={[
-          { label: 'View', onClick: (r) => nav(`${CAT_BASE}/${r.id}`) },
-          { label: 'Edit', onClick: (r) => nav(`${CAT_BASE}/${r.id}/edit`) },
+          { label: 'View', onClick: (r) => nav(`${base}/${r.id}`) },
+          { label: 'Edit', onClick: (r) => nav(`${base}/${r.id}/edit`) },
           { label: 'Delete', danger: true, onClick: setDel },
         ]}
       />
-      <ConfirmDialog open={!!del} danger title="Delete category" description={`Delete ${del?.name}${del && isTopCategory(del) ? ' and its sub-categories' : ''}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(null)}
-        onConfirm={() => { if (del) { cats.replace(cats.rows.filter((c) => c.id !== del.id && !(isTopCategory(del) && c.parent === del.name))); toast('Category deleted'); } }} />
+      <ConfirmDialog open={!!del} danger title="Delete" description={`Delete ${del?.name}${del && isTopCategory(del) ? ' and its sub-categories' : ''}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(null)}
+        onConfirm={() => { if (del) { cats.replace(cats.rows.filter((c) => c.id !== del.id && !(isTopCategory(del) && c.parent === del.name))); toast('Deleted'); } }} />
     </Page>
   );
 }
+export const SubCategoryList = () => <CategoryList sub />;
 
-export function CategoryForm() {
+export function CategoryForm({ sub: forceSub = false }: { sub?: boolean } = {}) {
   const { id } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
   const cats = useCats();
   const existing = id ? cats.get(id) : undefined;
+  const sub = forceSub || (!!existing && !isTopCategory(existing));
+  const base = sub ? SUB_BASE : CAT_BASE;
   const [f, setF] = useState(() => ({
     parent: existing ? (isTopCategory(existing) ? '' : existing.parent) : params.get('parent') ?? '',
     name: existing?.name ?? '', brand: existing?.brand ?? '', description: existing?.description ?? '', skuPrefix: existing?.skuPrefix ?? '',
@@ -147,36 +155,36 @@ export function CategoryForm() {
   const parentOptions = cats.rows.filter((c) => isTopCategory(c) && c.id !== existing?.id && (c.status === 'Active' || c.name === f.parent)).map((c) => c.name);
   const save = () => {
     const e: Errors = {};
-    if (!f.name.trim()) e.name = 'Category Name is required';
+    if (!f.name.trim()) e.name = sub ? 'Sub-Category Name is required' : 'Category Name is required';
+    if (sub && !f.parent) e.parent = 'Select the Category this sub-category belongs to';
     else if (cats.rows.some((c) => c.id !== existing?.id && same(c.name, f.name) && (f.parent ? c.parent === f.parent : isTopCategory(c)))) e.name = f.parent ? `A sub-category with this name already exists under ${f.parent}` : 'A category with this name already exists';
     const ae = attributeError(f.attributes);
     if (ae) e.attributes = ae;
     setErrors(e);
     if (Object.keys(e).length) { toast('Please correct the highlighted fields', 'error'); return; }
-    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', status: f.active ? 'Active' : 'Inactive', brand: f.brand || undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
+    const rec: CategoryRec = { id: existing?.id ?? `cat${Date.now()}`, name: f.name.trim(), parent: f.parent || '-', status: f.active ? 'Active' : 'Inactive', brand: undefined, description: f.description || undefined, skuPrefix: f.skuPrefix || undefined, uniqueItems: Number(f.uniqueItems) || 1, attributes: f.attributes, depMethod: f.depMethod || undefined };
     // Renaming a category keeps its sub-categories attached to it.
     if (existing) cats.replace(cats.rows.map((c) => (c.id === rec.id ? rec : isTopCategory(existing) && c.parent === existing.name ? { ...c, parent: rec.name } : c)));
     else cats.add(rec);
-    toast(existing ? 'Category updated' : 'Category created');
-    nav(`${CAT_BASE}/${rec.id}`);
+    toast(existing ? 'Saved' : sub ? 'Sub-Category created' : 'Category created');
+    nav(`${base}/${rec.id}`);
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Item Category', to: CAT_BASE }, { label: existing ? `Edit ${existing.name}` : 'Add Category' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(CAT_BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? `Edit ${existing.name}` : sub ? 'Add Sub-Category' : 'Add Category' }]}
+        actions={<><Button variant="outlined" onClick={() => nav(base)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
           <FormGrid>
-            <SelectInput label="Parent Category" value={f.parent} options={['', ...parentOptions].map((o) => ({ value: o, label: o || 'None (top-level category)' }))} placeholder="None (top-level category)" onChange={set('parent')} disabled={hasChildren}
-              hint={hasChildren ? 'This category has sub-categories, so it stays a top-level category' : 'Leave empty for a top-level category, select one to create a Sub-Category'} />
-            <TextInput label="Category Name" required value={f.name} onChange={set('name')} error={errors.name} />
-            <BrandSelect value={f.brand} onChange={set('brand')} change="changed" req={`${REQ_CAT} > Brand (fills the asset and item forms)`}
-              hint={f.parent ? 'Filled into Brand on the asset and item forms for this sub-category, editable there' : "Filled into Brand on the asset and item forms, editable there (a sub-category's own brand is used first)"} />
+            {sub
+              ? <SelectInput label="Category" required value={f.parent} options={parentOptions} onChange={set('parent')} error={errors.parent} disabled={hasChildren} hint="The Category this sub-category belongs to" />
+              : null}
+            <TextInput label={sub ? 'Sub-Category Name' : 'Category Name'} required value={f.name} onChange={set('name')} error={errors.name} />
             <TextInput label="Description" value={f.description} onChange={set('description')} full multiline rows={2} />
             <TextInput label="SKU Prefix" value={f.skuPrefix} onChange={set('skuPrefix')} />
             <NumberInput label="Unique Items" value={f.uniqueItems} onChange={set('uniqueItems')} />
             <ToggleInput label="Status" checked={f.active} onChange={set('active')} change="changed" req={`${REQ_CAT} > Active / Inactive`} />
-            <SelectInput label="Depreciation Method Override" change="new" req="Depreciation & Valuation > Method Override (per Category)" value={f.depMethod} options={DEPRECIATION_METHODS} onChange={set('depMethod')} hint="Optional, overrides the system default (Straight line) for this category" />
+            {!sub && <SelectInput label="Depreciation Method Override" change="new" req="Depreciation & Valuation > Method Override (per Category)" value={f.depMethod} options={DEPRECIATION_METHODS} onChange={set('depMethod')} hint="Optional, overrides the system default (Straight line) for this category" />}
           </FormGrid>
           <Box sx={{ mt: 2 }}>
             <Text type="s4" weight="medium" color="theme.secondary.700">SKU Preview</Text>
@@ -196,38 +204,38 @@ export function CategoryView() {
   const cats = useCats();
   const r = cats.get(id);
   const [del, setDel] = useState(false);
-  if (!r) return <Page><PageTitle title="Category not found" right={<Button variant="outlined" onClick={() => nav(CAT_BASE)}>Back to Item Category</Button>} /></Page>;
+  if (!r) return <Page><PageTitle title="Category not found" right={<Button variant="outlined" onClick={() => nav(CAT_BASE)}>Back</Button>} /></Page>;
   const top = isTopCategory(r);
+  const BASE = baseOf(r);
   const subs = cats.rows.filter((c) => top && c.parent === r.name);
   const parent = cats.rows.find((c) => isTopCategory(c) && c.name === r.parent);
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Item Category', to: CAT_BASE }, { label: top ? r.name : `${r.parent} / ${r.name}` }]}
+        crumbs={[{ label: top ? 'Item Category' : 'Item Sub-Category', to: BASE }, { label: top ? r.name : `${r.parent} / ${r.name}` }]}
         status={<StatusChip status={r.status} />}
         actions={<>
           <Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button>
           <Button variant="outlined" onClick={() => { cats.update(r.id, { status: flip }); toast(`Category marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
-          <Button variant="contained" onClick={() => nav(`${CAT_BASE}/${r.id}/edit`)}>Edit</Button>
+          <Button variant="contained" onClick={() => nav(`${BASE}/${r.id}/edit`)}>Edit</Button>
         </>}
       />
       <Page sx={{ pt: 2 }}>
         <ValueGrid cols={4}>
-          <ValueField label="Parent Category" value={top ? undefined : parent ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`${CAT_BASE}/${parent.id}`)}>{r.parent}</Box> : r.parent} />
-          <ValueField label="Category Name" value={r.name} />
-          <ValueField label="Brand" value={r.brand} />
+          <ValueField label="Category" value={top ? undefined : parent ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`${CAT_BASE}/${parent.id}`)}>{r.parent}</Box> : r.parent} />
+          <ValueField label={top ? 'Category Name' : 'Sub-Category Name'} value={r.name} />
           <ValueField label="Description" value={r.description} />
           <ValueField label="SKU Prefix" value={r.skuPrefix} />
           <ValueField label="Unique Items" value={r.uniqueItems === undefined ? undefined : String(r.uniqueItems)} />
           <ValueField label="Status" value={<StatusChip status={r.status} />} />
-          <ValueField label="Depreciation Method Override" value={r.depMethod} change="new" req="Depreciation & Valuation > Method Override (per Category)" />
+          {top && <ValueField label="Depreciation Method Override" value={r.depMethod} change="new" req="Depreciation & Valuation > Method Override (per Category)" />}
           {top && <ValueField label="Sub Categories" value={subs.length ? subs.map((x) => x.name).join(', ') : undefined} />}
         </ValueGrid>
         {top && (
-          <Panel title="Sub-Categories" sx={{ mt: 3 }} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => nav(`${CAT_BASE}/add?parent=${encodeURIComponent(r.name)}`)}>Add Sub-Category</Button>}>
+          <Panel title="Sub-Categories" sx={{ mt: 3 }} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => nav(`${SUB_BASE}/add?parent=${encodeURIComponent(r.name)}`)}>Add Sub-Category</Button>}>
             {subs.length === 0 ? <Text type="s5" color="theme.secondary.700">No sub-categories yet</Text> : (
-              <DataTable<CategoryRec> rows={subs} hideToolbar onRowClick={(x) => nav(`${CAT_BASE}/${x.id}`)} columns={[
+              <DataTable<CategoryRec> rows={subs} hideToolbar onRowClick={(x) => nav(`${SUB_BASE}/${x.id}`)} columns={[
                 { key: 'name', label: 'Sub-Category Name' }, { key: 'status', label: 'Status', render: (x) => <StatusChip status={x.status} /> },
               ]} />
             )}
@@ -236,7 +244,44 @@ export function CategoryView() {
         <AttributesTable attributes={r.attributes} />
       </Page>
       <ConfirmDialog open={del} danger title="Delete category" description={`Delete ${r.name}${top ? ' and its sub-categories' : ''}? Consider marking it Inactive instead to keep its history.`} confirmLabel="Delete" onClose={() => setDel(false)}
-        onConfirm={() => { cats.replace(cats.rows.filter((c) => c.id !== r.id && !(top && c.parent === r.name))); toast('Category deleted'); nav(CAT_BASE); }} />
+        onConfirm={() => { cats.replace(cats.rows.filter((c) => c.id !== r.id && !(top && c.parent === r.name))); toast('Category deleted'); nav(BASE); }} />
     </>
+  );
+}
+
+export const SubCategoryForm = () => <CategoryForm sub />;
+
+/* ================================================================== Brand master */
+const useBrands = () => useCollection<BrandRec>('inventory.brands', brandSeed);
+export function BrandList() {
+  const toast = useToast();
+  const brands = useBrands();
+  const [dlg, setDlg] = useState<{ id?: string; name: string } | null>(null);
+  const [err, setErr] = useState<string>();
+  const [del, setDel] = useState<BrandRec | null>(null);
+  const save = () => {
+    if (!dlg) return;
+    const name = dlg.name.trim();
+    if (!name) { setErr('Brand Name is required'); return; }
+    if (brands.rows.some((b) => b.id !== dlg.id && b.name.toLowerCase() === name.toLowerCase())) { setErr('This brand already exists'); return; }
+    if (dlg.id) brands.update(dlg.id, { name }); else brands.add({ id: `br${Date.now()}`, name, status: 'Active' });
+    toast(dlg.id ? 'Brand updated' : 'Brand added');
+    setDlg(null); setErr(undefined);
+  };
+  return (
+    <Page>
+      <PageTitle title="Brand" subtitle="One global list of brands, chosen on each fixed asset and item, so reports and filters never depend on spelling." change="new" req={REQ_BRAND} />
+      <DataTable<BrandRec> rows={brands.rows} searchPlaceholder="Search brands..." onAdd={() => { setErr(undefined); setDlg({ name: '' }); }} addLabel="Add Brand"
+        columns={[{ key: 'name', label: 'Brand' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }]}
+        actions={[
+          { label: 'Edit', onClick: (r) => { setErr(undefined); setDlg({ id: r.id, name: r.name }); } },
+          { label: 'Mark Inactive / Active', onClick: (r) => brands.update(r.id, { status: r.status === 'Active' ? 'Inactive' : 'Active' }) },
+          { label: 'Delete', danger: true, onClick: setDel },
+        ]} />
+      <AppDialog open={!!dlg} title={dlg?.id ? 'Edit Brand' : 'Add Brand'} onClose={() => setDlg(null)} confirmLabel="Save" maxWidth="xs" onConfirm={save}>
+        <TextInput label="Brand Name" required value={dlg?.name} onChange={(v) => { setDlg(dlg ? { ...dlg, name: v } : dlg); setErr(undefined); }} error={err} />
+      </AppDialog>
+      <ConfirmDialog open={!!del} danger title="Delete brand" description={`Delete ${del?.name}? Assets that already use it keep the name.`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { brands.remove(del.id); toast('Brand deleted'); } }} />
+    </Page>
   );
 }

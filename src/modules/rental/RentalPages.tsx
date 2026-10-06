@@ -16,32 +16,6 @@ import { R, aed, useCrossHire, useExtensions, useFleet, useOrders, useReplacemen
 import { CrossHireDialog, ExpiryDialog } from '@/modules/crm/ActionDialogs';
 import { expiryRows } from '@/modules/crm/reports';
 
-/* ------------------------------------------------------------------ Rental Orders (existing list, one row per rental Sales Order) */
-export function RentalOrders() {
-  const nav = useNavigate();
-  const orders = useOrders();
-  const rows = orders.rows.filter((o) => o.activity === 'Rental');
-  const total = (o: SalesOrder) => docTotals(o.lines, o.discountPct, o.vatType).total;
-  const delivery = (o: SalesOrder) => { const r = o.lines.filter((l) => l.activity === 'Rental'); const d = r.filter((l) => deliveredQty(l) >= l.qty).length; return d === 0 ? 'Pending delivery' : d === r.length ? 'Fully delivered' : 'Partially delivered'; };
-  return (
-    <Page>
-      <PageTitle title="Rental Orders" subtitle="Same list as the existing ERP, now fed by the Sales Orders with Activity Type = Rental. Open an order to work on it in CRM." change="changed" req={R.rental} />
-      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-        {[['Rental Orders', '/rental/orders'], ['Replacement Orders', '/rental/replacements']].map(([t, to]) => <Box key={t} onClick={() => nav(to)} sx={{ cursor: 'pointer', px: 1.5, py: 0.5, borderRadius: '1.5rem', fontSize: 13, fontWeight: 500, bgcolor: t === 'Rental Orders' ? '#B6E9D6' : '#EEEFF1' }}>{t}</Box>)}
-      </Box>
-      <DataTable<SalesOrder> rows={rows} searchPlaceholder="Search rental orders..." onRowClick={(r) => nav(`/crm/sales-orders/${r.id}`)}
-        columns={[
-          { key: 'number', label: 'Series Number' }, { key: 'date', label: 'Date' }, { key: 'cust', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'pt', label: 'Payment Term', render: (r) => r.paymentTerms }, { key: 'entity', label: 'Company', render: (r) => r.entity },
-          { key: 'cur', label: 'Currency', render: (r) => r.currency }, { key: 'exp', label: 'Expiration Date', render: (r) => r.lpoExpiry }, { key: 'sp', label: 'Salesperson', render: (r) => r.owner }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
-          { key: 'inv', label: 'Invoice Status', render: (r) => <StatusChip status="Pending Invoice" /> }, { key: 'del', label: 'Delivery Status', render: (r) => <StatusChip status={delivery(r)} /> },
-          { key: 'amt', label: 'Total Amount', align: 'right', render: (r) => aed(total(r)) }, { key: 'start', label: 'Start Date', render: (r) => r.contractStart }, { key: 'end', label: 'End Date', render: (r) => r.contractEnd },
-          { key: 'ct', label: 'Contract Type', change: 'new', req: R.rental, render: (r) => r.contractType }, { key: 'cc', label: 'Cost Centre / Project', change: 'new', req: R.meet, render: (r) => r.costCentre || '-' },
-          { key: 'assets', label: 'Assets On Hire', change: 'new', req: R.rental, render: (r) => r.lines.flatMap((l) => outstanding(l)).map((a) => assetById(a.assetId)?.assetId).join(', ') || '-' },
-        ]} />
-    </Page>
-  );
-}
-
 /* ------------------------------------------------------------------ Replacements */
 export function ReplacementList() {
   const nav = useNavigate();
@@ -167,69 +141,5 @@ export function RenewalsPage() {
         </FormGrid>
       </AppDialog>
     </Page>
-  );
-}
-
-/* ------------------------------------------------------------------ Cross Hire */
-export function CrossHireList() {
-  const nav = useNavigate();
-  const ch = useCrossHire();
-  return (
-    <Page>
-      <PageTitle title="Cross Hire Requests" subtitle="Requests are raised from a Sales Order line when no owned unit of the Category is Ready for Hire." change="changed" req={R.cross} />
-      <DataTable<CrossHire & { stageName: string }> rows={ch.rows.map((r) => ({ ...r, stageName: CROSS_STAGES[r.stage] }))} searchPlaceholder="Search cross hire requests..." filter={{ key: 'stageName', options: CROSS_STAGES }} onRowClick={(r) => nav(`/rental/cross-hire/${r.id}`)}
-        columns={[
-          { key: 'number', label: 'Request' }, { key: 'soNumber', label: 'Rental Order' }, { key: 'cat', label: 'Group + Category', render: (r) => `${r.group} ${r.category}` }, { key: 'supplier', label: 'Supplier' }, { key: 'rate', label: 'Agreed Rate', align: 'right', render: (r) => aed(r.rate) },
-          { key: 'stageName', label: 'Lifecycle Stage', change: 'new', req: R.cross, render: (r) => <StatusChip status={CROSS_STAGES[r.stage]} /> }, { key: 'asset', label: 'Asset', render: (r) => assetById(r.assetId ?? '')?.assetId ?? '-' },
-        ]} />
-    </Page>
-  );
-}
-
-export function CrossHireView() {
-  const { id } = useParams();
-  const nav = useNavigate();
-  const toast = useToast();
-  const all = useCrossHire();
-  const c = all.get(id);
-  const [dlg, setDlg] = useState<'receive' | 'return' | 'supplier' | null>(null);
-  const [v, setV] = useState({ inv: '', notes: '', files: [] as string[], dispute: '', reissue: '' });
-  if (!c) return <Page><PageTitle title="Cross Hire request not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire')}>Back</Button>} /></Page>;
-  const a = assetById(c.assetId ?? '');
-  const cost = c.rate + (c.dispute ?? 0);
-  const margin = c.revenue - cost;
-  return (
-    <>
-      <FormHeader crumbs={[{ label: 'Cross Hire Requests', to: '/rental/cross-hire' }, { label: c.number }]} status={<StatusChip status={CROSS_STAGES[c.stage]} />}
-        actions={<>
-          <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${c.soId}`)}>View Sales Order</Button>
-          {c.stage === 0 && <Button variant="contained" onClick={() => setDlg('receive')}>Receive from Supplier</Button>}
-          {c.stage === 1 && <Button variant="contained" onClick={() => nav(`/crm/delivery-orders/add?so=${c.soId}&line=${c.lineId}`)}>Allocate through Delivery</Button>}
-          {c.stage === 2 && <Button variant="contained" onClick={() => setDlg('return')}>Record Return to Us</Button>}
-          {c.stage === 3 && <Button variant="contained" onClick={() => setDlg('supplier')}>Return to Supplier</Button>}
-        </>} />
-      <Page sx={{ pt: 2 }}>
-        <LifecycleStepper steps={CROSS_STAGES} current={c.stage} />
-        <ValueGrid>
-          <ValueField label="Cross-Hire Request Number" value={c.number} /><ValueField label="Triggering Sales Order" value={c.soNumber} /><ValueField label="Group + Category" value={`${c.group} ${c.category}`} /><ValueField label="Cross-Hire Supplier" value={c.supplier} />
-          <ValueField label="Agreed Rate" value={aed(c.rate)} /><ValueField label="Lifecycle Stage" change="new" req={R.cross} value={CROSS_STAGES[c.stage]} />
-          <ValueField label="Asset (Fixed Asset Register)" change="new" req={R.cross} value={a ? `${a.assetId}, ${a.assetStatus}, ownership ${a.ownership}` : 'Not received yet'} /><ValueField label="Depreciation" change="new" req={R.cross} value="Not posted (cross-hired)" />
-          <ValueField label="Supplier Invoice Reference" value={c.supplierInvoice} /><ValueField label="Condition Check (on Return to Us)" change="new" req={R.cross} value={c.condition?.notes} /><ValueField label="Supplier dispute charge" change="new" req={R.cross} value={c.dispute ? aed(c.dispute) : '-'} /><ValueField label="Re-Issue Reference" change="new" req={R.cross} value={c.reissueRef} />
-        </ValueGrid>
-        <Panel title="Profitability (rolls into the originating Sales Order)" sx={{ mt: 3 }} change="new" req={R.cross}>
-          <ValueGrid><ValueField label="Vendor Cost (incl. dispute)" value={aed(cost)} /><ValueField label="Customer Revenue" value={aed(c.revenue)} /><ValueField label="Profit" value={aed(margin)} /><ValueField label="Margin %" value={c.revenue ? `${Math.round((margin / c.revenue) * 100)}%` : '-'} /></ValueGrid>
-        </Panel>
-        <Box sx={{ mt: 3 }}><TabPanels tabs={[{ label: 'Stage history', content: <Timeline items={[...c.history].reverse()} /> }]} /></Box>
-      </Page>
-      <AppDialog open={dlg === 'receive'} title="Receive cross-hired unit" onClose={() => setDlg(null)} confirmLabel="Receive" confirmDisabled={!v.inv.trim()} onConfirm={() => { receiveCrossHire(c, v.inv); toast('Unit received and added to the Fixed Asset Register as Cross-Hired, Ready for Hire'); setDlg(null); }}>
-        <TextInput label="Supplier Invoice Reference" required value={v.inv} onChange={(x) => setV({ ...v, inv: x })} hint="Cross-hire cost feeds into the supplier's invoice" />
-      </AppDialog>
-      <AppDialog open={dlg === 'return'} title="Return to Us: condition check" onClose={() => setDlg(null)} confirmLabel="Save" confirmDisabled={!v.notes.trim()} onConfirm={() => { returnToUs(c, v.notes, v.files); toast('Returned to us. The unit is flagged as Cross-Hire idle at our location'); setDlg(null); }}>
-        <FormGrid cols={1}><TextInput label="Condition inspection notes" required multiline rows={3} value={v.notes} onChange={(x) => setV({ ...v, notes: x })} hint="Same inspection process as an owned asset returned by a customer" /><FileInput label="Attachments" multiple value={v.files} onChange={(x) => setV({ ...v, files: x })} /></FormGrid>
-      </AppDialog>
-      <AppDialog open={dlg === 'supplier'} title="Return to Supplier" onClose={() => setDlg(null)} confirmLabel="Close the loop" onConfirm={() => { returnToSupplier(c, Number(v.dispute) || 0, v.reissue || undefined); toast('Returned to supplier'); setDlg(null); }}>
-        <FormGrid cols={1}><NumberInput label="Supplier dispute / additional charge (AED, if any)" value={v.dispute} onChange={(x) => setV({ ...v, dispute: x })} hint="Traced back to the client project so its true profitability is visible" /><TextInput label="Re-Issue Reference (optional)" value={v.reissue} onChange={(x) => setV({ ...v, reissue: x })} hint="If the unit was re-issued to another project first" /></FormGrid>
-      </AppDialog>
-    </>
   );
 }
