@@ -68,7 +68,7 @@ const transportSpecs: Spec[] = [
   { key: 'extCost', label: 'External Transport Cost (AED)', type: 'number', required: true, change: 'new', req: R.del, show: (f) => f.transport === 'External Transporter', hint: 'Cost of the project. Posts to the same Order / Project cost centre' },
   { key: 'transportedBy', label: 'Transported By', type: 'select', options: suppliers.filter((x) => x.type === 'Service Provider' && x.active).map((x) => x.name), required: true, change: 'changed', req: R.meet, show: (f) => f.transport === 'External Transporter', hint: 'The supplier (vendor) who transports, so the cost is paid back to them against the project' },
   { key: 'driver', label: 'Driver', type: 'select', options: employees.filter((e) => e.designation === 'Driver' || e.designation === 'Service Desk Dispatcher').map((e) => e.name) },
-  { key: 'vehicleNumber', label: 'Vehicle Number' }, { key: 'iqama', label: 'Iqama / Resident Number', hint: '10 digits' }, { key: 'mobile', label: 'Mobile Number' },
+  { key: 'vehicleNumber', label: 'Vehicle Number' }, { key: 'iqama', label: 'Iqama / Resident Number' }, { key: 'mobile', label: 'Mobile Number' },
 ];
 
 export function DeliveryForm() {
@@ -125,7 +125,6 @@ export function DeliveryForm() {
       if (late && (!f.startReason || !f.startBy)) e.late = 'A reason and who is responsible are required when the Rental Start Date differs from the delivery date';
     }
     if (supplierSite && !String(f.supplierDoNo ?? '').trim()) e.supplierDoNo = "Enter the supplier's Delivery Order number";
-    if (f.iqama && !/^\d{10}$/.test(f.iqama)) e.iqama = 'Iqama / Resident Number must be 10 digits';
     if (['Delivered', 'Acknowledged'].includes(f.status) && !f.signed && !f.manual.length) e.signature = 'A Delivery Order cannot be completed without a customer e-signature or an attached manual confirmation';
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }

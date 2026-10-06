@@ -39,7 +39,7 @@ export const generalSpecs = (kind: Kind): Spec[] => [
   { key: 'untilDate', label: 'Until Date', type: 'date', required: true, show: (f) => !!f.recurring },
   { key: 'status', label: kind === 'quote' ? 'Status' : 'Sales Order Status', type: 'readonly' },
   ...(kind === 'quote' ? [{ key: 'version', label: 'Version Number', type: 'readonly' } as Spec] : []),
-  { key: 'vatNumber', label: 'VAT Number', hint: '15 digits' }, { key: 'crn', label: 'CRN', hint: '10 digits' },
+  { key: 'vatNumber', label: 'VAT Number' }, { key: 'crn', label: 'CRN' },
   { key: 'vatType', label: 'VAT Type', type: 'select', options: VAT_TYPES, required: true, change: 'new', req: R.quote, hint: 'Standard or Export (Zero-Rated)' },
   ...(kind === 'quote' ? [{ key: 'quotePercentage', label: 'Quote Percentage (%)', type: 'number' } as Spec, { key: 'template', label: 'Document Template', type: 'master', master: 'docTemplate', required: true, change: 'new', req: R.quote, hint: 'Chosen by the sales rep per quotation' } as Spec, { key: 'description', label: 'Quotation Description', change: 'new', req: R.quote, hint: 'Quotation level only, does not sync back to the Opportunity' } as Spec] : []),
   { key: 'terms', label: 'Terms & Conditions', type: 'textarea', required: true },
@@ -92,8 +92,6 @@ export function commercialErrors(f: F): Record<string, string> {
   if (f.oppId !== undefined && !f.activity) e.activity = 'Activity Type is required';
   if (f.recurring && !f.untilDate) e.untilDate = 'Until Date is required when Recurring is set';
   if (f.currency !== 'AED' && !Number(f.exchangeRate)) e.exchangeRate = 'Exchange Rate is required';
-  if (f.vatNumber && !/^\d{15}$/.test(f.vatNumber)) e.vatNumber = 'VAT Number must be 15 digits';
-  if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
   if (f.transactionType === 'Credit' && !String(f.contactPerson ?? '').trim()) e.contactPerson = 'Contact Person is required for Credit';
   if (!f.location) e.location = 'Location is required';
   if (!f.costCentre) e.costCentre = 'Cost Centre / Project is required in the header';

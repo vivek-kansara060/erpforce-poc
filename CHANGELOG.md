@@ -12,6 +12,17 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 7 Oct, around 12:30 AM: Format checks removed from fields; business checks kept
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Some fields rejected values that did not match a fixed format, which gets in the way of a POC demo where any sample value should be accepted.
+*What we did.* Removed the format checks: Email on the Lead (any text is accepted), VAT Number (15 digits) and CRN (10 digits) on the Lead, Opportunity, Quotation and Sales Order, and Iqama / Resident Number (10 digits) on the Delivery Order. The "15 digits" and "10 digits" hints under those fields are gone too. Phone and mobile fields had no format check and still accept anything.
+*Be aware.* Business checks are unchanged: required fields, amounts greater than 0, percentages between 0 and 100, values that cannot be negative, date order, and stock limits.
 ### 6 Oct, around 11:30 PM: Employee location type for service vans, with Transfer stock in and van stock on AMC job cards
 **Where:** Inventory & Fixed Assets > Configuration > Location
 **Where:** CRM / Sales > Orders > AMC Orders

@@ -56,7 +56,7 @@ const specs = (): { basic: Spec[]; owner: Spec[]; classification: Spec[] } => ({
     { key: 'winLossReason', label: 'Win/Loss Reason', type: 'select', options: WIN_LOSS_REASONS, show: (f) => ['Won', 'Lost'].includes(f.stage) },
     { key: 'phone', label: 'Phone Number' }, { key: 'emailId', label: 'Email ID' },
     { key: 'website', label: 'Website' }, { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
-    { key: 'vat', label: 'VAT Number', hint: '15 digits' }, { key: 'crn', label: 'CRN', hint: '10 digits' }, { key: 'reference', label: 'Reference No.' },
+    { key: 'vat', label: 'VAT Number' }, { key: 'crn', label: 'CRN' }, { key: 'reference', label: 'Reference No.' },
     { key: 'priority', label: 'Priority', type: 'select', options: PRIORITIES },
     { key: 'rating', label: 'Rating', type: 'select', options: RATINGS, change: 'new', req: R.opp },
     { key: 'forecast', label: 'Sales Forecast Value', type: 'readonly', change: 'new', req: R.opp, value: (f) => aed(forecast({ estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 })), hint: 'Expected Revenue x Probability. Formula and period to be confirmed with client' },
@@ -120,8 +120,6 @@ export function OpportunityForm() {
   const save = () => {
     const e: Record<string, string> = {};
     ['customerId', 'contact', 'project', 'title', 'owner', 'stage', 'expectedClose', 'entity', 'currency'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
-    if (f.vat && !/^\d{15}$/.test(f.vat)) e.vat = 'VAT Number must be 15 digits';
-    if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const d = duplicateOpportunity({ id: ex?.id ?? '', title: f.title, project: f.project, customerId: f.customerId, contact: f.contact });
