@@ -12,6 +12,21 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 2:30 PM: Fleet Management: own delivery vehicles, Fleet Availability board, Trips and trip costs
+**Where:** Rental > Fleet Management > Fleet Availability
+**Where:** Rental > Fleet Management > Trips
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Rental > Replacement Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** CRM / Sales > Settings > Masters
+**Type:** NEW
+
+*The problem.* Ajin asked for a way to see which own vehicle is free before a delivery, collection or replacement, to assign one, and to charge every trip's cost (Salik, fuel, transporter) to the project. The POC only had a free-text driver and vehicle number on the Delivery Order, and the three trucks sat in the hire pool, so a truck could even be quoted for rent.
+*What we did.* Own delivery vehicles are the same Heavy Equipment Fixed Asset record, marked with a new **Delivery fleet vehicle** checkbox (Owned assets only) with a Plate Number and Default Driver. They are In Service, never rented out, never offered on a quote and never counted in the rental fleet (the Vehicle category no longer appears on a rental line and the low-bed truck rental price is removed). A new **Fleet Availability** board shows each vehicle as Free, Assigned, En Route, Stuck-Delayed (reason and Responsible required) or Unavailable, with counts and filters by Vehicle Type and status. A new **Trips** list and view hold one trip per delivery, collection or replacement, with expenses and a log. The Delivery Order, Customer Return (Company Collection) and Replacement Order get a transport section: Select from fleet opens the board as a picker of Free vehicles, which fills vehicle, driver and mobile; no free vehicle offers an external transporter; an Assigned trip can be switched to an external transporter and back. Every trip expense is added to the Sales Order logistics cost (new Logistics tab), and an external transporter's cost is posted once. Collection Failed marks the collection trip Stuck-Delayed; the Collection Note prints driver and vehicle. Trip Expense Types is a new CRM master. Section hints in the touched forms are now "?" tooltips.
+*Be aware.* The Trips list is our own design choice (not named in the requirement document). Vehicle status is derived from the trips, never typed. The Iqama field is kept for now (open question for Ajin). Data is in memory, a refresh restores the demo trips. CN-26-00123 shows two trips on purpose: a stuck first attempt and a second crane-truck trip.
+
 ### 7 Oct, around 12:30 AM: Format checks removed from fields; business checks kept
 **Where:** CRM / Sales > Orders > Lead
 **Where:** CRM / Sales > Orders > Opportunity

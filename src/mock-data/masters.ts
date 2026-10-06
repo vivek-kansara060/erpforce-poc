@@ -8,7 +8,8 @@ export const COMPANY = 'Gulf Power Rentals LLC';
 export const CURRENCY = 'AED';
 
 /** Unified Asset Status master (Rental + Inventory & Fixed Assets share one list, admin-extendable). */
-export const ASSET_STATUSES = ['Ready for Hire', 'On Hire', 'Off Hire', 'Breakdown', 'Under Maintenance', 'Disposed', 'Yard', 'Hold'] as const;
+/** "In Service" is for own delivery vehicles (Fleet Management, 6 Oct): they are never Ready for Hire / On Hire. */
+export const ASSET_STATUSES = ['Ready for Hire', 'On Hire', 'Off Hire', 'Breakdown', 'Under Maintenance', 'Disposed', 'Yard', 'Hold', 'In Service'] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
 export const ACTIVITY_TYPES = ['Rental', 'Trading', 'Fuel Trading', 'AMC', 'Service', 'Other'] as const;
@@ -27,7 +28,7 @@ export const equipmentGroups: EquipmentGroup[] = [
   { group: 'Tray', categories: ['Cable Tray'] },
   { group: 'Day Tank', categories: ['500 L Day Tank', '1000 L Day Tank'] },
   { group: 'Spare Engine', categories: ['Perkins Spare Engine', 'Cummins Spare Engine'] },
-  { group: 'Vehicle', categories: ['Low-bed Truck', 'Flatbed Truck', 'Pickup'] },
+  { group: 'Vehicle', categories: ['Low-bed Truck', 'Flatbed Truck', 'Crane Truck', 'Pickup'] },
 ];
 
 export interface Customer {
@@ -133,6 +134,8 @@ export const costCentres: CostCentre[] = [
 
 export interface Employee {
   id: string; code: string; name: string; type: 'UAE National' | 'Expatriate'; department: string; designation: string; branch: string; manager: string; joined: string; status: 'Active' | 'Inactive'; nationality: string;
+  /** Filled into a trip and the Delivery Order when the driver is picked. */
+  mobile?: string;
 }
 export const employees: Employee[] = [
   { id: 'e1', code: 'EMP-0001', name: 'Ahmed Al Khouri', type: 'UAE National', department: 'Management', designation: 'General Manager', branch: 'Dubai', manager: '-', joined: '2016-01-10', status: 'Active', nationality: 'UAE' },
@@ -143,12 +146,15 @@ export const employees: Employee[] = [
   { id: 'e6', code: 'EMP-0006', name: 'Bilal Ahmed', type: 'Expatriate', department: 'Operations', designation: 'Service Desk Dispatcher', branch: 'Dubai', manager: 'Hamdan Al Suwaidi', joined: '2020-01-19', status: 'Active', nationality: 'Pakistan' },
   { id: 'e7', code: 'EMP-0007', name: 'Sanjay Kumar', type: 'Expatriate', department: 'Operations', designation: 'Yard Supervisor', branch: 'Dubai', manager: 'Hamdan Al Suwaidi', joined: '2019-08-11', status: 'Active', nationality: 'India' },
   { id: 'e8', code: 'EMP-0008', name: 'Rajesh Pillai', type: 'Expatriate', department: 'Maintenance', designation: 'Service Technician', branch: 'Dubai', manager: 'Sanjay Kumar', joined: '2019-10-01', status: 'Active', nationality: 'India' },
-  { id: 'e9', code: 'EMP-0009', name: 'Tariq Hussain', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2021-03-08', status: 'Active', nationality: 'Pakistan' },
+  { id: 'e9', code: 'EMP-0009', name: 'Tariq Hussain', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2021-03-08', status: 'Active', nationality: 'Pakistan', mobile: '+971 50 311 4090' },
   { id: 'e10', code: 'EMP-0010', name: 'Nasser Al Ketbi', type: 'UAE National', department: 'Finance', designation: 'Finance Manager', branch: 'Dubai', manager: 'Ahmed Al Khouri', joined: '2017-11-14', status: 'Active', nationality: 'UAE' },
   { id: 'e11', code: 'EMP-0011', name: 'Priya Menon', type: 'Expatriate', department: 'Finance', designation: 'Accountant', branch: 'Dubai', manager: 'Nasser Al Ketbi', joined: '2020-05-25', status: 'Active', nationality: 'India' },
   { id: 'e12', code: 'EMP-0012', name: 'Mariam Al Nuaimi', type: 'UAE National', department: 'HR', designation: 'HR Manager', branch: 'Dubai', manager: 'Ahmed Al Khouri', joined: '2018-09-03', status: 'Active', nationality: 'UAE' },
   { id: 'e13', code: 'EMP-0013', name: 'Farhan Sheikh', type: 'Expatriate', department: 'Procurement', designation: 'Buyer', branch: 'Dubai', manager: 'Hamdan Al Suwaidi', joined: '2021-01-17', status: 'Active', nationality: 'Pakistan' },
   { id: 'e14', code: 'EMP-0014', name: 'Grace Fernandez', type: 'Expatriate', department: 'Warehouse', designation: 'Warehouse Staff', branch: 'Sharjah', manager: 'Sanjay Kumar', joined: '2022-07-04', status: 'Active', nationality: 'Philippines' },
+  { id: 'e15', code: 'EMP-0015', name: 'Imran Shah', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Sharjah', manager: 'Bilal Ahmed', joined: '2022-03-14', status: 'Active', nationality: 'Pakistan', mobile: '+971 55 418 2276' },
+  { id: 'e16', code: 'EMP-0016', name: 'Joseph Mathew', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2023-01-09', status: 'Active', nationality: 'India', mobile: '+971 52 703 9154' },
+  { id: 'e17', code: 'EMP-0017', name: 'Ravi Kumar', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2023-06-19', status: 'Active', nationality: 'India', mobile: '+971 56 129 6480' },
 ];
 
 /** ERP user accounts (people with a login). An Employee location is assigned to these, not to the whole employee list (5 Oct call). */

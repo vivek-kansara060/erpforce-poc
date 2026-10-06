@@ -20,13 +20,19 @@ interface Base {
   error?: string;
 }
 
+/** The "?" that shows a hint on hover: beside a field label or a section title. */
+export function HelpTip({ hint }: { hint?: ReactNode }) {
+  if (!hint) return null;
+  return <Tooltip title={hint} arrow placement="top"><Box component="span" aria-label="Help" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ml: 0.75, width: 15, height: 15, borderRadius: '50%', border: '1px solid #8C8FB0', color: '#6B6E94', fontSize: 10, fontWeight: 700, lineHeight: 1, cursor: 'help', verticalAlign: 'middle' }}>?</Box></Tooltip>;
+}
+
 export function FieldShell({ label, required, hint, change, req, full, error, children }: Base & { children: ReactNode }) {
   return (
     <Box sx={{ gridColumn: full ? '1 / -1' : undefined, minWidth: 0 }}>
       <Text type="s5" weight="medium" color={error ? '#C64D4D' : 'theme.secondary.800'} sx={{ mb: 0.5 }}>
         {label}{required && <span style={{ color: '#C64D4D' }}> *</span>}
         <ChangeTag kind={change} req={req} />
-        {hint && <Tooltip title={hint} arrow placement="top"><Box component="span" aria-label="Help" sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', ml: 0.75, width: 15, height: 15, borderRadius: '50%', border: '1px solid #8C8FB0', color: '#6B6E94', fontSize: 10, fontWeight: 700, lineHeight: 1, cursor: 'help', verticalAlign: 'middle' }}>?</Box></Tooltip>}
+        <HelpTip hint={hint} />
       </Text>
       {children}
       {error && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5 }}>{error}</Text>}
@@ -114,11 +120,11 @@ export function FormGrid({ children, cols = 2 }: { children: ReactNode; cols?: 1
 }
 
 /** Titled form section with divider (existing pattern) and an optional NEW / CHANGED marker for the whole block. */
-export function FormSection({ title, children, change, req, right }: { title: string; children: ReactNode; change?: ChangeKind; req?: string; right?: ReactNode }) {
+export function FormSection({ title, children, change, req, right, hint }: { title: string; children: ReactNode; change?: ChangeKind; req?: string; right?: ReactNode; hint?: ReactNode }) {
   return (
     <Box sx={{ mt: 3, pt: 2, borderTop: `1px solid ${neutral[200]}` }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-        <Text type="s3" weight="medium">{title}<ChangeTag kind={change} req={req} /></Text>
+        <Text type="s3" weight="medium">{title}<ChangeTag kind={change} req={req} /><HelpTip hint={hint} /></Text>
         {right}
       </Box>
       {children}

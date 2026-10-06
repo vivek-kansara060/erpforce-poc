@@ -17,7 +17,7 @@ const RULES: [RegExp, keyof typeof TONES][] = [
   [/(reject|cancel|unpaid|lost|inactive|disabled|breakdown|damage|mismatch|expired|overdue|blacklist|failed|terminated|disposed|unqualified|blocked|stuck|delayed|escalat|breach)/i, 'red'],
   [/(partial|hold|maintenance|follow|yard|off hire|off-hire|pending inspection|warning|due soon|expiring|revised|idle|low|under review|verbal|written)/i, 'amber'],
   [/(draft|new$|not started|n\/a)/i, 'grey'],
-  [/(approved|paid|complete|convert|active|deliver|ready|accept|received|validated|matched|passed|posted|resolved|won|confirmed|closed|fully|available|acknowledged|running|processed|free|generated|superseded)/i, 'green'],
+  [/(approved|paid|complete|convert|active|deliver|ready|accept|received|validated|matched|passed|posted|resolved|won|confirmed|closed|fully|available|acknowledged|running|processed|free|generated|superseded|in service)/i, 'green'],
   [/(pending|submit|open|progress|scheduled|on hire|on-hire|quoted|qualified|contacted|assigned|en route|dispatched|requested|sent|in transit|enquiry|allocated|invited|awaiting)/i, 'blue'],
 ];
 

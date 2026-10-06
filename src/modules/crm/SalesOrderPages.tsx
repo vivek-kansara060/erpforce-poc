@@ -14,7 +14,8 @@ import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
 import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
-import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes } from './shared';
+import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
+import { TripsTable } from '@/modules/rental/FleetPages';
 import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
@@ -151,6 +152,7 @@ export function SalesOrderView() {
   const fleet = useFleet();
   const pricing = usePricing();
   const dels = useDeliveries();
+  const trips = useTrips();
   const chReqAll = useChRequests();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
@@ -163,6 +165,7 @@ export function SalesOrderView() {
   useEffect(() => { if (id) releaseDueHolds(id); }, [id]);
   if (!so) return <Page><PageTitle title="Sales Order not found" right={<Button variant="outlined" onClick={() => nav('/crm/sales-orders')}>Back</Button>} /></Page>;
   const myDels = dels.rows.filter((d) => d.soId === so.id);
+  const soTrips = trips.rows.filter((t) => t.soId === so.id);
   const rentalOut = so.lines.reduce((n, l) => n + outstanding(l).length, 0);
   const lpoLeft = so.lpoExpiry ? -days(so.lpoExpiry) : undefined;
   /** What the line is doing now. Actions are not shown here, they are in the three-dots menu of the row. */
@@ -249,6 +252,12 @@ export function SalesOrderView() {
             { label: 'Compliance Status', change: 'new', req: R.so, hidden: so.activity !== 'Rental', content: compliance.length ? <DataTable hideToolbar rows={compliance.flatMap((c) => (c.certs.length ? c.certs.map((x) => ({ id: x.id, asset: `${c.h.assetId} - ${c.h.name}`, type: x.type, expiry: x.expiry, status: certStatus(x).label })) : [{ id: c.h.id, asset: `${c.h.assetId} - ${c.h.name}`, type: 'No certificate on record', expiry: '-', status: '-' }]))}
               columns={[{ key: 'asset', label: 'Asset' }, { key: 'type', label: 'Certificate' }, { key: 'expiry', label: 'Expiry' }, { key: 'status', label: 'Status', render: (r) => (r.status === '-' ? '-' : <StatusChip status={r.status} />) }]} /> : <Text type="s4">No assets are out against this order.</Text> },
             { label: 'Deliveries', hidden: so.activity !== 'Rental', content: <DataTable hideToolbar rows={myDels} emptyText="No deliveries yet" onRowClick={(d) => nav(`/crm/delivery-orders/${d.id}`)} columns={[{ key: 'number', label: 'Delivery Order' }, { key: 'date', label: 'Date' }, { key: 'rentalStart', label: 'Rental Start' }, { key: 'assets', label: 'Assets', render: (d) => d.assetIds.map((h) => assetById(h)?.assetId).join(', ') }, { key: 'status', label: 'Status', render: (d) => <StatusChip status={d.status} /> }, { key: 'closed', label: 'DO Closure', change: 'new', req: R.rreturn, render: (d) => (d.closed ? 'Closed on return' : 'Open') }]} /> },
+            { label: 'Logistics', change: 'new', req: R.trip, hidden: !soTrips.length && so.activity !== 'Rental', content: (
+              <>
+                <TripsTable rows={soTrips} empty="No trips yet. A trip is created with each delivery, collection and replacement" />
+                <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Logistics cost of this order: {aed(so.logisticsCost)}</Text>
+                <Text type="s5" color="theme.secondary.700">The total of every trip expense (transporter charges, Salik, fuel and other vehicle costs). It feeds the Logistics Cost and Order Profitability reports.</Text>
+              </>) },
             { label: 'Charges', change: 'new', req: R.meet, hidden: !so.damageCharges.length, content: <DataTable hideToolbar rows={so.damageCharges.map((c, i) => ({ id: String(i), ...c, asset: assetById(c.assetId)?.assetId }))} columns={[{ key: 'date', label: 'Date' }, { key: 'asset', label: 'Asset' }, { key: 'note', label: 'Charge' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }]} /> },
             { label: 'Documents', change: 'new', req: R.so, content: <FileInput label="Upload DO / CN / Invoice / Credit Note / LPO / Quote" multiple value={so.docs} onChange={(n) => orders.update(so.id, { docs: n })} /> },
             { label: 'Activity Log', content: <Timeline items={so.log} /> },

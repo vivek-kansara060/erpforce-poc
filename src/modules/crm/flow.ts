@@ -4,7 +4,7 @@ import { customers } from '@/mock-data/masters';
 import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
-  docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType,
+  docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, fleetStatus, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
   type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
@@ -142,6 +142,8 @@ export interface DeliveryInput {
   signature: string; foc: boolean; status: string; number?: string; driver?: string; vehicle?: string; narration?: string;
   rentalStart: string; startReason?: string; startBy?: string; waitingCharge?: number; serviceLineIds?: string[];
   reference?: string; project?: string; poNumber?: string; poDate?: string; location?: string; transportedBy?: string; vehicleNumber?: string; iqama?: string; mobile?: string; department?: string; salesperson?: string; accessories?: string[]; supplierDoNo?: string;
+  /** Own Fleet: the delivery vehicle (a Heavy Equipment Fixed Asset ticked as Delivery fleet vehicle), picked from Fleet Availability. */
+  vehicleId?: string;
 }
 /**
  * One Delivery Order covers any number of Sales Order items. Rental items assign the exact serialized assets (billing starts on the Rental Start Date; when that is
@@ -162,9 +164,9 @@ export function createDelivery(i: DeliveryInput): Delivery {
   const saleItems = i.items.filter((it) => getLine(o, it.lineId)?.activity === 'Fixed Asset Trading');
   const allAssets = [...rentalItems, ...saleItems].flatMap((it) => it.assetIds);
   const d: Delivery = { id, number: i.number || nextNumber('DO', 132), soId: o.id, soNumber: o.number, lineId: first.lineId, customerId: o.customerId, date: i.date, type: i.type, assetIds: allAssets, accessories: i.accessories ?? [], description: i.description,
-    transport: i.transport, extCost: i.extCost, conditionFiles: i.conditionFiles, signature: i.signature, foc: i.foc, status: i.status, closed: false, driver: i.driver, vehicle: i.vehicle, narration: i.narration,
+    transport: i.transport, extCost: i.extCost, conditionFiles: i.conditionFiles, signature: i.signature, foc: i.foc, status: i.status, closed: false, driver: i.driver, vehicle: i.vehicleId ?? i.vehicle, narration: i.narration,
     rentalStart: i.rentalStart, startReason: i.startReason, startBy: i.startBy, waitingCharge: i.waitingCharge, requestedSub: firstLine?.category, deliveredSub: first.deliveredSub ?? firstLine?.category, serviceLineIds: i.serviceLineIds, siteReady: !hold,
-    items: i.items, reference: i.reference, poNumber: i.poNumber, poDate: i.poDate, location: i.location, operationType: 'Delivery', project: i.project ?? o.costCentre, supplierDoNo: i.supplierDoNo, transportedBy: i.transportedBy, vehicleNumber: i.vehicleNumber, iqama: i.iqama, mobile: i.mobile, department: i.department, salesperson: i.salesperson };
+    items: i.items, reference: i.reference, poNumber: i.poNumber, poDate: i.poDate, location: i.location, operationType: 'Delivery', project: i.project ?? o.costCentre, supplierDoNo: i.supplierDoNo, transportedBy: i.transportedBy, vehicleNumber: (i.vehicleId ? assetById(i.vehicleId)?.plateNumber : undefined) ?? i.vehicleNumber, iqama: i.iqama, mobile: i.mobile, department: i.department, salesperson: i.salesperson };
   put(COL.deliveries, d);
   const dest = `Client: ${custName(o.customerId)}`;
   const soldIds = saleItems.flatMap((it) => it.assetIds);
@@ -197,13 +199,14 @@ export function createDelivery(i: DeliveryInput): Delivery {
     });
     return {
       ...x, lines,
-      logisticsCost: x.logisticsCost + (i.transport === 'External Transporter' ? i.extCost : 0),
       damageCharges: i.waitingCharge ? [...x.damageCharges, { assetId: allAssets[0], amount: i.waitingCharge, note: `Waiting period lump sum (${d.number})`, date: TODAY }] : x.damageCharges,
       log: [
         log(`Delivery ${d.number}: ${i.items.length} item(s)${allAssets.length ? `, ${allAssets.map((h) => assetById(h)?.assetId).join(', ')} ${hold ? 'on Hold' : 'on hire'}` : ''}`, hold ? `Rental starts ${i.rentalStart.slice(0, 10)}. ${i.startReason} (${i.startBy})${i.waitingCharge ? `, waiting charge AED ${i.waitingCharge}` : ''}` : allAssets.length ? 'Exact serialized asset assigned. Billing starts on the Rental Start Date' : 'Stock delivered', hold ? 'amber' : 'green'),
         ...notes, ...x.log],
     };
   });
+  // The trip carries the transport cost to the order (an external transporter's charge is posted once, by the trip).
+  createTrip({ kind: 'Delivery', doc: { id: d.id, number: d.number }, soId: o.id, date: i.date, transport: i.transport as Trip['transport'], vehicleId: i.vehicleId, driver: i.driver, mobile: i.mobile, transporter: i.transportedBy, charge: i.extCost });
   return d;
 }
 
@@ -303,7 +306,7 @@ export function returnToSupplier(ch: CrossHire, dispute: number, reissueRef?: st
 }
 
 /* ------------------------------------------------------------------ Rental: replacement */
-export function replaceAsset(i: { soId: string; lineId: string; oldId: string; newId: string; reason: string; priceAdjust: number; notified: boolean; crossHireId?: string }): Replacement {
+export function replaceAsset(i: { soId: string; lineId: string; oldId: string; newId: string; reason: string; priceAdjust: number; notified: boolean; crossHireId?: string; transport?: TransportInput }): Replacement {
   const o = getOrder(i.soId)!;
   const oldA = assetById(i.oldId)!;
   const newA = assetById(i.newId)!;
@@ -319,6 +322,8 @@ export function replaceAsset(i: { soId: string; lineId: string; oldId: string; n
     ...mapLine(x, i.lineId, (l) => ({ ...l, assigned: [...l.assigned.map((a) => (a === old || (a.assetId === i.oldId && a.state === 'On Hire') ? { ...a, state: 'Replaced' as const, stop: TODAY } : a)), { assetId: i.newId, deliveryId: old.deliveryId, start: TODAY, state: 'On Hire' as const }] })),
     log: [log(`Replacement ${rec.number}: ${oldA.assetId} out, ${newA.assetId} in`, `${i.reason}. The invoice cycle is not paused by a replacement${i.priceAdjust ? `; price adjustment AED ${i.priceAdjust}` : ''}`, 'blue'), ...x.log],
   }));
+  // One trip carries the new unit out and the old unit back.
+  if (i.transport) createTrip({ kind: 'Replacement', doc: { id: rec.id, number: rec.number }, soId: o.id, date: `${TODAY}T${dayjs().format('HH:mm')}`, ...i.transport });
   return rec;
 }
 
@@ -350,7 +355,7 @@ export function recordVisit(soId: string, idx: number, type: string): string {
 }
 
 /* ------------------------------------------------------------------ Rental: return and inspection */
-export function raiseReturn(i: { soId: string; lineId: string; assetId: string; method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string }): ReturnEntry {
+export function raiseReturn(i: { soId: string; lineId: string; assetId: string; method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: TransportInput }): ReturnEntry {
   const o = getOrder(i.soId)!;
   const l = getLine(o, i.lineId)!;
   const as = l.assigned.find((a) => a.assetId === i.assetId && (a.state === 'On Hire' || a.state === 'Hold'))!;
@@ -369,6 +374,8 @@ export function raiseReturn(i: { soId: string; lineId: string; assetId: string; 
   const after = getOrder(o.id)!;
   const stillOut = after.lines.some((ln) => ln.assigned.some((a) => a.deliveryId === as.deliveryId && (a.state === 'On Hire' || a.state === 'Hold')));
   if (!stillOut) patch<Delivery>(COL.deliveries, as.deliveryId, (x) => ({ ...x, closed: true }));
+  // A Company Collection is a trip: our own vehicle or an external transporter.
+  if (i.method === 'Company Collection' && i.transport) createTrip({ kind: 'Collection', doc: { id: rec.id, number: rec.number }, soId: o.id, date: i.timestamp, ...i.transport });
   return rec;
 }
 export function reachYard(r: ReturnEntry, yard: string) {
@@ -397,7 +404,89 @@ export function inspect(r: ReturnEntry, result: 'Passed' | 'Damage Found', check
 export function failedCollection(r: ReturnEntry, by: string, amount: number, note: string) {
   patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, collection: { by, amount, note }, log: [...x.log, log('Collection failed', `${by === 'Client' ? `Charged to client AED ${amount}` : 'Company loss'}: ${note}`, 'red')] }));
   saveOrder(r.soId, (o) => ({ ...o, damageCharges: by === 'Client' && amount ? [...o.damageCharges, { assetId: r.assetId, amount, note: `Failed collection: ${note}`, date: TODAY }] : o.damageCharges, log: [log('Collection failed', `${by === 'Client' ? `Client charged AED ${amount}` : 'Booked as company loss'}. ${note}`, 'red'), ...o.log] }));
+  // The collection trip shows on the Fleet Availability board as Stuck-Delayed with the same note and Responsible.
+  all<Trip>(COL.trips).filter((t) => t.docId === r.id && isOpenTrip(t) && t.status !== 'Stuck-Delayed').forEach((t) => markStuck(t, note, by as 'Company' | 'Client'));
 }
+
+/* ------------------------------------------------------------------ Fleet Management: trips */
+/** What a document (Delivery Order, Customer Return, Replacement) captures to create its trip. */
+export interface TransportInput { transport: Trip['transport']; vehicleId?: string; driver?: string; mobile?: string; transporter?: string; charge?: number }
+const tripNo = () => nextNumber('TRP', TRIP_SEED_N);
+export const getTrip = (id?: string) => all<Trip>(COL.trips).find((t) => t.id === id);
+export const tripsOfDoc = (docId: string) => all<Trip>(COL.trips).filter((t) => t.docId === docId);
+export const tripsOfOrder = (soId: string) => all<Trip>(COL.trips).filter((t) => t.soId === soId);
+const stamp = () => `${TODAY}T${dayjs().format('HH:mm')}`;
+const saveTrip = (id: string, fn: (t: Trip) => Trip) => patch<Trip>(COL.trips, id, (t) => fn(t));
+const tlog = (t: Trip, title: string, detail?: string, tone?: LogItem['tone']): LogItem[] => [...t.log, log(title, detail, tone)];
+/** Every trip expense lands on the Sales Order's logistics cost (and so on its profitability); removing one takes it off again. */
+const bookCost = (soId: string, delta: number, title: string, detail?: string, tone: LogItem['tone'] = 'blue') =>
+  saveOrder(soId, (x) => ({ ...x, logisticsCost: Math.max(0, x.logisticsCost + delta), log: [log(title, detail, tone), ...x.log] }));
+/** A vehicle can be picked for a trip only when it is Free (one open trip per vehicle). */
+export const vehicleIsFree = (vehicleId?: string, exceptTripId?: string) => {
+  const a = assetById(vehicleId ?? '');
+  if (!a) return false;
+  const trips = all<Trip>(COL.trips).filter((t) => t.id !== exceptTripId);
+  return fleetStatus(a, trips) === 'Free';
+};
+export function createTrip(i: { kind: TripKind; doc: { id: string; number: string }; soId: string; date: string } & TransportInput): Trip {
+  const o = getOrder(i.soId)!;
+  const v = i.vehicleId ? assetById(i.vehicleId) : undefined;
+  const own = i.transport === 'Own Fleet';
+  const charge = !own && i.charge ? i.charge : 0;
+  const t: Trip = {
+    id: uid('tr'), number: tripNo(), date: i.date, kind: i.kind, docId: i.doc.id, docNumber: i.doc.number, soId: o.id, soNumber: o.number, customerId: o.customerId, site: o.site, costCentre: o.costCentre,
+    transport: i.transport, vehicleId: own ? i.vehicleId : undefined, plate: own ? v?.plateNumber : undefined, driver: own ? i.driver : undefined, mobile: own ? i.mobile : undefined, transporter: own ? undefined : i.transporter,
+    status: 'Assigned', since: stamp(), expenses: charge ? [{ type: 'Transport Charge', amount: charge, date: TODAY, note: `Entered on ${i.doc.number}` }] : [], log: [],
+  };
+  t.log = [log('Trip created', own ? `${v?.plateNumber ?? '-'}${i.driver ? `, ${i.driver}` : ''} for ${i.doc.number}` : `External transporter ${i.transporter ?? '-'} for ${i.doc.number}${charge ? `, Transport Charge AED ${charge}` : ''}`)];
+  put(COL.trips, t);
+  saveOrder(o.id, (x) => ({ ...x, logisticsCost: x.logisticsCost + charge, log: [log(`Trip ${t.number} (${i.kind}) for ${i.doc.number}`, own ? `Own fleet ${v?.plateNumber ?? '-'}${i.driver ? `, driver ${i.driver}` : ''}` : `${i.transporter ?? 'External transporter'}${charge ? `, Transport Charge AED ${charge}` : ''}`, 'blue'), ...x.log] }));
+  return t;
+}
+export const startTrip = (t: Trip) => saveTrip(t.id, (x) => ({ ...x, status: 'En Route', since: stamp(), log: tlog(x, 'Trip started', undefined, 'blue') }));
+export function markStuck(t: Trip, reason: string, responsible: 'Company' | 'Client') {
+  saveTrip(t.id, (x) => ({ ...x, status: 'Stuck-Delayed', since: stamp(), stuck: { reason, responsible, since: stamp() }, log: tlog(x, 'Marked Stuck-Delayed', `${reason}. Responsible: ${responsible}`, 'red') }));
+  saveOrder(t.soId, (o) => ({ ...o, log: [log(`Trip ${t.number} is Stuck-Delayed`, `${reason}. Responsible: ${responsible}`, 'red'), ...o.log] }));
+}
+export const resumeTrip = (t: Trip) => saveTrip(t.id, (x) => ({ ...x, status: 'En Route', since: stamp(), stuck: undefined, log: tlog(x, 'Resumed', `Was stuck: ${x.stuck?.reason ?? '-'}`, 'blue') }));
+export function addTripExpense(t: Trip, e: Omit<TripExpense, 'date'> & { date?: string }) {
+  const exp: TripExpense = { ...e, date: e.date ?? TODAY };
+  saveTrip(t.id, (x) => ({ ...x, expenses: [...x.expenses, exp], log: tlog(x, `Expense added: ${exp.type}`, `AED ${exp.amount}${exp.note ? `, ${exp.note}` : ''}`) }));
+  bookCost(t.soId, exp.amount, `Trip ${t.number}: ${exp.type} AED ${exp.amount}`, 'Added to the order logistics cost');
+}
+export function removeTripExpense(t: Trip, idx: number) {
+  const exp = t.expenses[idx];
+  if (!exp) return;
+  saveTrip(t.id, (x) => ({ ...x, expenses: x.expenses.filter((_, k) => k !== idx), log: tlog(x, `Expense removed: ${exp.type}`, `AED ${exp.amount}`, 'amber') }));
+  bookCost(t.soId, -exp.amount, `Trip ${t.number}: ${exp.type} AED ${exp.amount} removed`, 'Taken off the order logistics cost', 'amber');
+}
+/** Complete frees the vehicle. Expenses entered at the end of the trip (Salik, fuel...) are posted to the order. */
+export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []) {
+  const add = expenses.filter((e) => e.type && e.amount > 0).map((e): TripExpense => ({ ...e, date: TODAY }));
+  const total = add.reduce((s, e) => s + e.amount, 0);
+  saveTrip(t.id, (x) => ({ ...x, status: 'Completed', since: stamp(), stuck: undefined, expenses: [...x.expenses, ...add], log: tlog(x, 'Trip completed', add.length ? add.map((e) => `${e.type} AED ${e.amount}`).join(', ') : undefined, 'green') }));
+  if (total) bookCost(t.soId, total, `Trip ${t.number} completed`, `${add.map((e) => `${e.type} AED ${e.amount}`).join(', ')} added to the logistics cost`);
+}
+export const cancelTrip = (t: Trip, reason: string) => saveTrip(t.id, (x) => ({ ...x, status: 'Cancelled', since: stamp(), stuck: undefined, log: tlog(x, 'Trip cancelled', reason, 'red') }));
+/** While Assigned, the dispatcher can change the vehicle or driver. */
+export function reassignTrip(t: Trip, vehicleId: string, driver: string, mobile?: string) {
+  const v = assetById(vehicleId);
+  saveTrip(t.id, (x) => ({ ...x, vehicleId, plate: v?.plateNumber, driver, mobile, log: tlog(x, 'Vehicle / driver reassigned', `${v?.plateNumber ?? '-'}, ${driver || 'no driver'}`, 'blue') }));
+}
+/** Own vehicle not available: the job moves to an external transporter (a supplier) and the own vehicle is freed. */
+export function switchToExternal(t: Trip, transporter: string, cost: number) {
+  const expenses = [...t.expenses, ...(cost ? [{ type: 'Transport Charge', amount: cost, date: TODAY, note: 'Switched from own fleet' }] : [])];
+  saveTrip(t.id, (x) => ({ ...x, transport: 'External Transporter', transporter, vehicleId: undefined, plate: undefined, driver: undefined, mobile: undefined, expenses, log: tlog(x, 'Switched to an external transporter', `${transporter}${cost ? `, Transport Charge AED ${cost}` : ''}. Own vehicle ${x.plate ?? ''} freed`, 'amber') }));
+  bookCost(t.soId, cost, `Trip ${t.number} moved to ${transporter}`, cost ? `Transport Charge AED ${cost}` : 'Own vehicle freed', 'amber');
+}
+/** And back: an external trip still Assigned can be given to an own vehicle. The transporter's charge is taken off. */
+export function switchToOwnFleet(t: Trip, vehicleId: string, driver: string, mobile?: string) {
+  const v = assetById(vehicleId);
+  const charge = t.expenses.filter((e) => e.type === 'Transport Charge').reduce((s, e) => s + e.amount, 0);
+  saveTrip(t.id, (x) => ({ ...x, transport: 'Own Fleet', transporter: undefined, vehicleId, plate: v?.plateNumber, driver, mobile, expenses: x.expenses.filter((e) => e.type !== 'Transport Charge'), log: tlog(x, 'Switched to own fleet', `${v?.plateNumber ?? '-'}, ${driver || 'no driver'}. The transporter's charge is removed`, 'amber') }));
+  if (charge) bookCost(t.soId, -charge, `Trip ${t.number} moved to own fleet`, `Transport Charge AED ${charge} removed`, 'amber');
+}
+export { tripTotal };
 
 /** Close is blocked while any linked delivery is still unreturned. */
 export function closeOrder(o: SalesOrder): { ok: boolean; message: string } {

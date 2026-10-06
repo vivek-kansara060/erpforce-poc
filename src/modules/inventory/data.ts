@@ -134,7 +134,6 @@ export const pricingSeed: PricingRec[] = [
   rp('pr6', 'Cable', '4 Core 185 mm', 'Monthly', 14, 'Rental power cable, per meter'),
   rp('pr7', 'Panel', 'ATS Panel', 'Monthly', 6800, 'Rental ATS panel'),
   rp('pr8', 'POD', '20 ft POD', 'Monthly', 7500, 'Rental 20 ft power container'),
-  rp('pr9', 'Vehicle', 'Low-bed Truck', 'Daily', 2400, 'Low-bed truck with driver'),
   tp('pr10', 'Generator', '100 KVA', 165000, 'New 100 KVA diesel generator, sale price'),
   tp('pr14', 'Generator', '500 KVA', 380000, 'Ex-fleet 500 KVA diesel generator with service history, sale price'),
   tp('pr11', 'Panel', 'ATS Panel', 61000, 'ATS panel 630A, sale price'),
@@ -234,6 +233,8 @@ export interface HeavyRec {
   statusOverride?: { by: string; when: string; reason: string };
   utilization: number; idleDays: number; profitability: number; attrs: Record<string, string>;
   image?: string; attachments: string[];
+  /** Own delivery vehicle (Fleet Management, 6 Oct): used to deliver and collect equipment, never rented out, not counted in the rental fleet. */
+  deliveryFleet?: boolean; plateNumber?: string; defaultDriver?: string;
 }
 
 /** Derived, never stored: current location is the destination of the latest Movement History entry. */
@@ -241,7 +242,7 @@ export const currentLocation = (r: Pick<HeavyRec, 'movements'>) => [...r.movemen
 /** Derived from the Unified Asset Status: units physically in the yard count as in stock. */
 export const stockStatusOf = (r: Pick<HeavyRec, 'assetStatus'>): 'In Stock' | 'Out of Stock' => (['Ready for Hire', 'Yard', 'Off Hire'].includes(r.assetStatus) ? 'In Stock' : 'Out of Stock');
 export const depreciationApplicable = (ownership: string) => ownership !== 'Cross-Hired';
-export const inFleetCount = (r: Pick<HeavyRec, 'ownership' | 'assetStatus'>) => r.ownership === 'Owned' && r.assetStatus !== 'On Hire' && r.assetStatus !== 'Disposed';
+export const inFleetCount = (r: Pick<HeavyRec, 'ownership' | 'assetStatus' | 'deliveryFleet'>) => !r.deliveryFleet && r.ownership === 'Owned' && r.assetStatus !== 'On Hire' && r.assetStatus !== 'Disposed';
 /** Duration from this entry to the next one, or to now for the latest entry. */
 export function movementDurations(rows: Movement[]): Record<string, string> {
   const s = [...rows].sort((a, b) => a.date.localeCompare(b.date));
@@ -276,7 +277,9 @@ export function buildBoard(p: { start?: string; assetValue: number; notDepreciab
 
 interface Seed { n: number; name: string; category: string; sub: string; brand: string; model: string; engine: string; capacity: string; purchase: string; value: number; years: number; loc: string; dept: string; ownership?: string; crossHire?: { supplier: string; idle?: boolean }; out?: { site: string; date: string }; retired?: boolean; repair?: boolean; assetType: string; spec: string; util: number;
   /** Demo states: the Asset Status the unit is in now (when not the default), a status set by hand with its reason, and movements after the delivery [date, type, from, to, reference]. */
-  status?: string; override?: { when: string; reason: string }; moves?: [string, string, string, string, string][] }
+  status?: string; override?: { when: string; reason: string }; moves?: [string, string, string, string, string][];
+  /** Own delivery vehicle: plate and the driver normally paired with it. */
+  fleet?: { plate: string; driver?: string } }
 const SEEDS: Seed[] = [
   { n: 13, name: 'Diesel Generator 200 KVA Perkins 1106A', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1106A', engine: 'PRK-1106A-70418', capacity: '200 KVA', purchase: '2022-03-15', value: 245000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Gulf Build Contracting', date: '2026-07-04T09:30' }, assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 3 phase, 50 Hz, prime rating', util: 78 },
   { n: 14, name: 'Diesel Generator 200 KVA Cummins C200D5', category: 'Generator', sub: '200 KVA', brand: 'Cummins', model: 'C200D5', engine: 'CUM-6CTA-55027', capacity: '200 KVA', purchase: '2021-09-01', value: 260000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', repair: true, assetType: 'Power Equipment', spec: 'Soundproof canopy, 415 V, 3 phase, 50 Hz', util: 64 },
@@ -286,9 +289,9 @@ const SEEDS: Seed[] = [
   { n: 18, name: 'Diesel Generator 1000 KVA Cummins C1000D5', category: 'Generator', sub: '1000 KVA', brand: 'Cummins', model: 'C1000D5', engine: 'CUM-KTA50-92017', capacity: '1000 KVA', purchase: '2024-08-05', value: 980000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Dubai Metro Works JV', date: '2026-05-18T07:45' }, assetType: 'Power Equipment', spec: '40 ft container mounted, 415 V, 50 Hz', util: 91 },
   { n: 19, name: 'Diesel Generator 1500 KVA Cummins C1500D5', category: 'Generator', sub: '1500 KVA', brand: 'Cummins', model: 'C1500D5', engine: 'CUM-QSK60-10452', capacity: '1500 KVA', purchase: '2025-10-12', value: 1450000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Palm Marina Development', date: '2026-09-30T08:00' }, status: 'Hold', assetType: 'Power Equipment', spec: '40 ft container mounted, 11 kV ready, 50 Hz', util: 35 },
   { n: 20, name: 'Diesel Generator 100 KVA Perkins P100 (Standby)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: 'P100', engine: 'PRK-1104D-22890', capacity: '100 KVA', purchase: '2022-01-20', value: 150000, years: 10, loc: 'Abu Dhabi Mussafah Yard', dept: 'Operations', ownership: 'Spare-Standby', assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 50 Hz', util: 12 },
-  { n: 21, name: 'Low-bed Truck Mercedes Actros 3340', category: 'Vehicle', sub: 'Low-bed Truck', brand: 'Mercedes', model: 'Actros 3340', engine: 'MB-OM471-60318', capacity: '40 Ton', purchase: '2021-02-14', value: 420000, years: 8, loc: 'Jebel Ali Main Yard', dept: 'Logistics', assetType: 'Vehicles', spec: '6x4 tractor unit with hydraulic ramp low-bed trailer', util: 71 },
-  { n: 22, name: 'Low-bed Truck Volvo FM 440', category: 'Vehicle', sub: 'Low-bed Truck', brand: 'Volvo', model: 'FM 440', engine: 'VOL-D13K-41672', capacity: '45 Ton', purchase: '2022-05-09', value: 445000, years: 8, loc: 'Sharjah Yard', dept: 'Logistics', assetType: 'Vehicles', spec: '6x4 tractor unit with low-bed trailer', util: 64 },
-  { n: 23, name: 'Flatbed Truck Isuzu FTR 34', category: 'Vehicle', sub: 'Flatbed Truck', brand: 'Isuzu', model: 'FTR 34', engine: 'ISZ-6HK1-19540', capacity: '12 Ton', purchase: '2020-07-22', value: 210000, years: 8, loc: 'Jebel Ali Main Yard', dept: 'Logistics', repair: true, assetType: 'Vehicles', spec: 'Flatbed body with tie-down rails', util: 55 },
+  { n: 21, name: 'Low-bed Truck Mercedes Actros 3340', category: 'Vehicle', sub: 'Low-bed Truck', brand: 'Mercedes', model: 'Actros 3340', engine: 'MB-OM471-60318', capacity: '40 Ton', purchase: '2021-02-14', value: 420000, years: 8, loc: 'Jebel Ali Main Yard', dept: 'Logistics', status: 'In Service', fleet: { plate: 'Dubai P 48213', driver: 'Tariq Hussain' }, assetType: 'Vehicles', spec: '6x4 tractor unit with hydraulic ramp low-bed trailer', util: 71 },
+  { n: 22, name: 'Low-bed Truck Volvo FM 440', category: 'Vehicle', sub: 'Low-bed Truck', brand: 'Volvo', model: 'FM 440', engine: 'VOL-D13K-41672', capacity: '45 Ton', purchase: '2022-05-09', value: 445000, years: 8, loc: 'Sharjah Yard', dept: 'Logistics', status: 'In Service', fleet: { plate: 'Sharjah 3 22871', driver: 'Imran Shah' }, assetType: 'Vehicles', spec: '6x4 tractor unit with low-bed trailer', util: 64 },
+  { n: 23, name: 'Flatbed Truck Isuzu FTR 34', category: 'Vehicle', sub: 'Flatbed Truck', brand: 'Isuzu', model: 'FTR 34', engine: 'ISZ-6HK1-19540', capacity: '12 Ton', purchase: '2020-07-22', value: 210000, years: 8, loc: 'Jebel Ali Main Yard', dept: 'Logistics', repair: true, fleet: { plate: 'Dubai K 61904', driver: 'Joseph Mathew' }, assetType: 'Vehicles', spec: 'Flatbed body with tie-down rails', util: 55 },
   { n: 24, name: 'POD 20 ft Power Container', category: 'POD', sub: '20 ft POD', brand: 'Emirates Cable & Panel', model: 'POD-20', engine: 'N/A', capacity: '20 ft', purchase: '2023-03-30', value: 70000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Gulf Build Contracting', date: '2026-07-06T11:00' }, status: 'Under Maintenance', moves: [['2026-09-26T15:30', 'Return', 'Client: Gulf Build Contracting', 'Jebel Ali Main Yard', 'CN-26-00132'], ['2026-09-27T09:00', 'Sent for Repair', 'Jebel Ali Main Yard', 'Workshop: Al Masaood Service Centre', 'CN-26-00132']], assetType: 'Containers & Shelters', spec: 'Insulated 20 ft container with cable entry glands', util: 74 },
   { n: 25, name: 'Perkins Spare Engine 2506C-E15', category: 'Spare Engine', sub: 'Perkins Spare Engine', brand: 'Perkins', model: '2506C-E15', engine: 'PRK-2506E-00781', capacity: '500 kW', purchase: '2024-01-16', value: 120000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Workshop', ownership: 'Spare-Standby', assetType: 'Plant & Machinery', spec: 'Complete long engine assembly held as standby', util: 5 },
   { n: 27, name: 'Diesel Generator 500 KVA Falcon Cross-Hire', category: 'Generator', sub: '500 KVA', brand: 'Cummins', model: 'CH-500', engine: 'CUM-QSX15-70451', capacity: '500 KVA', purchase: '2026-05-02', value: 0, years: 0, loc: 'Jebel Ali Main Yard', dept: 'Operations', crossHire: { supplier: 'Falcon Equipment Hire LLC' }, out: { site: 'Client: Al Noor Events Management', date: '2026-05-06T09:00' }, assetType: 'Power Equipment', spec: 'Cross-hired unit, open skid, 415 V, 50 Hz', util: 88 },
@@ -305,6 +308,8 @@ const SEEDS: Seed[] = [
   { n: 38, name: 'Diesel Generator 200 KVA Perkins 1006 (Old Fleet)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1006TAG', engine: 'PRK-1006-08841', capacity: '200 KVA', purchase: '2017-01-20', value: 230000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', status: 'Yard', override: { when: '2026-09-18 11:00', reason: 'Parked: close to the end of its useful life, disposal being prepared' }, assetType: 'Power Equipment', spec: 'Open skid, 415 V, 50 Hz', util: 18 },
   { n: 39, name: 'Diesel Generator 100 KVA Perkins 1103 (Scrapped)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: '1103A', engine: 'PRK-1103A-00562', capacity: '100 KVA', purchase: '2014-04-02', value: 140000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', retired: true, assetType: 'Power Equipment', spec: 'Open skid, 415 V, 50 Hz', util: 0 },
   { n: 40, name: 'Diesel Generator 100 KVA Cummins C100D5 (Fire Damaged)', category: 'Generator', sub: '100 KVA', brand: 'Cummins', model: 'C100D5', engine: 'CUM-4BT-40977', capacity: '100 KVA', purchase: '2019-08-20', value: 160000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', retired: true, assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 50 Hz', util: 0 },
+  { n: 41, name: 'Crane Truck Hiab XS 288 on Isuzu FVZ', category: 'Vehicle', sub: 'Crane Truck', brand: 'Isuzu', model: 'FVZ 260 Hiab', engine: 'ISZ-6HK1-20871', capacity: '28 Ton.m', purchase: '2022-10-03', value: 380000, years: 8, loc: 'Jebel Ali Main Yard', dept: 'Logistics', status: 'In Service', fleet: { plate: 'Dubai L 30517', driver: 'Ravi Kumar' }, assetType: 'Vehicles', spec: 'Rigid truck with a rear-mounted hydraulic loader crane', util: 58 },
+  { n: 42, name: 'Flatbed Truck Mitsubishi Fuso FJ 2528', category: 'Vehicle', sub: 'Flatbed Truck', brand: 'Mitsubishi', model: 'Fuso FJ 2528', engine: 'MIT-6D40-30415', capacity: '14 Ton', purchase: '2023-04-17', value: 295000, years: 8, loc: 'Abu Dhabi Mussafah Yard', dept: 'Logistics', status: 'In Service', fleet: { plate: 'Abu Dhabi 12 45118' }, assetType: 'Vehicles', spec: 'Flatbed body with tie-down rails and side boards', util: 49 },
   { n: 26, name: 'Diesel Generator 200 KVA Perkins 1106A (Retired)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1106A', engine: 'PRK-1106A-41005', capacity: '200 KVA', purchase: '2015-05-10', value: 240000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', retired: true, assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 50 Hz', util: 0 },
 ];
 
@@ -348,6 +353,7 @@ function fromSeed(s: Seed): HeavyRec {
       ...(s.override ? [{ when: s.override.when, title: 'Asset Status changed by hand', detail: `${s.status}: ${s.override.reason}`, by: 'Sanjay Kumar' }] : []),
     ],
     attachments: s.retired || ch ? [] : [`${s.model.replace(/\s/g, '-')}-purchase-invoice.pdf`],
+    ...(s.fleet ? { deliveryFleet: true, plateNumber: s.fleet.plate, defaultDriver: s.fleet.driver } : {}),
   };
 }
 export const heavySeed: HeavyRec[] = SEEDS.map(fromSeed);
@@ -445,13 +451,13 @@ export const countSeed: CountSession[] = [
       al(14, 'Diesel Generator 200 KVA Cummins C200D5', 'Generator', 'Owned', 'Under Maintenance', 'Found'),
       al(17, 'Diesel Generator 500 KVA Perkins 2506C', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
       al(19, 'Diesel Generator 1500 KVA Cummins C1500D5', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
-      al(21, 'Low-bed Truck Mercedes Actros 3340', 'Vehicle', 'Owned', 'Ready for Hire', 'Not Found', 'Driver says it was taken to Sharjah Yard; transfer not recorded'),
+      al(21, 'Low-bed Truck Mercedes Actros 3340', 'Vehicle', 'Owned', 'In Service', 'Not Found', 'Driver says it was taken to Sharjah Yard; transfer not recorded'),
       al(23, 'Flatbed Truck Isuzu FTR 34', 'Vehicle', 'Owned', 'Under Maintenance', 'Found'),
       al(25, 'Perkins Spare Engine 2506C-E15', 'Spare Engine', 'Spare-Standby', 'Yard', 'Not Found', 'Possibly sent to the workshop without a movement entry'),
     ] },
   { id: 'cs6', number: 'SCS-26-00006', date: '2026-09-30', location: 'Sharjah Yard', countedBy: 'Grace Fernandez', status: 'In Progress', type: 'Fixed Assets', lines: [],
     assetLines: [
-      al(22, 'Low-bed Truck Volvo FM 440', 'Vehicle', 'Owned', 'Ready for Hire', 'Found'),
+      al(22, 'Low-bed Truck Volvo FM 440', 'Vehicle', 'Owned', 'In Service', 'Found'),
       al(28, 'Diesel Generator 200 KVA Gulf Genset Cross-Hire', 'Generator', 'Cross-Hired', 'Yard', null),
       al(34, 'Diesel Generator 1000 KVA Perkins 4008-30TAG2', 'Generator', 'Owned', 'Ready for Hire', null),
     ] },

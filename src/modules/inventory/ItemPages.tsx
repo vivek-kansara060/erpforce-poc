@@ -33,7 +33,7 @@ export function ItemList() {
   const [del, setDel] = useState<Row | null>(null);
   const rows: Row[] = [
     ...items.rows.map((r): Row => ({ id: r.id, kind: 'item', code: r.code, sku: r.sku, name: r.name, type: r.type, classification: r.classification, category: r.category, subCategory: r.subCategory ?? '', minStock: r.minStock, status: r.status, serviceType: r.serviceType, billing: r.billing, price: r.price })),
-    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, assetStatus: r.assetStatus, ownerGroup: r.ownership === 'Cross-Hired' ? 'Cross-Hire Asset' : 'Own Asset', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: stockStatusOf(r) })),
+    ...heavy.rows.map((r): Row => ({ id: r.id, kind: 'heavy', assetId: r.assetId, assetStatus: r.assetStatus, ownerGroup: r.ownership === 'Cross-Hired' ? 'Cross-Hire Asset' : 'Own Asset', code: r.code, sku: '-', name: r.name, type: 'Heavy Equipment Fixed Asset', classification: r.classification, category: r.category, subCategory: r.subCategory, status: r.status, stockStatus: r.deliveryFleet ? 'Not for hire' : stockStatusOf(r) })),
   ];
   const view = type === 'All' ? rows : rows.filter((r) => r.type === type);
   const open = (r: Row) => nav(r.kind === 'heavy' ? `${HEAVY_PATH}/${r.id}` : `/inventory/items/${r.id}`);

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Box, Button, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Checkbox } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { CheckInput, DateInput, FileInput, MultiSelectInput, NumberInput, SelectInput, TextInput, ToggleInput, ValueField } from '@/components/Form';
+import { CheckInput, DateInput, FileInput, HelpTip, MultiSelectInput, NumberInput, SelectInput, TextInput, ToggleInput, ValueField } from '@/components/Form';
 import { Text } from '@/components/Text';
 import { ChangeTag } from '@/components/ChangeTag';
 import { Marked } from '@/components/ChangeTag';
@@ -106,12 +106,12 @@ export function RowsEditor<T extends Record<string, any>>({ cols, rows, onChange
 }
 
 /** Collapsible-style section used by the existing forms (Attachments, Owner Details, Classification, Follow Up ...). */
-export function Section({ title, children, change, req }: { title: string; children: ReactNode; change?: 'new' | 'changed'; req?: string }) {
+export function Section({ title, children, change, req, hint }: { title: string; children: ReactNode; change?: 'new' | 'changed'; req?: string; hint?: ReactNode }) {
   const [open, setOpen] = useState(true);
   return (
     <Box sx={{ mt: 2.5, border: `1px solid ${neutral[200]}`, borderRadius: '8px' }}>
       <Box onClick={() => setOpen(!open)} sx={{ px: 2, py: 1, cursor: 'pointer', bgcolor: neutral[100], borderRadius: '8px 8px 0 0', display: 'flex', justifyContent: 'space-between' }}>
-        <Text type="s3" weight="medium">{title}<ChangeTag kind={change} req={req} /></Text><Text type="s5">{open ? 'Hide' : 'Show'}</Text>
+        <Text type="s3" weight="medium">{title}<ChangeTag kind={change} req={req} /><span onClick={(e) => e.stopPropagation()}><HelpTip hint={hint} /></span></Text><Text type="s5">{open ? 'Hide' : 'Show'}</Text>
       </Box>
       {open && <Box sx={{ p: 2 }}>{children}</Box>}
     </Box>

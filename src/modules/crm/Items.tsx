@@ -11,7 +11,7 @@ void _fmt;
 import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  stockLocations, yards, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
+  stockLocations, yards, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, rentalGroupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
   type ActivityType, type HeavyRec, type Line, type PricingRec,
 } from './data';
 import { ChangeTag } from '@/components/ChangeTag';
@@ -175,7 +175,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
       actions={isNew ? <Button variant="outlined" onClick={() => save(true)}>Save and Add another</Button> : undefined}>
       {rental && (err.contract || !contract?.start || !contract?.end) && <Alert severity={err.contract ? 'error' : 'info'} sx={{ mb: 2 }}>Set the Contract Start and End Date in the main form before adding rental equipment. They apply to every rental line.</Alert>}
       <FormGrid cols={3}>
-        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={groupOptions()} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
+        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={l.activity === 'Rental' ? rentalGroupOptions() : groupOptions()} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
         {equipment && <SelectInput label={SUBCATEGORY_LABEL} required change="new" req={R.meet} value={l.category} options={categoryOptions(l.group)} onChange={(v) => set({ category: v, pricingId: undefined, item: rental ? `Rental ${l.group} ${v}` : `${l.group} ${v} (sale)`, ...(!rental && !l.foc ? { price: pricing.find((p) => p.activity === 'Fixed Asset Trading' && p.category === l.group && p.subCategory === v)?.price ?? l.price } : {}) })} error={err.category} hint="The exact serialized asset is chosen at Delivery" />}
         {rental && (priceOpts.length
           ? <SelectInput label="Pricing" required change="new" req={R.meet} value={l.pricingId} options={priceOpts.map((p) => ({ value: p.id, label: `${pricingName(p)} (${fmtAED(p.price)})` }))} onChange={pick} error={err.item} hint="From Inventory, Heavy Equipment Pricing" />

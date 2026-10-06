@@ -1,6 +1,6 @@
 # Fleet Management: Implementation Plan (POC)
 
-Status: **approved plan, not built yet**. Written 6 Oct 2026 for the ERPForce Heavy Equipment Rental POC (`erpforce-poc`, branch `feat/anurag`).
+Status: **built on 6 Oct 2026** (branch `feat/anurag`). Differences from the plan: the seed has two trips on CN-26-00123 (a stuck first attempt and a crane-truck second trip, because only one company collection is open), an Assigned external trip can also be switched back to Own Fleet, Add Expense is available on completed trips, and section notes are "?" hints. Written 6 Oct 2026 for the ERPForce Heavy Equipment Rental POC (`erpforce-poc`, branch `feat/anurag`).
 
 This document is meant to be implemented as is. Every requirement below is traced to its source. Anything that is our own design choice (not stated by Ajin or the requirement document) is marked **[Design choice]**.
 

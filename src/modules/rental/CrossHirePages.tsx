@@ -22,7 +22,7 @@ const HIRE_SUPPLIERS = suppliers.filter((s) => s.type === 'Cross-Hire Company');
 const supOpts = HIRE_SUPPLIERS.map((s) => ({ value: s.id, label: s.name }));
 const R_CH = 'Existing ERP Cross Hire (Requests, Process, Request for Quote, Orders) combined with Procurement > Cross-Hire Suppliers';
 
-const onHand = (g: string, c: string) => fleetRows().filter((a) => isLive(a) && a.category === g && a.subCategory === c && a.ownership !== 'Cross-Hired').length;
+const onHand = (g: string, c: string) => fleetRows().filter((a) => isLive(a) && !a.deliveryFleet && a.category === g && a.subCategory === c && a.ownership !== 'Cross-Hired').length;
 
 /* ------------------------------------------------------------------ shared create dialogs (Create > Order, Create > RFQ) */
 export function ChOrderDialog({ open, onClose, requestIds, rfq, qty, type }: { open: boolean; onClose: () => void; requestIds: string[]; rfq?: CrossHireRfq; qty?: number; type?: 'Inventory' | 'Dropship' }) {

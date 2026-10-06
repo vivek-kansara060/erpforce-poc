@@ -61,7 +61,8 @@ function crmDefs(d: D): CrmReportDef[] {
 }
 
 function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } {
-  const live = d.fleet.filter(isLive);
+  // Own delivery vehicles are not rental fleet (Fleet Management decision D1), so they stay out of every rental fleet count.
+  const live = d.fleet.filter((a) => isLive(a) && !a.deliveryFleet);
   const exp = expiryRows(d);
   const reports: ReportDef[] = [
     { slug: 'replacement-history', title: 'Replacement History Report', purpose: 'Full history of replacements, filterable by project, client and asset.', group: 'Rental', change: 'new', req: RR,

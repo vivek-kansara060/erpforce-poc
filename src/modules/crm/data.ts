@@ -12,7 +12,7 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 /* ------------------------------------------------------------------ collection names */
 export const COL = {
   leads: 'crm.leads', opps: 'crm.opportunities', quotes: 'crm.quotations', orders: 'crm.salesOrders', deliveries: 'crm.deliveries',
-  returns: 'crm.returns', masters: 'crm.masters', serviceCharges: 'crm.serviceCharges', jobCards: 'crm.jobCards', replacements: 'rental.replacements', extensions: 'rental.extensions', crossHire: 'rental.crossHire', chRequests: 'rental.chRequests', chRfqs: 'rental.chRfqs',
+  returns: 'crm.returns', masters: 'crm.masters', serviceCharges: 'crm.serviceCharges', jobCards: 'crm.jobCards', replacements: 'rental.replacements', extensions: 'rental.extensions', crossHire: 'rental.crossHire', chRequests: 'rental.chRequests', chRfqs: 'rental.chRfqs', trips: 'rental.trips',
   /* read only from CRM: owned by Inventory */
   fleet: 'inventory.heavyEquipment', pricing: 'inventory.pricing',
 } as const;
@@ -85,6 +85,7 @@ export const MASTER_SEED: Record<string, string[]> = {
   yardChecklist: ['Engine and alternator visual check', 'Fluid levels and leaks', 'Control panel and breakers', 'Fuel tank and day tank', 'Body and canopy condition', 'Accessories reconciled with delivery'],
   replacementReason: ['Breakdown', 'Customer request', 'Upgrade'],
   industry: ['Construction', 'Utilities', 'Hospitality', 'Oil & Gas', 'Events', 'Logistics', 'Manufacturing', 'Real Estate'],
+  tripExpenseTypes: ['Transport Charge', 'Salik', 'Fuel', 'Driver Allowance', 'Parking', 'Other'],
 };
 export interface MasterRec { id: string; values: string[] }
 export const masterSeed: MasterRec[] = Object.entries(MASTER_SEED).map(([id, values]) => ({ id, values }));
@@ -197,6 +198,35 @@ export const CH_REQUEST_STATUSES = ['Draft', 'Pending', 'In Progress', 'Complete
 export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Order'];
 export const CH_TYPES = ['Inventory', 'Dropship'];
 
+/* ------------------------------------------------------------------ Fleet Management: trips (own delivery vehicles and external transporters) */
+export const TRIP_STATUSES = ['Assigned', 'En Route', 'Stuck-Delayed', 'Completed', 'Cancelled'] as const;
+export type TripStatus = (typeof TRIP_STATUSES)[number];
+export const OPEN_TRIP: TripStatus[] = ['Assigned', 'En Route', 'Stuck-Delayed'];
+export type TripKind = 'Delivery' | 'Collection' | 'Replacement';
+export type FleetStatus = 'Free' | 'Assigned' | 'En Route' | 'Stuck-Delayed' | 'Unavailable';
+export const FLEET_STATUSES: FleetStatus[] = ['Free', 'Assigned', 'En Route', 'Stuck-Delayed', 'Unavailable'];
+export interface TripExpense { type: string; amount: number; note?: string; date: string }
+/** One movement of a vehicle (or of an external transporter) for a Delivery Order, a Collection or a Replacement. Always created from its document, so it is always tied to a project. */
+export interface Trip {
+  id: string; number: string;
+  date: string;
+  kind: TripKind;
+  docId: string; docNumber: string;
+  soId: string; soNumber: string; customerId: string; site: string; costCentre?: string;
+  transport: 'Own Fleet' | 'External Transporter';
+  vehicleId?: string; plate?: string;
+  driver?: string; mobile?: string;
+  transporter?: string;
+  status: TripStatus;
+  /** When the trip last changed status, so the board can show how long a vehicle has been in its state. */
+  since: string;
+  stuck?: { reason: string; responsible: 'Company' | 'Client'; since: string };
+  expenses: TripExpense[];
+  log: LogItem[];
+}
+export const tripTotal = (t: Pick<Trip, 'expenses'>) => t.expenses.reduce((s, e) => s + e.amount, 0);
+export const isOpenTrip = (t: Pick<Trip, 'status'>) => OPEN_TRIP.includes(t.status);
+
 /* ------------------------------------------------------------------ helpers */
 export const cust = (id: string) => customers.find((c) => c.id === id);
 export const custName = (id: string) => cust(id)?.name ?? '-';
@@ -256,8 +286,28 @@ export const assetLabel = (a?: HeavyRec) => (a ? `${a.assetId} - ${a.name}` : '-
 export const isLive = (a: HeavyRec) => a.status === 'Active' && a.assetStatus !== 'Disposed';
 /** Units that can go out on a delivery: Ready for Hire units of the Category + Subcategory (owned fleet and received cross-hired units). */
 export function availability(group?: string, category?: string, rows: HeavyRec[] = fleetRows()) {
-  const ready = rows.filter((a) => isLive(a) && a.category === group && a.subCategory === category && a.assetStatus === 'Ready for Hire');
+  /** Own delivery vehicles are never part of the hire pool (Fleet Management decision D1). */
+  const ready = rows.filter((a) => isLive(a) && !a.deliveryFleet && a.category === group && a.subCategory === category && a.assetStatus === 'Ready for Hire');
   return { owned: ready.filter((a) => a.ownership !== 'Cross-Hired'), cross: ready.filter((a) => a.ownership === 'Cross-Hired') };
+}
+/** Categories offered on a Rental line: a Category whose live assets are all delivery vehicles (for example Vehicle) is not rentable. Fixed Asset Trading keeps every Category. */
+export const rentalGroupOptions = () => {
+  const live = fleetRows().filter(isLive);
+  return groupOptions().filter((g) => { const m = live.filter((a) => a.category === g); return !(m.length && m.every((a) => a.deliveryFleet)); });
+};
+
+/* ------------------------------------------------------------------ fleet management: vehicles and trips */
+export function tripRows(): Trip[] { seedCollection(COL.trips, tripSeed); return getCollection<Trip>(COL.trips); }
+/** The Heavy Equipment Fixed Assets ticked as Delivery fleet vehicle. */
+export const deliveryVehicles = (rows: HeavyRec[] = fleetRows()) => rows.filter((a) => a.deliveryFleet && a.assetStatus !== 'Disposed');
+export const openTripOf = (vehicleId: string, trips: Trip[] = tripRows()) => trips.find((t) => t.vehicleId === vehicleId && isOpenTrip(t));
+/**
+ * Derived, never stored (one source of truth: the trips). Free when there is no open trip, otherwise the open trip's status.
+ * Unavailable when the vehicle is not in service (Under Maintenance, Breakdown, Disposed or Inactive).
+ */
+export function fleetStatus(a: HeavyRec, trips: Trip[] = tripRows()): FleetStatus {
+  if (a.status === 'Inactive' || ['Under Maintenance', 'Breakdown', 'Disposed'].includes(a.assetStatus)) return 'Unavailable';
+  return (openTripOf(a.id, trips)?.status as FleetStatus | undefined) ?? 'Free';
 }
 export function patchAsset(id: string, patch: Partial<HeavyRec>, audit?: { title: string; detail?: string }, movement?: { type: string; from: string; to: string; reference: string; customer?: string; project?: string }) {
   const rows = fleetRows();
@@ -409,13 +459,13 @@ const dl = (id: string, number: string, s: SalesOrder, lineId: string, assetId: 
 };
 const sx = (id: string) => orderSeed.find((o) => o.id === id)!;
 export const deliverySeed: Delivery[] = [
-  dl('dl1', 'DO-26-00102', sx('so1'), 'so1a', 'he15', '2026-04-12'),
+  dl('dl1', 'DO-26-00102', sx('so1'), 'so1a', 'he15', '2026-04-12', { driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213', mobile: '+971 50 311 4090' }),
   dl('dl2', 'DO-26-00108', sx('so1'), 'so1b', 'he18', '2026-05-18', { type: 'Partial' }),
-  dl('dl3', 'DO-26-00131', sx('so2'), 'so2a', 'he13', '2026-07-04', { transport: 'External Transporter', extCost: 1400 }),
-  dl('dl4', 'DO-26-00132', sx('so2'), 'so2b', 'he24', '2026-07-06', { transport: 'External Transporter', extCost: 1400, closed: true }),
+  dl('dl3', 'DO-26-00131', sx('so2'), 'so2a', 'he13', '2026-07-04', { transport: 'External Transporter', extCost: 1400, transportedBy: 'Gulf Haulage and Transport LLC' }),
+  dl('dl4', 'DO-26-00132', sx('so2'), 'so2b', 'he24', '2026-07-06', { transport: 'External Transporter', extCost: 1400, closed: true, transportedBy: 'Al Safeer Heavy Transport' }),
   dl('dl5', 'DO-26-00079', sx('so3'), 'so3a', 'he27', '2026-05-06'),
-  dl('dl6', 'DO-26-00044', sx('so5'), 'so5a', 'he16', '2026-02-20'),
-  dl('dl7', 'DO-26-00125', sx('so4'), 'so4a', 'he19', '2026-09-30', { rentalStart: '2026-10-05', startReason: 'Site not ready for deployment', startBy: 'Client', siteReady: false }),
+  dl('dl6', 'DO-26-00044', sx('so5'), 'so5a', 'he16', '2026-02-20', { driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213', mobile: '+971 50 311 4090' }),
+  dl('dl7', 'DO-26-00125', sx('so4'), 'so4a', 'he19', '2026-09-30', { rentalStart: '2026-10-05', startReason: 'Site not ready for deployment', startBy: 'Client', siteReady: false, driver: 'Imran Shah', vehicleNumber: 'Sharjah 3 22871', mobile: '+971 55 418 2276' }),
   dl('dl8', 'DO-26-00121', sx('so9'), 'so9a', 'he29', '2026-06-01', { closed: true }),
   dl('dl9', 'DO-26-00122', sx('so9'), 'so9b', 'he30', '2026-06-01', { closed: true }),
   dl('dl10', 'DO-26-00123', sx('so9'), 'so9c', 'he36', '2026-06-01', { closed: true }),
@@ -436,6 +486,38 @@ export const replacementSeed: Replacement[] = [
   { id: 'rp0', number: 'RP-26-00003', soId: 'so2', lineId: 'so2a', oldAssetId: 'he14', newAssetId: 'he28', reason: 'Breakdown', priceAdjust: 0, notified: true, date: '2026-06-12', crossHireId: 'ch2', by: 'Bilal Ahmed' },
   { id: 'rp1', number: 'RP-26-00004', soId: 'so2', lineId: 'so2a', oldAssetId: 'he28', newAssetId: 'he13', reason: 'Customer request', priceAdjust: 0, notified: true, date: '2026-07-04', by: 'Bilal Ahmed' },
 ];
+/**
+ * One trip per status so the Fleet Availability board and the Trips list are full. Every trip belongs to a document (DO, return or replacement), and an order's
+ * logisticsCost is the sum of its trips' expenses (recomputed below), so the Logistics tab and the Logistics Cost report agree.
+ * The collection of CN-26-00123 shows a first attempt that is stuck and a second trip with the crane truck.
+ */
+export const TRIP_SEED_N = 8;
+const tx = (type: string, amount: number, date: string, note?: string): TripExpense => ({ type, amount, date, note });
+const tr = (id: string, n: number, s: SalesOrder, kind: TripKind, doc: { id: string; number: string }, over: Partial<Trip> & Pick<Trip, 'date' | 'status' | 'since'>): Trip => ({
+  id, number: `TRP-26-${String(n).padStart(5, '0')}`, kind, docId: doc.id, docNumber: doc.number, soId: s.id, soNumber: s.number, customerId: s.customerId, site: s.site, costCentre: s.costCentre,
+  transport: 'Own Fleet', expenses: [], log: [], ...over,
+});
+const DRV = { tariq: { driver: 'Tariq Hussain', mobile: '+971 50 311 4090' }, imran: { driver: 'Imran Shah', mobile: '+971 55 418 2276' }, ravi: { driver: 'Ravi Kumar', mobile: '+971 56 129 6480' } };
+export const tripSeed: Trip[] = [
+  tr('tr1', 1, sx('so1'), 'Delivery', { id: 'dl1', number: 'DO-26-00102' }, { date: '2026-04-12T07:30', status: 'Completed', since: '2026-04-12T13:10', vehicleId: 'he21', plate: 'Dubai P 48213', ...DRV.tariq, expenses: [tx('Salik', 20, '2026-04-12'), tx('Fuel', 180, '2026-04-12')],
+    log: [lg('2026-04-12 07:30', 'Trip created', 'Bilal Ahmed', 'Dubai P 48213, Tariq Hussain'), lg('2026-04-12 07:45', 'Trip started', 'Bilal Ahmed', undefined, 'blue'), lg('2026-04-12 13:10', 'Trip completed', 'Bilal Ahmed', 'Salik AED 20, Fuel AED 180', 'green')] }),
+  tr('tr2', 2, sx('so4'), 'Delivery', { id: 'dl7', number: 'DO-26-00125' }, { date: '2026-09-30T08:30', status: 'En Route', since: '2026-09-30T09:05', vehicleId: 'he22', plate: 'Sharjah 3 22871', ...DRV.imran,
+    log: [lg('2026-09-30 08:30', 'Trip created', 'Bilal Ahmed', 'Sharjah 3 22871, Imran Shah'), lg('2026-09-30 09:05', 'Trip started', 'Bilal Ahmed', undefined, 'blue')] }),
+  tr('tr3', 3, sx('so9'), 'Collection', { id: 'rt1', number: 'CN-26-00123' }, { date: '2026-09-30T10:30', status: 'Stuck-Delayed', since: '2026-09-30T13:20', vehicleId: 'he21', plate: 'Dubai P 48213', ...DRV.tariq,
+    stuck: { reason: 'Crane not available on site to load the generator', responsible: 'Client', since: '2026-09-30T13:20' },
+    log: [lg('2026-09-30 10:30', 'Trip created', 'Bilal Ahmed', 'Dubai P 48213, Tariq Hussain'), lg('2026-09-30 11:00', 'Trip started', 'Bilal Ahmed', undefined, 'blue'), lg('2026-09-30 13:20', 'Marked Stuck-Delayed', 'Bilal Ahmed', 'Crane not available on site to load the generator. Responsible: Client', 'red')] }),
+  tr('tr4', 4, sx('so9'), 'Collection', { id: 'rt1', number: 'CN-26-00123' }, { date: '2026-09-30T15:00', status: 'Assigned', since: '2026-09-30T15:00', vehicleId: 'he41', plate: 'Dubai L 30517', ...DRV.ravi,
+    log: [lg('2026-09-30 15:00', 'Trip created', 'Bilal Ahmed', 'Second vehicle for the stuck collection: crane truck Dubai L 30517, Ravi Kumar')] }),
+  tr('tr5', 5, sx('so2'), 'Delivery', { id: 'dl3', number: 'DO-26-00131' }, { date: '2026-07-04T08:00', status: 'Completed', since: '2026-07-04T12:40', transport: 'External Transporter', transporter: 'Gulf Haulage and Transport LLC', expenses: [tx('Transport Charge', 1400, '2026-07-04')],
+    log: [lg('2026-07-04 08:00', 'Trip created', 'Bilal Ahmed', 'External transporter Gulf Haulage and Transport LLC'), lg('2026-07-04 12:40', 'Trip completed', 'Bilal Ahmed', 'Transport Charge AED 1400', 'green')] }),
+  tr('tr6', 6, sx('so2'), 'Delivery', { id: 'dl4', number: 'DO-26-00132' }, { date: '2026-07-06T08:00', status: 'Completed', since: '2026-07-06T11:30', transport: 'External Transporter', transporter: 'Al Safeer Heavy Transport', expenses: [tx('Transport Charge', 1400, '2026-07-06')],
+    log: [lg('2026-07-06 08:00', 'Trip created', 'Bilal Ahmed', 'External transporter Al Safeer Heavy Transport'), lg('2026-07-06 11:30', 'Trip completed', 'Bilal Ahmed', 'Transport Charge AED 1400', 'green')] }),
+  tr('tr7', 7, sx('so5'), 'Delivery', { id: 'dl6', number: 'DO-26-00044' }, { date: '2026-02-20T07:00', status: 'Completed', since: '2026-02-20T15:30', vehicleId: 'he21', plate: 'Dubai P 48213', ...DRV.tariq, expenses: [tx('Fuel', 900, '2026-02-20'), tx('Salik', 220, '2026-02-20'), tx('Driver Allowance', 380, '2026-02-20')],
+    log: [lg('2026-02-20 07:00', 'Trip created', 'Bilal Ahmed', 'Dubai P 48213, Tariq Hussain'), lg('2026-02-20 15:30', 'Trip completed', 'Bilal Ahmed', 'Fuel AED 900, Salik AED 220, Driver Allowance AED 380', 'green')] }),
+  tr('tr8', 8, sx('so2'), 'Replacement', { id: 'rp1', number: 'RP-26-00004' }, { date: '2026-07-04T09:30', status: 'Completed', since: '2026-07-04T14:00', vehicleId: 'he22', plate: 'Sharjah 3 22871', ...DRV.imran, expenses: [tx('Salik', 40, '2026-07-04'), tx('Fuel', 160, '2026-07-04')],
+    log: [lg('2026-07-04 09:30', 'Trip created', 'Bilal Ahmed', 'Sharjah 3 22871, Imran Shah'), lg('2026-07-04 14:00', 'Trip completed', 'Bilal Ahmed', 'Salik AED 40, Fuel AED 160', 'green')] }),
+];
+orderSeed.forEach((o) => { const t = tripSeed.filter((x) => x.soId === o.id && x.status !== 'Cancelled'); if (t.length) o.logisticsCost = t.reduce((n, x) => n + tripTotal(x), 0); });
 export const extensionSeed: Extension[] = [
   { id: 'ex1', number: 'EX-26-00007', soId: 'so1', kind: 'Extension', oldEnd: '2026-09-08', newEnd: '2026-10-08', date: '2026-09-10', note: 'Client extended the hire by one month', status: 'Applied', clientConfirmedBy: 'Sergei Petrov' },
 ];
@@ -503,6 +585,6 @@ export function seedAll() {
   seedCollection(COL.fleet, heavySeed); seedCollection(COL.pricing, pricingSeed); seedCollection(COL.masters, masterSeed);
   seedCollection(COL.leads, leadSeed); seedCollection(COL.opps, oppSeed); seedCollection(COL.quotes, quoteSeed); seedCollection(COL.orders, orderSeed);
   seedCollection(COL.deliveries, deliverySeed); seedCollection(COL.returns, returnSeed); seedCollection(COL.replacements, replacementSeed);
-  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.chRequests, chRequestSeed); seedCollection(COL.chRfqs, chRfqSeed); seedCollection(COL.jobCards, jobCardSeed);
+  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.chRequests, chRequestSeed); seedCollection(COL.chRfqs, chRfqSeed); seedCollection(COL.jobCards, jobCardSeed); seedCollection(COL.trips, tripSeed);
 }
 seedAll();

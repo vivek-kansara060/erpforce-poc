@@ -12,7 +12,8 @@ import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { FAULT_ATTRIBUTION, RETURN_METHODS, TODAY, yards, assetById, custName, hasWaiver, type ReturnEntry } from './data';
 import { failedCollection, getOrder, inspect, outstanding, raiseReturn, reachYard } from './flow';
-import { R, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns } from './shared';
+import { R, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
+import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 
 const STEPS = ['Return triggered', 'Transport / collection', 'Site check', 'Reached Yard', 'Inspection', 'Outcome'];
 
@@ -59,6 +60,7 @@ export function ReturnForm() {
   const firstKey = () => { const o = getOrder(sp.get('so') ?? ''); const outs0 = (o?.lines ?? []).filter((l) => !sp.get('line') || l.id === sp.get('line')).flatMap((l) => outstanding(l).map((a) => `${l.id}|${a.assetId}`)); return outs0.length === 1 ? outs0[0] : ''; };
   const [f, setF] = useState<Record<string, any>>(() => ({ soId: sp.get('so') ?? '', assetKey: firstKey(), method: '', timestamp: `${TODAY}T${dayjs().format('HH:mm')}`, checks: [] as string[], photos: [] as string[], fuelNote: '' }));
   const [err, setErr] = useState<Record<string, string>>({});
+  const [tp, setTp] = useState(blankTransport);
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
   const so = orders.get(f.soId);
   const outs = (so?.lines ?? []).flatMap((l) => outstanding(l).map((a) => ({ line: l, a })));
@@ -70,9 +72,10 @@ export function ReturnForm() {
     if (!f.method) e.method = 'Return Method is required';
     if (f.checks.length < SITE_CHECKLIST.length) e.checks = 'The Pre-Return Site Checklist must be completed before Off-Hire is confirmed';
     if (!f.photos.length) e.photos = 'Photos are mandatory at Return';
+    if (f.method === 'Company Collection') Object.assign(e, validateTransport(tp));
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const r = raiseReturn({ soId: so!.id, lineId: pick!.line.id, assetId: pick!.a.assetId, method: f.method, timestamp: f.timestamp, siteChecklist: f.checks, photos: f.photos, fuelNote: f.fuelNote });
+    const r = raiseReturn({ soId: so!.id, lineId: pick!.line.id, assetId: pick!.a.assetId, method: f.method, timestamp: f.timestamp, siteChecklist: f.checks, photos: f.photos, fuelNote: f.fuelNote, transport: f.method === 'Company Collection' ? toTransportInput(tp) : undefined });
     toast(`${r.number} raised. Asset is Off Hire and rental billing has stopped`);
     nav(`/crm/customer-returns/${r.id}`);
   };
@@ -94,6 +97,11 @@ export function ReturnForm() {
           {err.checks && <Text type="s5" color="#C64D4D">{err.checks}</Text>}
           <Text type="s5" color="theme.secondary.700">Light check at the client site before Off-Hire. Checklist content {TO_CONFIRM.toLowerCase()}.</Text>
         </FormSection>
+        {f.method === 'Company Collection' && (
+          <FormSection title="Collection Transport" change="new" req={R.fleet} hint="Creates a Collection trip. If the collection fails, the trip is marked Stuck-Delayed with the same note and Responsible.">
+            <TransportSection value={tp} onChange={setTp} errors={err} />
+          </FormSection>
+        )}
         <FormSection title="Photos and Fuel Note">
           <FormGrid>
             <FileInput label="Return Photo Attachments" required change="new" req={R.rreturn} multiple value={f.photos} onChange={set('photos')} error={err.photos} hint="Mandatory at Return (optional at Delivery)" />
@@ -111,6 +119,7 @@ export function ReturnView() {
   const toast = useToast();
   const rets = useReturns();
   const dels = useDeliveries();
+  const trips = useTrips();
   const orders = useOrders();
   const YARD_CHECKLIST = useMaster('yardChecklist').values;
   const r = rets.get(id);
@@ -128,6 +137,8 @@ export function ReturnView() {
   const waiver = hasWaiver(orders.get(r.soId)?.lines ?? []);
   const okInspect = res === 'Passed' ? checks.length === YARD_CHECKLIST.length : (waiver || Number(amount) > 0) && note.trim();
   const dn = dels.get(r.deliveryId)?.number;
+  const rTrips = trips.rows.filter((t) => t.docId === r.id);
+  const ct = rTrips.find((t) => t.status !== 'Cancelled');
   return (
     <>
       <FormHeader crumbs={[{ label: 'Customer Returns', to: '/crm/customer-returns' }, { label: r.number }]} status={<StatusChip status={r.inspection} />}
@@ -151,6 +162,7 @@ export function ReturnView() {
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
             { label: 'Checklists', content: <Box><Text type="s3" weight="medium">Pre-Return Site Checklist</Text>{r.siteChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>)}<Text type="s3" weight="medium" sx={{ mt: 2 }}>Operations Return Checklist (Yard)</Text>{r.yardChecklist.length ? r.yardChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>) : <Text type="s4">Not completed yet. The asset cannot become Ready for Hire until it is.</Text>}</Box> },
+            { label: 'Trips', content: <TripsTable rows={rTrips} empty={r.method === 'Company Collection' ? 'No trip recorded for this collection' : 'Client self-return: no trip'} /> },
             { label: 'Photos', content: <Text type="s4">{r.photos.join(', ') || 'None'}</Text> },
             { label: 'Return log', content: <Timeline items={[...r.log].reverse()} /> },
           ]} />
@@ -185,7 +197,7 @@ export function ReturnView() {
           <Text type="s4">Asset: {a ? `${a.assetId} - ${a.name}` : '-'}</Text>
           <Text type="s4">Off-Hire date and time: {r.timestamp.replace('T', ' ')}</Text>
           <Text type="s4" sx={{ mt: 3 }}>Client name and signature: ______________________ &nbsp; Date: ____________</Text>
-          <Text type="s4" sx={{ mt: 2 }}>Collected by (driver): ______________________ &nbsp; Vehicle: ____________</Text>
+          <Text type="s4" sx={{ mt: 2 }}>Collected by (driver): {ct ? <u>{ct.transport === 'Own Fleet' ? ct.driver || '-' : ct.transporter}</u> : '______________________'} &nbsp; Vehicle: {ct ? <u>{ct.transport === 'Own Fleet' ? ct.plate : 'External transporter'}</u> : '____________'}</Text>
         </Box>
       </AppDialog>
     </>
