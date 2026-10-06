@@ -58,8 +58,8 @@ export interface CategoryRec {
   id: string; name: string; parent: string; status: 'Active' | 'Inactive';
   brand?: string; description?: string; skuPrefix?: string; uniqueItems?: number; attributes: AttributeDef[]; depMethod?: string;
 }
-const EXTRA_CATEGORIES = ['Spare Part', 'Consumable', 'Fuel', 'Service'];
-const PREFIX: Record<string, string> = { Generator: 'GEN', Cable: 'CBL', Panel: 'PNL', POD: 'POD', Trolley: 'TRL', Tray: 'TRY', 'Day Tank': 'DTK', 'Spare Engine': 'SPE', Vehicle: 'VEH', 'Spare Part': 'SPR', Consumable: 'CON', Fuel: 'FUL', Service: 'SRV' };
+const EXTRA_CATEGORIES = ['Spare Part', 'Consumable', 'Fuel'];
+const PREFIX: Record<string, string> = { Generator: 'GEN', Cable: 'CBL', Panel: 'PNL', POD: 'POD', Trolley: 'TRL', Tray: 'TRY', 'Day Tank': 'DTK', 'Spare Engine': 'SPE', Vehicle: 'VEH', 'Spare Part': 'SPR', Consumable: 'CON', Fuel: 'FUL' };
 const ATTRS: Record<string, AttributeDef[]> = {
   Generator: [
     { id: 'at-g1', name: 'Fuel Type', type: 'Picklist', options: 'Diesel, Gas', required: true },
@@ -185,7 +185,7 @@ const SERVICE_SEED: Record<string, Partial<ItemRec>> = {
 };
 /** Rental related service items, kept in Inventory with the other service items (6 Oct: service lines come from the Inventory service items). */
 const svc = (n: number, id: string, name: string, serviceType: string, billing: string, price: number, description: string, unit = 'Nos'): ItemRec => ({
-  id, code: `ITM-${String(n).padStart(4, '0')}`, name, classification: 'Trading', category: 'Service', tracking: 'Quantity', unit, price, stock: 0,
+  id, code: `ITM-${String(n).padStart(4, '0')}`, name, classification: '', category: '', tracking: 'Quantity', unit, price, stock: 0,
   type: 'Service', sku: `SKU-${String(n).padStart(4, '0')}`, status: 'Active', costingMethod: 'Average Cost', traceability: 'No Tracking', costPrice: Math.round(price * 0.72 * 100) / 100, serviceType, billing, description,
 });
 export const serviceItemSeed: ItemRec[] = [
@@ -201,7 +201,7 @@ export const serviceItemSeed: ItemRec[] = [
 export const itemSeed: ItemRec[] = [...itemMaster.map((m): ItemRec => ({
   ...m,
   stock: stockTotal(m.id, m.stock),
-  type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.category === 'Service' ? 'Service' : 'Inventory',
+  type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.id === 'i9' || m.id === 'i10' ? 'Service' : 'Inventory',
   sku: m.code.replace('ITM', 'SKU'),
   status: m.id === 'i4' ? 'Inactive' : 'Active',
   costingMethod: 'Average Cost',

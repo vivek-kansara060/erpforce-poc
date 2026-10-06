@@ -293,7 +293,7 @@ export function CountForm() {
   // System quantity is what this location holds (not the item's total across all locations).
   const snapshot = (location: string) =>
     locStock.rows.filter((r) => r.location === location && r.qty > 0)
-      .flatMap((r) => { const i = items.get(r.itemId); return i && i.tracking !== 'Serialized' && i.category !== 'Service' ? [{ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: r.qty, countedQty: null as number | null }] : []; });
+      .flatMap((r) => { const i = items.get(r.itemId); return i && i.tracking !== 'Serialized' && i.type !== 'Service' ? [{ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: r.qty, countedQty: null as number | null }] : []; });
   const hasStockDiff = lines.some((l) => { const v = variance(l); return v !== null && v !== 0; });
   const save = (complete: boolean) => {
     const e: Errors = {};

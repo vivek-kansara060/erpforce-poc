@@ -54,8 +54,7 @@ export function ItemList() {
         { key: 'sku', label: 'SKU', width: 120 },
         { key: 'name', label: 'Name' },
         { key: 'type', label: 'Type' },
-        { key: 'classification', label: 'Product Classification', change: 'new', req: REQ_ITEM },
-        { key: 'category', label: 'Category', change: 'new', req: REQ_ITEM },
+        ...(type === 'Service' ? [] : [{ key: 'classification', label: 'Product Classification', change: 'new' as const, req: REQ_ITEM }, { key: 'category', label: 'Category', change: 'new' as const, req: REQ_ITEM }]),
         ...(type === 'Service'
           ? [
               { key: 'serviceType', label: 'Service Type', change: 'new' as const, req: REQ_SERVICE },
@@ -115,7 +114,8 @@ export function ItemForm() {
   const attrDefs = attributesFor(cats.rows, f.category, f.subCategory);
 
   const save = (draft: boolean) => {
-    const e = requireFields(f, ['name', 'sku', 'type', 'classification', 'category', 'tracking', 'unit'], { classification: 'Product Classification', tracking: 'Tracking Method', unit: 'UOM' });
+    const isSvc = f.type === 'Service';
+    const e = requireFields(f, isSvc ? ['name', 'sku', 'type', 'tracking', 'unit'] : ['name', 'sku', 'type', 'classification', 'category', 'tracking', 'unit'], { classification: 'Product Classification', tracking: 'Tracking Method', unit: 'UOM' });
     if (f.type === 'Service') Object.assign(e, requireFields(f, ['serviceType', 'billing'], { serviceType: 'Service Type', billing: 'Billing' }));
     if (serial) Object.assign(e, validateSerialized(f));
     Object.assign(e, validateAttrs(attrDefs, f.attrs));
@@ -124,7 +124,7 @@ export function ItemForm() {
     if (Object.keys(e).length && draft && (e.name || e.sku)) { toast('Name and SKU are required to save a draft', 'error'); return; }
     const n = (k: string) => (f[k] === '' || f[k] === undefined ? undefined : Number(f[k]));
     const rec: ItemRec = {
-      id: existing?.id ?? `i${Date.now()}`, code, name: f.name, type: f.type, sku: f.sku, classification: f.classification, category: f.category, subCategory: f.subCategory || undefined, tracking: f.tracking, unit: f.unit,
+      id: existing?.id ?? `i${Date.now()}`, code, name: f.name, type: f.type, sku: f.sku, classification: f.type === 'Service' ? '' : f.classification, category: f.type === 'Service' ? '' : f.category, subCategory: f.type === 'Service' ? undefined : f.subCategory || undefined, tracking: f.tracking, unit: f.unit,
       price: n('price') ?? 0, stock: existing?.stock ?? 0, minStock: n('minStock'), reorderQty: n('reorderQty'), spare: existing?.spare, status: draft ? 'Inactive' : f.status,
       costingMethod: f.costingMethod, traceability: f.traceability, useBins: f.useBins, costPrice: n('costPrice'),
       ...(serial ? { brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity, purchaseDate: f.purchaseDate, assetValue: n('assetValue'), nbv: n('nbv'), deprPct: n('deprPct'), deprAmount: n('deprAmount'), capex: n('capex') } : {}),
@@ -140,15 +140,15 @@ export function ItemForm() {
     <>
       <FormGrid>
         <SelectInput label="Type" required value={f.type} options={existing ? ITEM_TYPES.filter((t) => t !== 'Heavy Equipment Fixed Asset') : ITEM_TYPES} error={errors.type}
-          onChange={(v) => { if (v === 'Heavy Equipment Fixed Asset') { toast('Heavy Equipment Fixed Assets are created in the Heavy Equipment Fixed Asset form'); nav(`${HEAVY_PATH}/add`); return; } set('type')(v); }} />
+          onChange={(v) => { if (v === 'Heavy Equipment Fixed Asset') { toast('Heavy Equipment Fixed Assets are created in the Heavy Equipment Fixed Asset form'); nav(`${HEAVY_PATH}/add`); return; } upd(v === 'Service' ? { type: v, classification: '', category: '', subCategory: '', attrs: {} } : { type: v }); }} />
         <TextInput label="SKU" required value={f.sku} onChange={set('sku')} error={errors.sku} />
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
-        <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification}
+        {f.type !== 'Service' && <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification}
           options={PRODUCT_CLASSIFICATIONS.filter((c) => c !== 'Rental' || f.classification === 'Rental')} onChange={set('classification')} error={errors.classification}
-          hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />
+          hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />}
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
-        <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
-        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={set('subCategory')} />
+        {f.type !== 'Service' && <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />}
+        {f.type !== 'Service' && <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={set('subCategory')} />}
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}
           hint={f.tracking === 'Length' ? 'Select the applicable UOM, e.g. Meter' : undefined} />
         <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
@@ -237,10 +237,10 @@ export function ItemView() {
               <ValueField label="Item Code" value={r.code} change="new" req={REQ_ITEM} />
               <ValueField label="SKU" value={r.sku} />
               <ValueField label="Type" value={r.type} />
-              <ValueField label="Product Classification" value={r.classification} change="new" req={REQ_ITEM} />
+              {r.type !== 'Service' && <ValueField label="Product Classification" value={r.classification} change="new" req={REQ_ITEM} />}
               <ValueField label="Tracking Method" value={TRACK_LABEL[r.tracking]} change="new" req={REQ_ITEM} />
-              <ValueField label="Category" value={r.category} change="new" req={REQ_ITEM} />
-              <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_ITEM} />
+              {r.type !== 'Service' && <ValueField label="Category" value={r.category} change="new" req={REQ_ITEM} />}
+              {r.type !== 'Service' && <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_ITEM} />}
               <ValueField label="UOM" value={r.unit} />
               {r.type === 'Service' && <ValueField label="Service Type" value={r.serviceType} change="new" req={REQ_SERVICE} />}
               {r.type === 'Service' && <ValueField label="Billing" value={r.billing} change="new" req={REQ_SERVICE} />}

@@ -76,11 +76,11 @@ export function NextStepDialog({ open, onClose, soId, lineId }: { open: boolean;
   const step = NEXT_STEP[l.activity] ?? NEXT_STEP.Service;
   const service = l.activity === 'Service' || l.activity === 'Other';
   return (
-    <AppDialog open={open} title={`${step.label}: ${l.item}`} onClose={onClose} confirmLabel="Confirm" confirmDisabled={(!!step.options && !opt) || (service && so.activity === 'Service' && !part.trim())}
+    <AppDialog open={open} title={`${step.label}: ${l.item}`} onClose={onClose} confirmLabel="Confirm" confirmDisabled={(!!step.options && !opt) || (service && so.activity === 'Other' && !part.trim())}
       onConfirm={() => { const ref = fulfilLine(so.id, l.id, [opt, part, hours && `${hours} h`].filter(Boolean).join(', ') || undefined); toast(`${step.done}, reference ${ref}`); onClose(); }}>
       <FormGrid cols={1}>
         {step.options && <SelectInput label="Service Type" required value={opt} options={step.options} onChange={setOpt} />}
-        {service && <><TextInput label="Particulars" required={so.activity === 'Service'} value={part} onChange={setPart} hint="Job card particulars (job card itself sits in the service module)" /><NumberInput label="Hours (if charged by hours)" value={hours} onChange={setHours} /></>}
+        {service && <><TextInput label="Particulars" required={so.activity === 'Other'} value={part} onChange={setPart} hint="Job card particulars (job card itself sits in the service module)" /><NumberInput label="Hours (if charged by hours)" value={hours} onChange={setHours} /></>}
         <TextInput label="Quantity" disabled value={`${l.qty} ${l.unit}`} />
       </FormGrid>
     </AppDialog>

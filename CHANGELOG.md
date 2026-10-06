@@ -12,6 +12,18 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 4:30 PM: Service is no longer an Activity Type; it is a charge
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* "Service" was listed as an Activity Type next to Rental, Trading and AMC, and a service item carried a Product Classification, a Category and a Subcategory. A service is not a kind of business. It is a charge we levy (delivery charge, labor, installation, waiver), added to an order from the Inventory service master.
+*What we did.* Removed Service from every Activity Type list (Lead, Opportunity, Quotation, Sales Order, the Activity Type Performance report and the document templates). Service items in Inventory no longer have Product Classification, Category or Subcategory (hidden on the form, list and view, and no longer required). Service charge lines are still added to Rental and Fixed Asset Trading orders from the service master. The seven demo records that were Service only now sit under real Activity Types: the Emirates Infrastructure lead is Rental, the Oasis Data Centre lead is AMC, the Kiln 4 job (OP-26-00018, QT-26-00079, SO-26-00051) is now a Rental order for a 500 KVA unit with installation and transportation as service charges, and the resort load bank test (OP-26-00019, QT-26-00080) is an AMC with two scheduled visits. AMC lines pick the AMC service item by its Service Type instead of its classification.
+*Be aware.* SO-26-00051 now has a 500 KVA unit pending delivery. Internally a service line is still tagged "Service" as a line kind, but it is no longer an Activity Type anywhere you can see or choose.
+
 ### 6 Oct, around 2:30 PM: Fleet Management: own delivery vehicles, Fleet Availability board, Trips and trip costs
 **Where:** Rental > Fleet Management > Fleet Availability
 **Where:** Rental > Fleet Management > Trips

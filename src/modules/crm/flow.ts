@@ -35,7 +35,7 @@ export const lineState = (l: Line): string => {
 /** Sales Order status follows its lines. AMC visits and Service charge lines on a Rental order are not deliveries and do not drive it. */
 export function recalcStatus(so: SalesOrder): string {
   if (['Draft', 'Pending', 'Closed', 'Cancelled', 'Rejected'].includes(so.status)) return so.status;
-  const lines = so.lines.filter((l) => l.activity !== 'AMC' && !(l.activity === 'Service' && so.activity !== 'Service'));
+  const lines = so.lines.filter((l) => l.activity !== 'AMC' && l.activity !== 'Service');
   const asset = (l: Line) => l.activity === 'Rental' || l.activity === 'Fixed Asset Trading';
   const done = (l: Line) => (asset(l) ? deliveredQty(l) >= l.qty : !!l.fulfilment);
   const any = lines.some((l) => (asset(l) ? deliveredQty(l) > 0 : !!l.fulfilment));
@@ -116,7 +116,7 @@ export function orderFromQuotation(q: Quotation): string {
   return id;
 }
 
-/** Non-rental branches after the Sales Order: Trading/Fuel Trading -> Stock/Invoice, Service -> Charge/Invoice, AMC -> Visit/Billing. */
+/** Next step per line kind after the Sales Order: Trading/Fuel Trading -> Stock/Invoice, a Service charge -> Charge/Invoice, AMC -> Visit/Billing. */
 export const NEXT_STEP: Record<string, { label: string; done: string; options?: string[] }> = {
   Trading: { label: 'Issue Stock / Invoice', done: 'Stock issued and invoiced' },
   'Fuel Trading': { label: 'Issue Stock / Invoice', done: 'Fuel issued and invoiced' },

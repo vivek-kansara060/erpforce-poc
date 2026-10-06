@@ -12,7 +12,7 @@ export const CURRENCY = 'AED';
 export const ASSET_STATUSES = ['Ready for Hire', 'On Hire', 'Off Hire', 'Breakdown', 'Under Maintenance', 'Disposed', 'Yard', 'Hold', 'In Service'] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
-export const ACTIVITY_TYPES = ['Rental', 'Trading', 'Fuel Trading', 'AMC', 'Service', 'Other'] as const;
+export const ACTIVITY_TYPES = ['Rental', 'Trading', 'Fuel Trading', 'AMC', 'Other'] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export const OWNERSHIP_TYPES = ['Owned', 'Cross-Hired', 'Spare-Standby'] as const;
@@ -173,7 +173,7 @@ export const systemUsers: SystemUser[] = [
 
 /** Standard item master (trading / spare parts / fuel / service items) shared by procurement, inventory and CRM lines. */
 export interface ItemMaster {
-  id: string; code: string; name: string; classification: 'Inventory' | 'Rental' | 'AMC' | 'Fuel Trading' | 'Trading'; category: string; subCategory?: string;
+  id: string; code: string; name: string; classification: 'Inventory' | 'Rental' | 'AMC' | 'Fuel Trading' | 'Trading' | ''; category: string; subCategory?: string;
   tracking: 'Serialized' | 'Quantity' | 'Length'; unit: string; price: number; stock: number; minStock?: number; reorderQty?: number; spare?: boolean;
 }
 export const itemMaster: ItemMaster[] = [
@@ -185,8 +185,8 @@ export const itemMaster: ItemMaster[] = [
   { id: 'i6', code: 'ITM-0006', name: 'Engine Oil 15W-40 (20 L)', classification: 'Inventory', category: 'Consumable', tracking: 'Quantity', unit: 'Drum', price: 420, stock: 18, minStock: 10, reorderQty: 20, spare: true },
   { id: 'i7', code: 'ITM-0007', name: 'Power Cable 4C x 185 mm', classification: 'Rental', category: 'Cable', subCategory: '4 Core 185 mm', tracking: 'Length', unit: 'Meter', price: 14, stock: 1800 },
   { id: 'i8', code: 'ITM-0008', name: 'Diesel (Bulk)', classification: 'Fuel Trading', category: 'Fuel', tracking: 'Quantity', unit: 'Litre', price: 2.85, stock: 21500 },
-  { id: 'i9', code: 'ITM-0009', name: 'AMC Scheduled Visit (Generator)', classification: 'AMC', category: 'Service', tracking: 'Quantity', unit: 'Visit', price: 0, stock: 0 },
-  { id: 'i10', code: 'ITM-0010', name: 'Generator Installation & Commissioning', classification: 'Trading', category: 'Service', tracking: 'Quantity', unit: 'Job', price: 3500, stock: 0 },
+  { id: 'i9', code: 'ITM-0009', name: 'AMC Scheduled Visit (Generator)', classification: '', category: '', tracking: 'Quantity', unit: 'Visit', price: 0, stock: 0 },
+  { id: 'i10', code: 'ITM-0010', name: 'Generator Installation & Commissioning', classification: '', category: '', tracking: 'Quantity', unit: 'Job', price: 3500, stock: 0 },
   { id: 'i11', code: 'ITM-0011', name: 'ATS Panel 630A', classification: 'Trading', category: 'Panel', subCategory: 'ATS Panel', tracking: 'Serialized', unit: 'Nos', price: 61000, stock: 2 },
   { id: 'i12', code: 'ITM-0012', name: 'Air Filter (Perkins 2506)', classification: 'Inventory', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 110, stock: 9, minStock: 15, reorderQty: 40, spare: true },
 ];
