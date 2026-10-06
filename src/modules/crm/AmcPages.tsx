@@ -10,18 +10,15 @@ import { EmailDialog, PrintDialog } from './ActionDialogs';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
-import { KpiCard, KpiRow, TabPanels } from '@/components/Widgets';
-import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, paymentStatusOf, pendingCollectionFor } from '@/modules/accounting/engine';
+import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
+import { invoiceByRef, paymentStatusOf, pendingCollectionFor } from '@/modules/accounting/engine';
 import { PaymentDialog, useInvoices, usePayments } from '@/modules/accounting/shared';
 import { custName, docTotals, liveItems, vanLocationsFor, type JobCard, type SalesOrder } from './data';
 import { closeOrder, completeJobCard, confirmOrder, createJobCard, draftJobCard, getOrder, invoiceJobCard, jobCardCost, jobCardFoc, jobCardTotal, saveJobCard, stockAt } from './flow';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { CommercialTabs } from './CommercialTabs';
-import { soForm } from './SalesOrderPages';
-import { R, aed, useJobCards, useOpps, useOrders, useQuotes, useServiceCharges } from './shared';
+import { R, aed, useJobCards, useOrders, useServiceCharges } from './shared';
 
 const R_AMC = 'CRM > AMC Orders and Job Cards (meeting 5 Oct)';
-const R_VIEW = 'CRM > AMC Orders: view page like the Sales Order, form only to create and edit (instruction 6 Oct)';
 const contractValue = (o: SalesOrder) => docTotals(o.lines, o.discountPct, o.vatType).sub;
 /** Payment of a job card is read from its invoice in Accounting (older seeded cards fall back to their stored status). */
 const jcPay = (j?: JobCard) => (!j?.invoiceRef ? '-' : j.invoiceId || invoiceByRef(j.invoiceRef) ? paymentStatusOf(j.invoiceId ?? j.invoiceRef) : j.paymentStatus ?? 'Unpaid');
@@ -87,8 +84,6 @@ export function AmcView() {
   const toast = useToast();
   const orders = useOrders();
   const jcs = useJobCards();
-  const opps = useOpps();
-  const quotes = useQuotes();
   useInvoices(); usePayments();
   const [dlg, setDlg] = useState<'invoice' | 'mail' | 'print' | 'close' | null>(null);
   const o = orders.get(id);
@@ -100,7 +95,7 @@ export function AmcView() {
   const jcOf = (idx: number) => st.mine.find((j) => j.visitIdx === idx);
   const nextVisit = plan.findIndex((_, i) => !jcOf(i));
   const toInvoice = st.mine.filter((j) => j.status === 'Completed');
-  const invs = invoicesOfOrder(o.id);
+  const f = { ...o, customerName: custName(o.customerId), item: (o.amcScope || o.lines[0]?.desc || '-'), period: `${o.amcStart} to ${o.amcEnd}`, value: aed(value), project: o.costCentre || '-' };
   return (
     <>
       <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
@@ -128,10 +123,9 @@ export function AmcView() {
           <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FFF3CC" />
           <KpiCard title="Profit to date" value={aed(st.revenue - st.cost)} sub="Invoiced less cost" />
         </KpiRow>
-        <Box sx={{ mt: 2 }}>
-          <CommercialTabs kind="order" locked f={soForm(o, opps.get(o.oppId)?.number, quotes.get(o.quoteId)?.number)} set={() => undefined} items={null}
-            belowGeneral={<Section title="Project" change="new" req={R_AMC}><SpecView cols={4} f={{ ...o, project: o.costCentre || '-' }} specs={[{ key: 'project', label: 'Project' }, { key: 'site', label: 'Site' }, { key: 'lpo', label: 'LPO' }, { key: 'lpoExpiry', label: 'LPO Expiry' }]} /></Section>} />
-        </Box>
+        <Panel title="Project Details" change="new" req={R_AMC}>
+          <SpecView cols={4} f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
+        </Panel>
         <Alert severity="info" sx={{ mt: 2 }}>Value split: {aed(value)} over {months} month(s) is {aed(value / months)} a month. With {o.visits} planned visit(s) each visit is billed {aed(value / (o.visits || 1))}, so every Job Card invoice carries its visit value, unless the visit is marked FOC on its job card.</Alert>
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
@@ -140,16 +134,6 @@ export function AmcView() {
                 { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'actual', label: 'Actual Date', change: 'new', req: R_AMC, render: (r) => jcOf(r.i)?.doneOn ?? '-' }, { key: 'amount', label: 'Visit value (contract split)', align: 'right', render: (r) => (jcOf(r.i)?.visitFoc ? <>{aed(r.amount)} <StatusChip status="FOC" tone="grey" /></> : aed(r.amount)) },
                 { key: 'jc', label: 'Job Card', render: (r) => jcOf(r.i)?.number ?? '-' }, { key: 'st', label: 'Status', render: (r) => <StatusChip status={jcOf(r.i)?.status ?? 'Planned'} /> }, { key: 'inv', label: 'Invoice', render: (r) => jcOf(r.i)?.invoiceRef ?? '-' }, { key: 'pay', label: 'Payment', change: 'new', req: R_AMC, render: (r) => payChip(jcPay(jcOf(r.i))) },
                 { key: 'act', label: '', render: (r) => (jcOf(r.i) ? <Button size="small" variant="outlined" onClick={() => nav(`/crm/job-cards/${jcOf(r.i)!.id}`)}>Open Job Card</Button> : <Button size="small" variant="contained" onClick={() => nav(`/crm/job-cards/add?so=${o.id}&visit=${r.i}`)}>Create Job Card</Button>) },
-              ]} />) },
-            { label: 'Job Cards', change: 'new', req: R_VIEW, content: (
-              <DataTable hideToolbar rows={st.mine} emptyText="No job card yet" onRowClick={(j) => nav(`/crm/job-cards/${j.id}`)} columns={[
-                { key: 'number', label: 'Job Card' }, { key: 'visit', label: 'Visit', render: (j) => j.visitIdx + 1 }, { key: 'technician', label: 'Technician' }, { key: 'status', label: 'Status', render: (j) => <StatusChip status={j.status} /> }, { key: 'doneOn', label: 'Done On', render: (j) => j.doneOn ?? '-' },
-                { key: 'total', label: 'Invoice amount', align: 'right', render: (j) => aed(jobCardTotal(j)) }, { key: 'invoiceRef', label: 'Invoice', render: (j) => j.invoiceRef ?? '-' }, { key: 'pay', label: 'Payment', render: (j) => payChip(jcPay(j)) },
-              ]} />) },
-            { label: 'Invoices', change: 'new', req: R_VIEW, content: (
-              <DataTable hideToolbar rows={invs} emptyText="No invoice yet" onRowClick={(i) => nav(`/accounting/invoices/${i.id}`)} columns={[
-                { key: 'number', label: 'Invoice' }, { key: 'date', label: 'Date' }, { key: 'src', label: 'Job Card', render: (i) => i.source.number }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (i) => aed(invoiceTotal(i)) },
-                { key: 'd', label: 'Amount Due', align: 'right', render: (i) => aed(invoiceDue(i)) }, { key: 'a', label: 'Status', render: (i) => <StatusChip status={i.approval} /> }, { key: 'p', label: 'Payment', render: (i) => (i.approval === 'Approved' ? payChip(i.payStatus) : '-') },
               ]} />) },
             { label: 'Consolidated report', change: 'new', req: R_AMC, content: (
               <Box>
@@ -185,7 +169,7 @@ function JcTotals({ f }: { f: JobCard }) {
   return (
     <Box sx={{ ml: 'auto', width: 340, mt: 2 }}>
       {[['Visit value (contract split)', f.visitFoc ? 0 : f.visitAmount], ['Materials', f.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', f.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)], ...(jobCardFoc(f) > 0 ? [['Free of cost (not billed)', jobCardFoc(f)]] : [])].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice total (before VAT)</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s5" color="theme.secondary.700">Cost of materials</Text><Text type="s5" color="theme.secondary.700">{aed(jobCardCost(f))}</Text></Box>
     </Box>
   );
@@ -231,25 +215,21 @@ export function JobCardView() {
           ]} />
         </>} />
       <Page sx={{ pt: 2 }}>
-        {jc.status === 'Invoiced' && <Alert severity="info" sx={{ mb: 2 }}>This job card is invoiced ({jc.invoiceRef}) and cannot be changed. {inv && inv.approval !== 'Approved' ? 'The invoice is pending approval in Accounting; payment can be recorded once it is approved.' : inv && pendingCollectionFor(inv.id) ? `Collection ${pendingCollectionFor(inv.id)!.number} is pending approval in Accounting.` : `Payment: ${pay}.`}</Alert>}
+        {jc.status === 'Invoiced' && <Alert severity="info" sx={{ mb: 2 }}>This job card is invoiced ({jc.invoiceRef}, payment {pay}) and cannot be changed.</Alert>}
         {short.length > 0 && <Alert severity="warning" sx={{ mb: 2 }}>More than the van holds: {short.map((m) => m.item).join(', ')}. Edit the job card before completing the visit.</Alert>}
         <SpecView cols={4} specs={jcSpecs(jc, false)} f={jcView(jc)} />
         {jc.signedCopy && jc.signedCopy.length > 0 && <Alert severity="success" sx={{ mt: 2 }}>Signed copy uploaded: {jc.signedCopy.join(', ')}</Alert>}
-        <Section title="Materials consumed" change="new" req={R_AMC}>
+        <Section title="Materials consumed (optional)" change="new" req={R_AMC}>
           <DataTable hideToolbar rows={jc.materials.map((m, i) => ({ id: String(i), ...m }))} emptyText="No materials" columns={[{ key: 'item', label: 'Material' }, { key: 'qty', label: 'Quantity', align: 'right' }, { key: 'unit', label: 'UoM' }, { key: 'price', label: 'Billed price', align: 'right', render: (m) => aed(m.price) }, { key: 'foc', label: 'FOC', render: (m) => (m.foc ? 'Yes' : 'No') }, { key: 'cost', label: 'Cost', align: 'right', render: (m) => aed(m.cost ?? Math.round(m.price * 0.7 * 100) / 100) }]} />
         </Section>
-        <Section title="Services performed" change="new" req={R_AMC}>
+        <Section title="Services performed (optional)" change="new" req={R_AMC}>
           <DataTable hideToolbar rows={jc.services.map((m, i) => ({ id: String(i), ...m }))} emptyText="No additional services" columns={[{ key: 'name', label: 'Service' }, { key: 'amount', label: 'Amount', align: 'right', render: (m) => aed(m.amount) }, { key: 'foc', label: 'FOC', render: (m) => (m.foc ? 'Yes' : 'No') }]} />
         </Section>
         <JcTotals f={jc} />
-        <Section title="Invoice" change="new" req={R_VIEW}>
-          {inv ? <DataTable hideToolbar rows={[inv]} onRowClick={() => nav(`/accounting/invoices/${inv.id}`)} columns={[{ key: 'number', label: 'Invoice' }, { key: 'date', label: 'Date' }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: () => aed(invoiceTotal(inv)) }, { key: 'd', label: 'Amount Due', align: 'right', render: () => aed(invoiceDue(inv)) }, { key: 'a', label: 'Status', render: () => <StatusChip status={inv.approval} /> }, { key: 'p', label: 'Payment', render: () => payChip(pay) }]} />
-            : <Text type="s4">{jc.status === 'Completed' ? 'Ready to invoice: Generate, Invoice.' : jc.invoiceRef ? `${jc.invoiceRef} (payment ${pay})` : 'Complete the visit, then generate the invoice.'}</Text>}
-        </Section>
         <Section title="Accounting and inventory entries" change="new" req={R_AMC}>
           <DataTable hideToolbar emptyText="No consumption on this job card" rows={jc.materials.map((m, i) => ({ id: String(i), item: m.item, qty: `${m.qty} ${m.unit}`, cost: m.qty * (m.cost ?? Math.round(m.price * 0.7 * 100) / 100) }))}
             columns={[{ key: 'item', label: 'Material' }, { key: 'qty', label: 'Inventory ledger (out)' }, { key: 'dr', label: 'Journal debit', render: () => 'Cost of Materials Consumed' }, { key: 'cr', label: 'Journal credit', render: () => 'Inventory' }, { key: 'cost', label: 'Amount', align: 'right', render: (r) => aed(r.cost) }]} />
-          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Consumption is posted by the Inventory ledger when the visit is completed (reference). The sales invoice journal is posted in Accounting when the invoice is approved{inv?.journalId ? ' (see the invoice, Accounting Ledger)' : ''}.</Text>
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Posted by Accounting and the Inventory ledger when the visit is completed. Shown here for reference only.</Text>
         </Section>
         <Section title="Job card log"><Timeline items={jc.log} /></Section>
       </Page>
