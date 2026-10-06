@@ -12,8 +12,8 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
-import { allLocations, custName, docTotals, liveItems, type JobCard, type SalesOrder } from './data';
-import { completeJobCard, createJobCard, getOrder, invoiceJobCard, jobCardCost, jobCardTotal, markJobCardPaid, saveJobCard } from './flow';
+import { custName, docTotals, liveItems, vanLocationsFor, type JobCard, type SalesOrder } from './data';
+import { completeJobCard, createJobCard, getOrder, invoiceJobCard, jobCardCost, jobCardTotal, markJobCardPaid, saveJobCard, stockAt } from './flow';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed, useJobCards, useOrders, useServiceCharges } from './shared';
 
@@ -105,7 +105,7 @@ const jcSpecs = (f: Record<string, any>): Spec[] => [
   { key: 'number', label: 'ID', type: 'readonly' }, { key: 'entity', label: 'Entity', type: 'readonly' }, { key: 'soNumber', label: 'AMC Order', type: 'readonly' }, { key: 'customerName', label: 'Customer', type: 'readonly' },
   { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R_AMC }, { key: 'item', label: 'AMC Item', type: 'readonly' }, { key: 'visitNo', label: 'Visit', type: 'readonly' }, { key: 'plannedDate', label: 'Planned Date', type: 'readonly' }, { key: 'actualDate', label: 'Actual Date', type: 'readonly', change: 'new', req: R_AMC, hint: 'Taken from the job card date when the visit is completed' },
   { key: 'technician', label: 'Technician', type: 'select', options: employees.filter((e) => ['Service Technician', 'Yard Supervisor', 'Sales Representative'].includes(e.designation)).map((e) => e.name), required: true },
-  { key: 'location', label: 'Consume from location', type: 'select', options: allLocations, hint: 'A van or car location tagged to the technician (Inventory locations)' },
+  { key: 'location', label: 'Consume from location', type: 'select', options: () => vanLocationsFor(f.technician), change: 'changed', req: R_AMC, hint: 'Service vans (Employee locations) assigned to the technician. Materials are drawn from here' },
   { key: 'visitAmount', label: 'Visit value (contract split)', type: 'readonly', value: () => aed(f.visitAmount) },
   { key: 'activities', label: 'Job Activities', type: 'textarea', full: true, change: 'new', req: R_AMC, hint: 'General description of the standard process done on the visit, even with no materials or services' },
   { key: 'notes', label: 'Notes', type: 'textarea', full: true },
@@ -125,9 +125,13 @@ export function JobCardPage() {
   if (!jc || !f) return <Page><PageTitle title="Job card not found" right={<Button variant="outlined" onClick={() => nav('/crm/amc-orders')}>Back</Button>} /></Page>;
   const so = getOrder(jc.soId);
   const locked = f.status === 'Invoiced';
-  const set = (k: string, v: any) => setF((x) => ({ ...x!, [k]: v }));
+  // Changing the technician keeps the van only if it is theirs; with one van it is picked for them.
+  const set = (k: string, v: any) => setF((x) => { const n = { ...x!, [k]: v }; if (k === 'technician') { const vans = vanLocationsFor(v); n.location = vans.includes(x!.location) ? x!.location : vans[0] ?? ''; } return n; });
   const view = { ...f, entity: so?.entity, project: so?.costCentre ?? '-', actualDate: f.doneOn ?? 'Set from today when the visit is completed', customerName: custName(f.customerId), visitNo: `${f.visitIdx + 1} of ${so?.visits ?? '-'}` };
-  const spare = liveItems().filter((i) => i.spare || i.category === 'Consumable' || i.category === 'Spare Part').map((i) => i.name);
+  // Materials come from what the technician's van actually carries.
+  const vanStock = stockAt(f.location);
+  const spare = [...new Set([...vanStock.map((s) => s.name), ...f.materials.map((m) => m.item).filter(Boolean)])];
+  const short = f.status === 'Open' ? f.materials.filter((m) => m.item && m.qty > (vanStock.find((s) => s.name === m.item)?.qty ?? 0)) : [];
   const save = () => { saveJobCard(f); toast('Job card saved'); };
   return (
     <>
@@ -135,7 +139,7 @@ export function JobCardPage() {
         actions={<>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Job Card" />
           {!locked && <Button variant="outlined" onClick={save}>Save</Button>}
-          {f.status === 'Open' && <Button variant="contained" onClick={() => { if (!f.technician) { toast('Select the technician first', 'error'); return; } saveJobCard(f); completeJobCard(f); setF({ ...f, status: 'Completed', doneOn: new Date().toISOString().slice(0, 10) }); toast('Visit completed. The actual date is today'); }}>Complete Visit</Button>}
+          {f.status === 'Open' && <Button variant="contained" onClick={() => { if (!f.technician) { toast('Select the technician first', 'error'); return; } if (f.materials.length && !f.location) { toast('Select the van the materials come from', 'error'); return; } if (short.length) { toast(`Not enough stock in ${f.location}: ${short.map((m) => m.item).join(', ')}`, 'error'); return; } saveJobCard(f); completeJobCard(f); setF({ ...f, status: 'Completed', doneOn: new Date().toISOString().slice(0, 10) }); toast('Visit completed. The actual date is today'); }}>Complete Visit</Button>}
           <MenuButton label="Generate" variant={f.status === 'Completed' ? 'contained' : 'outlined'} items={[{ label: 'Invoice', disabled: f.status !== 'Completed', onClick: () => { saveJobCard(f); const ref = invoiceJobCard(f); setF({ ...f, status: 'Invoiced', paymentStatus: 'Unpaid', invoiceRef: ref }); toast(`Invoice ${ref} raised against the job card`); } }]} />
           <MenuButton label="Actions" items={[
             { label: 'Edit', disabled: locked, onClick: () => toast(locked ? 'An invoiced job card cannot be edited' : 'Edit the fields below and press Save', 'info') },
@@ -149,6 +153,8 @@ export function JobCardPage() {
         <SpecForm specs={jcSpecs(f)} f={view} set={set} locked={locked} />
         {f.signedCopy && f.signedCopy.length > 0 && <Alert severity="success" sx={{ mt: 2 }}>Signed copy uploaded: {f.signedCopy.join(', ')}</Alert>}
         <Section title="Materials consumed (optional)" change="new" req={R_AMC}>
+          {!locked && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>{f.location ? `In ${f.location}: ${vanStock.map((s) => `${s.name} ${s.qty} ${s.unit}`).join(', ') || 'no stock'}` : 'Select the technician and their van to pick materials'}</Text>}
+          {short.length > 0 && <Alert severity="error" sx={{ mb: 1 }}>More than the van holds: {short.map((m) => m.item).join(', ')}</Alert>}
           <RowsEditor locked={locked} cols={[{ key: 'item', label: 'Material', type: 'select', options: spare, width: 260 }, { key: 'qty', label: 'Quantity', width: 90 }, { key: 'unit', label: 'UoM', width: 90 }, { key: 'price', label: 'Billed price', width: 110 }, { key: 'cost', label: 'Cost', width: 110 }]}
             rows={f.materials.map((m) => ({ ...m, qty: m.qty as any, price: m.price as any, cost: (m.cost ?? '') as any }))} blank={{ item: '', qty: 1 as any, unit: 'Nos', price: 0 as any, cost: '' as any }} addLabel="Add Material" empty="No materials"
             onChange={(r) => set('materials', r.map((m) => { const im = liveItems().find((i) => i.name === m.item); const price = Number(m.price) || im?.price || 0; return { item: m.item, qty: Number(m.qty) || 0, unit: m.unit || im?.unit || 'Nos', price, cost: m.cost === '' || m.cost === undefined ? Math.round(price * 0.7 * 100) / 100 : Number(m.cost) }; }))} />

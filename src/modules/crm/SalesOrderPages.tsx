@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
@@ -13,7 +13,7 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
-import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseHold } from './flow';
+import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes } from './shared';
 import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
@@ -159,6 +159,8 @@ export function SalesOrderView() {
   const [mail, setMail] = useState(false);
   const [closeAsk, setCloseAsk] = useState(false);
   const compliance = useMemo(() => (so ? so.lines.flatMap((l) => outstanding(l).map((a) => assetById(a.assetId)).filter(Boolean).map((h) => ({ h: h!, certs: certs.rows.filter((c) => c.assetId === h!.assetId) }))) : []), [so, certs.rows, fleet.rows]);
+  // A Hold ends by itself once its Rental Start Date arrives.
+  useEffect(() => { if (id) releaseDueHolds(id); }, [id]);
   if (!so) return <Page><PageTitle title="Sales Order not found" right={<Button variant="outlined" onClick={() => nav('/crm/sales-orders')}>Back</Button>} /></Page>;
   const myDels = dels.rows.filter((d) => d.soId === so.id);
   const rentalOut = so.lines.reduce((n, l) => n + outstanding(l).length, 0);
@@ -184,7 +186,7 @@ export function SalesOrderView() {
       return [
         ...(remaining > 0 ? [{ label: 'Deliver', disabled: av.owned.length + av.cross.length === 0, onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&line=${l.id}`) }] : []),
         ...(remaining > 0 ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => setDlg({ kind: 'cross', lineIds: [l.id] }) }] : []),
-        ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (start invoicing today)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing started'); }) }] : []),
+        ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (site ready early)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing starts today'); }) }] : []),
         ...(out.length > 0 ? [{ label: 'Replace asset', onClick: () => nav(`/rental/replacements/add?so=${so.id}&line=${l.id}`) }, { label: 'Return asset', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}&line=${l.id}`) }] : []),
       ];
     }

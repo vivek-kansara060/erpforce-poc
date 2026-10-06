@@ -4,7 +4,8 @@ import { Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
-import { masterValues } from '@/modules/crm/data';
+import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, type CrossHire } from '@/modules/crm/data';
+import { returnToSupplier, returnToUs } from '@/modules/crm/flow';
 import { DataTable, type Column } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -15,9 +16,9 @@ import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { neutral } from '@/theme/color';
 import {
-  ACCOUNTS, ASSET_STATUSES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, LOCATION_NAMES, MOVEMENT_PLACES, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
-  CERT_TYPES, attributesFor, buildBoard, categorySeed, certSeed, settingsSeed, crossHireSeed, crossHireStatus, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
-  type AuditEntry, type BoardRow, type CategoryRec, type CertRec, type CrossHireRec, type InventorySettings, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
+  ACCOUNTS, ASSET_STATUSES, COMPANY, COMPUTATIONS, DEPARTMENTS, DEPRECIATION_METHODS, MOVEMENT_PLACES, locationSeed, type LocationRec, MOVEMENT_TYPES, NOW, OWNERSHIP, TODAY,
+  CERT_TYPES, attributesFor, buildBoard, categorySeed, certSeed, settingsSeed, crossHireStatus, isTopCategory, currentLocation, depreciationApplicable, heavySeed, inFleetCount, itemSeed, movementDurations, nextItemCode, nextMovementNo, stockStatusOf,
+  type AuditEntry, type BoardRow, type CategoryRec, type CertRec, type CrossHireRec, type CrossHireStage, type InventorySettings, type HeavyRec, type InsuranceEntry, type ItemRec, type Movement,
 } from './data';
 import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
@@ -35,7 +36,23 @@ const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, m
 /** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
 const READY_FROM = ['Yard', 'Off Hire', 'Under Maintenance', 'Breakdown', 'Hold'];
 const useHeavy = () => useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
-const useCrossHires = () => useCollection<CrossHireRec>('inventory.crossHires', crossHireSeed);
+/**
+ * One cross-hire record for the whole POC: the Rental > Cross Hire order. Inventory reads it through this view, so the asset page,
+ * the order and the rates always agree. Order stages: 0 Request, 1 Received, 2 Allocated, 3 Returned to Us, 4 Returned to Supplier.
+ */
+const STAGE_VIEW: CrossHireStage[] = ['Received', 'Received', 'On Hire', 'Idle at Our Location', 'Returned to Supplier'];
+const toView = (c: CrossHire, a?: HeavyRec): CrossHireRec => ({
+  id: c.id, number: c.number, supplier: c.supplier, category: c.group, subCategory: c.category,
+  brand: a?.brand ?? '', model: a?.model ?? '', capacity: a?.capacity ?? c.category, engineNo: a?.engineNo ?? '',
+  receivedAt: a?.movements[0]?.to ?? 'Jebel Ali Main Yard', hireStart: c.startDate ?? c.date, expectedReturn: c.endDate ?? '-', monthlyRate: c.rate,
+  stage: STAGE_VIEW[c.stage] ?? 'Received', returnedOn: c.stage >= 4 ? c.history[c.history.length - 1]?.when.slice(0, 10) : undefined, heavyId: c.assetId,
+});
+const useCrossHires = () => {
+  const raw = useCollection<CrossHire>(CRM_COL.crossHire, rentalCrossHireSeed);
+  const heavy = useHeavy();
+  // Dropship units go straight to the client and never enter the register.
+  return { raw, rows: raw.rows.filter((c) => c.type !== 'Dropship').map((c) => toView(c, heavy.rows.find((h) => h.id === c.assetId))) };
+};
 const REQ_CH = 'Cross-Hire Assets (2 Oct call: details fetched from the cross-hire record, status from the cross-hire workflow)';
 const chLabel = (c: CrossHireRec) => `${c.number} - ${c.supplier} - ${c.category} ${c.subCategory}`;
 const tone = (s: string) => (s === 'In Stock' ? 'green' : 'amber') as 'green' | 'amber';
@@ -134,6 +151,7 @@ export function HeavyForm() {
   const heavy = useHeavy();
   const items = useCollection<ItemRec>('items', itemSeed);
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
+  const liveLocs = useCollection<LocationRec>('locations', locationSeed).rows.filter((l) => l.status === 'Active' && l.type !== 'Employee').map((l) => l.name);
   const crossHires = useCrossHires();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const settings = useCollection<InventorySettings>('inventory.settings', settingsSeed);
@@ -213,7 +231,7 @@ export function HeavyForm() {
     const approvalOn = !!settings.get('settings')?.certApproval;
     newCerts.forEach((c, i) => certs.add({ id: `ce${Date.now()}-${i}`, assetId, type: c.type, reference: c.reference.trim(), expiry: c.expiry, leadDays: Number(c.leadDays), file: c.file, approval: approvalOn ? 'Pending Approval' : undefined, history: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Certificate added', detail: `${c.type} valid to ${c.expiry} (added with the asset)`, by: 'Current User' }] }));
     // Link the cross-hire record to this asset (and release a previously linked one).
-    crossHires.replace(crossHires.rows.map((c) => (crossHired && c.id === chId ? { ...c, heavyId: rec.id } : c.heavyId === rec.id && c.id !== chId ? { ...c, heavyId: undefined } : c)));
+    crossHires.raw.replace(crossHires.raw.rows.map((c) => (crossHired && c.id === chId ? { ...c, assetId: rec.id, ...(c.stage < 1 ? { stage: 1, status: 'Received', receiving: 'Fully Received' } : {}) } : c.assetId === rec.id && c.id !== chId ? { ...c, assetId: undefined } : c)));
     toast(existing ? 'Heavy equipment fixed asset updated' : 'Heavy equipment fixed asset created');
     nav(`${HEAVY_PATH}/${rec.id}`);
   };
@@ -247,7 +265,7 @@ export function HeavyForm() {
           <TextInput label="Asset Status" change="changed" req={REQ_STATUS} value={existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire')} disabled hint={crossHired ? 'Follows the cross-hire stage' : existing ? 'Set by the system; use Change Status on the asset page when it must be changed by hand' : 'A new asset starts as Ready for Hire'} />
           {existing
             ? <TextInput label="Current Location" change="new" req={REQ_MV} value={currentLocation(existing)} disabled hint="Derived from Movement History, add a movement to change it" />
-            : <SelectInput label="Initial Location" required change="new" req={REQ_MV} value={f.initialLocation} options={LOCATION_NAMES} onChange={set('initialLocation')} error={errors.initialLocation} disabled={crossHired && !!chRec} hint={crossHired && chRec ? 'Where the cross-hired unit was received, from the cross-hire record' : 'Creates the first Movement History entry'} />}
+            : <SelectInput label="Initial Location" required change="new" req={REQ_MV} value={f.initialLocation} options={liveLocs} onChange={set('initialLocation')} error={errors.initialLocation} disabled={crossHired && !!chRec} hint={crossHired && chRec ? 'Where the cross-hired unit was received, from the cross-hire record' : 'Creates the first Movement History entry'} />}
           <SelectInput label="Department" value={f.department} options={DEPARTMENTS} onChange={set('department')} />
           <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
         </FormGrid>
@@ -412,16 +430,13 @@ export function HeavyView() {
   const ch = crossHires.rows.find((c) => c.heavyId === r.id);
   const returned = ch?.stage === 'Returned to Supplier';
   const canReady = !crossHired && r.status === 'Active' && READY_FROM.includes(r.assetStatus);
-  const stamp = `${TODAY} ${NOW.slice(11)}`;
   /** Cross-hire stage changes drive the asset's status; returning to the supplier ends the hire and the unit leaves the active fleet. */
   const moveStage = (stage: CrossHireRec['stage']) => {
-    if (!ch) return;
-    crossHires.update(ch.id, { stage, ...(stage === 'Returned to Supplier' ? { returnedOn: TODAY } : {}) });
-    heavy.update(r.id, {
-      assetStatus: crossHireStatus[stage], crossHireIdle: stage === 'Idle at Our Location', statusOverride: undefined,
-      ...(stage === 'Returned to Supplier' ? { status: 'Inactive' as const } : {}),
-      audit: [{ when: stamp, title: `Cross-hire stage: ${stage}`, detail: `${ch.number}; Asset Status ${r.assetStatus} to ${crossHireStatus[stage]}${stage === 'Returned to Supplier' ? '; asset marked Inactive' : ''}`, by: 'Current User' }, ...r.audit],
-    });
+    const order = crossHires.raw.rows.find((c) => c.id === ch?.id);
+    if (!order) return;
+    // The Rental cross-hire flow moves the order stage and the asset status together.
+    if (stage === 'Idle at Our Location') returnToUs(order, 'Returned to us, recorded from the asset page', []);
+    if (stage === 'Returned to Supplier') returnToSupplier(order, 0);
     toast(stage === 'Returned to Supplier' ? 'Returned to supplier. The hire has ended and the unit is no longer in the active fleet' : `Cross-hire stage changed to ${stage}`);
   };
   const dep = depreciationApplicable(r.ownership);

@@ -12,6 +12,48 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 11:30 PM: Employee location type for service vans, with Transfer stock in and van stock on AMC job cards
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* AMC technicians carry spare parts in a van and use them on visits. A location could only be an Own Yard or a Supplier-Held Location, so there was nowhere to keep van stock, and an AMC job card could "consume" from any location, including a yard far away, without reducing any stock.
+*What we did.* Location Type now has a third value, **Employee**. Choosing it replaces Linked Supplier with **Assigned Users**, a required multi-select of ERP user accounts (people with a login, not the whole employee list). The location list shows an Assigned Users column and can be filtered by Employee. An Employee location's page shows its users and has **Transfer stock in**, which moves a quantity of a stock item from a yard or supplier location into the van, never more than is available there. On the AMC job card, "Consume from location" lists only the vans assigned to the chosen technician (picked automatically when there is one), the materials list offers only what that van holds and shows the quantities, the visit cannot be completed with more than the van holds, and completing it reduces the van's stock. Vans are kept out of places a generator is dispatched from: Delivery Order location, quotation and order line locations, cross-hire receiving location, the asset's Initial Location and movement places. Physical Stock Verification can count a van like any other location. Sample data: a list of system users, Service Van 1 (Rajesh Pillai) and Service Van 2 (Rajesh Pillai and Sanjay Kumar), each with spare parts; seeded job cards now draw from Service Van 1.
+*Be aware.* In the real ERP the van is filled with the existing Stock Transfer screen; Transfer stock in stands in for it in this POC. A van can be assigned to several users, as agreed on the 5 Oct call.
+### 6 Oct, around 10:30 PM: Demo data now covers every flow, and its dates follow the demo day
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Rental > Cross Hire > Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
+**Where:** Inventory & Fixed Assets > Dashboards
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Several flows could not be shown from the sample data. A new AMC quotation had no item to pick. No cross-hire order was waiting to be received or linked to an asset, the RFQ had no request behind it, and its dates were in the future. Nothing was on Hold, no return was waiting at any step, no order could be closed, no LPO was close to expiry, there was no Service order and no AMC order with invoiced and paid job cards. Pricing had no 1500 KVA, Quarterly or Yearly rows, few units were Ready for Hire, and there were no Off Hire, Breakdown or end-of-life units, no Fixed Assets count in progress and no scrap or draft disposal. A Lost lead still offered Convert.
+*What we did.* The AMC item list now shows the Inventory AMC items. New sample records, all dated relative to the demo day: cross-hire orders CH-26-00008 (to receive), CH-26-00009 (for the asset form picker) and CH-26-00010 (received, unit AST-1031 ready to deliver on SO-26-00052); request CHR-26-00006 (Pending) and CHR-26-00007 (behind RFQ-26-00012, so the order created from the award is linked to SO-26-00041); AST-1019 on Hold on SO-26-00052 until its Rental Start Date; SO-26-00049 fully returned and ready to close, with returns at every step (CN-26-00123 off hire, CN-26-00122 in the yard awaiting inspection, CN-26-00121 damage charged) and CN-26-00132 damage covered by the waiver on SO-26-00046; LPO on SO-26-00041 expiring within the notice period and on SO-26-00048 expired; a Service opportunity, approved quotation QT-26-00080 and confirmed order SO-26-00051; AMC order SO-26-00050 with job cards Invoiced and Paid, Invoiced and Unpaid, Completed and Open; 1500 KVA, Quarterly, Yearly and a 500 KVA Fixed Asset Trading price; more Ready for Hire units; Off Hire, Breakdown and an end-of-life unit; count sessions SCS-26-00006 (in progress) and SCS-26-00007 (approved); disposals DSP-26-00006 (scrap invoiced), DSP-26-00007 (invoice to create) and DSP-26-00008 (draft); leads in every status; a Lost and a Negotiation opportunity; a One-time damage waiver item. CH-26-00006 is now linked to SO-26-00046 as the cover for the broken-down AST-1014. Palm Marina Development is active again. Convert is hidden on Lost, Unqualified and Not qualified leads.
+*Be aware.* Sample data only; refreshing the browser restores it. New cross-hire orders and requests now start numbering after CH-26-00010 and CHR-26-00007. SO-26-00052 now asks for two 100 KVA units, one per cross-hire order.
+
+### 6 Oct, around 9:00 PM: Six fixes: FOC assets on rentals, one cross-hire record, real movement origins, hold release, live locations, real date
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Six things behaved wrongly. A free-of-charge fixed asset added on a rental delivery was recorded as sold and left the fleet. Inventory kept its own cross-hire records with different numbers and rates from the Rental cross-hire orders, so the same unit showed two rates and a unit received through Rental showed "No cross-hire record is linked". Every delivery and replacement movement said it left Jebel Ali Main Yard. Release Hold started billing on the release day, and a hold never ended by itself. The supplier DO number check and the asset's Initial Location used a fixed list, so new locations were ignored. "Today" was fixed at 30 Sep while times came from the real clock.
+*What we did.* On a Rental order a free-of-charge fixed asset is now a zero-priced Rental line: it goes On Hire and comes back on return; only a Fixed Asset Trading order treats it as a sale. The asset page now reads the Rental cross-hire order (one record, one rate), and Returned to Us and Return to Supplier on the asset page run the same Rental flow. Movements start from where the asset actually is (its last movement), with the DO location as the fallback. A hold now bills from the planned Rental Start Date, ends by itself when that date arrives (checked when the Sales Order is opened), and Release Hold is for a site that is ready early, billing from that day. The supplier DO check and Initial Location read the live Locations list. Today is the real date.
+*Be aware.* The three Inventory-only cross-hire samples (CH-26-00027, 00028, 00031) are gone; the asset pages show the Rental orders CH-26-00007 and CH-26-00006 instead. A new cross-hired asset is normally created by receiving the cross-hire order in Rental; the manual picker on the asset form only lists orders not yet linked to an asset. With the real date, demo dates near 30 Sep may now show as past due.
+
 ### 6 Oct, around 7:30 PM: Line item actions moved into a three-dots menu, bulk Cross Hire on Sales Order lines
 **Where:** CRM / Sales > Orders > Quotation
 **Where:** CRM / Sales > Orders > Sales Orders

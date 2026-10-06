@@ -11,7 +11,7 @@ import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { suppliers } from '@/mock-data/masters';
 import {
-  COL, CH_RFQ_STATUSES, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, allLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
+  COL, CH_RFQ_STATUSES, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, stockLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
 } from '@/modules/crm/data';
 import { addChExpense, addChResponse, awardChRfq, createChRfq, createHireOrder, markChShipped, raiseCrossHire, receiveCrossHire, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
 import { SpecForm, type Spec } from '@/modules/crm/FormKit';
@@ -96,7 +96,7 @@ const requestSpecs = (soOpts: { value: string; label: string }[], lineOpts: { va
   { key: 'vendorId', label: 'Vendor', type: 'select', options: supOpts, hint: 'Optional. The RFQ award or the order fixes the supplier' },
   { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
   { key: 'narration', label: 'Narration', type: 'textarea', full: true },
-  { key: 'location', label: 'Location', type: 'select', options: allLocations },
+  { key: 'location', label: 'Location', type: 'select', options: stockLocations },
   { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS },
   { key: 'attachments', label: 'Attachment', type: 'file', full: true },
 ];

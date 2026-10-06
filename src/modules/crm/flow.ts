@@ -1,9 +1,9 @@
 import dayjs from 'dayjs';
-import { getCollection, nextNumber, setCollection } from '@/store/store';
+import { getCollection, nextNumber, seedCollection, setCollection } from '@/store/store';
 import { customers } from '@/mock-data/masters';
-import { heavySeed } from '@/modules/inventory/data';
+import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
 import {
-  ACTOR, COL, TODAY, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
+  ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
   docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType,
   type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
@@ -13,6 +13,8 @@ const all = <T,>(name: string) => getCollection<T>(name);
 const put = <T extends { id: string }>(name: string, row: T) => setCollection(name, [row, ...all<T>(name)]);
 const patch = <T extends { id: string }>(name: string, id: string, fn: (r: T) => T) => setCollection(name, all<T>(name).map((r) => (r.id === id ? fn(r) : r)));
 const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+/** Where an asset is right now (the last Movement History entry), so a new movement starts from the real place. */
+const whereIs = (assetId: string, fallback = 'Jebel Ali Main Yard') => { const a = assetById(assetId); const at = a ? currentLocation(a) : '-'; return at && at !== '-' ? at : fallback; };
 
 export const getOrder = (id?: string) => all<SalesOrder>(COL.orders).find((o) => o.id === id);
 export const getLine = (so: SalesOrder | undefined, lineId?: string) => so?.lines.find((l) => l.id === lineId);
@@ -169,10 +171,10 @@ export function createDelivery(i: DeliveryInput): Delivery {
   allAssets.forEach((hid) => {
     const a = assetById(hid)!;
     if (soldIds.includes(hid)) {
-      patchAsset(hid, { assetStatus: 'Disposed', status: 'Inactive' }, { title: 'Sold to a client', detail: `Fixed Asset Trading, delivery ${d.number}. The asset leaves the active fleet` }, { type: 'Delivery', from: 'Jebel Ali Main Yard', to: dest, reference: d.number, customer: custName(o.customerId), project: o.costCentre });
+      patchAsset(hid, { assetStatus: 'Disposed', status: 'Inactive' }, { title: 'Sold to a client', detail: `Fixed Asset Trading, delivery ${d.number}. The asset leaves the active fleet` }, { type: 'Delivery', from: whereIs(hid, i.location), to: dest, reference: d.number, customer: custName(o.customerId), project: o.costCentre });
       return;
     }
-    patchAsset(hid, { assetStatus: hold ? 'Hold' : 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `${a.assetStatus} to ${hold ? 'Hold' : 'On Hire'} (${d.number})` }, { type: 'Delivery', from: 'Jebel Ali Main Yard', to: dest, reference: d.number, customer: custName(o.customerId), project: o.costCentre });
+    patchAsset(hid, { assetStatus: hold ? 'Hold' : 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `${a.assetStatus} to ${hold ? 'Hold' : 'On Hire'} (${d.number})` }, { type: 'Delivery', from: whereIs(hid, i.location), to: dest, reference: d.number, customer: custName(o.customerId), project: o.costCentre });
     if (a.ownership === 'Cross-Hired') {
       const ch = all<CrossHire>(COL.crossHire).find((c) => c.assetId === hid && c.stage < 2);
       if (ch) patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 2, soId: o.id, soNumber: o.number, lineId: first.lineId, history: [...c.history, log(`Allocated to ${o.number}`, `Delivery ${d.number}`)] }));
@@ -205,9 +207,21 @@ export function createDelivery(i: DeliveryInput): Delivery {
   return d;
 }
 
-export function releaseHold(soId: string, lineId: string, assetId: string) {
-  patchAsset(assetId, { assetStatus: 'On Hire' }, { title: 'Hold released', detail: 'Site ready, invoicing cycle started' });
-  saveOrder(soId, (o) => ({ ...mapLine(o, lineId, (l) => ({ ...l, assigned: l.assigned.map((a) => (a.assetId === assetId && a.state === 'Hold' ? { ...a, state: 'On Hire' as const, start: TODAY } : a)) })), log: [log('Hold released', 'Invoicing cycle started from today', 'green'), ...o.log] }));
+/**
+ * Ends the Hold on a delivered asset. Billing starts on the planned Rental Start Date agreed at delivery; if the site is ready
+ * earlier and the hold is released before that date, billing starts on the release day instead.
+ */
+export function releaseHold(soId: string, lineId: string, assetId: string, auto = false) {
+  const planned = getLine(getOrder(soId), lineId)?.assigned.find((a) => a.assetId === assetId && a.state === 'Hold')?.start ?? TODAY;
+  const start = TODAY < planned ? TODAY : planned;
+  const why = auto ? 'Rental Start Date reached' : 'Site ready';
+  patchAsset(assetId, { assetStatus: 'On Hire' }, { title: 'Hold released', detail: `${why}, invoicing cycle starts ${start}` });
+  saveOrder(soId, (o) => ({ ...mapLine(o, lineId, (l) => ({ ...l, assigned: l.assigned.map((a) => (a.assetId === assetId && a.state === 'Hold' ? { ...a, state: 'On Hire' as const, start } : a)) })), log: [log(`Hold released: ${assetById(assetId)?.assetId ?? assetId}`, `${why}. Invoicing cycle starts ${start}`, 'green'), ...o.log] }));
+}
+/** Releases every hold whose Rental Start Date has arrived, so nobody has to remember to do it by hand. */
+export function releaseDueHolds(soId?: string) {
+  all<SalesOrder>(COL.orders).filter((o) => !soId || o.id === soId).forEach((o) => o.lines.forEach((l) => l.assigned
+    .filter((a) => a.state === 'Hold' && a.start <= TODAY).forEach((a) => releaseHold(o.id, l.id, a.assetId, true))));
 }
 
 /* ------------------------------------------------------------------ Rental: cross-hire lifecycle */
@@ -216,7 +230,7 @@ export function raiseCrossHire(soId: string, lineId: string, supplierId?: string
   const o = getOrder(soId)!;
   const l = getLine(o, lineId)!;
   const id = uid('chr');
-  const rec: CrossHireRequest = { id, number: nextNumber('CHR', 6), date: TODAY, soId, soNumber: o.number, lineId, group: l.group ?? '', category: l.category ?? '', qty: l.qty, frequency: l.frequency ?? 'Monthly', rate, vendorId: supplierId, vendor: supplier,
+  const rec: CrossHireRequest = { id, number: nextNumber('CHR', 7), date: TODAY, soId, soNumber: o.number, lineId, group: l.group ?? '', category: l.category ?? '', qty: l.qty, frequency: l.frequency ?? 'Monthly', rate, vendorId: supplierId, vendor: supplier,
     company: o.entity, representative: o.owner, currency: o.currency, narration: `No owned ${l.group} ${l.category} unit available for ${o.number}`, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Pending',
     log: [log(`Request raised from ${o.number}`, `${l.group} ${l.category}, quantity ${l.qty}`)] };
   put(COL.chRequests, rec);
@@ -253,7 +267,7 @@ export function createHireOrder(i: { requestIds: string[]; rfqId?: string; suppl
   const o = getOrder(first?.soId);
   const l = o && first ? getLine(o, first.lineId) : undefined;
   const id = uid('ch');
-  const number = nextNumber('CH', 8);
+  const number = nextNumber('CH', 10);
   const qty = i.qty ?? (rs.reduce((t, r) => t + r.qty, 0) || 1);
   const rec: CrossHire = { id, number, soId: first?.soId ?? '', soNumber: [...new Set(rs.map((r) => r.soNumber))].join(', '), lineId: first?.lineId ?? '', group: first?.group ?? '', category: first?.category ?? '', supplierId: i.supplierId, supplier: i.supplier, rate: i.rate * qty, stage: 0,
     revenue: l ? l.price * qty : 0, date: TODAY, type: i.type, requestIds: i.requestIds, rfqId: i.rfqId, status: 'Approved', receiving: 'Pending Receiving', billing: 'Pending Billing', expenses: [], qty, confirmationDate: TODAY, expectedReceipt: TODAY, paymentTerms: 'Net 30', startDate: i.start ?? l?.start, endDate: i.end ?? l?.end,
@@ -279,11 +293,11 @@ export function receiveCrossHire(ch: CrossHire, supplierInvoice: string) {
   patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 1, status: 'Received', receiving: 'Fully Received', assetId: a.id, supplierInvoice, history: [...c.history, log(`Received into our custody as ${assetId}`, `Supplier invoice ${supplierInvoice}`)] }));
 }
 export function returnToUs(ch: CrossHire, notes: string, files: string[]) {
-  if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Yard', crossHireIdle: true }, { title: 'Returned to us', detail: notes }, { type: 'Cross-Hire Stage Change', from: 'Client site', to: 'Jebel Ali Main Yard', reference: ch.number });
+  if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Yard', crossHireIdle: true }, { title: 'Returned to us', detail: notes }, { type: 'Cross-Hire Stage Change', from: whereIs(ch.assetId, 'Client site'), to: 'Jebel Ali Main Yard', reference: ch.number });
   patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 3, condition: { notes, files }, history: [...c.history, log('Returned to us', `Condition check completed: ${notes}`, 'amber')] }));
 }
 export function returnToSupplier(ch: CrossHire, dispute: number, reissueRef?: string) {
-  if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Off Hire', status: 'Inactive', crossHireIdle: false }, { title: 'Returned to supplier', detail: dispute ? `Supplier dispute charge AED ${dispute}` : undefined }, { type: 'Cross-Hire Stage Change', from: 'Jebel Ali Main Yard', to: `Supplier: ${ch.supplier}`, reference: ch.number });
+  if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Off Hire', status: 'Inactive', crossHireIdle: false }, { title: 'Returned to supplier', detail: dispute ? `Supplier dispute charge AED ${dispute}` : undefined }, { type: 'Cross-Hire Stage Change', from: whereIs(ch.assetId), to: `Supplier: ${ch.supplier}`, reference: ch.number });
   patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 4, status: 'Closed', dispute: dispute || undefined, reissueRef, history: [...c.history, log('Returned to supplier', dispute ? `Dispute charge AED ${dispute} recorded and traced to ${c.soNumber}` : 'Loop closed', 'green')] }));
   if (dispute) addLog(ch.soId, log(`Cross-hire dispute charge AED ${dispute}`, `${ch.number}, rolled into the order's profitability`, 'red'));
 }
@@ -298,7 +312,7 @@ export function replaceAsset(i: { soId: string; lineId: string; oldId: string; n
   const rec: Replacement = { id: uid('rp'), number: nextNumber('RP', 4), soId: o.id, lineId: i.lineId, oldAssetId: i.oldId, newAssetId: i.newId, reason: i.reason, priceAdjust: i.priceAdjust, notified: i.notified, date: TODAY, crossHireId: i.crossHireId, by: ACTOR };
   put(COL.replacements, rec);
   patchAsset(i.oldId, { assetStatus: 'Under Maintenance' }, { title: 'Replaced and sent to maintenance', detail: `${rec.number}: ${i.reason}` }, { type: 'Sent for Repair', from: dest, to: 'Workshop: Al Masaood Service Centre', reference: rec.number });
-  patchAsset(i.newId, { assetStatus: 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `Ready for Hire to On Hire (${rec.number})` }, { type: 'Delivery', from: 'Jebel Ali Main Yard', to: dest, reference: rec.number });
+  patchAsset(i.newId, { assetStatus: 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `Ready for Hire to On Hire (${rec.number})` }, { type: 'Delivery', from: whereIs(i.newId), to: dest, reference: rec.number });
   const ch = all<CrossHire>(COL.crossHire).find((c) => c.assetId === i.newId && c.stage < 2);
   if (ch) patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 2, history: [...c.history, log(`Allocated to ${o.number} as a replacement`, rec.number)] }));
   saveOrder(o.id, (x) => ({
@@ -369,7 +383,7 @@ export function inspect(r: ReturnEntry, result: 'Passed' | 'Damage Found', check
     return;
   }
   const waiver = hasWaiver(getOrder(r.soId)?.lines ?? []);
-  patchAsset(r.assetId, { assetStatus: 'Under Maintenance' }, { title: 'Damage found at inspection', detail: `${r.number}: Yard to Under Maintenance` }, { type: 'Sent for Repair', from: 'Jebel Ali Main Yard', to: 'Workshop: Al Masaood Service Centre', reference: r.number });
+  patchAsset(r.assetId, { assetStatus: 'Under Maintenance' }, { title: 'Damage found at inspection', detail: `${r.number}: Yard to Under Maintenance` }, { type: 'Sent for Repair', from: whereIs(r.assetId), to: 'Workshop: Al Masaood Service Centre', reference: r.number });
   patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, stage: 5, inspection: 'Damage Found', yardChecklist: checklist, damageCharge: waiver ? 0 : damage?.amount, damageNote: damage?.note, waiverApplied: waiver, outcome: 'Repair / Maintenance',
     log: [...x.log, log('Damage found', waiver ? `Covered by the damage waiver paid on ${r.soNumber}: no damage invoice to the client, repair cost borne by the company. ${damage?.note ?? ''}` : `Charge AED ${damage?.amount}: ${damage?.note}`, 'red')] }));
   saveOrder(r.soId, (o) => ({
@@ -404,7 +418,7 @@ export function createJobCard(soId: string, visitIdx: number): string {
   const o = getOrder(soId)!;
   const v = o.visitPlan![visitIdx];
   const id = uid('jc');
-  const jc: JobCard = { id, number: nextNumber('JC', 118), soId, soNumber: o.number, customerId: o.customerId, visitIdx, plannedDate: v.date, technician: o.owner, location: 'Jebel Ali Main Yard', item: o.lines[0]?.item ?? 'AMC',
+  const jc: JobCard = { id, number: nextNumber('JC', 118), soId, soNumber: o.number, customerId: o.customerId, visitIdx, plannedDate: v.date, technician: o.owner, location: vanLocationsFor(o.owner)[0] ?? '', item: o.lines[0]?.item ?? 'AMC',
     materials: [], services: [], notes: '', visitAmount: v.amount ?? 0, status: 'Open', log: [log(`Job card created for visit ${visitIdx + 1}`)] };
   put(COL.jobCards, jc);
   saveOrder(soId, (x) => ({ ...x, visitPlan: (x.visitPlan ?? []).map((p, k) => (k === visitIdx ? { ...p, jobCardId: id } : p)), log: [log(`Job card ${jc.number} created`, `AMC visit ${visitIdx + 1}`, 'blue'), ...x.log] }));
@@ -413,8 +427,25 @@ export function createJobCard(soId: string, visitIdx: number): string {
 export const saveJobCard = (jc: JobCard) => patch<JobCard>(COL.jobCards, jc.id, () => jc);
 export const jobCardTotal = (jc: JobCard) => jc.visitAmount + jc.materials.reduce((s, m) => s + m.qty * m.price, 0) + jc.services.reduce((s, m) => s + m.amount, 0);
 export const jobCardCost = (jc: JobCard) => jc.materials.reduce((s, m) => s + m.qty * (m.cost ?? Math.round(m.price * 0.7 * 100) / 100), 0);
+/* Stock per location, kept in Inventory (collection inventory.locationStock). */
+const LOC_STOCK = 'inventory.locationStock';
+const stockRows = () => { seedCollection(LOC_STOCK, locationStockSeed); seedCollection('items', itemSeed); return { rows: all<LocationStock>(LOC_STOCK), items: all<ItemRec>('items') }; };
+/** What a location (e.g. a technician's service van) holds right now, by item. */
+export function stockAt(location?: string): { name: string; unit: string; qty: number }[] {
+  if (!location) return [];
+  const { rows, items } = stockRows();
+  return rows.filter((r) => r.location === location && r.qty > 0).flatMap((r) => { const it = items.find((i) => i.id === r.itemId); return it ? [{ name: it.name, unit: it.unit, qty: r.qty }] : []; });
+}
+/** Materials used on a visit leave the van's stock (and the item's total). */
+function consumeAt(location: string, materials: JobCard['materials']) {
+  const { rows, items } = stockRows();
+  const used = (name: string) => materials.filter((m) => m.item === name).reduce((s, m) => s + m.qty, 0);
+  setCollection(LOC_STOCK, rows.map((r) => { const it = items.find((i) => i.id === r.itemId); const q = it && r.location === location ? used(it.name) : 0; return q ? { ...r, qty: Math.max(0, r.qty - q) } : r; }));
+  setCollection('items', items.map((i) => { const q = used(i.name); return q ? { ...i, stock: Math.max(0, i.stock - q) } : i; }));
+}
 export function completeJobCard(jc: JobCard) {
-  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Completed', doneOn: TODAY, log: [...x.log, log('Visit completed', 'Materials and services recorded', 'green')] }));
+  if (jc.location && jc.materials.length) consumeAt(jc.location, jc.materials);
+  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Completed', doneOn: TODAY, log: [...x.log, log('Visit completed', jc.materials.length ? `Materials drawn from ${jc.location}; services recorded` : 'Materials and services recorded', 'green')] }));
   saveOrder(jc.soId, (o) => ({ ...o, visitPlan: (o.visitPlan ?? []).map((v, k) => (k === jc.visitIdx ? { ...v, done: TODAY, ref: jc.number, type: 'Job card' } : v)), log: [log(`AMC visit ${jc.visitIdx + 1} completed`, jc.number, 'green'), ...o.log] }));
 }
 export function invoiceJobCard(jc: JobCard): string {

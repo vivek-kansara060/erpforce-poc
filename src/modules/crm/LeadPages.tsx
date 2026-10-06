@@ -155,7 +155,7 @@ export function LeadView() {
         actions={<>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Lead" /><MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`/crm/leads/${l.id}/edit`) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Duplicate', onClick: () => toast('Lead duplicated as a draft', 'info') }, { label: 'Delete', onClick: () => { leads.remove(l.id); nav('/crm/leads'); } }]} />
           <Button variant="outlined" onClick={() => setCom({ ...com, open: true })}>Communication Log</Button>
-          {l.opportunityId ? <Button variant="contained" onClick={() => nav(`/crm/opportunities/${l.opportunityId}`)}>View Opportunity</Button> : <Button variant="contained" onClick={() => (l.activity ? setConf(true) : toast('An Activity Type is required before a Lead can be converted', 'error'))}>Convert</Button>}
+          {l.opportunityId ? <Button variant="contained" onClick={() => nav(`/crm/opportunities/${l.opportunityId}`)}>View Opportunity</Button> : ['Lost', 'Unqualified', 'Not qualified'].includes(l.status) ? null : <Button variant="contained" onClick={() => (l.activity ? setConf(true) : toast('An Activity Type is required before a Lead can be converted', 'error'))}>Convert</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[

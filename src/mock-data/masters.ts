@@ -42,7 +42,7 @@ export const customers: Customer[] = [
   { id: 'c5', code: 'CUS-0005', name: 'Dubai Metro Works JV', type: 'Company', tradeLicense: 'DED-902231', trn: '100118845600003', contact: 'Sergei Petrov', phone: '+971 54 330 2288', email: 'sergei@dmwjv.ae', creditLimit: 2500000, creditTerms: 60, salesperson: 'Omar Farouk', active: true, city: 'Dubai', outstanding: 1650000 },
   { id: 'c6', code: 'CUS-0006', name: 'Sharjah Cement Company', type: 'Company', tradeLicense: 'SHJ-118420', trn: '100530177800003', contact: 'Hassan Ali', phone: '+971 50 771 4409', email: 'hassan@sharjahcement.ae', creditLimit: 1200000, creditTerms: 45, salesperson: 'Yousef Karim', active: true, city: 'Sharjah', outstanding: 301000 },
   { id: 'c7', code: 'CUS-0007', name: 'Al Safa Power Utilities', type: 'Company', tradeLicense: 'AUH-330187', trn: '100742016600003', contact: 'Nadia Rahman', phone: '+971 58 620 3312', email: 'nadia@alsafapower.ae', creditLimit: 800000, creditTerms: 30, salesperson: 'Yousef Karim', active: true, city: 'Abu Dhabi', outstanding: 0 },
-  { id: 'c8', code: 'CUS-0008', name: 'Palm Marina Development', type: 'Company', tradeLicense: 'DED-771093', trn: '100365520900003', contact: 'Daniel Foster', phone: '+971 52 905 7714', email: 'daniel@palmmarina.ae', creditLimit: 700000, creditTerms: 30, salesperson: 'Leena Thomas', active: false, city: 'Dubai', outstanding: 125000 },
+  { id: 'c8', code: 'CUS-0008', name: 'Palm Marina Development', type: 'Company', tradeLicense: 'DED-771093', trn: '100365520900003', contact: 'Daniel Foster', phone: '+971 52 905 7714', email: 'daniel@palmmarina.ae', creditLimit: 700000, creditTerms: 30, salesperson: 'Leena Thomas', active: true, city: 'Dubai', outstanding: 125000 },
   { id: 'c9', code: 'CUS-0009', name: 'Khalid Bin Saeed (Farm Project)', type: 'Individual', tradeLicense: '-', trn: '-', contact: 'Khalid Bin Saeed', phone: '+971 50 118 2200', email: 'khalid.saeed@mail.ae', creditLimit: 50000, creditTerms: 7, salesperson: 'Yousef Karim', active: true, city: 'Al Ain', outstanding: 0 },
 ];
 
@@ -65,13 +65,16 @@ export const suppliers: Supplier[] = [
 ];
 
 export interface LocationMaster {
-  id: string; code: string; name: string; type: 'Own Yard' | 'Supplier-Held Location'; supplierId?: string; city: string; stockHeld?: number; consumed?: number; remainingValue?: number;
+  id: string; code: string; name: string; type: 'Own Yard' | 'Supplier-Held Location' | 'Employee'; supplierId?: string; userIds?: string[]; city: string; stockHeld?: number; consumed?: number; remainingValue?: number;
 }
 export const locations: LocationMaster[] = [
   { id: 'l1', code: 'LOC-0001', name: 'Jebel Ali Main Yard', type: 'Own Yard', city: 'Dubai' },
   { id: 'l2', code: 'LOC-0002', name: 'Sharjah Yard', type: 'Own Yard', city: 'Sharjah' },
   { id: 'l3', code: 'LOC-0003', name: 'Abu Dhabi Mussafah Yard', type: 'Own Yard', city: 'Abu Dhabi' },
   { id: 'l4', code: 'LOC-0004', name: 'ENOC Al Quoz Depot (Fuel Stock)', type: 'Supplier-Held Location', supplierId: 's4', city: 'Dubai', stockHeld: 60000, consumed: 38500, remainingValue: 21500 * 2.85 },
+  // Service vans: spare parts carried by the AMC technicians, assigned to their user accounts.
+  { id: 'l5', code: 'LOC-0005', name: 'Service Van 1 (Rajesh Pillai)', type: 'Employee', userIds: ['u8'], city: 'Dubai' },
+  { id: 'l6', code: 'LOC-0006', name: 'Service Van 2 (Shared)', type: 'Employee', userIds: ['u8', 'u7'], city: 'Sharjah' },
 ];
 
 export interface Asset {
@@ -146,6 +149,20 @@ export const employees: Employee[] = [
   { id: 'e12', code: 'EMP-0012', name: 'Mariam Al Nuaimi', type: 'UAE National', department: 'HR', designation: 'HR Manager', branch: 'Dubai', manager: 'Ahmed Al Khouri', joined: '2018-09-03', status: 'Active', nationality: 'UAE' },
   { id: 'e13', code: 'EMP-0013', name: 'Farhan Sheikh', type: 'Expatriate', department: 'Procurement', designation: 'Buyer', branch: 'Dubai', manager: 'Hamdan Al Suwaidi', joined: '2021-01-17', status: 'Active', nationality: 'Pakistan' },
   { id: 'e14', code: 'EMP-0014', name: 'Grace Fernandez', type: 'Expatriate', department: 'Warehouse', designation: 'Warehouse Staff', branch: 'Sharjah', manager: 'Sanjay Kumar', joined: '2022-07-04', status: 'Active', nationality: 'Philippines' },
+];
+
+/** ERP user accounts (people with a login). An Employee location is assigned to these, not to the whole employee list (5 Oct call). */
+export interface SystemUser { id: string; username: string; employeeId: string; name: string; role: string }
+export const systemUsers: SystemUser[] = [
+  { id: 'u1', username: 'ahmed.k', employeeId: 'e1', name: 'Ahmed Al Khouri', role: 'Administrator' },
+  { id: 'u2', username: 'omar.f', employeeId: 'e2', name: 'Omar Farouk', role: 'Sales Manager' },
+  { id: 'u3', username: 'leena.t', employeeId: 'e3', name: 'Leena Thomas', role: 'Sales' },
+  { id: 'u5', username: 'hamdan.s', employeeId: 'e5', name: 'Hamdan Al Suwaidi', role: 'Operations Manager' },
+  { id: 'u6', username: 'bilal.a', employeeId: 'e6', name: 'Bilal Ahmed', role: 'Operations' },
+  { id: 'u7', username: 'sanjay.k', employeeId: 'e7', name: 'Sanjay Kumar', role: 'Yard Supervisor' },
+  { id: 'u8', username: 'rajesh.p', employeeId: 'e8', name: 'Rajesh Pillai', role: 'Service Technician' },
+  { id: 'u10', username: 'nasser.k', employeeId: 'e10', name: 'Nasser Al Ketbi', role: 'Finance' },
+  { id: 'u14', username: 'grace.f', employeeId: 'e14', name: 'Grace Fernandez', role: 'Warehouse' },
 ];
 
 /** Standard item master (trading / spare parts / fuel / service items) shared by procurement, inventory and CRM lines. */
