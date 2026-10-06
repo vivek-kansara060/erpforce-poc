@@ -13,7 +13,7 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
 import { custName, docTotals, liveItems, vanLocationsFor, type JobCard, type SalesOrder } from './data';
-import { completeJobCard, createJobCard, getOrder, invoiceJobCard, jobCardCost, jobCardTotal, markJobCardPaid, saveJobCard, stockAt } from './flow';
+import { completeJobCard, createJobCard, getOrder, invoiceJobCard, jobCardCost, jobCardFoc, jobCardTotal, markJobCardPaid, saveJobCard, stockAt } from './flow';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed, useJobCards, useOrders, useServiceCharges } from './shared';
 
@@ -24,7 +24,8 @@ const amcStats = (o: SalesOrder, jcs: JobCard[]) => {
   const invoiced = mine.filter((j) => j.status === 'Invoiced');
   const revenue = invoiced.reduce((s, j) => s + jobCardTotal(j), 0);
   const cost = mine.filter((j) => j.status !== 'Open').reduce((s, j) => s + jobCardCost(j), 0);
-  return { mine, revenue, cost, done: (o.visitPlan ?? []).filter((v) => v.done).length };
+  const foc = mine.filter((j) => j.status !== 'Open').reduce((s, j) => s + jobCardFoc(j), 0);
+  return { mine, revenue, cost, foc, done: (o.visitPlan ?? []).filter((v) => v.done).length };
 };
 
 /** AMC Orders: the AMC Sales Orders, listed like the Rental Orders. AMC has no Delivery Order, each visit has a Job Card. */
@@ -38,10 +39,11 @@ export function AmcList() {
       <PageTitle title="AMC Orders" subtitle="AMC Sales Orders. Each planned visit has a Job Card, an AMC order is a project (cost centre)." change="new" req={R_AMC} />
       <DataTable<SalesOrder> rows={rows} searchPlaceholder="Search AMC orders..." onAdd={() => nav('/crm/quotations/add?activity=AMC')} addLabel="Add AMC Order" onRowClick={(r) => nav(`/crm/amc-orders/${r.id}`)}
         columns={[
-          { key: 'number', label: 'ID' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'project', label: 'Project', change: 'new', req: R_AMC, render: (r) => r.costCentre || '-' }, { key: 'item', label: 'AMC Item', render: (r) => r.lines[0]?.item },
+          { key: 'number', label: 'ID' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'project', label: 'Project', change: 'new', req: R_AMC, render: (r) => r.costCentre || '-' }, { key: 'item', label: 'Scope', render: (r) => (r.amcScope || r.lines[0]?.desc || '-') },
           { key: 'period', label: 'AMC Period', render: (r) => `${r.amcStart} to ${r.amcEnd}` },
           { key: 'visits', label: 'Visits done', align: 'right', render: (r) => `${amcStats(r, jcs.rows).done} of ${r.visits}` },
           { key: 'value', label: 'Contract Value', align: 'right', render: (r) => aed(contractValue(r)) }, { key: 'billed', label: 'Invoiced', align: 'right', render: (r) => aed(amcStats(r, jcs.rows).revenue) },
+          { key: 'foc', label: 'Free of cost', align: 'right', change: 'new', req: R_AMC, render: (r) => aed(amcStats(r, jcs.rows).foc) },
           { key: 'paid', label: 'Payment', change: 'new', req: R_AMC, render: (r) => { const m = amcStats(r, jcs.rows).mine.filter((j) => j.status === 'Invoiced'); return m.length ? `${m.filter((j) => j.paymentStatus === 'Paid').length} of ${m.length} paid` : '-'; } },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
         ]} />
@@ -62,7 +64,7 @@ export function AmcView() {
   const plan = o.visitPlan ?? [];
   const months = Math.max(1, Math.round(((new Date(o.amcEnd ?? o.amcStart ?? '').getTime() - new Date(o.amcStart ?? '').getTime()) / 86400000 + 1) / 30.4));
   const jcOf = (idx: number) => st.mine.find((j) => j.visitIdx === idx);
-  const f = { ...o, customerName: custName(o.customerId), item: o.lines[0]?.item, period: `${o.amcStart} to ${o.amcEnd}`, value: aed(value), project: o.costCentre || '-' };
+  const f = { ...o, customerName: custName(o.customerId), item: (o.amcScope || o.lines[0]?.desc || '-'), period: `${o.amcStart} to ${o.amcEnd}`, value: aed(value), project: o.costCentre || '-' };
   return (
     <>
       <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
@@ -71,26 +73,27 @@ export function AmcView() {
         <KpiRow>
           <KpiCard title="Contract value" value={aed(value)} sub={`${o.visits} visits, ${aed(value / (o.visits || 1))} each`} />
           <KpiCard title="Invoiced" value={aed(st.revenue)} sub={`${st.mine.filter((j) => j.status === 'Invoiced').length} job card(s) invoiced`} tint="#E8F5F0" />
+          <KpiCard title="Free of cost" value={aed(st.foc)} sub="FOC visits, materials and services (not billed)" />
           <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FFF3CC" />
           <KpiCard title="Profit to date" value={aed(st.revenue - st.cost)} sub="Invoiced less cost" />
         </KpiRow>
         <Panel title="Project Details" change="new" req={R_AMC}>
-          <SpecView cols={4} f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'AMC Item' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
+          <SpecView cols={4} f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
         </Panel>
-        <Alert severity="info" sx={{ mt: 2 }}>Value split: {aed(value)} over {months} month(s) is {aed(value / months)} a month. With {o.visits} planned visit(s) each visit is billed {aed(value / (o.visits || 1))}, so every Job Card invoice carries its visit value.</Alert>
+        <Alert severity="info" sx={{ mt: 2 }}>Value split: {aed(value)} over {months} month(s) is {aed(value / months)} a month. With {o.visits} planned visit(s) each visit is billed {aed(value / (o.visits || 1))}, so every Job Card invoice carries its visit value, unless the visit is marked FOC on its job card.</Alert>
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
             { label: 'Planned visits', change: 'new', req: R_AMC, content: (
               <DataTable hideToolbar rows={plan.map((v, i) => ({ id: String(i), i, ...v }))} columns={[
-                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'actual', label: 'Actual Date', change: 'new', req: R_AMC, render: (r) => jcOf(r.i)?.doneOn ?? '-' }, { key: 'amount', label: 'Visit value (contract split)', align: 'right', render: (r) => aed(r.amount) },
+                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'actual', label: 'Actual Date', change: 'new', req: R_AMC, render: (r) => jcOf(r.i)?.doneOn ?? '-' }, { key: 'amount', label: 'Visit value (contract split)', align: 'right', render: (r) => (jcOf(r.i)?.visitFoc ? <>{aed(r.amount)} <StatusChip status="FOC" tone="grey" /></> : aed(r.amount)) },
                 { key: 'jc', label: 'Job Card', render: (r) => jcOf(r.i)?.number ?? '-' }, { key: 'st', label: 'Status', render: (r) => <StatusChip status={jcOf(r.i)?.status ?? 'Planned'} /> }, { key: 'inv', label: 'Invoice', render: (r) => jcOf(r.i)?.invoiceRef ?? '-' }, { key: 'pay', label: 'Payment', change: 'new', req: R_AMC, render: (r) => (jcOf(r.i)?.invoiceRef ? <StatusChip status={jcOf(r.i)?.paymentStatus ?? 'Unpaid'} tone={jcOf(r.i)?.paymentStatus === 'Paid' ? 'green' : 'amber'} /> : '-') },
                 { key: 'act', label: '', render: (r) => <Button size="small" variant={jcOf(r.i) ? 'outlined' : 'contained'} onClick={() => { const jid = createJobCard(o.id, r.i); if (!jcOf(r.i)) toast('Job card created for the visit'); nav(`/crm/job-cards/${jid}`); }}>{jcOf(r.i) ? 'Open Job Card' : 'Create Job Card'}</Button> },
               ]} />) },
             { label: 'Consolidated report', change: 'new', req: R_AMC, content: (
               <Box>
-                <DataTable hideToolbar rows={plan.map((v, i) => { const j = jcOf(i); return { id: String(i), visit: i + 1, planned: v.date, jc: j?.number ?? '-', done: j?.doneOn ?? '-', cons: j ? j.materials.map((m) => `${m.qty} ${m.unit} ${m.item}`).join(', ') || '-' : '-', svc: j ? j.services.map((m) => m.name).join(', ') || '-' : '-', cost: j ? jobCardCost(j) : 0, billed: j && j.status === 'Invoiced' ? jobCardTotal(j) : 0, inv: j?.invoiceRef ?? '-' }; })}
-                  columns={[{ key: 'visit', label: 'Visit' }, { key: 'planned', label: 'Planned' }, { key: 'jc', label: 'Job Card' }, { key: 'done', label: 'Done On' }, { key: 'cons', label: 'Consumables used' }, { key: 'svc', label: 'Services' }, { key: 'cost', label: 'Cost', align: 'right', render: (r) => aed(r.cost) }, { key: 'inv', label: 'Invoice' }, { key: 'billed', label: 'Invoiced', align: 'right', render: (r) => aed(r.billed) }]} />
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 4, mt: 1.5 }}><Text type="s3" weight="medium">Total invoiced {aed(st.revenue)}</Text><Text type="s3" weight="medium">Total cost {aed(st.cost)}</Text><Text type="s3" weight="medium">Profit {aed(st.revenue - st.cost)}</Text></Box>
+                <DataTable hideToolbar rows={plan.map((v, i) => { const j = jcOf(i); return { id: String(i), visit: i + 1, planned: v.date, jc: j?.number ?? '-', done: j?.doneOn ?? '-', cons: j ? j.materials.map((m) => `${m.qty} ${m.unit} ${m.item}${m.foc ? ' (FOC)' : ''}`).join(', ') || '-' : '-', svc: j ? j.services.map((m) => `${m.name}${m.foc ? ' (FOC)' : ''}`).join(', ') || '-' : '-', cost: j ? jobCardCost(j) : 0, foc: j ? jobCardFoc(j) : 0, focVisit: !!j?.visitFoc, billed: j && j.status === 'Invoiced' ? jobCardTotal(j) : 0, inv: j?.invoiceRef ?? '-' }; })}
+                  columns={[{ key: 'visit', label: 'Visit' }, { key: 'planned', label: 'Planned' }, { key: 'jc', label: 'Job Card' }, { key: 'done', label: 'Done On' }, { key: 'cons', label: 'Consumables used' }, { key: 'svc', label: 'Services' }, { key: 'foc', label: 'Free of cost', align: 'right', render: (r) => (r.foc ? `${aed(r.foc)}${r.focVisit ? ' (FOC visit)' : ''}` : '-') }, { key: 'cost', label: 'Cost', align: 'right', render: (r) => aed(r.cost) }, { key: 'inv', label: 'Invoice' }, { key: 'billed', label: 'Invoiced', align: 'right', render: (r) => aed(r.billed) }]} />
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 4, mt: 1.5 }}><Text type="s3" weight="medium">Total invoiced {aed(st.revenue)}</Text><Text type="s3" weight="medium">Free of cost {aed(st.foc)}</Text><Text type="s3" weight="medium">Total cost {aed(st.cost)}</Text><Text type="s3" weight="medium">Profit {aed(st.revenue - st.cost)}</Text></Box>
                 <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>For the client: planned visit dates, job cards, consumables used, cost and sales invoices raised. Cost uses the cost entered on each material line.</Text>
               </Box>) },
             { label: 'Activity log', content: <Timeline items={o.log} /> },
@@ -103,10 +106,11 @@ export function AmcView() {
 
 const jcSpecs = (f: Record<string, any>): Spec[] => [
   { key: 'number', label: 'ID', type: 'readonly' }, { key: 'entity', label: 'Entity', type: 'readonly' }, { key: 'soNumber', label: 'AMC Order', type: 'readonly' }, { key: 'customerName', label: 'Customer', type: 'readonly' },
-  { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R_AMC }, { key: 'item', label: 'AMC Item', type: 'readonly' }, { key: 'visitNo', label: 'Visit', type: 'readonly' }, { key: 'plannedDate', label: 'Planned Date', type: 'readonly' }, { key: 'actualDate', label: 'Actual Date', type: 'readonly', change: 'new', req: R_AMC, hint: 'Taken from the job card date when the visit is completed' },
-  { key: 'technician', label: 'Technician', type: 'select', options: employees.filter((e) => ['Service Technician', 'Yard Supervisor', 'Sales Representative'].includes(e.designation)).map((e) => e.name), required: true },
+  { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R_AMC }, { key: 'item', label: 'Scope', type: 'readonly' }, { key: 'visitNo', label: 'Visit', type: 'readonly' }, { key: 'plannedDate', label: 'Planned Date', type: 'readonly' }, { key: 'actualDate', label: 'Actual Date', type: 'readonly', change: 'new', req: R_AMC, hint: 'Taken from the job card date when the visit is completed' },
+  { key: 'technician', label: 'Technician', type: 'select', options: employees.filter((e) => ['Service Technician', 'Yard Supervisor'].includes(e.designation)).map((e) => e.name), required: true },
   { key: 'location', label: 'Consume from location', type: 'select', options: () => vanLocationsFor(f.technician), change: 'changed', req: R_AMC, hint: 'Service vans (Employee locations) assigned to the technician. Materials are drawn from here' },
   { key: 'visitAmount', label: 'Visit value (contract split)', type: 'readonly', value: () => aed(f.visitAmount) },
+  { key: 'visitFoc', label: 'FOC visit (visit value not billed)', type: 'check', change: 'new', req: R_AMC, hint: 'Chargeable Override (Project Team): this visit\'s share of the Contract Value is not invoiced. Materials and services follow their own FOC tick' },
   { key: 'activities', label: 'Job Activities', type: 'textarea', full: true, change: 'new', req: R_AMC, hint: 'General description of the standard process done on the visit, even with no materials or services' },
   { key: 'notes', label: 'Notes', type: 'textarea', full: true },
 ];
@@ -127,9 +131,10 @@ export function JobCardPage() {
   const locked = f.status === 'Invoiced';
   // Changing the technician keeps the van only if it is theirs; with one van it is picked for them.
   const set = (k: string, v: any) => setF((x) => { const n = { ...x!, [k]: v }; if (k === 'technician') { const vans = vanLocationsFor(v); n.location = vans.includes(x!.location) ? x!.location : vans[0] ?? ''; } return n; });
-  const view = { ...f, entity: so?.entity, project: so?.costCentre ?? '-', actualDate: f.doneOn ?? 'Set from today when the visit is completed', customerName: custName(f.customerId), visitNo: `${f.visitIdx + 1} of ${so?.visits ?? '-'}` };
-  // Materials come from what the technician's van actually carries.
-  const vanStock = stockAt(f.location);
+  const view = { ...f, item: so?.amcScope || so?.lines[0]?.desc || '-', entity: so?.entity, project: so?.costCentre ?? '-', actualDate: f.doneOn ?? 'Set from today when the visit is completed', customerName: custName(f.customerId), visitNo: `${f.visitIdx + 1} of ${so?.visits ?? '-'}` };
+  // Materials are inventory items classified AMC, from what the technician's van actually carries.
+  const amcItems = new Set(liveItems().filter((i) => i.classification === 'AMC').map((i) => i.name));
+  const vanStock = stockAt(f.location).filter((s) => amcItems.has(s.name));
   const spare = [...new Set([...vanStock.map((s) => s.name), ...f.materials.map((m) => m.item).filter(Boolean)])];
   const short = f.status === 'Open' ? f.materials.filter((m) => m.item && m.qty > (vanStock.find((s) => s.name === m.item)?.qty ?? 0)) : [];
   const save = () => { saveJobCard(f); toast('Job card saved'); };
@@ -152,20 +157,20 @@ export function JobCardPage() {
         {locked && <Alert severity="info" sx={{ mb: 2 }}>This job card is invoiced ({f.invoiceRef}, payment {f.paymentStatus ?? 'Unpaid'}) and cannot be changed.</Alert>}
         <SpecForm specs={jcSpecs(f)} f={view} set={set} locked={locked} />
         {f.signedCopy && f.signedCopy.length > 0 && <Alert severity="success" sx={{ mt: 2 }}>Signed copy uploaded: {f.signedCopy.join(', ')}</Alert>}
-        <Section title="Materials consumed (optional)" change="new" req={R_AMC}>
+        <Section title="Materials consumed (optional)" change="new" req={R_AMC} hint="Billed by default. Tick FOC (Chargeable Override, Project Team) to give a line free of cost; the material still leaves the van stock.">
           {!locked && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1 }}>{f.location ? `In ${f.location}: ${vanStock.map((s) => `${s.name} ${s.qty} ${s.unit}`).join(', ') || 'no stock'}` : 'Select the technician and their van to pick materials'}</Text>}
           {short.length > 0 && <Alert severity="error" sx={{ mb: 1 }}>More than the van holds: {short.map((m) => m.item).join(', ')}</Alert>}
-          <RowsEditor locked={locked} cols={[{ key: 'item', label: 'Material', type: 'select', options: spare, width: 260 }, { key: 'qty', label: 'Quantity', width: 90 }, { key: 'unit', label: 'UoM', width: 90 }, { key: 'price', label: 'Billed price', width: 110 }, { key: 'cost', label: 'Cost', width: 110 }]}
-            rows={f.materials.map((m) => ({ ...m, qty: m.qty as any, price: m.price as any, cost: (m.cost ?? '') as any }))} blank={{ item: '', qty: 1 as any, unit: 'Nos', price: 0 as any, cost: '' as any }} addLabel="Add Material" empty="No materials"
-            onChange={(r) => set('materials', r.map((m) => { const im = liveItems().find((i) => i.name === m.item); const price = Number(m.price) || im?.price || 0; return { item: m.item, qty: Number(m.qty) || 0, unit: m.unit || im?.unit || 'Nos', price, cost: m.cost === '' || m.cost === undefined ? Math.round(price * 0.7 * 100) / 100 : Number(m.cost) }; }))} />
+          <RowsEditor locked={locked} cols={[{ key: 'item', label: 'Material', type: 'select', options: spare, width: 260 }, { key: 'qty', label: 'Quantity', width: 90 }, { key: 'unit', label: 'UoM', width: 90 }, { key: 'price', label: 'Billed price', width: 110 }, { key: 'foc', label: 'FOC', type: 'check', width: 60 }, { key: 'cost', label: 'Cost', width: 110 }]}
+            rows={f.materials.map((m) => ({ ...m, qty: m.qty as any, price: m.price as any, foc: !!m.foc, cost: (m.cost ?? '') as any }))} blank={{ item: '', qty: 1 as any, unit: 'Nos', price: 0 as any, foc: false, cost: '' as any }} addLabel="Add Material" empty="No materials"
+            onChange={(r) => set('materials', r.map((m) => { const im = liveItems().find((i) => i.name === m.item); const price = Number(m.price) || im?.price || 0; return { item: m.item, qty: Number(m.qty) || 0, unit: m.unit || im?.unit || 'Nos', price, foc: !!m.foc || undefined, cost: m.cost === '' || m.cost === undefined || !Number(m.cost) ? Math.round(price * 0.7 * 100) / 100 : Number(m.cost) }; }))} />
         </Section>
-        <Section title="Services performed (optional)" change="new" req={R_AMC}>
-          <RowsEditor locked={locked} cols={[{ key: 'name', label: 'Service', type: 'select', options: svc.map((s) => s.name), width: 280 }, { key: 'amount', label: 'Amount', width: 120 }]}
-            rows={f.services.map((s) => ({ ...s, amount: s.amount as any }))} blank={{ name: '', amount: 0 as any }} addLabel="Add Service" empty="No additional services"
-            onChange={(r) => set('services', r.map((s) => ({ name: s.name, amount: Number(s.amount) || svc.find((x) => x.name === s.name)?.price || 0 })))} />
+        <Section title="Services performed (optional)" change="new" req={R_AMC} hint="Additional work is billed by default. Tick FOC to give it free of cost.">
+          <RowsEditor locked={locked} cols={[{ key: 'name', label: 'Service', type: 'select', options: svc.map((s) => s.name), width: 280 }, { key: 'amount', label: 'Amount', width: 120 }, { key: 'foc', label: 'FOC', type: 'check', width: 60 }]}
+            rows={f.services.map((s) => ({ ...s, amount: s.amount as any, foc: !!s.foc }))} blank={{ name: '', amount: 0 as any, foc: false }} addLabel="Add Service" empty="No additional services"
+            onChange={(r) => set('services', r.map((s) => ({ name: s.name, amount: Number(s.amount) || svc.find((x) => x.name === s.name)?.price || 0, foc: !!s.foc || undefined })))} />
         </Section>
         <Box sx={{ ml: 'auto', width: 340, mt: 2 }}>
-          {[['Visit value (contract split)', f.visitAmount], ['Materials', f.materials.reduce((s, m) => s + m.qty * m.price, 0)], ['Services', f.services.reduce((s, m) => s + m.amount, 0)]].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
+          {[['Visit value (contract split)', f.visitFoc ? 0 : f.visitAmount], ['Materials', f.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', f.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)], ...(jobCardFoc(f) > 0 ? [['Free of cost (not billed)', jobCardFoc(f)]] : [])].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s5" color="theme.secondary.700">Cost of materials</Text><Text type="s5" color="theme.secondary.700">{aed(jobCardCost(f))}</Text></Box>
         </Box>

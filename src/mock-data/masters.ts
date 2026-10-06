@@ -76,6 +76,7 @@ export const locations: LocationMaster[] = [
   // Service vans: spare parts carried by the AMC technicians, assigned to their user accounts.
   { id: 'l5', code: 'LOC-0005', name: 'Service Van 1 (Rajesh Pillai)', type: 'Employee', userIds: ['u8'], city: 'Dubai' },
   { id: 'l6', code: 'LOC-0006', name: 'Service Van 2 (Shared)', type: 'Employee', userIds: ['u8', 'u7'], city: 'Sharjah' },
+  { id: 'l7', code: 'LOC-0007', name: 'Service Van 3 (Sanjay Kumar)', type: 'Employee', userIds: ['u7'], city: 'Dubai' },
 ];
 
 export interface Asset {
@@ -180,15 +181,14 @@ export const itemMaster: ItemMaster[] = [
   { id: 'i1', code: 'ITM-0001', name: 'Diesel Generator 100 KVA (Cummins)', classification: 'Rental', category: 'Generator', subCategory: '100 KVA', tracking: 'Serialized', unit: 'Nos', price: 1800, stock: 2 },
   { id: 'i2', code: 'ITM-0002', name: 'Diesel Generator 500 KVA (Cummins)', classification: 'Rental', category: 'Generator', subCategory: '500 KVA', tracking: 'Serialized', unit: 'Nos', price: 5200, stock: 3 },
   { id: 'i3', code: 'ITM-0003', name: 'Oil Filter (Cummins C-Series)', classification: 'Inventory', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 85, stock: 14, minStock: 20, reorderQty: 60, spare: true },
-  { id: 'i4', code: 'ITM-0004', name: 'Fuel Filter (Perkins 1106)', classification: 'Inventory', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 62, stock: 41, minStock: 25, reorderQty: 60, spare: true },
-  { id: 'i5', code: 'ITM-0005', name: 'Battery 12V 200Ah', classification: 'Inventory', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 640, stock: 6, minStock: 8, reorderQty: 12, spare: true },
-  { id: 'i6', code: 'ITM-0006', name: 'Engine Oil 15W-40 (20 L)', classification: 'Inventory', category: 'Consumable', tracking: 'Quantity', unit: 'Drum', price: 420, stock: 18, minStock: 10, reorderQty: 20, spare: true },
+  { id: 'i4', code: 'ITM-0004', name: 'Fuel Filter (Perkins 1106)', classification: 'AMC', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 62, stock: 41, minStock: 25, reorderQty: 60, spare: true },
+  { id: 'i5', code: 'ITM-0005', name: 'Battery 12V 200Ah', classification: 'AMC', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 640, stock: 6, minStock: 8, reorderQty: 12, spare: true },
+  { id: 'i6', code: 'ITM-0006', name: 'Engine Oil 15W-40 (20 L)', classification: 'AMC', category: 'Consumable', tracking: 'Quantity', unit: 'Drum', price: 420, stock: 18, minStock: 10, reorderQty: 20, spare: true },
   { id: 'i7', code: 'ITM-0007', name: 'Power Cable 4C x 185 mm', classification: 'Rental', category: 'Cable', subCategory: '4 Core 185 mm', tracking: 'Length', unit: 'Meter', price: 14, stock: 1800 },
   { id: 'i8', code: 'ITM-0008', name: 'Diesel (Bulk)', classification: 'Fuel Trading', category: 'Fuel', tracking: 'Quantity', unit: 'Litre', price: 2.85, stock: 21500 },
-  { id: 'i9', code: 'ITM-0009', name: 'AMC Scheduled Visit (Generator)', classification: '', category: '', tracking: 'Quantity', unit: 'Visit', price: 0, stock: 0 },
   { id: 'i10', code: 'ITM-0010', name: 'Generator Installation & Commissioning', classification: '', category: '', tracking: 'Quantity', unit: 'Job', price: 3500, stock: 0 },
   { id: 'i11', code: 'ITM-0011', name: 'ATS Panel 630A', classification: 'Trading', category: 'Panel', subCategory: 'ATS Panel', tracking: 'Serialized', unit: 'Nos', price: 61000, stock: 2 },
-  { id: 'i12', code: 'ITM-0012', name: 'Air Filter (Perkins 2506)', classification: 'Inventory', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 110, stock: 9, minStock: 15, reorderQty: 40, spare: true },
+  { id: 'i12', code: 'ITM-0012', name: 'Air Filter (Perkins 2506)', classification: 'AMC', category: 'Spare Part', tracking: 'Quantity', unit: 'Nos', price: 110, stock: 9, minStock: 15, reorderQty: 40, spare: true },
 ];
 
 export const fmtAED = (n: number) => `AED ${n.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: n % 1 ? 2 : 0 })}`;

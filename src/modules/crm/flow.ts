@@ -4,7 +4,7 @@ import { customers } from '@/mock-data/masters';
 import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
-  docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, fleetStatus, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
+  amcLine, docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, fleetStatus, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
   type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
@@ -76,11 +76,11 @@ export function quoteFromOpportunity(o: Opportunity): string {
   const end = yearEnd();
   const lines = o.lines.length
     ? o.lines.map((l) => ({ ...l, id: uid('ln'), assigned: [], crossHire: [], ...(l.activity === 'Rental' ? { frequency: 'Monthly', start: TODAY, end, item: `Rental ${l.group} ${l.category} Monthly`, desc: l.desc || l.item } : {}) }))
-    : [act === 'Rental' ? mkLine({ activity: 'Rental', item: '', group: 'Generator', frequency: 'Monthly', start: TODAY, end }) : mkLine({ activity: act, item: '' })];
+    : [act === 'Rental' ? mkLine({ activity: 'Rental', item: '', group: 'Generator', frequency: 'Monthly', start: TODAY, end }) : act === 'AMC' ? amcLine(o.estimated || 0) : mkLine({ activity: act, item: '' })];
   const quote: Quotation = {
     id, number: nextNumber('QT', 90), date: TODAY, oppId: o.id, customerId: o.customerId, activity: act, entity: masterValues('entity')[0], paymentTerms: '30 days', currency: 'AED',
     contractType: act === 'Rental' ? 'Open PO' : undefined, contractStart: act === 'Rental' ? TODAY : undefined, contractEnd: act === 'Rental' ? end : undefined,
-    amcStart: act === 'AMC' ? TODAY : undefined, amcEnd: act === 'AMC' ? plusYear(TODAY) : undefined, visits: act === 'AMC' ? 4 : undefined,
+    amcStart: act === 'AMC' ? TODAY : undefined, amcEnd: act === 'AMC' ? plusYear(TODAY) : undefined, visits: act === 'AMC' ? 4 : undefined, amcValue: act === 'AMC' ? o.estimated || 0 : undefined,
     description: o.title, validUntil: dayjs(TODAY).add(30, 'day').format('YYYY-MM-DD'), status: 'Draft', version: 1,
     preparedBy: o.owner, designation: 'Sales Representative', mobile: '+971 50 400 1101', email: 'sales@gulfpowerrentals.ae', template: '',
     terms: 'Payment: as per the payment terms from invoice date. Fuel is not included in the rental rate and is billed separately.', vatType: 'Standard (With VAT)', discountPct: 0, lines, pushToOpp: false,
@@ -507,7 +507,10 @@ export function createJobCard(soId: string, visitIdx: number): string {
   return id;
 }
 export const saveJobCard = (jc: JobCard) => patch<JobCard>(COL.jobCards, jc.id, () => jc);
-export const jobCardTotal = (jc: JobCard) => jc.visitAmount + jc.materials.reduce((s, m) => s + m.qty * m.price, 0) + jc.services.reduce((s, m) => s + m.amount, 0);
+/** FOC lines (Chargeable Override) are not billed. */
+export const jobCardTotal = (jc: JobCard) => (jc.visitFoc ? 0 : jc.visitAmount) + jc.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0) + jc.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0);
+/** Value given free of cost on a job card: the visit share (FOC visit) plus FOC materials and services. */
+export const jobCardFoc = (jc: JobCard) => (jc.visitFoc ? jc.visitAmount : 0) + jc.materials.reduce((s, m) => s + (m.foc ? m.qty * m.price : 0), 0) + jc.services.reduce((s, m) => s + (m.foc ? m.amount : 0), 0);
 export const jobCardCost = (jc: JobCard) => jc.materials.reduce((s, m) => s + m.qty * (m.cost ?? Math.round(m.price * 0.7 * 100) / 100), 0);
 /* Stock per location, kept in Inventory (collection inventory.locationStock). */
 const LOC_STOCK = 'inventory.locationStock';
@@ -532,7 +535,7 @@ export function completeJobCard(jc: JobCard) {
 }
 export function invoiceJobCard(jc: JobCard): string {
   const ref = nextNumber('INV', 415);
-  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Invoiced', paymentStatus: 'Unpaid', invoiceRef: ref, log: [...x.log, log('Invoice raised', `${ref}, total AED ${jobCardTotal(jc)}`, 'blue')] }));
+  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Invoiced', paymentStatus: 'Unpaid', invoiceRef: ref, log: [...x.log, log('Invoice raised', `${ref}, total AED ${jobCardTotal(jc)}${jobCardFoc(jc) ? `, free of cost AED ${jobCardFoc(jc)}${jc.visitFoc ? ' (FOC visit)' : ''}` : ''}`, 'blue')] }));
   saveOrder(jc.soId, (o) => ({ ...o, log: [log(`Job card ${jc.number} invoiced`, `${ref}, AED ${jobCardTotal(jc)}`, 'blue'), ...o.log] }));
   return ref;
 }

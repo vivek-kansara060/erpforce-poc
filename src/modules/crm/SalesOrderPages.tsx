@@ -13,7 +13,7 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
-import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
+import { NEXT_STEP, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
 import { TripsTable } from '@/modules/rental/FleetPages';
 import { ItemsTable } from './Items';
@@ -246,7 +246,7 @@ export function SalesOrderView() {
             { label: 'Asset Ledger', change: 'new', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
             { label: 'AMC Visits', change: 'new', req: R.meet, hidden: so.activity !== 'AMC', content: (
               <DataTable hideToolbar rows={(so.visitPlan ?? []).map((v, i) => ({ id: String(i), i, ...v }))} columns={[
-                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'amount', label: 'Visit value', align: 'right', render: (r) => aed(r.amount) }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
+                { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'amount', label: 'Visit value', align: 'right', render: (r) => (jobCardsOf(so.id).find((j) => j.visitIdx === r.i)?.visitFoc ? `${aed(r.amount)} (FOC)` : aed(r.amount)) }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
                 { key: 'act', label: '', render: (r) => <Button size="small" variant="outlined" onClick={() => nav(`/crm/amc-orders/${so.id}`)}>Job Card</Button> },
               ]} />) },
             { label: 'Compliance Status', change: 'new', req: R.so, hidden: so.activity !== 'Rental', content: compliance.length ? <DataTable hideToolbar rows={compliance.flatMap((c) => (c.certs.length ? c.certs.map((x) => ({ id: x.id, asset: `${c.h.assetId} - ${c.h.name}`, type: x.type, expiry: x.expiry, status: certStatus(x).label })) : [{ id: c.h.id, asset: `${c.h.assetId} - ${c.h.name}`, type: 'No certificate on record', expiry: '-', status: '-' }]))}

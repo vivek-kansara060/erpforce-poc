@@ -12,6 +12,36 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 7:30 PM: FOC visit on an AMC job card
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* FOC existed on job card materials and services, but a whole visit could not be given free (for example AED 20,000 over 4 visits, one visit of AED 5,000 not billed).
+*What we did.* The job card has an "FOC visit" tick: that visit's share of the Contract Value is not invoiced; materials and services keep their own FOC tick. Free of cost is shown everywhere the AMC money appears: the job card totals, a "Free of cost" KPI and an FOC chip on the planned visits of the AMC order, a Free of cost column and total in the consolidated report, a Free of cost column on the AMC Orders list, "(FOC)" on the AMC Visits tab of the Sales Order, and the invoice log. Also fixed: a material's cost stayed 0 when the row was added before the item was picked.
+*Be aware.* An FOC visit is not moved onto the other visits: the total billed drops by that visit's share.
+
+### 6 Oct, around 7:00 PM: AMC job card: FOC per material and service line; a van with AMC stock for every technician
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The requirement document (AMC Billing) lets the Project Team mark a normally chargeable consumable or extra task as Free of Cost for a specific job; the job card had no way to do it. For the AMC demo, Sanjay Kumar had no AMC materials in any van, and Sales Representatives were offered as technicians although they have no van.
+*What we did.* Each material and service row on the job card has an FOC tick: the line is not billed (the invoice total drops and a "Free of cost (not billed)" line shows the value), but the material still leaves the van stock and its cost is still counted. Added Service Van 3 (Sanjay Kumar) and AMC stock (Engine Oil, Air Filter, Battery) in all three vans; Battery 12V 200Ah is now classified AMC. The Technician list on the job card shows Service Technicians and the Yard Supervisor only.
+*Be aware.* Oil Filter stays an Inventory item (it is sold on a Trading order), so it is not offered as an AMC material.
+
+### 6 Oct, around 6:00 PM: AMC has no item lines; materials come from AMC items on the job card
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* An AMC Quotation asked for item lines (an "AMC Scheduled Visit" item with quantity and rate), as if materials or visits were sold as items. Ajin defined an AMC as a period and a number of visits (22 Sep call), with a contract value split across the visits (2 Oct call); materials are recorded on each visit's job card from the AMC items in inventory (2 Oct and 5 Oct calls).
+*What we did.* AMC Quotations and Sales Orders have no Items grid. The Contract section asks for AMC Start Date, End Date, Number of Visits, **Contract Value** and **Scope of the AMC**; a Contract Value section shows the totals. The visit plan splits the Contract Value across the visits as before. An AMC Opportunity has no item lines (the Estimated Value carries the expected value into the Quotation). The AMC Orders list, the AMC order view and the job card show the Scope instead of an "AMC Item". On the job card, materials are only inventory items with Product Classification = AMC carried in the technician's van. The "AMC Scheduled Visit (Generator)" service item is removed. Fuel Filter, Engine Oil and Air Filter are now classified AMC. Demo AMC records keep their values (SO-26-00053 AED 24,000, SO-26-00050 AED 18,000, QT-26-00080 AED 7,000).
+*Be aware.* Behind the scenes an AMC document still holds one "AMC Annual Contract" line built from the Contract Value, so totals, invoices and reports keep working; it is never edited as an item.
+
 ### 6 Oct, around 4:30 PM: Service is no longer an Activity Type; it is a charge
 **Where:** CRM / Sales > Orders > Lead
 **Where:** CRM / Sales > Orders > Opportunity

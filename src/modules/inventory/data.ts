@@ -174,13 +174,15 @@ export const locationStockSeed: LocationStock[] = [
   { id: 'ls-i3-5', itemId: 'i3', location: 'Service Van 1 (Rajesh Pillai)', qty: 6 }, { id: 'ls-i4-5', itemId: 'i4', location: 'Service Van 1 (Rajesh Pillai)', qty: 4 },
   { id: 'ls-i12-5', itemId: 'i12', location: 'Service Van 1 (Rajesh Pillai)', qty: 3 }, { id: 'ls-i6-5', itemId: 'i6', location: 'Service Van 1 (Rajesh Pillai)', qty: 2 },
   { id: 'ls-i3-6', itemId: 'i3', location: 'Service Van 2 (Shared)', qty: 2 }, { id: 'ls-i5-6', itemId: 'i5', location: 'Service Van 2 (Shared)', qty: 1 },
+  { id: 'ls-i5-5', itemId: 'i5', location: 'Service Van 1 (Rajesh Pillai)', qty: 1 },
+  { id: 'ls-i6-6', itemId: 'i6', location: 'Service Van 2 (Shared)', qty: 2 }, { id: 'ls-i12-6', itemId: 'i12', location: 'Service Van 2 (Shared)', qty: 2 },
+  { id: 'ls-i6-7', itemId: 'i6', location: 'Service Van 3 (Sanjay Kumar)', qty: 3 }, { id: 'ls-i12-7', itemId: 'i12', location: 'Service Van 3 (Sanjay Kumar)', qty: 2 }, { id: 'ls-i5-7', itemId: 'i5', location: 'Service Van 3 (Sanjay Kumar)', qty: 1 },
 ];
 const stockTotal = (itemId: string, fallback: number) => {
   const rows = locationStockSeed.filter((r) => r.itemId === itemId);
   return rows.length ? rows.reduce((t, r) => t + r.qty, 0) : fallback;
 };
 const SERVICE_SEED: Record<string, Partial<ItemRec>> = {
-  i9: { serviceType: 'Charge', billing: 'One-time', description: 'Scheduled AMC visit, charged per visit' },
   i10: { serviceType: 'Charge', billing: 'One-time', description: 'Generator installation and commissioning' },
 };
 /** Rental related service items, kept in Inventory with the other service items (6 Oct: service lines come from the Inventory service items). */
@@ -201,7 +203,7 @@ export const serviceItemSeed: ItemRec[] = [
 export const itemSeed: ItemRec[] = [...itemMaster.map((m): ItemRec => ({
   ...m,
   stock: stockTotal(m.id, m.stock),
-  type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.id === 'i9' || m.id === 'i10' ? 'Service' : 'Inventory',
+  type: m.id === 'i1' || m.id === 'i2' ? 'Inventory Fixed Asset' : m.id === 'i10' ? 'Service' : 'Inventory',
   sku: m.code.replace('ITM', 'SKU'),
   status: m.id === 'i4' ? 'Inactive' : 'Active',
   costingMethod: 'Average Cost',

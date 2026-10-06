@@ -114,7 +114,10 @@ export interface Commercial {
   activity: ActivityType; entity: string; customerId: string; paymentTerms: string; currency: string;
   contractType?: string; contractStart?: string; contractEnd?: string; billingStructure?: string;
   costCentre?: string;
-  amcStart?: string; amcEnd?: string; visits?: number; vatType: string; discountPct: number; terms: string; lines: Line[];
+  amcStart?: string; amcEnd?: string; visits?: number;
+  /** AMC: the contract value (before VAT) and its scope. An AMC has no item lines; the value is split across the planned visits. */
+  amcValue?: number; amcScope?: string;
+  vatType: string; discountPct: number; terms: string; lines: Line[];
   /** existing ERP header fields kept */
   transactionType?: string; exchangeRate?: number; salesperson?: string; referenceNo?: string; narration?: string; location?: string; emails?: LogItem[];
   postingTime?: string; deliveryCommitment?: string; recurring?: string; untilDate?: string; vatNumber?: string; crn?: string; quotePercentage?: number; department?: string;
@@ -147,7 +150,10 @@ export interface Visit { date: string; done?: string; ref?: string; type?: strin
 export interface ServiceCharge { id: string; name: string; type: string; billing: string; price: number; desc: string; source: 'Inventory' }
 export interface JobCard {
   id: string; number: string; soId: string; soNumber: string; customerId: string; visitIdx: number; plannedDate: string; doneOn?: string; technician: string; location: string; item: string;
-  materials: { item: string; qty: number; unit: string; price: number; cost?: number }[]; services: { name: string; amount: number }[]; notes: string; visitAmount: number;
+  /** foc: Chargeable Override (Free of Cost), set by the Project Team per line. The line is not billed, but materials still leave the van stock. */
+  materials: { item: string; qty: number; unit: string; price: number; cost?: number; foc?: boolean }[]; services: { name: string; amount: number; foc?: boolean }[]; notes: string; visitAmount: number;
+  /** FOC visit: this visit's share of the Contract Value is not invoiced (the other visits keep their share). */
+  visitFoc?: boolean;
   status: 'Open' | 'Completed' | 'Invoiced'; invoiceRef?: string; log: LogItem[];
   /** General Job Activities (the standard monthly process), signed copy upload and payment status of the invoice */
   activities?: string; signedCopy?: string[]; paymentStatus?: 'Unpaid' | 'Paid';
@@ -264,6 +270,9 @@ export const groupOptions = () => { const rows = liveCategories(); return rows.f
 export const categoryOptions = (group?: string) => (group ? liveCategories().filter((c) => c.parent === group).map((c) => c.name) : []);
 export const yearEnd = (from: string = TODAY) => `${from.slice(0, 4)}-12-31`;
 export const plusYear = (d: string) => dayjs(d).add(1, 'year').subtract(1, 'day').format('YYYY-MM-DD');
+/** An AMC document carries one contract line built from its Contract Value, so totals, the visit split and invoicing keep working. It is never edited as an item. */
+export const AMC_ITEM = 'AMC Annual Contract';
+export const amcLine = (value: number, scope?: string, id = 'amc'): Line => ({ id, activity: 'AMC', lineType: 'Individual', item: AMC_ITEM, unit: 'Contract', qty: 1, price: value, foc: false, desc: scope || 'Annual maintenance contract', assigned: [], crossHire: [] });
 export const mkLine = (over: Partial<Line> & Pick<Line, 'activity' | 'item'>): Line => ({
   id: `ln${Math.random().toString(36).slice(2, 9)}`, lineType: 'Individual', unit: 'Nos', qty: 1, price: 0, foc: false, desc: '', assigned: [], crossHire: [], ...over,
 });
@@ -382,9 +391,11 @@ const so2Lines = [R('so2a', 'Generator', '200 KVA', 29500, '2026-07-04', '2026-1
 const so3Lines = [R('so3a', 'Generator', '500 KVA', 48000, '2026-05-06', '2026-10-25', { allocationTag: 'Requested 500 KVA, reserved cross-hire unit' })];
 const so4Lines = [R('so4a', 'Generator', '1500 KVA', 145000, '2026-10-05', '2027-03-31'), R('so4b', 'Generator', '100 KVA', 18500, '2026-10-05', '2027-03-31', { qty: 2 }), S('so4c', 'Delivery Charge', 2000, 'One-time'), S('so4d', 'Return Charge', 2000, 'One-time')];
 const so5Lines = [R('so5a', 'Generator', '500 KVA', 50000, '2026-02-20', '2026-09-22')];
-const so6Lines = [L('so6a', { activity: 'AMC', item: 'AMC Scheduled Visit (Generator)', unit: 'Visit', qty: 4, price: 6000, desc: 'Annual maintenance of the 1500 KVA standby generator at Marina Tower 3: four scheduled visits, consumables and extra work billed against each job card' })];
+const S6 = 'Annual maintenance of the 1500 KVA standby generator at Marina Tower 3: four scheduled visits, consumables and extra work billed against each job card';
+const so6Lines = [amcLine(24000, S6, 'so6a')];
 const so9Lines = [R('so9a', 'Generator', '200 KVA', 29500, '2026-06-01', '2026-09-30'), R('so9b', 'Generator', '100 KVA', 18500, '2026-06-01', '2026-09-30'), R('so9c', 'Generator', '500 KVA', 52000, '2026-06-01', '2026-09-30'), S('so9d', 'Delivery Charge', 1500, 'One-time')];
-const so10Lines = [L('so10a', { activity: 'AMC', item: 'AMC Scheduled Visit (Generator)', unit: 'Visit', qty: 4, price: 4500, desc: 'Annual maintenance of the 500 KVA standby generator at the Al Maktoum site office: four scheduled visits, consumables and extra work billed against each job card' })];
+const S10 = 'Annual maintenance of the 500 KVA standby generator at the Al Maktoum site office: four scheduled visits, consumables and extra work billed against each job card';
+const so10Lines = [amcLine(18000, S10, 'so10a')];
 const so10Plan = planVisits('2025-12-01', '2026-11-30', 4, 18000);
 const so11Lines = [R('so11a', 'Generator', '500 KVA', 52000, '2026-10-05', '2026-12-31'), S('so11b', 'Generator Installation & Commissioning', 3500, 'One-time'), S('so11c', 'Transportation', 1200, 'One-time')];
 const so7Lines = [L('so7a', { activity: 'Trading', item: 'ATS Panel 630A', unit: 'Nos', qty: 1, price: 61000 }), L('so7b', { activity: 'Trading', item: 'Oil Filter (Cummins C-Series)', unit: 'Nos', qty: 60, price: 85 })];
@@ -398,10 +409,10 @@ export const quoteSeed: Quotation[] = [
   q('qt5', 'QT-26-00087', 'op5', 'c7', 'Revised', 'Rental', [R('qt5a', 'Generator', '1000 KVA', 98000, '2026-10-15', '2027-03-31', { qty: 2 })], { date: '2026-09-22', validUntil: '2026-10-22', contractType: 'Closed', contractStart: '2026-10-15', contractEnd: '2027-03-31', preparedBy: 'Yousef Karim' }),
   q('qt6', 'QT-26-00088', 'op5', 'c7', 'Submitted for Approval', 'Rental', [R('qt6a', 'Generator', '1000 KVA', 94000, '2026-10-15', '2027-03-31', { qty: 2 })],
     { date: '2026-09-28', validUntil: '2026-10-28', discountPct: 12, version: 2, prevId: 'qt5', contractType: 'Closed', contractStart: '2026-10-15', contractEnd: '2027-03-31', preparedBy: 'Yousef Karim', log: [lg('2026-09-28 11:10', 'Revision created from QT-26-00087', 'Yousef Karim'), lg('2026-09-28 11:12', 'Discount changed 0% to 12%', 'Yousef Karim')] }),
-  q('qt7', 'QT-26-00085', 'op7', 'c8', 'Converted to Sales Order', 'AMC', qLines(so6Lines, 'qt7'), { date: '2026-09-18', contractType: 'Closed', amcStart: '2026-10-01', amcEnd: '2027-09-30', visits: 4, salesOrderId: 'so6' }),
+  q('qt7', 'QT-26-00085', 'op7', 'c8', 'Converted to Sales Order', 'AMC', qLines(so6Lines, 'qt7'), { date: '2026-09-18', contractType: 'Closed', amcStart: '2026-10-01', amcEnd: '2027-09-30', visits: 4, amcValue: 24000, amcScope: S6, salesOrderId: 'so6' }),
   q('qt8', 'QT-26-00086', 'op8', 'c1', 'Converted to Sales Order', 'Trading', qLines(so7Lines, 'qt8'), { date: '2026-09-20', salesOrderId: 'so7' }),
   q('qt11', 'QT-26-00079', 'op11', 'c6', 'Converted to Sales Order', 'Rental', qLines(so11Lines, 'qt'), { date: '2026-09-18', validUntil: '2026-10-18', contractType: 'Closed', contractStart: '2026-10-05', contractEnd: '2026-12-31', salesOrderId: 'so11', preparedBy: 'Yousef Karim' }),
-  q('qt12', 'QT-26-00080', 'op12', 'c4', 'Approved', 'AMC', [L('qt12a', { activity: 'AMC', item: 'AMC Scheduled Visit (Generator)', unit: 'Visit', qty: 2, price: 3500, desc: 'Scheduled visit with a load bank test and report for the two resort standby generators' })], { date: '2026-09-24', validUntil: '2026-10-24', contractType: 'Closed', amcStart: '2026-11-01', amcEnd: '2027-10-31', visits: 2, log: [lg('2026-09-24 10:00', 'Quotation created', 'Leena Thomas'), lg('2026-09-25 09:30', 'Approved', 'Omar Farouk', undefined, 'green')] }),
+  q('qt12', 'QT-26-00080', 'op12', 'c4', 'Approved', 'AMC', [amcLine(7000, 'Two scheduled visits with a load bank test and report for the two resort standby generators', 'qt12a')], { date: '2026-09-24', validUntil: '2026-10-24', contractType: 'Closed', amcStart: '2026-11-01', amcEnd: '2027-10-31', visits: 2, amcValue: 7000, amcScope: 'Two scheduled visits with a load bank test and report for the two resort standby generators', log: [lg('2026-09-24 10:00', 'Quotation created', 'Leena Thomas'), lg('2026-09-25 09:30', 'Approved', 'Omar Farouk', undefined, 'green')] }),
 ];
 
 const asg = (assetId: string, deliveryId: string, start: string, over: Partial<Assignment> = {}): Assignment => ({ assetId, deliveryId, start, state: 'On Hire', ...over });
@@ -432,7 +443,7 @@ export const orderSeed: SalesOrder[] = [
   so({ id: 'so5', number: 'SO-26-00048', date: '2026-02-18', customerId: 'c6', owner: 'Yousef Karim', title: 'Rent 500 KVA for Kiln 4 shutdown', reference: 'LPO-SCC-3318', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-02-20', contractEnd: '2026-09-22',
     lpo: 'LPO-SCC-3318', lpoDate: '2026-02-16', lpoExpiry: '2026-09-25', site: 'Sharjah Cement, Kiln 4', costCentre: 'Dubai Branch', logisticsCost: 1500,
     lines: withAsg(so5Lines, { so5a: [asg('he16', 'dl6', '2026-02-20')] }), log: [lg('2026-02-18 09:00', 'Sales Order created', 'Yousef Karim')] }),
-  so({ id: 'so6', number: 'SO-26-00053', date: '2026-09-25', quoteId: 'qt7', oppId: 'op7', customerId: 'c8', owner: 'Leena Thomas', title: 'AMC for Marina Tower 3 standby generator', reference: 'LPO-PMD-7790', status: 'Confirmed', activity: 'AMC', contractType: 'Closed', amcStart: '2026-10-01', amcEnd: '2027-09-30', visits: 4,
+  so({ id: 'so6', number: 'SO-26-00053', date: '2026-09-25', quoteId: 'qt7', oppId: 'op7', customerId: 'c8', owner: 'Leena Thomas', title: 'AMC for Marina Tower 3 standby generator', reference: 'LPO-PMD-7790', status: 'Confirmed', activity: 'AMC', contractType: 'Closed', amcStart: '2026-10-01', amcEnd: '2027-09-30', visits: 4, amcValue: 24000, amcScope: S6,
     lpo: 'LPO-PMD-7790', lpoDate: '2026-09-24', lpoExpiry: '2027-09-30', site: 'Dubai Marina', costCentre: 'Dubai Branch', lines: withAsg(so6Lines, {}), visitPlan: planVisits('2026-10-01', '2027-09-30', 4, 24000),
     log: [lg('2026-09-25 10:00', 'Sales Order created from QT-26-00085', 'Leena Thomas')] }),
   so({ id: 'so7', number: 'SO-26-00054', date: '2026-09-28', quoteId: 'qt8', oppId: 'op8', customerId: 'c1', owner: 'Leena Thomas', title: 'Supply ATS panel and filters to Al Maktoum site', reference: 'LPO-EIL-4410', status: 'Confirmed', activity: 'Trading',
@@ -445,7 +456,7 @@ export const orderSeed: SalesOrder[] = [
       { so9d: { fulfilment: 'Charged and invoiced', fulfilmentRef: 'INV-26-00344' } }),
     log: [lg('2026-09-30 10:00', 'Return CN-26-00123: AST-1036 off hire', 'Omar Farouk', 'Company collection arranged', 'amber'), lg('2026-09-29 11:00', 'Return CN-26-00122: AST-1030 off hire', 'Omar Farouk', 'Client self-return', 'amber'),
       lg('2026-09-16 10:30', 'Damage charge AED 4500', 'Sanjay Kumar', 'AST-1029: control panel display cracked and canopy door hinge broken. Linked permanently to this order', 'red'), lg('2026-09-15 14:00', 'Return CN-26-00121: AST-1029 off hire', 'Omar Farouk', undefined, 'amber'), lg('2026-05-28 09:00', 'Sales Order created', 'Omar Farouk')] }),
-  so({ id: 'so10', number: 'SO-26-00050', date: '2025-11-28', customerId: 'c1', owner: 'Leena Thomas', title: 'AMC for the Al Maktoum site office standby generator', reference: 'LPO-EIL-3920', status: 'Confirmed', activity: 'AMC', contractType: 'Closed', amcStart: '2025-12-01', amcEnd: '2026-11-30', visits: 4,
+  so({ id: 'so10', number: 'SO-26-00050', date: '2025-11-28', customerId: 'c1', owner: 'Leena Thomas', title: 'AMC for the Al Maktoum site office standby generator', reference: 'LPO-EIL-3920', status: 'Confirmed', activity: 'AMC', contractType: 'Closed', amcStart: '2025-12-01', amcEnd: '2026-11-30', visits: 4, amcValue: 18000, amcScope: S10,
     lpo: 'LPO-EIL-3920', lpoDate: '2025-11-25', lpoExpiry: '2026-11-30', site: 'Al Maktoum Airport Expansion', costCentre: 'Dubai Branch', lines: withAsg(so10Lines, {}),
     visitPlan: so10Plan.map((v, i) => (i < 3 ? { ...v, done: v.date, ref: `JC-26-${String(104 + i).padStart(5, '0')}`, type: 'Job card', jobCardId: `jc${i + 2}` } : { ...v, jobCardId: 'jc5' })),
     log: [lg('2025-11-28 10:00', 'Sales Order created', 'Leena Thomas')] }),
@@ -557,16 +568,16 @@ orderSeed.push(
 export const jobCardSeed: JobCard[] = [
   { id: 'jc1', number: 'JC-26-00118', soId: 'so6', soNumber: 'SO-26-00053', customerId: 'c8', visitIdx: 0, plannedDate: '2026-11-16', technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Annual Contract (Generator 1500 KVA)',
     materials: [], services: [], notes: 'Draft job card for the first planned visit', visitAmount: 6000, status: 'Open', log: [lg('2026-09-30 09:00', 'Job card created for visit 1', 'Leena Thomas')] },
-  { id: 'jc2', number: 'JC-26-00104', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 0, plannedDate: so10Plan[0].date, doneOn: so10Plan[0].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Scheduled Visit (Generator)', activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
+  { id: 'jc2', number: 'JC-26-00104', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 0, plannedDate: so10Plan[0].date, doneOn: so10Plan[0].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
     materials: [{ item: 'Oil Filter (Cummins C-Series)', qty: 2, unit: 'Nos', price: 85 }], services: [], notes: 'Unit in good condition', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00371', paymentStatus: 'Paid', signedCopy: ['JC-26-00104-signed.pdf'],
     log: [lg(`${so10Plan[0].date} 09:00`, 'Job card created for visit 1', 'Leena Thomas'), lg(`${so10Plan[0].date} 15:00`, 'Visit completed', 'Rajesh Pillai', 'Materials and services recorded', 'green'), lg(`${so10Plan[0].date} 17:00`, 'Invoice raised', 'Leena Thomas', 'INV-26-00371, total AED 4670', 'blue'), lg(`${so10Plan[1].date} 10:00`, 'Payment received', 'Priya Menon', 'INV-26-00371, AED 4670', 'green')] },
-  { id: 'jc3', number: 'JC-26-00105', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 1, plannedDate: so10Plan[1].date, doneOn: so10Plan[1].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Scheduled Visit (Generator)', activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
+  { id: 'jc3', number: 'JC-26-00105', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 1, plannedDate: so10Plan[1].date, doneOn: so10Plan[1].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
     materials: [{ item: 'Engine Oil 15W-40 (20 L)', qty: 2, unit: 'Drum', price: 420 }], services: [{ name: 'Coolant flush (additional task)', amount: 650 }], notes: 'Oil change due, coolant flushed at client request', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00396', paymentStatus: 'Unpaid', signedCopy: ['JC-26-00105-signed.pdf'],
     log: [lg(`${so10Plan[1].date} 09:00`, 'Job card created for visit 2', 'Leena Thomas'), lg(`${so10Plan[1].date} 16:00`, 'Visit completed', 'Rajesh Pillai', 'Materials and services recorded', 'green'), lg(`${so10Plan[1].date} 17:30`, 'Invoice raised', 'Leena Thomas', 'INV-26-00396, total AED 5990', 'blue')] },
-  { id: 'jc4', number: 'JC-26-00106', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 2, plannedDate: so10Plan[2].date, doneOn: so10Plan[2].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Scheduled Visit (Generator)', activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
+  { id: 'jc4', number: 'JC-26-00106', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 2, plannedDate: so10Plan[2].date, doneOn: so10Plan[2].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
     materials: [{ item: 'Air Filter (Perkins 2506)', qty: 1, unit: 'Nos', price: 110 }], services: [], notes: 'Air filter replaced, ready to invoice', visitAmount: 4500, status: 'Completed', signedCopy: ['JC-26-00106-signed.pdf'],
     log: [lg(`${so10Plan[2].date} 09:00`, 'Job card created for visit 3', 'Leena Thomas'), lg(`${so10Plan[2].date} 15:30`, 'Visit completed', 'Rajesh Pillai', 'Materials and services recorded', 'green')] },
-  { id: 'jc5', number: 'JC-26-00107', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 3, plannedDate: so10Plan[3].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Scheduled Visit (Generator)',
+  { id: 'jc5', number: 'JC-26-00107', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 3, plannedDate: so10Plan[3].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM,
     materials: [], services: [], notes: 'Final visit of the contract year', visitAmount: 4500, status: 'Open', log: [lg('2026-09-28 09:00', 'Job card created for visit 4', 'Leena Thomas')] },
 ];
 

@@ -138,9 +138,9 @@ export function OpportunityForm() {
               <Section title="Attachments"><SpecForm specs={[{ key: 'attachments', label: 'Attachments', type: 'file' }, { key: 'recordStatus', label: 'Status', type: 'toggle', value: (x) => x.recordStatus !== 'Inactive' }]} f={f} set={(k, v) => (k === 'recordStatus' ? set(k, v ? 'Active' : 'Inactive') : set(k, v))} /></Section>
               <Section title="Opportunity Owner Detail"><SpecForm specs={S.owner} f={f} set={set} /></Section>
               <Section title="Classification"><SpecForm specs={S.classification} f={f} set={set} /></Section>
-              <Section title={f.activity === 'Rental' || f.activity === 'AMC' ? 'Items (Category / Subcategory, optional)' : 'Items (optional)'} change="changed" req={R.meet}>
+              {f.activity !== 'AMC' && <Section title={f.activity === 'Rental' ? 'Items (Category / Subcategory, optional)' : 'Items (optional)'} change="changed" req={R.meet}>
                 {f.activity ? <ItemsTable lines={f.lines} onChange={(l) => set('lines', l)} header={f.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" /> : <Text type="s4">Select the Activity Type to add items.</Text>}
-              </Section>
+              </Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={f.followUps} onChange={(r) => set('followUps', r)} blank={blankFollow} addLabel="Add Follow Up" empty="No follow ups" /></Section>
             </>) },
           { label: 'Address', content: <RowsEditor cols={addrCols} rows={f.addresses} onChange={(r) => set('addresses', r)} blank={blankAddr} addLabel="Add Address" empty="No addresses" /> },
@@ -182,7 +182,7 @@ export function OpportunityView() {
               <SpecView specs={S.basic} f={f} />
               <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} cols={3} /></Section>
               <Section title="Classification"><SpecView specs={S.classification} f={f} cols={3} /></Section>
-              <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>
+              {o.activity !== 'AMC' && <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={o.followUps ?? []} locked blank={blankFollow} empty="No follow ups" /></Section>
             </>) },
           { label: 'Address', content: <RowsEditor cols={addrCols} rows={o.addresses ?? []} locked blank={blankAddr} empty="No addresses" /> },
