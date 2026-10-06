@@ -13,14 +13,17 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
-import { NEXT_STEP, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
+import { NEXT_STEP, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
+import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
+import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
+import { useInvoices, usePayments } from '@/modules/accounting/shared';
 import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
 import { TripsTable } from '@/modules/rental/FleetPages';
 import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
 import { Section, SpecForm, SpecView } from './FormKit';
-import { CrossHireDialog, EmailDialog, ExpiryDialog, NextStepDialog, PrintDialog } from './ActionDialogs';
+import { AdvanceDialog, CrossHireDialog, EmailDialog, ExpiryDialog, InvoiceLinesDialog, NextStepDialog, PrintDialog, invoiceableLines } from './ActionDialogs';
 
 const deliveryStatus = (so: SalesOrder) => {
   const rl = so.lines.filter((l) => l.activity === 'Rental' || l.activity === 'Trading' || l.activity === 'Fuel Trading');
@@ -59,7 +62,7 @@ export function SalesOrderList() {
   );
 }
 
-const soForm = (so: SalesOrder, oppNo = '', quoteNo = ''): Record<string, any> => ({
+export const soForm = (so: SalesOrder, oppNo = '', quoteNo = ''): Record<string, any> => ({
   transactionType: 'Credit', postingTime: '09:00', exchangeRate: 1, location: 'Jebel Ali Main Yard', salesperson: so.owner, discountOn: 'Gross Amount', ...so,
   oppNo, quoteNo, contactPerson: so.contactPerson ?? cust(so.customerId)?.contact ?? '', deliveryCommitment: so.deliveryCommitment ?? so.lines.find((l) => l.deliveryDate)?.deliveryDate,
 });
@@ -106,21 +109,56 @@ export function SalesOrderForm() {
 
 const FREQ_TEXT = (l: Line) => (l.frequency ? l.frequency.toLowerCase() : 'period');
 function Ledger({ so }: { so: SalesOrder }) {
+  const invs = useInvoices().rows.filter((i) => i.soId === so.id && i.isRental);
+  const next = nextRentalPeriod(so.id);
+  const lineTot = (l: { qty: number; rate: number; discountPct: number; vatPct: number }) => accLineGross(l as any) + accLineVat(l as any);
   const rows = so.lines.filter((l) => l.activity === 'Rental').flatMap((l) => l.assigned.map((a) => {
     const asset = assetById(a.assetId);
     const hold = a.state === 'Hold';
-    const until = a.stop ?? TODAY;
-    const billed = hold || l.foc || until < a.start ? 0 : Math.round(periods(l.frequency, a.start, until) * l.price);
-    return { id: `${l.id}-${a.assetId}-${a.start}`, asset: `${asset?.assetId} - ${asset?.name}`, delivered: a.start, cycle: hold ? `Starts ${a.start} (Hold)` : `${a.start}, ${FREQ_TEXT(l)}`, state: a.state, invoiced: billed, received: Math.round(billed * 0.8), stop: a.stop ?? '-' };
+    const mine = invs.flatMap((i) => i.lines.filter((x) => x.tag === 'rental' && x.soLineId === l.id && x.assetId === a.assetId && x.deliveryId === a.deliveryId).map((x) => ({ x, i })));
+    const invoiced = mine.reduce((s, m) => s + lineTot(m.x), 0);
+    const received = mine.reduce((s, m) => { const t = invoiceTotal(m.i); return s + (t ? (lineTot(m.x) * m.i.amountPaid) / t : 0); }, 0);
+    const billedTo = mine.map((m) => m.x.periodTo ?? '').sort().pop();
+    const out = a.state === 'On Hire' || hold;
+    return { id: `${l.id}-${a.assetId}-${a.start}`, asset: `${asset?.assetId} - ${asset?.name}`, delivered: a.start, cycle: hold ? `Starts ${a.start} (Hold)` : `${a.start}, ${FREQ_TEXT(l)}`, state: a.state, invoiced, received, billedTo: billedTo ?? '-', next: out && next ? next.from : '-', stop: a.stop ?? '-' };
   }));
   return (
     <Box>
       <DataTable hideToolbar rows={rows} pageSize={20} emptyText="No asset has been delivered yet" columns={[
         { key: 'asset', label: 'Asset' }, { key: 'delivered', label: 'Rental Start' }, { key: 'cycle', label: 'Invoice Cycle' }, { key: 'stop', label: 'Billing Stopped' },
         { key: 'state', label: 'Status', render: (r) => <StatusChip status={r.state === 'Returned' ? 'Off Hire' : r.state} tone={r.state === 'Replaced' ? 'grey' : undefined} /> },
+        { key: 'billedTo', label: 'Invoiced up to', change: 'new', req: R.ledger }, { key: 'next', label: 'Next Invoice Date', change: 'new', req: R.ledger },
         { key: 'invoiced', label: 'Invoiced to date', align: 'right', render: (r) => aed(r.invoiced) }, { key: 'received', label: 'Received to date', align: 'right', render: (r) => aed(r.received) },
       ]} />
-      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Live view of what is out on this project. Billing runs per delivery from its own Rental Start Date until its own return, at the line's frequency. Received amounts are sample figures.</Text>
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Live view of what is out on this project. Billing runs per delivery from its own Rental Start Date until its own return. Invoiced and received come from the rental invoices in Accounting (including VAT); invoices are raised by the rental run in Rental, Invoicing Rental Order.</Text>
+    </Box>
+  );
+}
+
+/** Every invoice, advance and payment of the order (instruction 6 Oct: invoices connected to the order). */
+function OrderInvoices({ so }: { so: SalesOrder }) {
+  const nav = useNavigate();
+  useInvoices();
+  const pays = usePayments().rows.filter((p) => p.soId === so.id && p.isAdvance);
+  const invs = invoicesOfOrder(so.id);
+  const approved = invs.filter((i) => i.approval === 'Approved');
+  const total = approved.reduce((s, i) => s + invoiceTotal(i), 0);
+  const due = approved.reduce((s, i) => s + invoiceDue(i), 0);
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', gap: 4, mb: 1.5, flexWrap: 'wrap' }}>
+        <Text type="s4">Approved invoices {aed(total)}</Text><Text type="s4">Paid and settled {aed(total - due)}</Text><Text type="s4" weight="medium">Outstanding {aed(due)}</Text>
+        <Text type="s4">Pending approval {invs.length - approved.length}</Text>
+      </Box>
+      <DataTable hideToolbar rows={invs} emptyText="No invoice yet" onRowClick={(i) => nav(`/accounting/invoices/${i.id}`)} columns={[
+        { key: 'number', label: 'Invoice' }, { key: 'date', label: 'Date' }, { key: 'type', label: 'Source', render: (i) => i.source.type }, { key: 'period', label: 'Period', render: (i) => (i.periodFrom ? `${i.periodFrom} to ${i.periodTo}` : '-') },
+        { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (i) => aed(invoiceTotal(i)) }, { key: 'd', label: 'Amount Due', align: 'right', render: (i) => aed(invoiceDue(i)) },
+        { key: 'a', label: 'Status', render: (i) => <StatusChip status={i.approval} /> }, { key: 'p', label: 'Payment', render: (i) => (i.approval === 'Approved' ? <StatusChip status={i.payStatus} /> : '-') },
+      ]} />
+      {pays.length > 0 && <>
+        <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Advances</Text>
+        <DataTable hideToolbar rows={pays} onRowClick={(p) => nav(`/accounting/payment-entries/${p.id}`)} columns={[{ key: 'number', label: 'Collection' }, { key: 'date', label: 'Date' }, { key: 'amount', label: 'Amount', align: 'right', render: (p) => aed(p.amount) }, { key: 'left', label: 'Not yet applied', align: 'right', render: (p) => aed(advanceLeft(p)) }, { key: 'approval', label: 'Status', render: (p) => <StatusChip status={p.approval} /> }]} />
+      </>}
     </Box>
   );
 }
@@ -156,7 +194,8 @@ export function SalesOrderView() {
   const chReqAll = useChRequests();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
-  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step'; lineId?: string; lineIds?: string[] } | null>(null);
+  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step' | 'invoice' | 'advance'; lineId?: string; lineIds?: string[] } | null>(null);
+  useInvoices();
   const [sel, setSel] = useState<string[]>([]);
   const [mail, setMail] = useState(false);
   const [closeAsk, setCloseAsk] = useState(false);
@@ -215,12 +254,12 @@ export function SalesOrderView() {
           {so.activity === 'Rental' && rentalOut > 0 && <Button variant="outlined" onClick={() => setDlg({ kind: 'expiry' })}>Extend / Terminate</Button>}
           <MenuButton label="Create" variant="outlined" items={[
             { label: 'Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
-            { label: 'Advance', onClick: () => { orders.update(so.id, { log: [log('Advance invoice raised', `Against ${so.number}`, 'blue'), ...so.log] }); toast('Advance invoice raised against the order'); } },
-            { label: 'Invoice', disabled: !so.lines.some((l) => !['Rental', 'AMC'].includes(l.activity) && (!l.fulfilment || l.fulfilment === 'Delivered')), onClick: () => { const l = so.lines.find((x) => !['Rental', 'AMC'].includes(x.activity) && (!x.fulfilment || x.fulfilment === 'Delivered')); if (l) setDlg({ kind: 'step', lineId: l.id }); } },
+            { label: 'Advance', onClick: () => setDlg({ kind: 'advance' }) },
+            { label: 'Invoice', disabled: !invoiceableLines(so.lines).length, onClick: () => setDlg({ kind: 'invoice' }) },
             { label: 'Return (Customer Returns)', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}`), disabled: rentalOut === 0 },
             { label: 'Replacement', onClick: () => nav(`/rental/replacements/add?so=${so.id}`), disabled: rentalOut === 0 },
           ]} />
-          <MenuButton label="View" variant="outlined" items={[{ label: 'Opportunity', onClick: () => nav(`/crm/opportunities/${so.oppId}`), disabled: !so.oppId }, { label: 'Quotation', onClick: () => nav(`/crm/quotations/${so.quoteId}`), disabled: !so.quoteId }, { label: 'Delivery Orders', onClick: () => nav('/crm/delivery-orders') }]} />
+          <MenuButton label="View" variant="outlined" items={[{ label: 'Opportunity', onClick: () => nav(`/crm/opportunities/${so.oppId}`), disabled: !so.oppId }, { label: 'Quotation', onClick: () => nav(`/crm/quotations/${so.quoteId}`), disabled: !so.quoteId }, { label: 'Delivery Orders', onClick: () => nav('/crm/delivery-orders') }, { label: 'Invoices', onClick: () => nav(`/accounting/invoices?so=${so.id}`) }]} />
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Sales Order" /><MenuButton label="Actions" variant="outlined" items={[{ label: 'Send by Email', onClick: () => setMail(true) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Close', disabled: ['Closed', 'Cancelled'].includes(so.status), onClick: () => setCloseAsk(true) }]} />
         </>} />
       <Page sx={{ pt: 2 }}>
@@ -243,7 +282,7 @@ export function SalesOrderView() {
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
             { label: 'Traceability', change: 'new', req: R.meet, hidden: so.activity !== 'Rental', content: <Traceability so={so} quoteNo={quotes.get(so.quoteId)?.number} /> },
-            { label: 'Asset Ledger', change: 'new', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
+            { label: 'Asset Ledger', change: 'changed', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
             { label: 'AMC Visits', change: 'new', req: R.meet, hidden: so.activity !== 'AMC', content: (
               <DataTable hideToolbar rows={(so.visitPlan ?? []).map((v, i) => ({ id: String(i), i, ...v }))} columns={[
                 { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'amount', label: 'Visit value', align: 'right', render: (r) => (jobCardsOf(so.id).find((j) => j.visitIdx === r.i)?.visitFoc ? `${aed(r.amount)} (FOC)` : aed(r.amount)) }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
@@ -258,7 +297,10 @@ export function SalesOrderView() {
                 <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Logistics cost of this order: {aed(so.logisticsCost)}</Text>
                 <Text type="s5" color="theme.secondary.700">The total of every trip expense (transporter charges, Salik, fuel and other vehicle costs). It feeds the Logistics Cost and Order Profitability reports.</Text>
               </>) },
-            { label: 'Charges', change: 'new', req: R.meet, hidden: !so.damageCharges.length, content: <DataTable hideToolbar rows={so.damageCharges.map((c, i) => ({ id: String(i), ...c, asset: assetById(c.assetId)?.assetId }))} columns={[{ key: 'date', label: 'Date' }, { key: 'asset', label: 'Asset' }, { key: 'note', label: 'Charge' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }]} /> },
+            { label: 'Charges', change: 'new', req: R.meet, hidden: !so.damageCharges.length, content: <DataTable hideToolbar rows={so.damageCharges.map((c, i) => ({ id: String(i), idx: i, ...c, asset: assetById(c.assetId)?.assetId }))} columns={[{ key: 'date', label: 'Date' }, { key: 'asset', label: 'Asset' }, { key: 'note', label: 'Charge' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) },
+              { key: 'inv', label: 'Invoice', change: 'new', req: R.meet, render: (r) => { const i = invoiceByRef(r.invoiceId); return i ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${i.id}`)}>{i.number} ({i.approval === 'Approved' ? i.payStatus : i.approval})</Box> : 'Not invoiced'; } },
+              { key: 'act', label: '', render: (r) => (r.invoiceId ? null : <Button size="small" variant="outlined" onClick={() => { const x = invoiceDamage(so.id, r.idx); toast(x.message, x.ok ? 'success' : 'error'); }}>Raise Invoice</Button>) }]} /> },
+            { label: 'Invoices', change: 'new', req: R.so, content: <OrderInvoices so={so} /> },
             { label: 'Documents', change: 'new', req: R.so, content: <FileInput label="Upload DO / CN / Invoice / Credit Note / LPO / Quote" multiple value={so.docs} onChange={(n) => orders.update(so.id, { docs: n })} /> },
             { label: 'Activity Log', content: <Timeline items={so.log} /> },
           ]} />
@@ -268,6 +310,8 @@ export function SalesOrderView() {
       <ExpiryDialog open={dlg?.kind === 'expiry'} onClose={() => setDlg(null)} soId={so.id} />
       <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => { setDlg(null); setSel([]); }} soId={so.id} lineIds={dlg?.lineIds} />
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
+      <InvoiceLinesDialog open={dlg?.kind === 'invoice'} onClose={() => setDlg(null)} soId={so.id} />
+      <AdvanceDialog open={dlg?.kind === 'advance'} onClose={() => setDlg(null)} soId={so.id} onDone={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
       <EmailDialog open={mail} onClose={() => setMail(false)} docNo={so.number} customerId={so.customerId} onSent={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
     </>
   );

@@ -15,6 +15,8 @@ import { FLEET_STATUSES, TRIP_STATUSES, assetById, custName, deliveryVehicles, f
 import { addTripExpense, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
 import { MasterSelect, R, RowMenu, aed, useFleet, useTrips, type RowMenuItem } from '@/modules/crm/shared';
 import { currentLocation } from '@/modules/inventory/data';
+import { billsOfSource } from '@/modules/accounting/engine';
+import { useBills } from '@/modules/accounting/shared';
 
 const HEAVY = '/inventory/items/heavy';
 
@@ -377,6 +379,7 @@ export function TripView() {
   const nav = useNavigate();
   const trips = useTrips();
   const menu = useTripMenu();
+  useBills();
   const t = trips.get(id);
   if (!t) return <Page><PageTitle title="Trip not found" right={<Button variant="outlined" onClick={() => nav('/crm/trips')}>Back</Button>} /></Page>;
   const own = t.transport === 'Own Fleet';
@@ -402,7 +405,7 @@ export function TripView() {
                 <ValueField label="Vehicle" value={vehicle ? <Link to={`${HEAVY}/${vehicle.id}`} style={RL}>{vehicleLabel(vehicle)}</Link> : t.plate ?? '-'} />
                 <ValueField label="Driver" value={t.driver || '-'} /><ValueField label="Mobile" value={t.mobile || '-'} />
               </>
-            ) : <ValueField label="Transported By" value={t.transporter || '-'} />}
+            ) : <><ValueField label="Transported By" value={t.transporter || '-'} /><ValueField label="Transporter Bill" change="new" req="Instruction 6 Oct (accounting POC): the external transporter's charge becomes a Pending bill" value={(() => { const b = billsOfSource('Trip', t.id)[0]; return b ? <Link to={`/accounting/bills/${b.id}`} style={RL}>{b.number} ({b.approval})</Link> : t.status === 'Completed' ? 'No transport charge' : 'Raised when the trip is completed'; })()} /></>}
             <ValueField label="In Status Since" value={sinceLabel(t.since)} /><ValueField label="Total Expenses" value={aed(tripTotal(t))} />
           </ValueGrid>
         </Panel>

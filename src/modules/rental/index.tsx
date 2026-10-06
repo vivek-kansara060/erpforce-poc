@@ -5,6 +5,7 @@ import { liveRoutes } from '@/modules/crm/reports';
 import { RenewalsPage, ReplacementForm, ReplacementList } from './RentalPages';
 import { ChOrderList, ChOrderView, ChProcess, ChRequestForm, ChRequestList, ChRequestView, ChRfqList, ChRfqView } from './CrossHirePages';
 import { ExistingScreen } from './ExistingScreen';
+import { PreviousJobs, RentalInvoicingList } from './InvoicingPages';
 
 const M = 'Rental';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -26,7 +27,7 @@ const mod: ModuleDef = {
     { label: 'Rental Dashboard', path: '/rental/dashboards/fleet-status', icon: <KeyOutlinedIcon />, change: 'changed' },
     { label: 'Product Management', children: [{ label: 'Items', path: '/rental/items' }, { label: 'Category', path: '/rental/categories' }] },
     { label: 'Demand Planning', path: '/rental/demand-planning' },
-    { label: 'Invoicing', children: [{ label: 'Invoicing Rental Order', path: '/rental/invoicing' }, { label: 'Previous Jobs', path: '/rental/previous-jobs' }] },
+    { label: 'Invoicing', children: [{ label: 'Invoicing Rental Order', path: '/rental/invoicing', change: 'changed' }, { label: 'Previous Jobs', path: '/rental/previous-jobs', change: 'changed' }] },
     { label: 'Rental', children: [
       { label: 'Replacement Orders', path: '/rental/replacements', change: 'changed' },
       { label: 'Renewals and Expiry', path: '/rental/renewals', change: 'new' },
@@ -51,8 +52,8 @@ const mod: ModuleDef = {
     { path: 'items', element: ex('Items', ['Item Code', 'Name', 'Item Type', 'Category', 'Rental Base Price', 'Status'], { link: '/inventory/items', linkLabel: 'Open Items in Inventory', note: 'Rentable units are Heavy Equipment Fixed Assets in Inventory, with their rental prices in Heavy Equipment Pricing.' }) },
     { path: 'categories', element: ex('Category', ['Parent', 'Category Name', 'Brand', 'Description', 'Status'], { link: '/inventory/categories', linkLabel: 'Open Item Category in Inventory', note: 'One Category / Subcategory master is shared by Inventory, CRM and Rental.' }) },
     { path: 'demand-planning', element: ex('Demand Planning', ['Item', 'Demand', 'On Hand', 'On Order', 'Available', 'Committed', 'PR', 'Required']) },
-    { path: 'invoicing', element: ex('Invoicing Rental Order', ['Rental Order', 'Date', 'Customer', 'Invoice', 'Start Date', 'End Date', 'Next Invoice Date', 'Billing Cycle', 'Currency', 'Narration']) },
-    { path: 'previous-jobs', element: ex('Previous Jobs', ['Job', 'Rental Order', 'Status', 'Run At', 'Message']) },
+    { path: 'invoicing', element: <RentalInvoicingList /> },
+    { path: 'previous-jobs', element: <PreviousJobs /> },
     { path: 'replacements', element: <ReplacementList /> }, { path: 'replacements/add', element: <ReplacementForm /> },
     { path: 'renewals', element: <RenewalsPage /> },
     // Fleet Management moved to CRM (6 Oct); old links keep working.
@@ -72,6 +73,9 @@ const mod: ModuleDef = {
     ...liveRoutes('rental'),
   ],
   changes: [
+    c('Invoicing Rental Order (6 Oct)', 'EXISTING WITH CHANGE', 'Invoicing Rental Order list (Rental Order, Date, Customer, Invoice, Start Date, End Date, Next Invoice Date, Billing Cycle, Currency, Narration) fed by the billing schedule', 'Live list of rental Sales Orders with their next billing period, status (Due, Not due yet) and the preview amount. Run Invoicing raises one invoice per selected order for the ended period: each delivered asset from its own Rental Start (Hold excluded) to its off-hire day, pro-rated, plus the recurring waiver, first-invoice and final-invoice charges and any waiting charge. The only place rental invoices are raised (decision 6 Oct); invoices are Pending until approved in Accounting. Cycle anchor and pro-rata to be confirmed with client', 'Rental > Rental Invoicing & Billing Cycle (Req L264, L271, L628-634); calls 17, 18, 22, 30 Sep; instruction 6 Oct', '/rental/invoicing'),
+    c('Previous Jobs (6 Oct)', 'EXISTING WITH CHANGE', 'Previous Jobs list of invoicing runs', 'Live list of each run with the orders, the invoices raised and the orders skipped', 'Rental > Rental Invoicing & Billing Cycle; instruction 6 Oct', '/rental/previous-jobs'),
+    c('Cross Hire Orders billing (6 Oct)', 'EXISTING WITH CHANGE', 'Supplier Invoice Reference as text, static Billing Status', 'Receive creates a Pending bill in Accounting with the agreed rate and the expenses; Dropship orders get Create, Bill; a dispute charge on Return to Supplier creates a supplementary bill; Billing Status and a Bills tab follow the bills', 'Rental > Cross-Hire supplier invoice (Req L886-925); instruction 6 Oct', '/rental/cross-hire-orders'),
     c('Rental sidebar', 'EXISTING', 'Rental Dashboard, Product Management, Demand Planning, Invoicing, Rental, Agreements, Purchase, Cross Hire, Settings, Reports', 'Kept as in the existing ERP. Screens the requirement does not change show their existing columns and are not rebuilt; Items and Category open the shared Inventory masters', 'Instruction 5 Oct'),
     c('Rental Leads, Opportunity, Quotations, Orders', 'REMOVED', 'Separate rental leads, opportunities, quotations and orders', 'Not in the Rental module any more: the whole sales flow is managed in CRM, filtered by Activity Type = Rental. Rental keeps Replacement Orders, Renewals, Cross Hire and the operational screens', 'Meeting 5 Oct (rental module does not hold Lead, Opportunity, Quotation, Order)', '/crm/sales-orders'),
     c('Replacement Orders', 'EXISTING WITH CHANGE', 'Replacement Orders list and replacement quotation', 'Asset-in / asset-out transaction started from the order: same-category check, Cross-Hire fallback, reason, price adjustment, old asset to Under Maintenance, billing not paused. Transport section added: own vehicle from Fleet Availability or an external transporter, creating one Replacement trip', 'Rental > Replacement Processing', '/rental/replacements'),

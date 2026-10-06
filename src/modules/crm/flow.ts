@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { getCollection, nextNumber, seedCollection, setCollection } from '@/store/store';
 import { customers } from '@/mock-data/masters';
 import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
+import { billDisputeCharge, billFromCrossHire, billFromTrip, invoiceFromDamage, invoiceFromJobCard, invoiceFromOrderLines, invoiceRentalPeriod } from '@/modules/accounting/engine';
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
   amcLine, docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, fleetStatus, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
@@ -126,14 +127,43 @@ export const NEXT_STEP: Record<string, { label: string; done: string; options?: 
   Rental: { label: 'Charge / Invoice', done: 'Charged and invoiced' },
   'Fixed Asset Trading': { label: 'Invoice', done: 'Asset sale invoiced' },
 };
+/** Invoice step of a non-rental line: a real sales invoice in Accounting, created Pending (decision D4). Returns the invoice number. */
 export function fulfilLine(soId: string, lineId: string, detail?: string): string {
-  const o = getOrder(soId)!;
-  const l = getLine(o, lineId)!;
-  const step = NEXT_STEP[l.activity];
-  const nonBill = detail?.includes('non-chargeable');
-  const ref = l.activity === 'AMC' ? (nonBill ? `VISIT-26-${String(Math.floor(Math.random() * 90) + 10).padStart(5, '0')}` : nextNumber('INV', 415)) : nextNumber('INV', 415);
-  saveOrder(soId, (x) => ({ ...mapLine(x, lineId, (ln) => ({ ...ln, fulfilment: step.done, fulfilmentRef: ref })), log: [log(`${l.activity} line: ${step.done}`, `${l.item}${detail ? ` (${detail})` : ''}, ref ${ref}`, 'green'), ...x.log] }));
-  return ref;
+  return invoiceOrderLines(soId, [lineId], detail) ?? '';
+}
+/** One sales invoice for several Sales Order lines (Create, Invoice). Each line is marked with its next-step state and the invoice number. */
+export function invoiceOrderLines(soId: string, lineIds: string[], detail?: string): string | undefined {
+  const o = getOrder(soId);
+  if (!o) return undefined;
+  const inv = invoiceFromOrderLines(soId, lineIds);
+  if (!inv) return undefined;
+  const ls = o.lines.filter((l) => lineIds.includes(l.id));
+  saveOrder(soId, (x) => ({
+    ...x, lines: x.lines.map((ln) => (lineIds.includes(ln.id) ? { ...ln, fulfilment: (NEXT_STEP[ln.activity] ?? NEXT_STEP.Service).done, fulfilmentRef: inv.number } : ln)),
+    log: [log(`Invoice ${inv.number} raised, pending approval`, `${ls.map((l) => l.item).join(', ')}${detail ? ` (${detail})` : ''}`, 'blue'), ...x.log],
+  }));
+  return inv.number;
+}
+/** Rental run (Rental > Invoicing Rental Order): one invoice for the period; first and final one-time services are marked invoiced on the order. */
+export function runRentalInvoice(soId: string, from: string, to: string): { number?: string; invoiceId?: string; message: string } {
+  const r = invoiceRentalPeriod(soId, from, to);
+  if (!r.invoice) return { message: r.message };
+  const inv = r.invoice;
+  saveOrder(soId, (x) => ({
+    ...x, lines: x.lines.map((ln) => (r.oneTimeLineIds.includes(ln.id) ? { ...ln, fulfilment: NEXT_STEP.Service.done, fulfilmentRef: inv.number } : ln)),
+    log: [log(`Rental invoice ${inv.number} raised, pending approval`, `Billing period ${from} to ${to}`, 'blue'), ...x.log],
+  }));
+  return { number: inv.number, invoiceId: inv.id, message: r.message };
+}
+/** Damage or failed-collection charge on the order: its own sales invoice (blocked when a damage waiver was paid). */
+export function invoiceDamage(soId: string, idx: number): { ok: boolean; message: string; invoiceId?: string } {
+  const existing = getOrder(soId)?.damageCharges[idx]?.invoiceId;
+  if (existing) return { ok: false, message: 'This charge is already invoiced', invoiceId: existing };
+  const r = invoiceFromDamage(soId, idx);
+  if (!r.ok || !r.invoice) return { ok: false, message: r.message };
+  const inv = r.invoice;
+  saveOrder(soId, (x) => ({ ...x, damageCharges: x.damageCharges.map((c, k) => (k === idx ? { ...c, invoiceId: inv.id } : c)), log: [log(`Charge invoiced: ${inv.number}`, 'Pending approval in Accounting', 'blue'), ...x.log] }));
+  return { ok: true, message: `${inv.number} raised, pending approval in Accounting`, invoiceId: inv.id };
 }
 
 /* ------------------------------------------------------------------ Rental: delivery */
@@ -284,7 +314,7 @@ export function createHireOrder(i: { requestIds: string[]; rfqId?: string; suppl
 export function addChExpense(id: string, e: { account: string; amount: number; note: string }) { patch<CrossHire>(COL.crossHire, id, (c) => ({ ...c, expenses: [...(c.expenses ?? []), e], history: [...c.history, log(`Expense added: ${e.account}`, `AED ${e.amount}`)] })); }
 /** Dropship: the supplier ships straight to the client site, so there is no goods receipt and no register entry. */
 export function markChShipped(ch: CrossHire) { patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 2, status: 'Shipped', receiving: 'Not applicable (Dropship)', history: [...c.history, log('Marked shipped to the client site', 'Dropship: no goods receipt, no register entry', 'blue')] })); }
-export function receiveCrossHire(ch: CrossHire, supplierInvoice: string) {
+export function receiveCrossHire(ch: CrossHire, supplierInvoice: string, supplierInvoiceDate: string = TODAY) {
   const tpl = heavySeed.find((h) => h.id === 'he27')!;
   const n = fleetRows().length;
   const assetId = `AST-${1100 + n}`;
@@ -293,7 +323,14 @@ export function receiveCrossHire(ch: CrossHire, supplierInvoice: string) {
     movements: [{ id: uid('m'), entryNo: `MV-26-${9100 + n}`, date: `${TODAY}T${dayjs().format('HH:mm')}`, type: 'Cross-Hire Stage Change', from: `Supplier: ${ch.supplier}`, to: 'Jebel Ali Main Yard', reference: ch.number, by: ACTOR }],
     audit: [{ when: nowStamp(), title: 'Cross-hired asset received', detail: `${ch.number} from ${ch.supplier}. No depreciation is posted`, by: ACTOR }], insurance: [] };
   setCollection(COL.fleet, [a, ...fleetRows()]);
-  patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 1, status: 'Received', receiving: 'Fully Received', assetId: a.id, supplierInvoice, history: [...c.history, log(`Received into our custody as ${assetId}`, `Supplier invoice ${supplierInvoice}`)] }));
+  const bill = billFromCrossHire(ch, supplierInvoice, supplierInvoiceDate);
+  patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 1, status: 'Received', receiving: 'Fully Received', billing: 'Fully Billed', assetId: a.id, supplierInvoice, history: [...c.history, log(`Received into our custody as ${assetId}`, `Supplier invoice ${supplierInvoice}`), log(`Bill ${bill.number} raised`, 'Pending approval in Accounting', 'blue')] }));
+}
+/** Dropship (or a bill not raised on receipt): the supplier invoice is entered here and a Pending bill is created. */
+export function billCrossHire(ch: CrossHire, supplierInvoice: string, supplierInvoiceDate: string = TODAY): string {
+  const bill = billFromCrossHire(ch, supplierInvoice, supplierInvoiceDate);
+  patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, supplierInvoice, billing: 'Fully Billed', history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${supplierInvoice}. Pending approval in Accounting`, 'blue')] }));
+  return bill.number;
 }
 export function returnToUs(ch: CrossHire, notes: string, files: string[]) {
   if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Yard', crossHireIdle: true }, { title: 'Returned to us', detail: notes }, { type: 'Cross-Hire Stage Change', from: whereIs(ch.assetId, 'Client site'), to: 'Jebel Ali Main Yard', reference: ch.number });
@@ -302,7 +339,11 @@ export function returnToUs(ch: CrossHire, notes: string, files: string[]) {
 export function returnToSupplier(ch: CrossHire, dispute: number, reissueRef?: string) {
   if (ch.assetId) patchAsset(ch.assetId, { assetStatus: 'Off Hire', status: 'Inactive', crossHireIdle: false }, { title: 'Returned to supplier', detail: dispute ? `Supplier dispute charge AED ${dispute}` : undefined }, { type: 'Cross-Hire Stage Change', from: whereIs(ch.assetId), to: `Supplier: ${ch.supplier}`, reference: ch.number });
   patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 4, status: 'Closed', dispute: dispute || undefined, reissueRef, history: [...c.history, log('Returned to supplier', dispute ? `Dispute charge AED ${dispute} recorded and traced to ${c.soNumber}` : 'Loop closed', 'green')] }));
-  if (dispute) addLog(ch.soId, log(`Cross-hire dispute charge AED ${dispute}`, `${ch.number}, rolled into the order's profitability`, 'red'));
+  if (dispute) {
+    const b = billDisputeCharge(ch, dispute);
+    patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, history: [...c.history, log(`Supplementary bill ${b.number} raised`, `Dispute charge AED ${dispute}, pending approval in Accounting`, 'blue')] }));
+    addLog(ch.soId, log(`Cross-hire dispute charge AED ${dispute}`, `${ch.number}, rolled into the order's profitability. Bill ${b.number}`, 'red'));
+  }
 }
 
 /* ------------------------------------------------------------------ Rental: replacement */
@@ -347,12 +388,6 @@ export function applyExtension(i: { soId: string; lineId?: string; kind: 'Extens
 }
 
 /** AMC visit against the planned schedule: the scheduled visit is never billed, consumables and additional tasks are. */
-export function recordVisit(soId: string, idx: number, type: string): string {
-  const nonBill = type.includes('non-chargeable');
-  const ref = nonBill ? nextNumber('JC', 120) : nextNumber('INV', 415);
-  saveOrder(soId, (x) => ({ ...x, visitPlan: (x.visitPlan ?? []).map((v, k) => (k === idx ? { ...v, done: TODAY, ref, type } : v)), log: [log(`AMC visit ${idx + 1} recorded`, `${type}, ref ${ref}`, 'green'), ...x.log] }));
-  return ref;
-}
 
 /* ------------------------------------------------------------------ Rental: return and inspection */
 export function raiseReturn(i: { soId: string; lineId: string; assetId: string; method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: TransportInput }): ReturnEntry {
@@ -466,6 +501,10 @@ export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []
   const total = add.reduce((s, e) => s + e.amount, 0);
   saveTrip(t.id, (x) => ({ ...x, status: 'Completed', since: stamp(), stuck: undefined, expenses: [...x.expenses, ...add], log: tlog(x, 'Trip completed', add.length ? add.map((e) => `${e.type} AED ${e.amount}`).join(', ') : undefined, 'green') }));
   if (total) bookCost(t.soId, total, `Trip ${t.number} completed`, `${add.map((e) => `${e.type} AED ${e.amount}`).join(', ')} added to the logistics cost`);
+  // An external transporter bills us: its Transport Charge becomes a Pending bill to the transporter (a supplier).
+  const done = getTrip(t.id);
+  const bill = done ? billFromTrip(done) : undefined;
+  if (bill) saveTrip(t.id, (x) => ({ ...x, log: tlog(x, `Bill ${bill.number} raised to ${x.transporter}`, 'Pending approval in Accounting', 'blue') }));
 }
 export const cancelTrip = (t: Trip, reason: string) => saveTrip(t.id, (x) => ({ ...x, status: 'Cancelled', since: stamp(), stuck: undefined, log: tlog(x, 'Trip cancelled', reason, 'red') }));
 /** While Assigned, the dispatcher can change the vehicle or driver. */
@@ -494,14 +533,21 @@ export { availability };
 
 /* ------------------------------------------------------------------ AMC: job cards (one per visit), invoiced separately */
 export const jobCardsOf = (soId: string) => all<JobCard>(COL.jobCards).filter((j) => j.soId === soId).sort((a, b) => a.visitIdx - b.visitIdx);
-export function createJobCard(soId: string, visitIdx: number): string {
+/** A new job card for a visit, not saved yet (the form saves it). */
+export function draftJobCard(soId: string, visitIdx: number): JobCard | undefined {
+  const o = getOrder(soId);
+  const v = o?.visitPlan?.[visitIdx];
+  if (!o || !v) return undefined;
+  return { id: '', number: 'Assigned on save', soId, soNumber: o.number, customerId: o.customerId, visitIdx, plannedDate: v.date, technician: o.owner, location: vanLocationsFor(o.owner)[0] ?? '', item: o.lines[0]?.item ?? 'AMC',
+    materials: [], services: [], notes: '', visitAmount: v.amount ?? 0, status: 'Open', log: [] };
+}
+/** Saves the job card of a visit (one per visit; an existing one is returned as is). */
+export function createJobCard(soId: string, visitIdx: number, fields: Partial<JobCard> = {}): string {
   const existing = all<JobCard>(COL.jobCards).find((j) => j.soId === soId && j.visitIdx === visitIdx);
   if (existing) return existing.id;
-  const o = getOrder(soId)!;
-  const v = o.visitPlan![visitIdx];
+  const base = draftJobCard(soId, visitIdx)!;
   const id = uid('jc');
-  const jc: JobCard = { id, number: nextNumber('JC', 118), soId, soNumber: o.number, customerId: o.customerId, visitIdx, plannedDate: v.date, technician: o.owner, location: vanLocationsFor(o.owner)[0] ?? '', item: o.lines[0]?.item ?? 'AMC',
-    materials: [], services: [], notes: '', visitAmount: v.amount ?? 0, status: 'Open', log: [log(`Job card created for visit ${visitIdx + 1}`)] };
+  const jc: JobCard = { ...base, ...fields, id, number: nextNumber('JC', 118), soId, visitIdx, status: 'Open', log: [log(`Job card created for visit ${visitIdx + 1}`)] };
   put(COL.jobCards, jc);
   saveOrder(soId, (x) => ({ ...x, visitPlan: (x.visitPlan ?? []).map((p, k) => (k === visitIdx ? { ...p, jobCardId: id } : p)), log: [log(`Job card ${jc.number} created`, `AMC visit ${visitIdx + 1}`, 'blue'), ...x.log] }));
   return id;
@@ -533,13 +579,10 @@ export function completeJobCard(jc: JobCard) {
   patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Completed', doneOn: TODAY, log: [...x.log, log('Visit completed', jc.materials.length ? `Materials drawn from ${jc.location}; services recorded` : 'Materials and services recorded', 'green')] }));
   saveOrder(jc.soId, (o) => ({ ...o, visitPlan: (o.visitPlan ?? []).map((v, k) => (k === jc.visitIdx ? { ...v, done: TODAY, ref: jc.number, type: 'Job card' } : v)), log: [log(`AMC visit ${jc.visitIdx + 1} completed`, jc.number, 'green'), ...o.log] }));
 }
-export function invoiceJobCard(jc: JobCard): string {
-  const ref = nextNumber('INV', 415);
-  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Invoiced', paymentStatus: 'Unpaid', invoiceRef: ref, log: [...x.log, log('Invoice raised', `${ref}, total AED ${jobCardTotal(jc)}${jobCardFoc(jc) ? `, free of cost AED ${jobCardFoc(jc)}${jc.visitFoc ? ' (FOC visit)' : ''}` : ''}`, 'blue')] }));
-  saveOrder(jc.soId, (o) => ({ ...o, log: [log(`Job card ${jc.number} invoiced`, `${ref}, AED ${jobCardTotal(jc)}`, 'blue'), ...o.log] }));
-  return ref;
-}
-
-export function markJobCardPaid(jc: JobCard) {
-  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, paymentStatus: 'Paid', log: [...x.log, log('Payment received', `${x.invoiceRef}, AED ${jobCardTotal(x)}`, 'green')] }));
+/** Generate, Invoice: a real sales invoice in Accounting, created Pending (D4). The job card is locked once invoiced. */
+export function invoiceJobCard(jc: JobCard): { number: string; id: string } {
+  const inv = invoiceFromJobCard(jc);
+  patch<JobCard>(COL.jobCards, jc.id, (x) => ({ ...x, status: 'Invoiced', invoiceRef: inv.number, invoiceId: inv.id, paymentStatus: undefined, log: [...x.log, log('Invoice raised', `${inv.number}, total AED ${jobCardTotal(jc)}${jobCardFoc(jc) ? `, free of cost AED ${jobCardFoc(jc)}${jc.visitFoc ? ' (FOC visit)' : ''}` : ''}. Pending approval in Accounting`, 'blue')] }));
+  saveOrder(jc.soId, (o) => ({ ...o, log: [log(`Job card ${jc.number} invoiced`, `${inv.number}, AED ${jobCardTotal(jc)}`, 'blue'), ...o.log] }));
+  return { number: inv.number, id: inv.id };
 }

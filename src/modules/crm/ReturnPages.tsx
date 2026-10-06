@@ -11,7 +11,9 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { FAULT_ATTRIBUTION, RETURN_METHODS, TODAY, yards, assetById, custName, hasWaiver, type ReturnEntry } from './data';
-import { failedCollection, getOrder, inspect, outstanding, raiseReturn, reachYard } from './flow';
+import { failedCollection, getOrder, inspect, invoiceDamage, outstanding, raiseReturn, reachYard } from './flow';
+import { invoiceByRef } from '@/modules/accounting/engine';
+import { useInvoices } from '@/modules/accounting/shared';
 import { R, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
 import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 
@@ -118,6 +120,7 @@ export function ReturnView() {
   const nav = useNavigate();
   const toast = useToast();
   const rets = useReturns();
+  useInvoices();
   const dels = useDeliveries();
   const trips = useTrips();
   const orders = useOrders();
@@ -135,6 +138,11 @@ export function ReturnView() {
   if (!r) return <Page><PageTitle title="Return not found" right={<Button variant="outlined" onClick={() => nav('/crm/customer-returns')}>Back</Button>} /></Page>;
   const a = assetById(r.assetId);
   const waiver = hasWaiver(orders.get(r.soId)?.lines ?? []);
+  // The order charge this return created (damage at inspection or a failed collection charged to the client).
+  const charges = orders.get(r.soId)?.damageCharges ?? [];
+  const chargeIdx = charges.findIndex((c) => c.assetId === r.assetId && ((r.damageCharge && c.amount === r.damageCharge && !/failed collection/i.test(c.note)) || (r.collection?.by === 'Client' && /failed collection/i.test(c.note))));
+  const charge = chargeIdx >= 0 ? charges[chargeIdx] : undefined;
+  const chargeInv = invoiceByRef(charge?.invoiceId);
   const okInspect = res === 'Passed' ? checks.length === YARD_CHECKLIST.length : (waiver || Number(amount) > 0) && note.trim();
   const dn = dels.get(r.deliveryId)?.number;
   const rTrips = trips.rows.filter((t) => t.docId === r.id);
@@ -148,6 +156,8 @@ export function ReturnView() {
           {r.stage === 2 && r.method === 'Company Collection' && !r.collection && <Button variant="outlined" color="error" onClick={() => setFail({ ...fail, open: true })}>Collection Failed</Button>}
           {r.stage === 2 && <Button variant="contained" onClick={() => setYard(true)}>Asset Reached Yard</Button>}
           {r.stage === 3 && <Button variant="contained" onClick={() => setInsp(true)}>Record Inspection</Button>}
+          {charge && !charge.invoiceId && <Button variant="contained" onClick={() => { const x = invoiceDamage(r.soId, chargeIdx); toast(x.message, x.ok ? 'success' : 'error'); }}>Raise Damage Invoice</Button>}
+          {chargeInv && <Button variant="outlined" onClick={() => nav(`/accounting/invoices/${chargeInv.id}`)}>View Damage Invoice</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
         <LifecycleStepper steps={STEPS} current={r.stage === 5 ? 6 : r.stage} />
@@ -157,7 +167,7 @@ export function ReturnView() {
           <ValueField label="Return Method" change="new" req={R.ret} value={r.method} /><ValueField label="Return Entry Timestamp" change="new" req={R.ret} value={r.timestamp.replace('T', ' ')} />
           <ValueField label="Billing" change="new" req={R.ret} value={`Stopped at ${r.timestamp.replace('T', ' ')}`} /><ValueField label="Inspection Status" change="new" req={R.ret} value={r.inspection} />
           <ValueField label="Reached Yard" value={r.reachedYard} /><ValueField label="Outcome" change="new" req={R.rreturn} value={r.outcome ?? 'In progress'} />
-          <ValueField label="Damage Charge" change="new" req={R.ret} value={r.waiverApplied ? 'Covered by damage waiver' : r.damageCharge !== undefined ? aed(r.damageCharge) : '-'} /><ValueField label="Damage Waiver on order" change="new" req={R.meet} value={waiver ? 'Yes' : 'No'} />{r.collection && <ValueField label="Failed collection" change="new" req={R.meet} value={r.collection.by === 'Client' ? `Charged to client ${aed(r.collection.amount)}` : 'Company loss'} />}<ValueField label="Fuel Note" change="new" req={R.ret} value={r.fuelNote} />
+          <ValueField label="Damage Charge" change="new" req={R.ret} value={r.waiverApplied ? 'Covered by damage waiver' : r.damageCharge !== undefined ? aed(r.damageCharge) : '-'} /><ValueField label="Damage Waiver on order" change="new" req={R.meet} value={waiver ? 'Yes' : 'No'} /><ValueField label="Damage Invoice" change="new" req={R.ret} value={chargeInv ? `${chargeInv.number} (${chargeInv.approval === 'Approved' ? chargeInv.payStatus : chargeInv.approval})` : charge ? 'Not invoiced yet' : waiver && r.inspection === 'Damage Found' ? 'Not allowed (damage waiver paid)' : '-'} />{r.collection && <ValueField label="Failed collection" change="new" req={R.meet} value={r.collection.by === 'Client' ? `Charged to client ${aed(r.collection.amount)}` : 'Company loss'} />}<ValueField label="Fuel Note" change="new" req={R.ret} value={r.fuelNote} />
         </ValueGrid>
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[

@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert } from '@mui/material';
+import { Alert, Box, Checkbox } from '@mui/material';
+import { Text } from '@/components/Text';
+import { BANK_ACCOUNTS } from '@/modules/accounting/data';
+import { advanceCollection } from '@/modules/accounting/engine';
 import { suppliers } from '@/mock-data/masters';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { DateInput, FileInput, FormGrid, NumberInput, SelectInput, TextInput } from '@/components/Form';
-import { cust, log, type LogItem } from './data';
-import { NEXT_STEP, applyExtension, fulfilLine, getLine, getOrder, raiseCrossHire } from './flow';
-import { MasterSelect, R, TO_CONFIRM } from './shared';
+import { TODAY, cust, log, type Line, type LogItem } from './data';
+import { NEXT_STEP, applyExtension, fulfilLine, getLine, getOrder, invoiceOrderLines, raiseCrossHire } from './flow';
+import { MasterSelect, R, TO_CONFIRM, aed } from './shared';
 
 /** Expiry decision for the whole order (decision 2): Extend the SAME Sales Order, Early Termination, or Proceed to Return. */
 export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
@@ -77,7 +80,7 @@ export function NextStepDialog({ open, onClose, soId, lineId }: { open: boolean;
   const service = l.activity === 'Service' || l.activity === 'Other';
   return (
     <AppDialog open={open} title={`${step.label}: ${l.item}`} onClose={onClose} confirmLabel="Confirm" confirmDisabled={(!!step.options && !opt) || (service && so.activity === 'Other' && !part.trim())}
-      onConfirm={() => { const ref = fulfilLine(so.id, l.id, [opt, part, hours && `${hours} h`].filter(Boolean).join(', ') || undefined); toast(`${step.done}, reference ${ref}`); onClose(); }}>
+      onConfirm={() => { const ref = fulfilLine(so.id, l.id, [opt, part, hours && `${hours} h`].filter(Boolean).join(', ') || undefined); toast(`${step.done}. Invoice ${ref} raised, pending approval in Accounting`); onClose(); }}>
       <FormGrid cols={1}>
         {step.options && <SelectInput label="Service Type" required value={opt} options={step.options} onChange={setOpt} />}
         {service && <><TextInput label="Particulars" required={so.activity === 'Other'} value={part} onChange={setPart} hint="Job card particulars (job card itself sits in the service module)" /><NumberInput label="Hours (if charged by hours)" value={hours} onChange={setHours} /></>}
@@ -115,6 +118,58 @@ export function PrintDialog({ open, onClose, doc }: { open: boolean; onClose: ()
       <FormGrid cols={1}>
         <MasterSelect master="docTemplate" label="Document Template" required change="new" req={R.meet} value={tpl} onChange={setTpl} hint="Choose the format for this printout. Allocation Tag is never printed" />
       </FormGrid>
+    </AppDialog>
+  );
+}
+
+/** Lines of a Sales Order that can be invoiced now: not Rental (billed by the rental run), not AMC (billed from job cards), not invoiced yet. */
+export const invoiceableLines = (lines: Line[]) => lines.filter((l) => !['Rental', 'AMC'].includes(l.activity) && !(l.activity === 'Service' && l.billing === 'Recurring') && !l.fulfilmentRef && (!l.fulfilment || l.fulfilment === 'Delivered'));
+/** Create, Invoice on the Sales Order: one sales invoice for the selected lines, created Pending (decision D4). */
+export function InvoiceLinesDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string }) {
+  const toast = useToast();
+  const nav = useNavigate();
+  const so = getOrder(soId);
+  const lines = so ? invoiceableLines(so.lines) : [];
+  const [sel, setSel] = useState<string[]>([]);
+  if (!so) return null;
+  const chosen = sel.filter((x) => lines.some((l) => l.id === x));
+  return (
+    <AppDialog open={open} title={`Invoice from ${so.number}`} onClose={onClose} maxWidth="md" confirmLabel="Create Invoice" confirmDisabled={!chosen.length}
+      onConfirm={() => { const n = invoiceOrderLines(so.id, chosen); toast(n ? `Invoice ${n} raised, pending approval in Accounting` : 'Nothing to invoice', n ? 'success' : 'error'); setSel([]); onClose(); }}>
+      {!lines.length ? <Text type="s4">Every line that can be invoiced here already has an invoice. Rental lines are invoiced by the rental run (Rental, Invoicing Rental Order) and AMC visits from their job cards.</Text> : (
+        <Box>
+          {lines.map((l) => (
+            <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, borderBottom: '1px solid #EEE' }}>
+              <Checkbox size="small" checked={chosen.includes(l.id)} onChange={(e) => setSel(e.target.checked ? [...chosen, l.id] : chosen.filter((x) => x !== l.id))} />
+              <Box sx={{ flex: 1 }}><Text type="s4">{l.item}</Text><Text type="s5" color="theme.secondary.700">{l.activity}, {l.qty} {l.unit} at {aed(l.price)}{l.foc ? ' (FOC)' : ''}</Text></Box>
+              <Text type="s4">{aed(l.foc ? 0 : l.qty * l.price * (1 - (l.discount ?? 0) / 100))}</Text>
+            </Box>
+          ))}
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>One invoice is created for the selected lines at the Sales Order price, Pending until it is approved in Accounting. <Box component="span" sx={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => { onClose(); nav(`/accounting/invoices?so=${so.id}`); }}>See the invoices of this order</Box></Text>
+        </Box>
+      )}
+    </AppDialog>
+  );
+}
+
+/** Create, Advance on the Sales Order: an advance Collection, Pending until approved in Accounting (decision D5); applied later from the invoice. */
+export function AdvanceDialog({ open, onClose, soId, onDone }: { open: boolean; onClose: () => void; soId?: string; onDone?: (l: LogItem) => void }) {
+  const toast = useToast();
+  const nav = useNavigate();
+  const so = getOrder(soId);
+  const [f, setF] = useState({ amount: '', method: 'Bank', bank: BANK_ACCOUNTS[0], ref: '', date: TODAY });
+  if (!so) return null;
+  return (
+    <AppDialog open={open} title={`Advance against ${so.number}`} onClose={onClose} confirmLabel="Save" confirmDisabled={!(Number(f.amount) > 0)}
+      onConfirm={() => { const p = advanceCollection({ soId: so.id, amount: Number(f.amount), method: f.method as 'Bank' | 'Cheque' | 'Cash', bankAccount: f.method === 'Cash' ? BANK_ACCOUNTS[2] : f.bank, reference: f.ref, date: f.date }); if (p) { onDone?.(log(`Advance ${p.number} recorded, AED ${p.amount}`, 'Pending approval in Accounting', 'blue')); toast(`Advance ${p.number} saved, pending approval in Accounting`); onClose(); nav(`/accounting/payment-entries/${p.id}`); } }}>
+      <FormGrid cols={2}>
+        <NumberInput label="Amount (AED)" required value={f.amount} onChange={(v) => setF({ ...f, amount: v })} />
+        <DateInput label="Date" required value={f.date} onChange={(v) => setF({ ...f, date: v })} />
+        <SelectInput label="Type" required value={f.method} options={['Bank', 'Cheque', 'Cash']} onChange={(v) => setF({ ...f, method: v })} />
+        {f.method !== 'Cash' && <SelectInput label="Bank Account" required value={f.bank} options={BANK_ACCOUNTS.slice(0, 2)} onChange={(v) => setF({ ...f, bank: v })} />}
+        <TextInput label="Reference" value={f.ref} onChange={(v) => setF({ ...f, ref: v })} />
+      </FormGrid>
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Saved as a Pending advance Collection. Once approved it can be applied to this customer's invoices (invoice, Create, Apply Payment).</Text>
     </AppDialog>
   );
 }

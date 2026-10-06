@@ -12,6 +12,46 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 12:50 PM: Every invoice in the POC is now a real invoice in Accounting
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Fleet Management > Trips
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Where:** Rental > Invoicing > Previous Jobs
+**Where:** Rental > Cross Hire > Orders
+**Where:** Inventory & Fixed Assets > Asset Disposal Requests
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Invoices existed only as numbers typed on a Sales Order line, a job card or a disposal. Nothing could be approved, paid or traced, the Sales Order Asset Ledger showed sample "received" figures, and cross-hire supplier invoices were a text field.
+*What we did.* Every flow now creates a real document in Accounting, always Pending until approved there. Sales Order: Create, Invoice raises one invoice for the selected non-rental lines (the line step does the same); Advance records a Pending advance collection; a new Invoices tab shows invoices, payments and advances; the Asset Ledger reads invoiced and received from the rental invoices and shows Invoiced up to and Next Invoice Date; the Charges tab raises the damage or failed-collection invoice. Rental invoices are raised only from Rental, Invoicing Rental Order with Run Invoicing (decision of 6 Oct): each delivered asset from its own Rental Start (Hold excluded) to its off-hire day, pro-rated, plus the monthly damage waiver, delivery and installation charges on the first invoice, return charges on the final invoice and any waiting charge; Previous Jobs lists every run. AMC job cards raise their invoice (visit share, non-FOC materials and services). A return with damage raises its invoice, except when a damage waiver was paid. Cross-hire Receive (or Create, Bill for Dropship) raises the supplier bill with the agreed rate and expenses; a dispute charge raises a supplementary bill. Completing an external transporter trip raises the transporter's bill. Recording a disposal sale or scrap raises the buyer's invoice. The seven invoice numbers already in the demo data (INV-26-00118, 00287, 00344, 00371, 00396, 00402, 00415) are now real invoices, plus about 20 months of rental history.
+*Be aware.* Invoices are Pending until approved in Accounting (decision D4) and payments are Pending until approved (D5), so a job card shows Paid only after the invoice and its collection are both approved. The rental cycle is monthly from the first Rental Start of the order, pro-rated by days, and billing stops on the off-hire day: rule to be confirmed with client. The credit limit is a warning only, also to be confirmed. The invoice engine sits in Accounting and is called by CRM, Rental and Inventory; this is the one deliberate exception to "modules do not read each other's data".
+
+### 6 Oct, around 12:45 PM: Accounting POC: Invoices, Bills, Collections, Payments, Credit and Debit Notes, Journals
+**Where:** Accounting & Finance > Dashboard
+**Where:** Accounting & Finance > Journal Entry
+**Where:** Accounting & Finance > Payment Entry > Payment
+**Where:** Accounting & Finance > Payment Entry > Collection
+**Where:** Accounting & Finance > Invoice > Bills
+**Where:** Accounting & Finance > Invoice > Invoices
+**Where:** Accounting & Finance > Credits > Debit Notes
+**Where:** Accounting & Finance > Credits > Credit Notes
+**Where:** Accounting & Finance > Reports
+**Where:** Accounting & Finance > Settings > Chart of Accounts
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Accounting had only a dashboard placeholder and a reference page for disposal invoices (on 5 Oct accounting was "not designed in this POC"). Anurag asked on 6 Oct for a sales and purchase invoicing POC connected to the existing flows.
+*What we did.* The existing ERP accounting sidebar is reproduced in its order. Invoices (sales) and Bills (purchase) follow the existing ERP: list, form and view with Submit for Approval, Quick Approval, Accept and Reject, Edit and Delete only before approval, Collection Entry or Payment Entry, Apply Payment (advance), Credit Note or Debit Note, View Accounting Ledger, Payment Request when overdue, Duplicate, Print and Email. Added on top of the ERP: Activity Type and Cost Centre / Project inherited from the source, a Source document link, rental period lines per asset, and a credit-limit warning. Collection and Payment allocate to open invoices or bills (or record an advance) and change them only when approved. Every approval posts a journal following the existing posting rules (Dr Receivable, Cr income and Output VAT; Dr expense and Input VAT, Cr Payable; Dr bank, Cr Receivable; credit and debit notes reverse), with Cost Centre on the journal lines. Chart of Accounts lists the accounts used, with balances. Aged Receivable, Aged Payable, Customer SOA and General Ledger read the live documents. The other accounting screens show their existing columns and are not rebuilt.
+*Be aware.* Invoice and bill numbers are assigned at creation (the ERP assigns the sales invoice number at approval) so the source documents can show them at once. ZATCA (Saudi) is not shown: the client is in the UAE. Numbers continue from the demo data: INV-26-00416, BILL-26-00024, PAY-26-00055, CRN-26-00009, DBN-26-00004, JV-26-00401.
+
+### 6 Oct, around 12:40 PM: AMC Order and Job Card become view pages; the form is only for creating and editing
+**Where:** CRM / Sales > Orders > AMC Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Job Card page was an editable form even after it was saved, and the AMC Order page had no Generate or Actions menus, unlike the Sales Order.
+*What we did.* The AMC Order view now follows the Sales Order view: read-only Basic Details, Contract and Contract Value, with Edit, Generate (Job Card for the next planned visit, Invoice for completed job cards), View (Sales Order, Quotation, Opportunity, Invoices) and Actions (Send by Email, Print, Print consolidated report, Close), and new Job Cards and Invoices tabs. The Job Card is a read-only view with Complete Visit, Generate (Invoice), View and Actions (Edit, Print, Send by Email, Upload signed copy, Record Payment). The form opens only to create a job card for a planned visit (nothing is saved until Save) and through Actions, Edit until the job card is invoiced.
+*Be aware.* Payment on the job card, the AMC order and the AMC list is now read from the invoice in Accounting, so Mark Payment Received is replaced by Record Payment, which creates a Pending collection.
+
 ### 6 Oct, around 8:30 PM: The driver comes with the vehicle on a delivery, collection or replacement
 **Where:** CRM / Sales > Orders > Delivery Orders
 **Where:** CRM / Sales > Orders > Customer Returns

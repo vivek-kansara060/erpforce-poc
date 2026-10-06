@@ -155,13 +155,15 @@ export interface JobCard {
   /** FOC visit: this visit's share of the Contract Value is not invoiced (the other visits keep their share). */
   visitFoc?: boolean;
   status: 'Open' | 'Completed' | 'Invoiced'; invoiceRef?: string; log: LogItem[];
+  /** The sales invoice in Accounting raised from this job card; its payment status is read from the invoice. */
+  invoiceId?: string;
   /** General Job Activities (the standard monthly process), signed copy upload and payment status of the invoice */
   activities?: string; signedCopy?: string[]; paymentStatus?: 'Unpaid' | 'Paid';
 }
 export interface SalesOrder extends Commercial {
   id: string; number: string; date: string; quoteId?: string; oppId?: string; owner: string; title: string; reference: string; status: string;
   lpo: string; lpoDate: string; lpoExpiry: string; site: string; costCentre: string; deliveryMethod: string; log: LogItem[]; docs: string[];
-  damageCharges: { assetId: string; amount: number; note: string; date: string }[]; logisticsCost: number; visitPlan?: Visit[]; deliveryDate?: string; poExpiry?: string;
+  damageCharges: { assetId: string; amount: number; note: string; date: string; invoiceId?: string }[]; logisticsCost: number; visitPlan?: Visit[]; deliveryDate?: string; poExpiry?: string;
 }
 export interface DoItem { lineId: string; qty: number; assetIds: string[]; deliveredSub?: string; package?: string }
 export interface Delivery {
@@ -569,10 +571,10 @@ export const jobCardSeed: JobCard[] = [
   { id: 'jc1', number: 'JC-26-00118', soId: 'so6', soNumber: 'SO-26-00053', customerId: 'c8', visitIdx: 0, plannedDate: '2026-11-16', technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: 'AMC Annual Contract (Generator 1500 KVA)',
     materials: [], services: [], notes: 'Draft job card for the first planned visit', visitAmount: 6000, status: 'Open', log: [lg('2026-09-30 09:00', 'Job card created for visit 1', 'Leena Thomas')] },
   { id: 'jc2', number: 'JC-26-00104', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 0, plannedDate: so10Plan[0].date, doneOn: so10Plan[0].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
-    materials: [{ item: 'Oil Filter (Cummins C-Series)', qty: 2, unit: 'Nos', price: 85 }], services: [], notes: 'Unit in good condition', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00371', paymentStatus: 'Paid', signedCopy: ['JC-26-00104-signed.pdf'],
+    materials: [{ item: 'Oil Filter (Cummins C-Series)', qty: 2, unit: 'Nos', price: 85 }], services: [], notes: 'Unit in good condition', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00371', invoiceId: 'inv-371', paymentStatus: 'Paid', signedCopy: ['JC-26-00104-signed.pdf'],
     log: [lg(`${so10Plan[0].date} 09:00`, 'Job card created for visit 1', 'Leena Thomas'), lg(`${so10Plan[0].date} 15:00`, 'Visit completed', 'Rajesh Pillai', 'Materials and services recorded', 'green'), lg(`${so10Plan[0].date} 17:00`, 'Invoice raised', 'Leena Thomas', 'INV-26-00371, total AED 4670', 'blue'), lg(`${so10Plan[1].date} 10:00`, 'Payment received', 'Priya Menon', 'INV-26-00371, AED 4670', 'green')] },
   { id: 'jc3', number: 'JC-26-00105', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 1, plannedDate: so10Plan[1].date, doneOn: so10Plan[1].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
-    materials: [{ item: 'Engine Oil 15W-40 (20 L)', qty: 2, unit: 'Drum', price: 420 }], services: [{ name: 'Coolant flush (additional task)', amount: 650 }], notes: 'Oil change due, coolant flushed at client request', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00396', paymentStatus: 'Unpaid', signedCopy: ['JC-26-00105-signed.pdf'],
+    materials: [{ item: 'Engine Oil 15W-40 (20 L)', qty: 2, unit: 'Drum', price: 420 }], services: [{ name: 'Coolant flush (additional task)', amount: 650 }], notes: 'Oil change due, coolant flushed at client request', visitAmount: 4500, status: 'Invoiced', invoiceRef: 'INV-26-00396', invoiceId: 'inv-396', paymentStatus: 'Unpaid', signedCopy: ['JC-26-00105-signed.pdf'],
     log: [lg(`${so10Plan[1].date} 09:00`, 'Job card created for visit 2', 'Leena Thomas'), lg(`${so10Plan[1].date} 16:00`, 'Visit completed', 'Rajesh Pillai', 'Materials and services recorded', 'green'), lg(`${so10Plan[1].date} 17:30`, 'Invoice raised', 'Leena Thomas', 'INV-26-00396, total AED 5990', 'blue')] },
   { id: 'jc4', number: 'JC-26-00106', soId: 'so10', soNumber: 'SO-26-00050', customerId: 'c1', visitIdx: 2, plannedDate: so10Plan[2].date, doneOn: so10Plan[2].date, technician: 'Rajesh Pillai', location: 'Service Van 1 (Rajesh Pillai)', item: AMC_ITEM, activities: 'Standard quarterly service: visual check, fluid levels, battery test, 30 minute load run',
     materials: [{ item: 'Air Filter (Perkins 2506)', qty: 1, unit: 'Nos', price: 110 }], services: [], notes: 'Air filter replaced, ready to invoice', visitAmount: 4500, status: 'Completed', signedCopy: ['JC-26-00106-signed.pdf'],
