@@ -12,7 +12,7 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
 import { FLEET_STATUSES, TRIP_STATUSES, assetById, custName, deliveryVehicles, fleetStatus, isOpenTrip, tripTotal, type FleetStatus, type HeavyRec, type Trip } from '@/modules/crm/data';
-import { addTripExpense, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, switchToOwnFleet, vehicleIsFree } from '@/modules/crm/flow';
+import { addTripExpense, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
 import { MasterSelect, R, RowMenu, aed, useFleet, useTrips, type RowMenuItem } from '@/modules/crm/shared';
 import { currentLocation } from '@/modules/inventory/data';
 
@@ -38,7 +38,7 @@ const docPath = (t: Trip) => (t.kind === 'Delivery' ? `/crm/delivery-orders/${t.
 const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as const;
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */
-type DlgKind = 'stuck' | 'complete' | 'expense' | 'reassign' | 'external' | 'own' | 'cancel';
+type DlgKind = 'stuck' | 'complete' | 'expense' | 'reassign' | 'external' | 'cancel';
 type ExpenseLine = { type: string; amount: string; note: string };
 
 /** The status-driven actions of a trip, and the dialogs they open. */
@@ -52,12 +52,11 @@ export function useTripMenu() {
     if (t.status === 'Assigned') {
       m.push({ label: 'Start Trip', onClick: () => { startTrip(t); toast(`${t.number} started, the vehicle is En Route`); } });
       if (own) m.push({ label: 'Reassign Vehicle / Driver', onClick: () => open('reassign', t) }, { label: 'Switch to External Transporter', onClick: () => open('external', t) });
-      else m.push({ label: 'Switch to Own Fleet', onClick: () => open('own', t) });
     }
     if (t.status === 'En Route') m.push({ label: 'Mark Stuck-Delayed', onClick: () => open('stuck', t) });
     if (t.status === 'Stuck-Delayed') m.push({ label: 'Resume (En Route)', onClick: () => { resumeTrip(t); toast(`${t.number} resumed`); } });
     if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Complete Trip', onClick: () => open('complete', t) });
-    if (t.status !== 'Cancelled') m.push({ label: 'Add Expense', onClick: () => open('expense', t) });
+    if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Add Expense', onClick: () => open('expense', t) });
     if (isOpenTrip(t)) m.push({ label: 'Cancel Trip', danger: true, onClick: () => open('cancel', t) });
     return m;
   };
@@ -69,7 +68,6 @@ export function useTripMenu() {
       {dlg.kind === 'complete' && <CompleteTripDialog trip={trip} onClose={close} />}
       {dlg.kind === 'expense' && <ExpenseDialog trip={trip} onClose={close} />}
       {dlg.kind === 'reassign' && <VehicleDialog trip={trip} onClose={close} />}
-      {dlg.kind === 'own' && <VehicleDialog trip={trip} switching onClose={close} />}
       {dlg.kind === 'external' && <ExternalDialog trip={trip} onClose={close} />}
       {dlg.kind === 'cancel' && <CancelDialog trip={trip} onClose={close} />}
     </>
@@ -140,8 +138,8 @@ function ExpenseDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
     </AppDialog>
   );
 }
-/** Reassign vehicle / driver while Assigned, or give an external trip to an own vehicle. Only Free vehicles (and the trip's own) are offered. */
-function VehicleDialog({ trip, switching, onClose }: { trip: Trip; switching?: boolean; onClose: () => void }) {
+/** Reassign vehicle / driver while Assigned. Only Free vehicles (and the trip's own) are offered. */
+function VehicleDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const toast = useToast();
   const fleet = useFleet();
   const options = deliveryVehicles(fleet.rows).filter((a) => a.id === trip.vehicleId || vehicleIsFree(a.id, trip.id));
@@ -149,10 +147,7 @@ function VehicleDialog({ trip, switching, onClose }: { trip: Trip; switching?: b
   const [driver, setDriver] = useState(trip.driver ?? '');
   const pick = (id: string) => { setVid(id); const d = assetById(id)?.defaultDriver ?? ''; setDriver(d); };
   return (
-    <AppDialog open title={switching ? 'Switch to Own Fleet' : 'Reassign Vehicle / Driver'} onClose={onClose} confirmLabel="Save" confirmDisabled={!vid} onConfirm={() => {
-      if (switching) switchToOwnFleet(trip, vid, driver, mobileOf(driver)); else reassignTrip(trip, vid, driver, mobileOf(driver));
-      toast(switching ? `${trip.number} moved to own fleet, the transporter's charge is removed` : `${trip.number} reassigned`); onClose();
-    }}>
+    <AppDialog open title="Reassign Vehicle / Driver" onClose={onClose} confirmLabel="Save" confirmDisabled={!vid} onConfirm={() => { reassignTrip(trip, vid, driver, mobileOf(driver)); toast(`${trip.number} reassigned`); onClose(); }}>
       <TripSummary trip={trip} />
       <FormGrid cols={1}>
         <SelectInput label="Vehicle (Free only)" required value={vid} options={options.map((a) => ({ value: a.id, label: vehicleLabel(a) }))} onChange={pick} error={options.length === 0 ? 'No vehicle is Free' : undefined} />
@@ -401,7 +396,7 @@ export function TripView() {
             <ValueField label="In Status Since" value={sinceLabel(t.since)} /><ValueField label="Total Expenses" value={aed(tripTotal(t))} />
           </ValueGrid>
         </Panel>
-        <Panel title="Expenses" change="new" req={R.trip} sx={{ mt: 2 }} right={t.status !== 'Cancelled' && <Button size="small" variant="outlined" onClick={() => menu.items(t).find((i) => i.label === 'Add Expense')?.onClick()}>Add Expense</Button>}>
+        <Panel title="Expenses" change="new" req={R.trip} sx={{ mt: 2 }} right={items.some((i) => i.label === 'Add Expense') && <Button size="small" variant="outlined" onClick={() => items.find((i) => i.label === 'Add Expense')?.onClick()}>Add Expense</Button>}>
           <DataTable hideToolbar rows={t.expenses.map((e, i) => ({ id: String(i), i, ...e }))} emptyText="No expenses yet. Add Salik, fuel or the transporter's charge; each one is added to the Sales Order logistics cost"
             actions={t.status === 'Cancelled' ? undefined : [{ label: 'Remove', danger: true, onClick: (r) => removeTripExpense(t, r.i) }]}
             columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' }]} />

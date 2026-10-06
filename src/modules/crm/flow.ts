@@ -479,13 +479,6 @@ export function switchToExternal(t: Trip, transporter: string, cost: number) {
   saveTrip(t.id, (x) => ({ ...x, transport: 'External Transporter', transporter, vehicleId: undefined, plate: undefined, driver: undefined, mobile: undefined, expenses, log: tlog(x, 'Switched to an external transporter', `${transporter}${cost ? `, Transport Charge AED ${cost}` : ''}. Own vehicle ${x.plate ?? ''} freed`, 'amber') }));
   bookCost(t.soId, cost, `Trip ${t.number} moved to ${transporter}`, cost ? `Transport Charge AED ${cost}` : 'Own vehicle freed', 'amber');
 }
-/** And back: an external trip still Assigned can be given to an own vehicle. The transporter's charge is taken off. */
-export function switchToOwnFleet(t: Trip, vehicleId: string, driver: string, mobile?: string) {
-  const v = assetById(vehicleId);
-  const charge = t.expenses.filter((e) => e.type === 'Transport Charge').reduce((s, e) => s + e.amount, 0);
-  saveTrip(t.id, (x) => ({ ...x, transport: 'Own Fleet', transporter: undefined, vehicleId, plate: v?.plateNumber, driver, mobile, expenses: x.expenses.filter((e) => e.type !== 'Transport Charge'), log: tlog(x, 'Switched to own fleet', `${v?.plateNumber ?? '-'}, ${driver || 'no driver'}. The transporter's charge is removed`, 'amber') }));
-  if (charge) bookCost(t.soId, -charge, `Trip ${t.number} moved to own fleet`, `Transport Charge AED ${charge} removed`, 'amber');
-}
 export { tripTotal };
 
 /** Close is blocked while any linked delivery is still unreturned. */
