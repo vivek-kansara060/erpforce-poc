@@ -147,7 +147,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
   const rental = l.activity === 'Rental';
   const priceOpts = pricing.filter((p) => p.activity === 'Rental' && p.category === l.group && (!l.category || p.subCategory === l.category));
   const inv = liveItems();
-  const itemList = inv.filter((i) => i.type !== 'Service' || (l.activity === 'AMC' && i.serviceType === 'AMC')).filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.serviceType === 'AMC' : ['Trading', 'Inventory'].includes(i.classification)));
+  const itemList = inv.filter((i) => i.type !== 'Service' || l.activity === 'AMC').filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.type === 'Service' : ['Trading', 'Inventory'].includes(i.classification)));
   const pick = (pid: string) => { const p = pricing.find((x) => x.id === pid); if (p) set({ pricingId: pid, item: pricingName(p), price: l.foc ? 0 : p.price, frequency: p.frequency, desc: descEdited ? l.desc : pricingName(p) }); };
   const pickService = (name: string) => {
     const m = services.find((x) => x.name === name);

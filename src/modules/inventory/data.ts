@@ -15,7 +15,7 @@ export const TRACKING_METHODS = [
 export const ITEM_TYPES = ['Inventory', 'Non Inventory', 'Assembly (Finished product)', 'Service', 'Package', 'Inventory Fixed Asset', 'Heavy Equipment Fixed Asset'];
 export const UOMS = ['Nos', 'Meter', 'Litre', 'Drum', 'Visit', 'Job', 'Kg', 'Set'];
 /** Service items (Type = Service) carry a Service Type and a Billing type, used by Rental, AMC and Fixed Asset Trading documents in CRM. */
-export const SERVICE_TYPES = ['Charge', 'Waiver', 'Insurance', 'AMC'];
+export const SERVICE_TYPES = ['Charge', 'Waiver', 'Insurance'];
 export const SERVICE_BILLING = ['One-time', 'Recurring', 'Lump sum'];
 export const FREQUENCIES = ['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly'];
 export const OWNERSHIP = ['Owned', 'Cross-Hired', 'Spare-Standby'];
@@ -180,7 +180,7 @@ const stockTotal = (itemId: string, fallback: number) => {
   return rows.length ? rows.reduce((t, r) => t + r.qty, 0) : fallback;
 };
 const SERVICE_SEED: Record<string, Partial<ItemRec>> = {
-  i9: { serviceType: 'AMC', billing: 'One-time', description: 'Scheduled AMC visit' },
+  i9: { serviceType: 'Charge', billing: 'One-time', description: 'Scheduled AMC visit, charged per visit' },
   i10: { serviceType: 'Charge', billing: 'One-time', description: 'Generator installation and commissioning' },
 };
 /** Rental related service items, kept in Inventory with the other service items (6 Oct: service lines come from the Inventory service items). */
