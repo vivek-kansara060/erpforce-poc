@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { DataTable, type Column } from '@/components/DataTable';
@@ -79,7 +79,7 @@ export function ItemList() {
         rows={view} columns={cols}
         filter={heavyView ? { key: 'ownerGroup', options: ['Own Asset', 'Cross-Hire Asset'] } : undefined}
         searchPlaceholder="Search items..."
-        onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : '/inventory/items/add')} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
+        onAdd={() => nav(heavyView ? `${HEAVY_PATH}/add` : type === 'All' ? '/inventory/items/add' : `/inventory/items/add?type=${encodeURIComponent(type)}`)} addLabel={heavyView ? 'Add Heavy Equipment Fixed Asset' : 'Add Item'}
         onRowClick={open}
         actions={[
           { label: 'View', onClick: open },
@@ -99,13 +99,14 @@ const blank = { type: 'Inventory', sku: '', name: '', classification: '', catego
 
 export function ItemForm() {
   const { id } = useParams();
+  const startType = useSearchParams()[0].get('type') ?? '';
   const nav = useNavigate();
   const toast = useToast();
   const items = useItems();
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const existing = id ? items.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavyCodes());
-  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...blank, ...Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v === undefined || v === null ? '' : typeof v === 'number' ? String(v) : v])), attrs: existing.attrs ?? {}, attachments: existing.attachments ?? [] } : blank));
+  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...blank, ...Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v === undefined || v === null ? '' : typeof v === 'number' ? String(v) : v])), attrs: existing.attrs ?? {}, attachments: existing.attachments ?? [] } : { ...blank, ...(ITEM_TYPES.includes(startType) && startType !== 'Heavy Equipment Fixed Asset' ? { type: startType } : {}) }));
   const [errors, setErrors] = useState<Errors>({});
   const [leave, setLeave] = useState(false);
   const upd = (p: Record<string, any>) => setF((x) => ({ ...x, ...p }));
