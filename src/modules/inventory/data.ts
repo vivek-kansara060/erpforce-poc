@@ -69,24 +69,14 @@ const ATTRS: Record<string, AttributeDef[]> = {
   ],
   Panel: [{ id: 'at-p1', name: 'Rated Current (A)', type: 'Number', options: '', required: false }],
 };
-/** Sample brands: some set on the category, some on the sub-category (Vehicle has none, its trucks are mixed brands). */
-const CAT_BRAND: Record<string, string> = { Panel: 'Emirates Cable & Panel', POD: 'Emirates Cable & Panel', Trolley: 'Local', Tray: 'Local', 'Day Tank': 'Emirates Cable & Panel' };
-const SUB_BRAND: Record<string, string> = { '100 KVA': 'Cummins', '200 KVA': 'Perkins', '500 KVA': 'Cummins', '1000 KVA': 'Cummins', '1500 KVA': 'Cummins', 'Perkins Spare Engine': 'Perkins', 'Cummins Spare Engine': 'Cummins' };
 export const categorySeed: CategoryRec[] = [
   ...equipmentGroups.flatMap((g, gi) => [
-    { id: `cat${gi + 1}`, name: g.group, parent: '-', status: 'Active' as const, brand: CAT_BRAND[g.group], skuPrefix: PREFIX[g.group], uniqueItems: 1, description: `${g.group} equipment and accessories`, attributes: ATTRS[g.group] ?? [], depMethod: g.group === 'Vehicle' ? 'Declining' : undefined },
-    ...g.categories.map((c, ci) => ({ id: `cat${gi + 1}-${ci + 1}`, name: c, parent: g.group, status: 'Active' as const, brand: SUB_BRAND[c], skuPrefix: `${PREFIX[g.group]}${ci + 1}`, uniqueItems: 1, attributes: [] as AttributeDef[] })),
+    { id: `cat${gi + 1}`, name: g.group, parent: '-', status: 'Active' as const, skuPrefix: PREFIX[g.group], uniqueItems: 1, description: `${g.group} equipment and accessories`, attributes: ATTRS[g.group] ?? [], depMethod: g.group === 'Vehicle' ? 'Declining' : undefined },
+    ...g.categories.map((c, ci) => ({ id: `cat${gi + 1}-${ci + 1}`, name: c, parent: g.group, status: 'Active' as const, skuPrefix: `${PREFIX[g.group]}${ci + 1}`, uniqueItems: 1, attributes: [] as AttributeDef[] })),
   ]),
   ...EXTRA_CATEGORIES.map((n, i) => ({ id: `catx${i + 1}`, name: n, parent: '-', status: 'Active' as const, skuPrefix: PREFIX[n], uniqueItems: 1, attributes: [] as AttributeDef[] })),
 ];
 export const isTopCategory = (r: Pick<CategoryRec, 'parent'>) => !r.parent || r.parent === '-';
-/** Default brand for a Category / Sub-Category pair: the sub-category's own brand first, else the category's. */
-export const brandFor = (rows: CategoryRec[], category: string, sub: string): { brand: string; from: 'Sub-Category' | 'Category' } | undefined => {
-  const s = sub ? rows.find((r) => r.parent === category && r.name === sub)?.brand : undefined;
-  if (s) return { brand: s, from: 'Sub-Category' };
-  const c = rows.find((r) => isTopCategory(r) && r.name === category)?.brand;
-  return c ? { brand: c, from: 'Category' } : undefined;
-};
 /** Active categories. The current value is kept in the list so an existing record still shows its category. */
 export const categoryOptions = (rows: CategoryRec[], current?: string) => {
   const names = rows.filter((r) => isTopCategory(r) && r.status === 'Active').map((r) => r.name);

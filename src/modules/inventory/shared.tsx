@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Box, Button, MenuItem, Select } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { AppDialog, useToast } from '@/components/Dialogs';
-import { useCollection } from '@/store/store';
+import { AppDialog } from '@/components/Dialogs';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { Text } from '@/components/Text';
 import { FieldShell, FormGrid, FormSection, NumberInput, SelectInput, TextInput, DateInput, ValueField, ValueGrid } from '@/components/Form';
@@ -257,36 +256,3 @@ export function AttributeValues({ defs, values }: { defs: AttributeDef[]; values
     </ValueGrid>
   );
 }
-
-/* ------------------------------------------------------------------ brand */
-export const useBrands = () => useCollection<BrandRec>('inventory.brands', brandSeed);
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-
-/** Brand dropdown with "Create New Brand" as its last row (category, asset and item forms share one brand list). */
-export function BrandSelect({ value, onChange, required, error, hint, change, req }: { value: string; onChange: (v: string) => void; required?: boolean; error?: string; hint?: string; change?: 'new' | 'changed'; req?: string }) {
-  const brands = useBrands();
-  const toast = useToast();
-  const [open, setOpen] = useState(false);
-  const names = brands.rows.map((b) => b.name);
-  const options = value && !names.includes(value) ? [...names, value] : names;
-  return (
-    <>
-      <AddableSelect label="Brand" required={required} change={change} req={req} value={value} options={options} onChange={onChange} error={error} hint={hint} onAdd={() => setOpen(true)} />
-      <QuickAddDialog open={open} title="Add Brand" label="Brand Name" onClose={() => setOpen(false)}
-        onSave={(name) => {
-          if (brands.rows.some((b) => sameName(b.name, name))) return 'A brand with this name already exists';
-          brands.add({ id: `br${Date.now()}`, name });
-          onChange(name);
-          toast(`Brand ${name} added`);
-          return undefined;
-        }} />
-    </>
-  );
-}
-
-/** Brand follows the Category / Sub-Category (sub-category first) until the user picks a brand by hand. */
-export const followBrand = (rows: CategoryRec[], f: Record<string, any>, category: string, sub: string) => {
-  if (!f.brandAuto) return {};
-  const d = brandFor(rows, category, sub);
-  return { brand: d?.brand ?? '', brandFrom: d?.from ?? '' };
-};

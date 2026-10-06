@@ -106,7 +106,7 @@ export function ItemForm() {
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const existing = id ? items.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavyCodes());
-  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...blank, ...Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v === undefined || v === null ? '' : typeof v === 'number' ? String(v) : v])), attrs: existing.attrs ?? {}, attachments: existing.attachments ?? [] } : { ...blank, brandAuto: true }));
+  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...blank, ...Object.fromEntries(Object.entries(existing).map(([k, v]) => [k, v === undefined || v === null ? '' : typeof v === 'number' ? String(v) : v])), attrs: existing.attrs ?? {}, attachments: existing.attachments ?? [] } : blank));
   const [errors, setErrors] = useState<Errors>({});
   const [leave, setLeave] = useState(false);
   const upd = (p: Record<string, any>) => setF((x) => ({ ...x, ...p }));
@@ -147,8 +147,8 @@ export function ItemForm() {
           options={PRODUCT_CLASSIFICATIONS.filter((c) => c !== 'Rental' || f.classification === 'Rental')} onChange={set('classification')} error={errors.classification}
           hint="Rental equipment is added as a Heavy Equipment Fixed Asset" />
         <SelectInput label="Tracking Method" required change="new" req={REQ_ITEM} value={f.tracking} options={TRACKING_METHODS} onChange={set('tracking')} error={errors.tracking} />
-        <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '', ...followBrand(cats.rows, f, v, '') })} error={errors.category} />
-        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={(v) => upd({ subCategory: v, ...followBrand(cats.rows, f, f.category, v) })} />
+        <CategorySelect value={f.category} req={REQ_ITEM} onChange={(v) => upd({ category: v, subCategory: '' })} error={errors.category} />
+        <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_ITEM} onChange={set('subCategory')} />
         <SelectInput label="UOM" required value={f.unit} options={UOMS} onChange={set('unit')} error={errors.unit}
           hint={f.tracking === 'Length' ? 'Select the applicable UOM, e.g. Meter' : undefined} />
         <ToggleInput label="Status" checked={f.status === 'Active'} onChange={(v) => set('status')(v ? 'Active' : 'Inactive')} />
