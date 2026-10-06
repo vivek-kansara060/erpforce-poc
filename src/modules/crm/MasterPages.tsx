@@ -15,7 +15,7 @@ export const MASTER_LABELS: Record<string, { label: string; used: string }> = {
   industry: { label: 'Industry', used: 'Lead, Opportunity' },
   paymentTerms: { label: 'Payment Terms', used: 'Quotation, Sales Order' },
   currency: { label: 'Currency', used: 'Lead, Opportunity, Quotation, Sales Order' },
-  docTemplate: { label: 'Document Template', used: 'Quotation' },
+  docTemplate: { label: 'Document Template', used: 'Every printout: Lead, Opportunity, Quotation, Sales Order, Delivery Order' },
   delayReason: { label: 'Reason for a later Rental Start', used: 'Delivery Order' },
   siteChecklist: { label: 'Pre-Return Site Checklist', used: 'Customer Returns' },
   yardChecklist: { label: 'Yard Inspection Checklist', used: 'Customer Returns' },

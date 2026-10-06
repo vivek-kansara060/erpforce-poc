@@ -2,13 +2,13 @@ import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import { Navigate } from 'react-router-dom';
 import type { ModuleDef } from '@/types';
 import { ItemList, ItemForm, ItemView } from './ItemPages';
-import { HeavyForm, HeavyView, MovementForm } from './HeavyEquipmentPages';
+import { HeavyForm, HeavyView } from './HeavyEquipmentPages';
 import { LocationForm, LocationList, LocationView } from './LocationPages';
 import { CountForm, CountList, CountView, DisposalForm, DisposalList, DisposalView } from './AssetPages';
 import { dashboards, reports } from './reports';
 import { dashboardRoutes } from '@/components/ReportsAndDashboards';
 import { invReportRoutes } from './ReportPages';
-import { CategoryForm, CategoryList, CategoryView } from './Masters';
+import { BrandList, CategoryForm, CategoryList, CategoryView, SubCategoryForm, SubCategoryList } from './Masters';
 import { PricingForm, PricingList, PricingView } from './PricingPages';
 import { AssetTypeForm, AssetTypeList } from './AssetTypePages';
 
@@ -23,6 +23,8 @@ const mod: ModuleDef = {
       label: 'Product Management', icon: <Inventory2OutlinedIcon />, children: [
         { label: 'Items', path: '/inventory/items' },
         { label: 'Item Category', path: '/inventory/categories', change: 'changed' },
+        { label: 'Item Sub-Category', path: '/inventory/sub-categories', change: 'new' },
+        { label: 'Brand', path: '/inventory/brands', change: 'new' },
         { label: 'Asset Type', path: '/inventory/asset-types', change: 'new' },
         { label: 'Heavy Equipment Pricing', path: '/inventory/pricing', change: 'new' },
       ],
@@ -42,13 +44,17 @@ const mod: ModuleDef = {
     { path: 'items/heavy/add', element: <HeavyForm /> },
     { path: 'items/heavy/:id', element: <HeavyView /> },
     { path: 'items/heavy/:id/edit', element: <HeavyForm /> },
-    { path: 'items/heavy/:id/movement/add', element: <MovementForm /> },
     { path: 'items/:id', element: <ItemView /> },
     { path: 'items/:id/edit', element: <ItemForm /> },
     { path: 'categories', element: <CategoryList /> },
     { path: 'categories/add', element: <CategoryForm /> },
     { path: 'categories/:id', element: <CategoryView /> },
     { path: 'categories/:id/edit', element: <CategoryForm /> },
+    { path: 'sub-categories', element: <SubCategoryList /> },
+    { path: 'sub-categories/add', element: <SubCategoryForm /> },
+    { path: 'sub-categories/:id', element: <CategoryView /> },
+    { path: 'sub-categories/:id/edit', element: <SubCategoryForm /> },
+    { path: 'brands', element: <BrandList /> },
     { path: 'asset-types', element: <AssetTypeList /> },
     { path: 'asset-types/add', element: <AssetTypeForm /> },
     { path: 'asset-types/:id/edit', element: <AssetTypeForm /> },
@@ -74,11 +80,14 @@ const mod: ModuleDef = {
   changes: [
     { module: 'Inventory & Fixed Assets', screen: 'Items', classification: 'EXISTING WITH CHANGE', existing: 'Items list and multi-tab form with type, SKU, name, category, traceability, prices', change: 'Adds Item Code (auto), Product Classification, Category/Sub-Category from master, Tracking Method, serialized asset fields, photo and attachments', ref: 'Item Master > New Fields', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Item Category', classification: 'EXISTING WITH CHANGE', existing: 'Parent, Level, Category Name, Brand, Description, SKU Prefix, Unique Items, Status, Attributes', change: 'One screen for categories and sub-categories as before (Parent field makes a sub-category); Level and Category Type removed. Adds Custom Attributes with Required flag, Depreciation Method Override, sub-categories on the category page, and Create New from the item, asset and pricing dropdowns', ref: 'Category & Sub-Category Master', path: '/inventory/categories' },
+    { module: 'Inventory & Fixed Assets', screen: 'Item Sub-Category and Brand', classification: 'NEW', existing: 'One Item Category screen for categories and sub-categories, Brand on the category', change: 'Item Category and Item Sub-Category are separate masters (a sub-category belongs to a Category). Brand leaves the category and becomes its own Brand master, chosen on the asset or item with Create New', ref: 'Meeting 5 Oct afternoon', path: '/inventory/sub-categories' },
+    { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Fixed Asset (5 Oct afternoon)', classification: 'EXISTING WITH CHANGE', existing: 'Asset form with typed CapEx, free-text certificate type, manual Add Movement', change: 'Entity is the first field. CapEx is auto-fetched, not typed. Certificate type is a master with Create New. Movement History has no manual entry: it is filled from Delivery Orders, returns and maintenance status changes and shows Customer and Project. A Disposal Request button opens the request for the asset', ref: 'Meeting 5 Oct afternoon', path: '/inventory/items' },
+    { module: 'Inventory & Fixed Assets', screen: 'Asset Disposal Requests (5 Oct afternoon)', classification: 'EXISTING WITH CHANGE', existing: 'Disposal request from its own list', change: 'Raised from the asset. The request and the approver see the asset income vs expenses ratio, status and history. After the invoice is created the user lands on the Accounting invoice page', ref: 'Meeting 5 Oct afternoon', path: '/inventory/disposals' },
     { module: 'Inventory & Fixed Assets', screen: 'Asset Type', classification: 'NEW', existing: 'Fixed list of asset types in the accounting asset form', change: 'Client-specific Asset Type master with list, add, edit, activate / deactivate and delete (blocked while in use), and Create New from the Asset Type dropdown on the Heavy Equipment Fixed Asset form', ref: 'Asset Type Master (2 Oct call)', path: '/inventory/asset-types' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Service type', classification: 'NEW', existing: 'Service item with name, UOM, price', change: 'Service Type (Charge, Waiver, Insurance, AMC), Billing (One-time, Recurring, Lump sum) and Description; rental service lines in CRM and AMC job cards are picked from these items', ref: 'Meeting 5 Oct: rental service lines come from Inventory service items', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset type', classification: 'NEW', existing: '-', change: 'New always-serialized item type within Items, identified by an auto-generated Serialized ID (no typed name, item code or tracking method on the form), with its own listing view, add/edit form and view page (Basic Details, Depreciation Board, Movement History, Ownership)', ref: 'Item Master / Fixed Asset Register', path: '/inventory/items' },
-    { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Activity Type (Rental / Trading) and Description. A rental price is one record per Category / Sub-Category storing a price for every billing frequency: one is entered, the others are calculated and can be changed by hand. Trading prices are a single sales price. Listing shows rental prices for a chosen billing frequency; Rental / Trading filter, bulk upload and a view page with all frequencies', ref: 'Pricing Master (2 Oct call)', path: '/inventory/pricing' },
-    { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Removes Parent Location, Company and the address block (City kept). Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional), a read-only per-item stock table with units (Stock Held, Consumed, Remaining, Remaining Value)', ref: 'Location & Warehouse Master (2 Oct call)', path: '/inventory/locations' },
+    { module: 'Inventory & Fixed Assets', screen: 'Heavy Equipment Pricing', classification: 'NEW', existing: '-', change: 'Activity Type (Rental / Fixed Asset Trading) and Description. One record per Category / Sub-Category and billing frequency (Add Frequency copies a record so only the price changes), a Fixed Asset Trading price is a single sales price, Bulk Upload takes one row per frequency', ref: 'Pricing Master (2 Oct call)', path: '/inventory/pricing' },
+    { module: 'Inventory & Fixed Assets', screen: 'Location', classification: 'EXISTING WITH CHANGE', existing: 'Name, Short Name, Parent, Company, Address, Summary, Inventory Available, Status', change: 'Removes Parent Location, Company and the address block (City removed 5 Oct). Adds Location Code (auto), Location Type (Own Yard / Supplier-Held), Linked Supplier (conditional), a read-only per-item stock table with units (Stock Held, Consumed, Remaining, Remaining Value)', ref: 'Location & Warehouse Master (2 Oct call)', path: '/inventory/locations' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Compliance & Certificates tab', classification: 'NEW', existing: '-', change: 'Certificates live on the individual asset (no separate sidebar screen): many per asset with type, reference, expiry, reminder lead time, document, status and edit history; can be added while creating the asset; optional approval switch; QR code with Print QR', ref: 'Compliance & Certificates (2 Oct call)', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Items > Heavy Equipment Fixed Asset > Usage Readings tab', classification: 'NEW', existing: '-', change: 'Manual hour meter readings kept under the individual asset (no separate sidebar screen): optional, add / edit / delete in a dialog, entry limited to users allowed to enter readings, Reading Source reserved for a future IoT feed', ref: 'Manual Usage & Status Recording (2 Oct call)', path: '/inventory/items' },
     { module: 'Inventory & Fixed Assets', screen: 'Physical Stock Verification', classification: 'NEW', existing: 'Only a Stock Reconciliation report', change: 'Count sessions with system snapshot, quantities with units, variance and Stock Adjustment approval (approve or reject, with approval history). Stock Items: one free-text reason for the session. Fixed Assets: Found / Not Found per unit with a reason only when not found, filters, Select All with bulk marking, inactive assets excluded, no paging', ref: 'Physical Stock Verification (2 Oct call)', path: '/inventory/stock-verification' },

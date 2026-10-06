@@ -12,7 +12,7 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 /* ------------------------------------------------------------------ collection names */
 export const COL = {
   leads: 'crm.leads', opps: 'crm.opportunities', quotes: 'crm.quotations', orders: 'crm.salesOrders', deliveries: 'crm.deliveries',
-  returns: 'crm.returns', masters: 'crm.masters', serviceCharges: 'crm.serviceCharges', jobCards: 'crm.jobCards', replacements: 'rental.replacements', extensions: 'rental.extensions', crossHire: 'rental.crossHire',
+  returns: 'crm.returns', masters: 'crm.masters', serviceCharges: 'crm.serviceCharges', jobCards: 'crm.jobCards', replacements: 'rental.replacements', extensions: 'rental.extensions', crossHire: 'rental.crossHire', chRequests: 'rental.chRequests', chRfqs: 'rental.chRfqs',
   /* read only from CRM: owned by Inventory */
   fleet: 'inventory.heavyEquipment', pricing: 'inventory.pricing',
 } as const;
@@ -72,7 +72,7 @@ export const MASTER_SEED: Record<string, string[]> = {
   lostReason: ['Price', 'Competitor', 'No Stock', 'Client Went Cold', 'Other'],
   paymentTerms: ['Immediate', '15 days', '30 days', '45 days', '60 days', '90 days'],
   currency: ['AED', 'USD', 'SAR', 'EUR'],
-  docTemplate: ['Standard Rental Quotation', 'Trading Quotation', 'Fuel Trading Quotation', 'AMC Proposal', 'Service Quotation'],
+  docTemplate: ['Standard (with letterhead)', 'Standard (no letterhead)', 'Detailed item format', 'Summary format', 'Standard Rental Quotation', 'Trading Quotation', 'Fuel Trading Quotation', 'AMC Proposal', 'Service Quotation', 'Rental Agreement format'],
   delayReason: ['Site not ready for deployment', 'Awaiting client permit', 'Power room not complete', 'Other'],
   siteChecklist: ['Equipment shut down and isolated', 'Cables and accessories collected', 'Visible damage photographed', 'Client representative informed'],
   yardChecklist: ['Engine and alternator visual check', 'Fluid levels and leaks', 'Control panel and breakers', 'Fuel tank and day tank', 'Body and canopy condition', 'Accessories reconciled with delivery'],
@@ -139,6 +139,8 @@ export interface JobCard {
   id: string; number: string; soId: string; soNumber: string; customerId: string; visitIdx: number; plannedDate: string; doneOn?: string; technician: string; location: string; item: string;
   materials: { item: string; qty: number; unit: string; price: number; cost?: number }[]; services: { name: string; amount: number }[]; notes: string; visitAmount: number;
   status: 'Open' | 'Completed' | 'Invoiced'; invoiceRef?: string; log: LogItem[];
+  /** General Job Activities (the standard monthly process), signed copy upload and payment status of the invoice */
+  activities?: string; signedCopy?: string[]; paymentStatus?: 'Unpaid' | 'Paid';
 }
 export interface SalesOrder extends Commercial {
   id: string; number: string; date: string; quoteId?: string; oppId?: string; owner: string; title: string; reference: string; status: string;
@@ -151,7 +153,7 @@ export interface Delivery {
   transport: string; extCost: number; conditionFiles: string[]; signature: string; foc: boolean; status: string; closed: boolean; driver?: string; vehicle?: string; narration?: string; supplierDoNo?: string;
   /** Rental (invoice) Start Date, defaults to the delivery date (decision 7). */
   rentalStart: string; startReason?: string; startBy?: string; waitingCharge?: number;
-  requestedSub?: string; deliveredSub?: string; serviceLineIds?: string[];
+  requestedSub?: string; deliveredSub?: string; serviceLineIds?: string[]; project?: string;
   /** existing Delivery Order form fields; items = one row per Sales Order line delivered */
   items?: DoItem[]; reference?: string; poNumber?: string; poDate?: string; location?: string; operationType?: string; transportedBy?: string; vehicleNumber?: string; iqama?: string; mobile?: string; department?: string; salesperson?: string;
   /** existing Delivery Order form fields; items = one row per Sales Order line delivered */
@@ -170,7 +172,23 @@ export interface Extension { id: string; number: string; soId: string; lineId?: 
 export interface CrossHire {
   id: string; number: string; soId: string; soNumber: string; lineId: string; group: string; category: string; supplierId: string; supplier: string; rate: number; stage: number; assetId?: string;
   history: LogItem[]; condition?: { notes: string; files: string[] }; reissueRef?: string; supplierInvoice?: string; dispute?: number; revenue: number; date: string;
+  /** Cross Hire Order (Hire Order) fields of the existing ERP; the record above is the order, the five stages are tracked on it */
+  type?: 'Inventory' | 'Dropship'; requestIds?: string[]; rfqId?: string; confirmationDate?: string; expectedReceipt?: string; paymentTerms?: string; startDate?: string; endDate?: string;
+  status?: string; receiving?: string; billing?: string; expenses?: { account: string; amount: number; note: string }[]; qty?: number;
 }
+export interface CrossHireRequest {
+  id: string; number: string; date: string; soId: string; soNumber: string; lineId: string; group: string; category: string; qty: number; frequency: string; rate: number;
+  vendorId?: string; vendor?: string; company: string; representative: string; currency: string; narration: string; location: string; department: string; attachments: string[];
+  status: 'Draft' | 'Pending' | 'In Progress' | 'Completed' | 'Rejected'; rfqId?: string; orderId?: string; log: LogItem[];
+}
+export interface RfqResponse { vendorId: string; vendor: string; rate: number; leadTime: number; moq: number; date: string; note?: string }
+export interface CrossHireRfq {
+  id: string; number: string; date: string; requestIds: string[]; soNumbers: string[]; group: string; category: string; qty: number; vendorIds: string[]; orderDeadline: string; expectedDate: string;
+  currency: string; paymentTerms: string; start?: string; end?: string; narration: string; status: 'Draft' | 'Open' | 'RFQ Sent' | 'Response Received' | 'Order'; responses: RfqResponse[]; awardedVendorId?: string; awardComment?: string; orderId?: string; log: LogItem[];
+}
+export const CH_REQUEST_STATUSES = ['Draft', 'Pending', 'In Progress', 'Completed', 'Rejected'];
+export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Order'];
+export const CH_TYPES = ['Inventory', 'Dropship'];
 
 /* ------------------------------------------------------------------ helpers */
 export const cust = (id: string) => customers.find((c) => c.id === id);
@@ -234,12 +252,12 @@ export function availability(group?: string, category?: string, rows: HeavyRec[]
   const ready = rows.filter((a) => isLive(a) && a.category === group && a.subCategory === category && a.assetStatus === 'Ready for Hire');
   return { owned: ready.filter((a) => a.ownership !== 'Cross-Hired'), cross: ready.filter((a) => a.ownership === 'Cross-Hired') };
 }
-export function patchAsset(id: string, patch: Partial<HeavyRec>, audit?: { title: string; detail?: string }, movement?: { type: string; from: string; to: string; reference: string }) {
+export function patchAsset(id: string, patch: Partial<HeavyRec>, audit?: { title: string; detail?: string }, movement?: { type: string; from: string; to: string; reference: string; customer?: string; project?: string }) {
   const rows = fleetRows();
   setCollection(COL.fleet, rows.map((a) => {
     if (a.id !== id) return a;
     const when = `${TODAY} ${dayjs().format('HH:mm')}`;
-    const mv = movement ? [...a.movements, { id: `m${Date.now()}${a.movements.length}`, entryNo: `MV-26-${String(9000 + a.movements.length)}`, date: `${TODAY}T${dayjs().format('HH:mm')}`, type: movement.type, from: movement.from, to: movement.to, reference: movement.reference, by: ACTOR }] : a.movements;
+    const mv = movement ? [...a.movements, { id: `m${Date.now()}${a.movements.length}`, entryNo: `MV-26-${String(9000 + a.movements.length)}`, date: `${TODAY}T${dayjs().format('HH:mm')}`, type: movement.type, from: movement.from, to: movement.to, reference: movement.reference, by: ACTOR, customer: movement.customer, project: movement.project }] : a.movements;
     return { ...a, ...patch, movements: mv, audit: audit ? [...a.audit, { when, title: audit.title, detail: audit.detail, by: ACTOR }] : a.audit };
   }));
 }
@@ -364,13 +382,14 @@ export const replacementSeed: Replacement[] = [
 export const extensionSeed: Extension[] = [
   { id: 'ex1', number: 'EX-26-00007', soId: 'so1', kind: 'Extension', oldEnd: '2026-09-08', newEnd: '2026-10-08', date: '2026-09-10', note: 'Client extended the hire by one month', status: 'Applied', clientConfirmedBy: 'Sergei Petrov' },
 ];
-export const crossHireSeed: CrossHire[] = [
+const chOrderExtra = (c: CrossHire): CrossHire => ({ type: 'Inventory', status: c.stage >= 4 ? 'Closed' : c.stage >= 1 ? 'Received' : 'Approved', receiving: c.stage >= 1 ? 'Fully Received' : 'Pending Receiving', billing: c.supplierInvoice ? 'Pending Billing' : 'Pending Billing', expenses: [], qty: 1, confirmationDate: c.date, expectedReceipt: c.date, paymentTerms: 'Net 30', startDate: c.date, endDate: undefined, ...c });
+export const crossHireSeed: CrossHire[] = ([
   { id: 'ch1', number: 'CH-26-00007', soId: 'so3', soNumber: 'SO-26-00044', lineId: 'so3a', group: 'Generator', category: '500 KVA', supplierId: 's5', supplier: 'Falcon Equipment Hire LLC', rate: 36000, stage: 2, assetId: 'he27', revenue: 48000, date: '2026-05-02', supplierInvoice: 'FAL-INV-9921',
     history: [lg('2026-05-02 10:00', 'Request raised: no owned 500 KVA unit available', 'Bilal Ahmed'), lg('2026-05-02 16:00', 'Received from Falcon Equipment Hire LLC', 'Sanjay Kumar'), lg('2026-05-06 09:00', 'Allocated to SO-26-00044', 'Bilal Ahmed')] },
   { id: 'ch2', number: 'CH-26-00006', soId: 'so2', soNumber: 'SO-26-00046', lineId: 'so2a', group: 'Generator', category: '200 KVA', supplierId: 's6', supplier: 'Gulf Genset Rentals', rate: 21000, stage: 3, assetId: 'he28', revenue: 29500, date: '2026-06-10', supplierInvoice: 'GGR-2210',
     condition: { notes: 'Minor scratches on canopy, no functional damage', files: ['yard-condition-ch200.jpg'] },
     history: [lg('2026-06-10 09:00', 'Request raised', 'Bilal Ahmed'), lg('2026-06-10 15:00', 'Received at Sharjah Yard', 'Sanjay Kumar'), lg('2026-06-12 10:00', 'Allocated to SO-26-00046', 'Bilal Ahmed'), lg('2026-09-20 12:00', 'Returned to us, idle at Sharjah Yard', 'Sanjay Kumar', 'Condition check completed', 'amber')] },
-];
+]).map(chOrderExtra);
 
 
 /* Fuel Trading and Fixed Asset Trading examples (separate documents, never mixed into a Rental document). */
@@ -394,10 +413,19 @@ export const jobCardSeed: JobCard[] = [
 ];
 
 /** Seeds every collection once (first caller wins, so safe to call from any screen). */
+export const chRequestSeed: CrossHireRequest[] = [
+  { id: 'chr1', number: 'CHR-26-00004', date: '2026-05-02', soId: 'so3', soNumber: 'SO-26-00044', lineId: 'so3a', group: 'Generator', category: '500 KVA', qty: 1, frequency: 'Monthly', rate: 36000, vendorId: 's5', vendor: 'Falcon Equipment Hire LLC', company: ENT, representative: 'Bilal Ahmed', currency: 'AED', narration: 'No owned 500 KVA unit available', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Completed', orderId: 'ch1', log: [lg('2026-05-02 09:30', 'Request raised from SO-26-00044', 'Bilal Ahmed'), lg('2026-05-02 09:50', 'Order created', 'Bilal Ahmed')] },
+  { id: 'chr2', number: 'CHR-26-00005', date: '2026-10-02', soId: 'so1', soNumber: 'SO-26-00041', lineId: 'so1b', group: 'Generator', category: '1000 KVA', qty: 1, frequency: 'Monthly', rate: 0, company: ENT, representative: 'Bilal Ahmed', currency: 'AED', narration: 'Extra unit for the new site', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'In Progress', log: [lg('2026-10-02 11:00', 'Request raised from SO-26-00041', 'Bilal Ahmed'), lg('2026-10-02 11:05', 'Submitted and approved', 'Bilal Ahmed', undefined, 'green')] },
+];
+export const chRfqSeed: CrossHireRfq[] = [
+  { id: 'rfq1', number: 'RFQ-26-00012', date: '2026-10-03', requestIds: [], soNumbers: ['SO-26-00041'], group: 'Generator', category: '1000 KVA', qty: 1, vendorIds: ['s5', 's6'], orderDeadline: '2026-10-08', expectedDate: '2026-10-12', currency: 'AED', paymentTerms: 'Net 30', start: '2026-10-12', end: '2027-04-11', narration: 'Quote for one 1000 KVA generator, 6 months',
+    status: 'Response Received', responses: [{ vendorId: 's5', vendor: 'Falcon Equipment Hire LLC', rate: 61000, leadTime: 5, moq: 1, date: '2026-10-04' }, { vendorId: 's6', vendor: 'Gulf Genset Rentals', rate: 58500, leadTime: 9, moq: 1, date: '2026-10-05' }], log: [lg('2026-10-03 10:00', 'RFQ created', 'Bilal Ahmed'), lg('2026-10-03 10:10', 'RFQ sent to 2 suppliers', 'Bilal Ahmed'), lg('2026-10-05 09:00', 'Response received from Gulf Genset Rentals', 'Bilal Ahmed')] },
+];
+
 export function seedAll() {
   seedCollection(COL.fleet, heavySeed); seedCollection(COL.pricing, pricingSeed); seedCollection(COL.masters, masterSeed);
   seedCollection(COL.leads, leadSeed); seedCollection(COL.opps, oppSeed); seedCollection(COL.quotes, quoteSeed); seedCollection(COL.orders, orderSeed);
   seedCollection(COL.deliveries, deliverySeed); seedCollection(COL.returns, returnSeed); seedCollection(COL.replacements, replacementSeed);
-  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.jobCards, jobCardSeed);
+  seedCollection(COL.extensions, extensionSeed); seedCollection(COL.crossHire, crossHireSeed); seedCollection(COL.chRequests, chRequestSeed); seedCollection(COL.chRfqs, chRfqSeed); seedCollection(COL.jobCards, jobCardSeed);
 }
 seedAll();

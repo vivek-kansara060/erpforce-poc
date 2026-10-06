@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { ACTIVITY_TYPES, BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 
@@ -17,10 +17,9 @@ export type Kind = 'quote' | 'order';
 export const generalSpecs = (kind: Kind): Spec[] => [
   { key: 'entity', label: 'Entity', type: 'master', master: 'entity', required: true, change: 'changed', req: R.meet, hint: 'Our own company, first field' },
   { key: 'number', label: 'ID', type: 'readonly' },
-  { key: 'oppNo', label: 'Opportunity', type: 'readonly' },
   ...(kind === 'order' ? [{ key: 'quoteNo', label: 'Quotation', type: 'readonly' } as Spec] : []),
   { key: 'title', label: kind === 'quote' ? 'Opportunity Title' : 'Order Title', type: 'readonly', change: 'new', req: R.meet, hint: 'Carried from the Opportunity' },
-  { key: 'activity', label: 'Activity Type', type: 'readonly', change: 'new', req: R.meet, hint: 'Inherited from the Opportunity. A Rental document may also carry Service and Fuel Trading items' },
+  { key: 'activity', label: 'Activity Type', type: kind === 'quote' ? 'select' : 'readonly', options: [...ACTIVITY_TYPES], required: kind === 'quote', change: 'new', req: R.meet, hint: kind === 'quote' ? 'Taken from the Opportunity when it has one, otherwise choose it here' : 'Inherited from the Quotation. A Rental document may also carry Service items' },
   { key: 'costCentre', label: 'Cost Centre / Project', type: 'select', options: COST_CENTRES, required: true, change: 'new', req: R.meet, hint: 'Mandatory in the header; an item can override it' },
   { key: 'transactionType', label: 'Transaction Type', type: 'select', options: TRANSACTION_TYPES, required: true },
   { key: 'customerId', label: 'Customer', type: 'select', options: customers.map((c) => ({ value: c.id, label: c.name })), required: true, disabled: true },
@@ -78,6 +77,7 @@ const shipping: Spec[] = [
 export function withHeaderCascade(x: F, k: string, v: any): F {
   const n: F = { ...x, [k]: v };
   if (k === 'contractType' && v === 'Open PO' && !x.contractEnd) n.contractEnd = yearEnd(x.contractStart || undefined);
+  if (k === 'activity' && x.activity !== v) n.lines = [];
   if (k === 'amcStart' && v) n.amcEnd = plusYear(v);
   if (k === 'contractStart' || k === 'contractEnd') {
     const lk = k === 'contractStart' ? 'start' : 'end';
@@ -89,6 +89,7 @@ export function withHeaderCascade(x: F, k: string, v: any): F {
 export function commercialErrors(f: F): Record<string, string> {
   const e: Record<string, string> = {};
   ['entity', 'paymentTerms', 'currency', 'transactionType', 'postingTime', 'terms', 'vatType'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
+  if (f.oppId !== undefined && !f.activity) e.activity = 'Activity Type is required';
   if (f.recurring && !f.untilDate) e.untilDate = 'Until Date is required when Recurring is set';
   if (f.currency !== 'AED' && !Number(f.exchangeRate)) e.exchangeRate = 'Exchange Rate is required';
   if (f.vatNumber && !/^\d{15}$/.test(f.vatNumber)) e.vatNumber = 'VAT Number must be 15 digits';

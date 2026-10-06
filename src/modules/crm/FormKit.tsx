@@ -7,7 +7,7 @@ import { ChangeTag } from '@/components/ChangeTag';
 import { Marked } from '@/components/ChangeTag';
 import { neutral } from '@/theme/color';
 import type { ChangeKind } from '@/types';
-import { MasterSelect } from './shared';
+import { MasterSelect, RowMenu } from './shared';
 
 type Opt = string | { value: string; label: string };
 export const optsOf = (s: { options?: Opt[] | (() => Opt[]) }): Opt[] => (typeof s.options === 'function' ? s.options() : s.options ?? []);
@@ -24,7 +24,7 @@ type F = Record<string, any>;
 export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs: Spec[]; f: F; set: (k: string, v: any) => void; err?: Record<string, string>; locked?: boolean; cols?: number }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 2, alignItems: 'start' }}>
-      {specs.filter((s) => !s.show || s.show(f)).map((s) => {
+      {specs.filter((s) => s.key !== 'number' && (!s.show || s.show(f))).map((s) => {
         const dis = locked || (typeof s.disabled === 'function' ? s.disabled(f) : s.disabled);
         const base = { label: s.label, required: s.required, change: s.change, req: s.req, hint: s.hint, disabled: dis, error: err[s.key], full: s.full };
         const v = s.value ? s.value(f) : f[s.key];
@@ -94,7 +94,7 @@ export function RowsEditor<T extends Record<string, any>>({ cols, rows, onChange
                       : <TextField size="small" type={c.type === 'date' ? 'date' : c.type === 'datetime' ? 'datetime-local' : 'text'} value={r[c.key] ?? ''} onChange={(e) => set(i, c.key, e.target.value)} InputLabelProps={{ shrink: true }} sx={{ width: c.width ?? 150, '& input': { fontSize: 13, py: '7px' } }} />}
                   </TableCell>
                 ))}
-                {!locked && <TableCell><IconButton size="small" onClick={() => onChange?.(rows.filter((_, j) => j !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton></TableCell>}
+                {!locked && <TableCell><RowMenu items={[{ label: 'Delete', danger: true, onClick: () => onChange?.(rows.filter((_, j) => j !== i)) }]} /></TableCell>}
               </TableRow>
             ))}
           </TableBody>

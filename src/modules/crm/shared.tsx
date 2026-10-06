@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Box } from '@mui/material';
+import { Box, IconButton, Menu, MenuItem } from '@mui/material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { Text } from '@/components/Text';
 import { StatusChip } from '@/components/StatusChip';
 import { AppDialog, useToast } from '@/components/Dialogs';
@@ -9,7 +10,7 @@ import { useCollection } from '@/store/store';
 import { itemSeed, type ItemRec } from '@/modules/inventory/data';
 import {
   COL, availability, toServiceCharge,
-  type CrossHire, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type CrossHire, type CrossHireRequest, type CrossHireRfq, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 export const useLeads = () => useCollection<Lead>(COL.leads);
@@ -19,6 +20,8 @@ export const useOrders = () => useCollection<SalesOrder>(COL.orders);
 export const useDeliveries = () => useCollection<Delivery>(COL.deliveries);
 export const useReturns = () => useCollection<ReturnEntry>(COL.returns);
 export const useCrossHire = () => useCollection<CrossHire>(COL.crossHire);
+export const useChRequests = () => useCollection<CrossHireRequest>(COL.chRequests);
+export const useChRfqs = () => useCollection<CrossHireRfq>(COL.chRfqs);
 export const useReplacements = () => useCollection<Replacement>(COL.replacements);
 export const useExtensions = () => useCollection<Extension>(COL.extensions);
 export const useFleet = () => useCollection<HeavyRec>(COL.fleet);
@@ -88,5 +91,20 @@ export function AvailabilityBadge({ group, category, fleet }: { group?: string; 
       <StatusChip status={total ? `${total} available` : 'None available'} tone={total ? 'green' : 'red'} />
       {a.cross.length > 0 && <Text type="s5" color="theme.secondary.700">({a.cross.length} cross-hired)</Text>}
     </Box>
+  );
+}
+
+export interface RowMenuItem { label: string; onClick: () => void; disabled?: boolean; danger?: boolean }
+/** Every line-item action lives behind a three-dots menu (5 Oct call), never as buttons in the row. */
+export function RowMenu({ items }: { items: RowMenuItem[] }) {
+  const [el, setEl] = useState<HTMLElement | null>(null);
+  if (!items.length) return null;
+  return (
+    <>
+      <IconButton size="small" aria-label="Actions" onClick={(e) => setEl(e.currentTarget)}><MoreVertIcon fontSize="small" /></IconButton>
+      <Menu anchorEl={el} open={!!el} onClose={() => setEl(null)}>
+        {items.map((i) => <MenuItem key={i.label} disabled={i.disabled} sx={i.danger ? { color: '#C64D4D' } : undefined} onClick={() => { setEl(null); i.onClick(); }}>{i.label}</MenuItem>)}
+      </Menu>
+    </>
   );
 }

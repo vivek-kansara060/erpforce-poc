@@ -4,6 +4,7 @@ import { Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { masterValues } from '@/modules/crm/data';
 import { DataTable, type Column } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -22,7 +23,7 @@ import { CategorySelect, SubCategorySelect } from './Masters';
 import { AssetTypeSelect } from './AssetTypePages';
 import { AssetCertificates, AssetReadings } from './AssetPages';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
-import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors } from './shared';
+import { AttributeFields, AttributeValues, FileList, Note, PhotoBox, PhotoInput, REQ_HE, SerializedFields, SerializedView, aed, num, requireFields, validateAttrs, validateSerialized, type Errors, CertTypeSelect } from './shared';
 
 export const HEAVY_PATH = '/inventory/items/heavy';
 const REQ_FA = 'Fixed Asset Register';
@@ -60,7 +61,9 @@ function MovementTable({ rows }: { rows: Movement[] }) {
     { key: 'type', label: 'Movement Type' },
     { key: 'from', label: 'From' },
     { key: 'to', label: 'To' },
-    { key: 'reference', label: 'Reference' },
+    { key: 'customer', label: 'Customer', change: 'new', req: REQ_MV, render: (r) => r.customer ?? [r.to, r.from].find((x) => x.startsWith('Client: '))?.replace('Client: ', '') ?? '-' },
+    { key: 'project', label: 'Project', change: 'new', req: REQ_MV, render: (r) => r.project ?? '-' },
+    { key: 'reference', label: 'Reference (DO / job)' },
     { key: 'dur', label: 'Duration at Location/Project', sortable: false, render: (r) => dur[r.id] },
   ];
   const sorted = [...rows].sort((a, b) => b.date.localeCompare(a.date));
@@ -112,7 +115,7 @@ function AssetTag({ assetId, name }: { assetId: string; name: string }) {
 
 /* ------------------------------------------------------------------ add / edit */
 const blank: Record<string, any> = {
-  name: '', classification: 'Rental', category: '', subCategory: '', brand: '', model: '', engineNo: '', capacity: '', specification: '', assetType: '',
+  entity: masterValues('entity')[0], name: '', classification: 'Rental', category: '', subCategory: '', brand: '', model: '', engineNo: '', capacity: '', specification: '', assetType: '',
   purchaseDate: '', putToUseDate: '', assetValue: '', notDepreciable: '0', nbv: '', deprPct: '', deprAmount: '', capex: '',
   initialLocation: '', department: '', status: 'Active', assetStatus: 'Ready for Hire', image: undefined, attachments: [], attrs: {},
   method: 'Straight line', decliningFactor: '', computation: 'Constant periods', usefulLifeYears: '', usefulLifeHours: '', accFixedAsset: '', accDepreciation: '', accExpense: '', journal: ACCOUNTS.journals[0],
@@ -139,7 +142,7 @@ export function HeavyForm() {
   const existing = id ? heavy.get(id) : undefined;
   const code = existing?.code ?? nextItemCode(items.rows.map((r) => r.code), heavy.rows.map((r) => r.code));
   const assetId = existing?.assetId ?? `AST-${1000 + Number(code.replace(/\D/g, ''))}`;
-  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, image: existing.image, nameAuto: existing.name === suggestedName(existing) } : { ...blank, nameAuto: true }));
+  const [f, setF] = useState<Record<string, any>>(() => (existing ? { ...Object.fromEntries(Object.entries({ ...blank, ...existing }).map(([k, v]) => [k, typeof v === 'number' ? String(v) : v ?? ''])), attrs: existing.attrs, entity: existing.company || masterValues('entity')[0], image: existing.image, nameAuto: existing.name === suggestedName(existing) } : { ...blank, nameAuto: true }));
   const [errors, setErrors] = useState<Errors>({});
   const [tab, setTab] = useState({ key: 0, initial: 0 });
   const [leave, setLeave] = useState(false);
@@ -164,7 +167,7 @@ export function HeavyForm() {
   const board = useMemo(() => buildBoard({ start: startDate, assetValue: num(f.assetValue) || 0, notDepreciable: num(f.notDepreciable) || 0, months, method: f.method, factor: num(f.decliningFactor) || 0 }), [startDate, f.assetValue, f.notDepreciable, months, f.method, f.decliningFactor]);
 
   const validate = (): Errors => {
-    const req = ['category', 'assetType', 'ownership'];
+    const req = ['entity', 'category', 'assetType', 'ownership'];
     if (!existing) req.push('initialLocation');
     if (dep) req.push('method', 'computation', 'usefulLifeYears', 'accFixedAsset', 'accDepreciation', 'accExpense');
     const e = requireFields(f, req, { assetType: 'Asset Type', initialLocation: 'Initial Location', usefulLifeYears: 'Useful Life (Years)', accFixedAsset: 'Fixed Asset Account', accDepreciation: 'Depreciation Account', accExpense: 'Expense Account', ownership: 'Ownership Type' });
@@ -201,7 +204,7 @@ export function HeavyForm() {
     const rec: HeavyRec = {
       id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: 'Rental', tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
       specification: f.specification, assetType: f.assetType, purchaseDate: f.purchaseDate, putToUseDate: f.putToUseDate, assetValue: n('assetValue') || 0, notDepreciable: n('notDepreciable') || 0, nbv: n('nbv') || 0, deprPct: n('deprPct') || 0, deprAmount: n('deprAmount') || 0, capex: n('capex') || 0,
-      department: f.department, company: COMPANY, status: f.status, assetStatus: existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire'), statusOverride: existing?.statusOverride, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
+      department: f.department, company: f.entity || COMPANY, status: f.status, assetStatus: existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire'), statusOverride: existing?.statusOverride, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
       accFixedAsset: f.accFixedAsset, accDepreciation: f.accDepreciation, accExpense: f.accExpense, journal: f.journal, ownership: f.ownership, supplier: crossHired ? chRec?.supplier ?? f.supplier : '', crossHireIdle: crossHired && chRec?.stage === 'Idle at Our Location',
       insurance: crossHired ? [] : insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
@@ -218,6 +221,7 @@ export function HeavyForm() {
   const basic = (
     <>
       <FormGrid>
+        <SelectInput label="Entity" required change="new" req={REQ_HE} value={f.entity} options={masterValues('entity')} onChange={set('entity')} error={errors.entity} hint="The company this asset belongs to, first field as agreed on the 5 Oct call" />
         <SelectInput label="Ownership Type" required change="changed" req={REQ_CH} value={f.ownership} options={OWNERSHIP} onChange={(v) => upd({ ownership: v, ...(v !== 'Cross-Hired' ? { crossHireId: '', supplier: '' } : {}) })} error={errors.ownership} hint="Owned and Spare-Standby units are depreciated; Cross-Hired units are not" />
         {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : <Box />}
         {crossHired && chRec && <TextInput label="Cross-Hire Supplier" change="new" req={REQ_CH} value={chRec.supplier} disabled hint="From the cross-hire record" />}
@@ -325,7 +329,7 @@ export function HeavyForm() {
         <TabPanels key={tab.key} initial={tab.initial} tabs={[
           { label: 'Basic Details', content: basic },
           { label: 'Depreciation Board', content: depreciation, hidden: crossHired },
-          { label: 'Movement History', hidden: crossHired, content: existing ? <><Note>Movement History is append-only. To record a new movement, use Add Movement on the view page.</Note><MovementTable rows={existing.movements} /></> : <><Note>The first entry is created automatically from the Initial Location once the equipment is saved.</Note><MovementTable rows={[]} /></> },
+          { label: 'Movement History', hidden: crossHired, content: existing ? <><Note>Movement History is filled automatically from Delivery Orders, returns and maintenance status changes.</Note><MovementTable rows={existing.movements} /></> : <><Note>The first entry is created automatically from the Initial Location once the equipment is saved.</Note><MovementTable rows={[]} /></> },
           { label: 'Ownership', content: ownership, hidden: crossHired },
           { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: existing ? <AssetCertificates assetId={existing.assetId} /> : (
             <FormSection title="Compliance & Certificates" change="new" req={REQ_CERT_TAB} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setNewCerts([...newCerts, { type: '', reference: '', expiry: '', leadDays: '30', file: [] }])}>Add Certificate</Button>}>
@@ -334,7 +338,7 @@ export function HeavyForm() {
               {newCerts.length === 0 && <Text type="s5" color="theme.secondary.700">No certificates added</Text>}
               {newCerts.map((c, i) => (
                 <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr 0.8fr 1.6fr 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
-                  <SelectInput label="Type" required value={c.type} options={CERT_TYPES} onChange={(v) => setCert(i, { type: v })} />
+                  <CertTypeSelect value={c.type} onChange={(v) => setCert(i, { type: v })} req={REQ_CERT_TAB} />
                   <TextInput label="Reference" value={c.reference} onChange={(v) => setCert(i, { reference: v })} />
                   <DateInput label="Expiry Date" required value={c.expiry} onChange={(v) => setCert(i, { expiry: v })} />
                   <NumberInput label="Reminder (days)" required value={c.leadDays} onChange={(v) => setCert(i, { leadDays: v })} />
@@ -347,52 +351,6 @@ export function HeavyForm() {
         ]} />
       </Page>
       <ConfirmDialog open={leave} info title="Discard changes" description="Leave this form? Unsaved changes will be lost." confirmLabel="Leave" onClose={() => setLeave(false)} onConfirm={() => nav('/inventory/items')} />
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ add movement (append-only) */
-export function MovementForm() {
-  const { id } = useParams();
-  const nav = useNavigate();
-  const toast = useToast();
-  const heavy = useHeavy();
-  const r = heavy.get(id);
-  const [f, setF] = useState({ type: '', from: r ? currentLocation(r) : '', to: '', date: NOW, reference: '' });
-  const [errors, setErrors] = useState<Errors>({});
-  if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" /></Page>;
-  const set = (k: string) => (v: string) => setF((x) => ({ ...x, [k]: v }));
-  const latest = [...r.movements].sort((a, b) => a.date.localeCompare(b.date)).slice(-1)[0]?.date ?? '';
-  const entryNo = nextMovementNo(r.movements.length + 100 + heavy.rows.length * 10);
-  const back = () => nav(`${HEAVY_PATH}/${r.id}`, { state: { tab: 'Movement History' } });
-  const save = () => {
-    const e = requireFields(f, ['type', 'from', 'to', 'date'], { type: 'Movement Type', from: 'From', to: 'To', date: 'Movement Date/Time' });
-    if (!e.from && !e.to && f.from === f.to) e.to = 'From and To cannot be the same';
-    if (!e.date && f.date < latest) e.date = `Must be after the latest entry (${latest.replace('T', ' ')}); corrections are made by adding a new entry`;
-    setErrors(e);
-    if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const mv: Movement = { id: `m${Date.now()}`, entryNo, date: f.date, type: f.type, from: f.from, to: f.to, reference: f.reference || '-', by: 'Current User' };
-    heavy.update(r.id, { movements: [...r.movements, mv], audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Movement recorded', detail: `${f.type}: ${f.from} to ${f.to}`, by: 'Current User' }, ...r.audit] });
-    toast('Movement recorded');
-    back();
-  };
-  return (
-    <>
-      <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: r.assetId, to: `${HEAVY_PATH}/${r.id}` }, { label: 'Add Movement' }]}
-        actions={<><Button variant="text" onClick={back}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
-      />
-      <Page sx={{ pt: 2 }}>
-        <FormGrid>
-          <TextInput label="Movement Entry Number" change="new" req={REQ_MV} value={entryNo} disabled hint="Auto-generated" />
-          <TextInput label="Linked Asset" change="new" req={REQ_MV} value={`${r.assetId} - ${r.name}`} disabled />
-          <SelectInput label="Movement Type" required change="new" req={REQ_MV} value={f.type} options={MOVEMENT_TYPES} onChange={set('type')} error={errors.type} />
-          <DateInput label="Movement Date/Time" required change="new" req={REQ_MV} value={f.date} onChange={set('date')} error={errors.date} />
-          <SelectInput label="From" required change="new" req={REQ_MV} value={f.from} options={MOVEMENT_PLACES} onChange={set('from')} error={errors.from} hint="Defaults to the current location" />
-          <SelectInput label="To" required change="new" req={REQ_MV} value={f.to} options={MOVEMENT_PLACES} onChange={set('to')} error={errors.to} hint="Location, client / project or supplier" />
-          <TextInput label="Reference" value={f.reference} onChange={set('reference')} />
-        </FormGrid>
-      </Page>
     </>
   );
 }
@@ -444,7 +402,10 @@ export function HeavyView() {
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
   const setStatus = (to: string, reason: string) => {
-    heavy.update(r.id, { assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
+    const maint = ['Under Maintenance', 'Breakdown'];
+    const mv: Movement | undefined = maint.includes(to) && !maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Sent for Repair', from: currentLocation(r), to: 'Workshop: Al Masaood Service Centre', reference: `Maintenance: ${reason}`, by: 'Current User' }
+      : to === 'Ready for Hire' && maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Internal Transfer', from: currentLocation(r), to: 'Jebel Ali Main Yard', reference: `Maintenance completed: ${reason}`, by: 'Current User' } : undefined;
+    heavy.update(r.id, { ...(mv ? { movements: [...r.movements, mv] } : {}), assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
     toast(`Asset Status changed to ${to}`);
   };
   const crossHired = r.ownership === 'Cross-Hired';
@@ -475,6 +436,7 @@ export function HeavyView() {
         actions={<>
           <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
           {!crossHired && r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
+          {!crossHired && r.assetStatus !== 'Disposed' && r.status === 'Active' && <Button variant="outlined" onClick={() => nav(`/inventory/disposals/add?asset=${r.assetId}`)}>Disposal Request</Button>}
           {canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
           <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>
         </>}
@@ -489,6 +451,7 @@ export function HeavyView() {
               <ValueField label="Asset Type" value={r.assetType} change="new" req={REQ_FA} />
               <ValueField label="Category" value={r.category} change="new" req={REQ_HE} />
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_HE} />
+              <ValueField label="Entity" value={r.company} change="new" req={REQ_HE} />
               <ValueField label="Asset Status" change="changed" req={REQ_STATUS} value={<><StatusChip status={r.assetStatus} /><Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{crossHired ? 'Follows the cross-hire stage' : r.statusOverride ? `Set manually by ${r.statusOverride.by} on ${r.statusOverride.when}: ${r.statusOverride.reason}` : 'Set by the system (delivery, return, cross-hire, disposal)'}</Text></>} />
               <ValueField label="Current Location" value={currentLocation(r)} change="new" req={REQ_MV} />
             </ValueGrid>
@@ -551,8 +514,7 @@ export function HeavyView() {
           { label: 'Movement History', hidden: crossHired, content: (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Text type="s5" color="theme.secondary.700">Append-only log. Current Location is the destination of the latest entry.</Text>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={() => nav(`${HEAVY_PATH}/${r.id}/movement/add`)}>Add Movement</Button>
+                <Text type="s5" color="theme.secondary.700">Automatic log from Delivery Orders, returns and maintenance. Current Location is the destination of the latest entry.</Text>
               </Box>
               <MovementTable rows={r.movements} />
             </>

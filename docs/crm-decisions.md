@@ -60,4 +60,15 @@ Also from the call: label "Entity" first; item dialog order Category, Subcategor
 | G | Service lines | Come from the Inventory service items (Item Type = Service). The Item form gets Service Type and Billing (NEW). The CRM Service Charges master is removed; the CRM Masters list links to Inventory |
 | H | Start and End Date | Set once in the main form (Contract Start / End). Equipment lines no longer ask for them and follow the header |
 | I | UOM | Dropdown fed by the Inventory UOM list (Fuel Trading keeps its fuel units) |
+| J | Cross Hire flow | Follows the existing ERP: Request (from the Rental Order), Process, RFQ with responses and award, then Order. The supplier and rate are fixed at the award or the order, not on the request |
+| K | Five stages | Tracked on the Order: Request, Received (register entry, no depreciation), Allocated (Delivery), Returned to Us (condition check), Returned to Supplier (dispute charge) |
+| L | Cross Hire Type | Inventory (unit comes to our yard) and Dropship (supplier ships to the client). Dropship skips Received and Return to Us |
+| M | LPO | Only on the Sales Order. Removed from the Opportunity |
+| N | Opportunity on the Quotation | Picked by Opportunity Title (searchable), no Opportunity ID. Activity Type is open on the Quotation |
+| O | Brand | Global Brand master chosen on the asset or item. Removed from Category and Subcategory |
+| P | Category and Subcategory | Two separate masters |
+| Q | Pricing | One record per billing frequency, Add Frequency copies a record. Trading is now Fixed Asset Trading in the pricing master |
+| R | AMC value split | Monthly amount times months is the contract value, split equally across the planned visits (to confirm) |
+| S | Movement History | Automatic only (Delivery Order, return, maintenance), with Customer and Project |
+| T | Disposal | Raised from the asset, with income vs expense ratio and history for the approver, then redirect to the invoice |
 

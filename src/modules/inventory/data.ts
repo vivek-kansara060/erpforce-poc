@@ -32,6 +32,9 @@ export const assetTypeSeed: AssetTypeRec[] = [
 export const MOVEMENT_TYPES = ['Delivery', 'Return', 'Internal Transfer', 'Sent for Repair', 'Cross-Hire Stage Change'];
 export const ATTRIBUTE_TYPES = ['Text', 'Number', 'Date', 'Picklist'];
 export const BRANDS = ['Cummins', 'Perkins', 'Mercedes', 'Volvo', 'Isuzu', 'Emirates Cable & Panel', 'Local'];
+/** Brand master (5 Oct call): one global list used by every fixed asset and item, so brand filters and reports never depend on spelling. */
+export interface BrandRec { id: string; name: string; status: 'Active' | 'Inactive' }
+export const brandSeed: BrandRec[] = BRANDS.map((n, i) => ({ id: `br${i + 1}`, name: n, status: 'Active' as const }));
 export { ASSET_STATUSES };
 export const ACCOUNTS = {
   fixedAsset: ['120100 Fixed Assets: Plant & Machinery', '120200 Fixed Assets: Vehicles', '120300 Fixed Assets: Power Equipment'],
@@ -93,7 +96,7 @@ export const attributesFor = (rows: CategoryRec[], category?: string, sub?: stri
  * the user enters one frequency's price, the others are calculated from it and can be changed by hand. Trading (sales)
  * prices are a single sales price with no frequency.
  */
-export const PRICING_ACTIVITIES = ['Rental', 'Trading'] as const;
+export const PRICING_ACTIVITIES = ['Rental', 'Fixed Asset Trading'] as const;
 export type PricingActivity = (typeof PRICING_ACTIVITIES)[number];
 export interface PricingRec {
   id: string; activity: PricingActivity; category: string; subCategory: string; description: string;
@@ -101,23 +104,23 @@ export interface PricingRec {
   price: number;
   /** Rental only: the billing frequency the user entered the price for */
   frequency?: string;
-  /** Rental only: price per billing frequency, all frequencies stored */
-  prices?: Record<string, number>;
-  /** Rental only: frequencies whose calculated price was changed by hand */
-  edited?: string[];
 }
 /** Days each billing frequency stands for: 1 week = 7 days, 1 month = 30 days, 1 quarter = 3 months, 1 year = 12 months. */
 export const FREQ_DAYS: Record<string, number> = { Daily: 1, Weekly: 7, Monthly: 30, Quarterly: 90, Yearly: 360 };
-/** Prices for every billing frequency calculated from one frequency's price, rounded to 2 decimals. */
+/** Kept for the old calculation helper; the pricing master no longer derives frequencies. */
 export const deriveFrequencyPrices = (price: number, frequency: string): Record<string, number> =>
   Object.fromEntries(FREQUENCIES.map((fq) => [fq, Math.round(((price / FREQ_DAYS[frequency]) * FREQ_DAYS[fq]) * 100) / 100]));
-const rp = (id: string, category: string, subCategory: string, frequency: string, price: number, description: string, overrides: Record<string, number> = {}): PricingRec =>
-  ({ id, activity: 'Rental', category, subCategory, frequency, price, description, prices: { ...deriveFrequencyPrices(price, frequency), ...overrides }, edited: Object.keys(overrides) });
-const tp = (id: string, category: string, subCategory: string, price: number, description: string): PricingRec => ({ id, activity: 'Trading', category, subCategory, price, description });
+/** One record per billing frequency (5 Oct call): a 100 KVA generator with seven prices has seven rows, which also keeps bulk upload simple. */
+const rp = (id: string, category: string, subCategory: string, frequency: string, price: number, description: string): PricingRec =>
+  ({ id, activity: 'Rental', category, subCategory, frequency, price, description });
+const tp = (id: string, category: string, subCategory: string, price: number, description: string): PricingRec => ({ id, activity: 'Fixed Asset Trading', category, subCategory, price, description });
 export const pricingSeed: PricingRec[] = [
-  rp('pr1', 'Generator', '100 KVA', 'Monthly', 18500, 'Rental 100 KVA generator', { Weekly: 5200 }),
+  rp('pr1', 'Generator', '100 KVA', 'Monthly', 18500, 'Rental 100 KVA generator'),
+  rp('pr1w', 'Generator', '100 KVA', 'Weekly', 5200, 'Rental 100 KVA generator, weekly'),
+  rp('pr1d', 'Generator', '100 KVA', 'Daily', 900, 'Rental 100 KVA generator, daily'),
   rp('pr3', 'Generator', '200 KVA', 'Monthly', 29500, 'Rental 200 KVA generator'),
   rp('pr4', 'Generator', '500 KVA', 'Monthly', 52000, 'Rental 500 KVA generator'),
+  rp('pr4w', 'Generator', '500 KVA', 'Weekly', 13500, 'Rental 500 KVA generator, weekly'),
   rp('pr5', 'Generator', '1000 KVA', 'Monthly', 98000, 'Rental 1000 KVA generator'),
   rp('pr6', 'Cable', '4 Core 185 mm', 'Monthly', 14, 'Rental power cable, per meter'),
   rp('pr7', 'Panel', 'ATS Panel', 'Monthly', 6800, 'Rental ATS panel'),
@@ -203,7 +206,7 @@ export function nextItemCode(...codeLists: string[][]): string {
 
 /* ------------------------------------------------------------------ heavy equipment (serialized asset) */
 export interface InsuranceEntry { amount: string; date: string; dueDate: string; account: string }
-export interface Movement { id: string; entryNo: string; date: string; type: string; from: string; to: string; reference: string; by: string }
+export interface Movement { id: string; entryNo: string; date: string; type: string; from: string; to: string; reference: string; by: string; /** filled automatically from the Delivery Order (5 Oct call) */ customer?: string; project?: string }
 export interface AuditEntry { when: string; title: string; detail?: string; by: string }
 export interface HeavyRec {
   id: string; code: string; assetId: string; name: string; classification: string; tracking: 'Serialized'; category: string; subCategory: string;
@@ -343,7 +346,7 @@ export const heavyCodes = () => {
 /* ------------------------------------------------------------------ location master (existing + new) */
 /** Location master (2 Oct call: Parent Location, Company and the address block removed; City kept). Stock figures are derived from location stock, never typed in. */
 export interface LocationRec {
-  id: string; code: string; name: string; shortName: string; type: string; supplierId?: string; city: string;
+  id: string; code: string; name: string; shortName: string; type: string; supplierId?: string; city?: string;
   inventoryAvailable: boolean; status: 'Active' | 'Inactive';
 }
 export const LOCATION_TYPES = ['Own Yard', 'Supplier-Held Location'];
@@ -359,6 +362,9 @@ export const qtyWithUnit = (qty: number, unit: string) => {
 
 /* ------------------------------------------------------------------ certificates, usage readings, stock verification, disposal */
 export const CERT_TYPES = ['Registration', 'Insurance', 'Inspection', 'Warranty', 'Other'];
+/** Certificate / document types are a master (5 Oct call: if another type comes up, it has to be addable). */
+export interface CertTypeRec { id: string; name: string; status: 'Active' | 'Inactive' }
+export const certTypeSeed: CertTypeRec[] = CERT_TYPES.map((n, i) => ({ id: `ct${i + 1}`, name: n, status: 'Active' as const }));
 export interface CertRec { id: string; assetId: string; type: string; reference: string; expiry: string; leadDays: number; file: string[]; history: AuditEntry[]; /** only used when certificate approval is switched on */ approval?: 'Pending Approval' | 'Approved' }
 /** Client-level settings for the Inventory POC (one record). Certificate approval is optional and off by default. */
 export interface InventorySettings { id: 'settings'; certApproval: boolean }

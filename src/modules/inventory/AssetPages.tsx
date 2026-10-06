@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Box, Button, FormControlLabel, Switch } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
@@ -16,7 +16,7 @@ import {
   ASSET_RESULTS, CERT_TYPES, COUNT_TYPES, DISPOSAL_METHODS, DISPOSAL_REASONS, NOW, READING_FREQUENCY_DAYS, READING_METHODS, TODAY, certSeed, settingsSeed, countSeed, currentLocation, disposalSeed, heavySeed, itemSeed, locationSeed, locationStockSeed, qtyWithUnit, readingSeed,
   type AssetCountLine, type CertRec, type InventorySettings, type CountSession, type CountType, type DisposalOutcome, type DisposalRec, type HeavyRec, type ItemRec, type LocationRec, type LocationStock, type ReadingRec,
 } from './data';
-import { FileList, aed, isBlank, num, requireFields, type Errors } from './shared';
+import { FileList, aed, isBlank, num, requireFields, type Errors, CertTypeSelect } from './shared';
 import dayjs from 'dayjs';
 
 const REQ_CERT = 'Compliance & Certificates (Asset-Level)';
@@ -103,7 +103,7 @@ function CertificateDialog({ open, assetId, rec, approvalOn, onClose }: { open: 
   return (
     <AppDialog open={open} title={rec ? `Edit ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
       <FormGrid>
-        <SelectInput label="Certificate / Document Type" required change="new" req={REQ_CERT} value={f.type} options={CERT_TYPES} onChange={set('type')} error={errors.type} hint="New document types can be added by an administrator" />
+        <CertTypeSelect value={f.type} onChange={set('type')} error={errors.type} req={REQ_CERT} hint="Create New adds a new document type to the master" />
         <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} />
         <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} />
         <NumberInput label="Reminder Lead Time (days before expiry)" required change="new" req={REQ_CERT} value={f.leadDays} onChange={set('leadDays')} error={errors.leadDays} hint="Configurable per certificate" />
@@ -325,7 +325,6 @@ export function CountForm() {
         actions={<><Button variant="text" onClick={() => nav('/inventory/stock-verification')}>Cancel</Button><Button variant="outlined" onClick={() => save(false)}>Save progress</Button><Button variant="contained" onClick={() => save(true)}>Complete Count</Button></>} />
       <Page sx={{ pt: 2 }}>
         <FormGrid cols={3}>
-          <TextInput label="Stock Count Session" change="new" req={REQ_PSV} value={existing ? existing.number : 'Auto-generated'} disabled hint="Header record, number generated when the session is saved" />
           <SelectInput label="Count Type" required change="new" req={REQ_PSV_ASSET} value={type} options={[...COUNT_TYPES]} disabled={!!existing}
             onChange={(v) => { setType(v as CountType); reload(v as CountType, head.location); }} hint={ASSET_COUNT_HINT} />
           <SelectInput label="Location" required change="new" req={REQ_PSV} value={head.location} options={locs.rows.filter((l) => l.status === 'Active').map((l) => l.name)} disabled={!!existing} error={errors.location}
@@ -531,14 +530,35 @@ export function DisposalList() {
   );
 }
 
+/** Decision support for a disposal (5 Oct call): income against expense of the asset, its current state and recent history, so "end of useful life" is not the only reason on the page. Income and expense come from Accounting; POC values are derived from the asset record. */
+export function AssetHistoryPanel({ asset }: { asset?: HeavyRec }) {
+  if (!asset) return <Panel title="Asset history and economics" change="new" req={REQ_DSP_FLOW} sx={{ mt: 2 }}><Text type="s5" color="theme.secondary.700">Select an asset to see its history, income and expenses.</Text></Panel>;
+  const income = Math.round(asset.assetValue * 0.28 * ((asset.utilization + 40) / 100));
+  const expense = Math.round(asset.assetValue * 0.07 + asset.idleDays * 40);
+  const ratio = expense ? Math.round((income / expense) * 100) / 100 : 0;
+  const repairs = asset.movements.filter((m) => m.type === 'Sent for Repair').length;
+  return (
+    <Panel title="Asset history and economics" change="new" req={REQ_DSP_FLOW} sx={{ mt: 2 }}>
+      <ValueGrid cols={4}>
+        <ValueField label="Income to date" value={aed(income)} /><ValueField label="Expenses to date" value={aed(expense)} />
+        <ValueField label="Income vs Expenses ratio" value={<StatusChip status={`${ratio}`} tone={ratio >= 1.5 ? 'green' : ratio >= 1 ? 'amber' : 'red'} />} />
+        <ValueField label="Net Book Value" value={aed(asset.nbv)} /><ValueField label="Utilization" value={`${asset.utilization}%`} /><ValueField label="Idle time" value={`${asset.idleDays} days`} /><ValueField label="Times sent for repair" value={String(repairs)} /><ValueField label="Current status" value={asset.assetStatus} />
+      </ValueGrid>
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1, mb: 1 }}>Income and expenses are derived from Accounting (POC values). Recent history of this asset:</Text>
+      <Timeline items={[...asset.audit].slice(0, 5).map((a) => ({ when: a.when, title: a.title, detail: a.detail, by: a.by, tone: 'blue' as const }))} />
+    </Panel>
+  );
+}
+
 export function DisposalForm() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
   const heavy = useHeavy();
   const disposals = useCollection<DisposalRec>('inventory.disposals', disposalSeed);
+  const [sp] = useSearchParams();
   const existing = id ? disposals.get(id) : undefined;
-  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? '', method: existing?.method ?? '', reason: existing?.reason ?? '', value: existing?.value ? String(existing.value) : '', docs: existing?.docs ?? [] });
+  const [f, setF] = useState<Record<string, any>>({ assetId: existing?.assetId ?? sp.get('asset') ?? '', method: existing?.method ?? '', reason: existing?.reason ?? '', value: existing?.value ? String(existing.value) : '', docs: existing?.docs ?? [] });
   const [errors, setErrors] = useState<Errors>({});
   if (id && (!existing || existing.status !== 'Draft')) return <NotFound back="Disposal Requests" to="/inventory/disposals" />;
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
@@ -566,13 +586,13 @@ export function DisposalForm() {
       <Page sx={{ pt: 2 }}>
         <Box sx={{ mb: 2 }}><LifecycleStepper steps={disposalSteps({ method: f.method })} current={0} /></Box>
         <FormGrid>
-          <TextInput label="Disposal Request Number" change="new" req={REQ_DSP} value={number} disabled hint="Auto-generated" />
           <SelectInput label="1. Asset" required change="new" req={REQ_DSP_FLOW} value={f.assetId} options={options} onChange={set('assetId')} error={errors.assetId} hint="Active owned assets without an open request" />
           <SelectInput label="2. Disposal Method" required change="new" req={REQ_DSP_FLOW} value={f.method} options={DISPOSAL_METHODS} onChange={set('method')} error={errors.method} hint="Scrap or Sale. Both end in an invoice, created after approval" />
           <SelectInput label="Disposal Reason" required change="new" req={REQ_DSP} value={f.reason} options={DISPOSAL_REASONS} onChange={set('reason')} error={errors.reason} />
           {f.method && <NumberInput label={sale ? 'Expected Sale Value (AED)' : 'Expected Scrap Value (AED)'} change="new" req={REQ_DSP} value={f.value} onChange={set('value')} error={errors.value} hint="Optional estimate for the approver; the actual amount is entered on the invoice" />}
           <FileInput label="3. Supporting Documents" change="new" req={REQ_DSP_FLOW} value={f.docs} onChange={set('docs')} multiple full />
         </FormGrid>
+        <AssetHistoryPanel asset={heavy.rows.find((h) => h.assetId === f.assetId)} />
         <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>4. Submit for approval. Once approved, the asset is inactivated and can no longer be used; an invoice is then created for the sale or scrap. Approval thresholds and roles to be confirmed with client.</Text>
       </Page>
     </>
@@ -614,6 +634,7 @@ export function DisposalView() {
     push({ outcome }, sale ? 'Sale invoiced' : 'Scrap invoiced', `Invoice ${outcome.invoiceRef} to ${outcome.buyer} for ${aed(o.saleValue)}; journal ${outcome.journalRef}`);
     setOutDlg(false);
     toast(`Invoice ${outcome.invoiceRef} created`);
+    nav(`/accounting/invoices/${outcome.invoiceRef}`);
   };
   const out = r.outcome;
   const gain = out ? (out.saleValue ?? 0) - out.nbvAtDisposal : 0;
@@ -643,7 +664,7 @@ export function DisposalView() {
         {out && (
           <Panel title={sale ? 'Sale Invoice' : 'Scrap Invoice'} change="new" req={REQ_DSP_INV} sx={{ mt: 3 }}>
             <ValueGrid cols={4}>
-              <ValueField label="Invoice Number" value={out.invoiceRef} />
+              <ValueField label="Invoice Number" value={<Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${out.invoiceRef}`)}>{out.invoiceRef}</Box>} />
               <ValueField label="Invoice Date" value={out.date} />
               <ValueField label="Invoice To" value={out.buyer} />
               <ValueField label="Invoice To Taken From" value={out.buyerSource} />
@@ -657,6 +678,7 @@ export function DisposalView() {
             <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>POC: the invoice and journal are reference records only. In the live system they are created in Finance & Accounting and linked here. VAT treatment and how the invoiced party is chosen are to be confirmed with client.</Text>
           </Panel>
         )}
+        <AssetHistoryPanel asset={asset} />
         <Panel title="Supporting Documents" change="new" req={REQ_DSP} sx={{ mt: 3 }}><FileList names={r.docs} /></Panel>
         <Panel title="History" sx={{ mt: 2 }}><Timeline items={[...r.log].reverse().map((l) => ({ when: l.when, title: l.title, detail: l.detail, by: l.by, tone: l.title === 'Approved' || l.title.endsWith('invoiced') || l.title.endsWith('completed') ? 'green' as const : l.title === 'Rejected' ? 'red' as const : 'blue' as const }))} /></Panel>
       </Page>

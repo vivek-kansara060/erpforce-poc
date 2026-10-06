@@ -12,6 +12,43 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 7:30 PM: Line item actions moved into a three-dots menu, bulk Cross Hire on Sales Order lines
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Line items showed actions as buttons in the row, and Cross Hire could only be raised one line at a time.
+*What we did.* Every line item table now has a three-dots menu per row holding all of that row's actions (Edit and Delete on editable tables; Deliver, Cross Hire, Release Hold, Replace, Return, Invoice and the next step on the Sales Order; Trace Details on the Delivery Order). Sales Order lines can be selected, and Bulk actions > Cross Hire raises one request per selected line with one preferred supplier and rate.
+*Be aware.* Bulk Cross Hire only accepts rental lines with no unit Ready for Hire and no open request.
+
+### 6 Oct, around 6:00 PM: Changes from the 5 Oct afternoon showcase call with Ajin (CRM and Inventory)
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** Inventory & Fixed Assets > Product Management > Item Category
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The showcase call listed changes to the CRM and Inventory screens.
+*What we did.* Opportunity: LPO removed, Entity first. Quotation: Opportunity picked by Title, Activity Type open. Sales Order: Quick Delivery hidden, Cross Hire moved into a row menu, Print under Actions. Every printout asks for a document template. Delivery Order: Project fetched, Transported By is a supplier with its cost, an Add FOC item button for free inventory or fixed asset lines, and an expired certificate warning that does not block. AMC: Project, value split, actual date from the job card, payment status, job card with general activities, print, signed copy upload and Generate Invoice. Field notes moved behind a ? icon. Inventory: separate Item Category and Item Sub-Category masters, a Brand master chosen on the asset, Entity on the asset, CapEx auto-fetched, certificate type as a master, Movement History filled automatically with Customer and Project, pricing as one record per frequency with Add Frequency, Trading renamed Fixed Asset Trading in pricing, City removed from Location, and Disposal Request raised from the asset with income vs expense history and a redirect to the invoice.
+*Be aware.* Fleet availability for transport is left for the fleet management call. Job card journals and the inventory ledger are shown for reference only, Accounting posts them. The transcript was cut off after the Physical Stock Verification item, so changes after that point are not included.
+
+### 6 Oct, around 1:00 PM: Cross Hire now follows the existing Request, Process, RFQ and Order flow with the five client stages on the order
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Process Cross Hire
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The POC raised a cross hire straight from a Sales Order with a typed supplier and rate, and the Process, Request for Quote and Orders screens were empty placeholders. The existing ERP works as Request, Process, RFQ with responses, then Order.
+*What we did.* Built the four screens as in the existing ERP. A request is raised from the Rental Order line, submitted, then turned into an RFQ or an Order (single or from the Process screen). The RFQ takes supplier responses, compares them and awards one, and the order is created from the award. The order keeps the existing fields (Hire Order Number, Cross Hire Type Inventory or Dropship, dates, Receiving and Billing status, Expenses) and adds the client's five stages: Received adds the unit to the Fixed Asset Register as Cross-Hired with no depreciation, Allocated happens through Delivery, Return to Us has the condition check, Return to Supplier has the dispute charge, and the profit rolls into the Sales Order.
+*Be aware.* The supplier and rate are decided at the RFQ award or the order, not on the request (existing ERP rule over the client document). Dropship skips Received and Return to Us. Approval is a single Submit in this POC. Decisions in `docs/crm-decisions.md`.
+
 ### 6 Oct, around 10:00 AM: Rental no longer holds Lead to Order, service lines come from Inventory service items, contract dates move to the main form, UOM is a dropdown
 **Where:** Rental > Rental (Leads, Opportunity, Quotations, Orders)
 **Where:** Inventory & Fixed Assets > Product Management > Items

@@ -6,7 +6,7 @@ import { AppDialog, useToast } from '@/components/Dialogs';
 import { DateInput, FileInput, FormGrid, NumberInput, SelectInput, TextInput } from '@/components/Form';
 import { cust, log, type LogItem } from './data';
 import { NEXT_STEP, applyExtension, fulfilLine, getLine, getOrder, raiseCrossHire } from './flow';
-import { R, TO_CONFIRM } from './shared';
+import { MasterSelect, R, TO_CONFIRM } from './shared';
 
 /** Expiry decision for the whole order (decision 2): Extend the SAME Sales Order, Early Termination, or Proceed to Return. */
 export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
@@ -42,28 +42,29 @@ export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: 
   );
 }
 
-export function CrossHireDialog({ open, onClose, soId, lineId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
+export function CrossHireDialog({ open, onClose, soId, lineId, lineIds }: { open: boolean; onClose: () => void; soId?: string; lineId?: string; lineIds?: string[] }) {
   const nav = useNavigate();
   const toast = useToast();
   const [sup, setSup] = useState('');
   const [rate, setRate] = useState('');
   const so = getOrder(soId);
-  const l = getLine(so, lineId);
-  if (!so || !l) return null;
+  const ids = lineIds?.length ? lineIds : lineId ? [lineId] : [];
+  const lines = ids.map((i) => getLine(so, i)).filter(Boolean) as NonNullable<ReturnType<typeof getLine>>[];
+  if (!so || !lines.length) return null;
   const list = suppliers.filter((s) => s.type === 'Cross-Hire Company');
+  const bulk = lines.length > 1;
   return (
-    <AppDialog open={open} title={`Cross-Hire request: ${l.group} ${l.category}`} onClose={onClose} confirmLabel="Raise Request" confirmDisabled={!sup || !Number(rate)}
-      onConfirm={() => { const s = list.find((x) => x.id === sup)!; raiseCrossHire(so.id, l.id, s.id, s.name, Number(rate)); toast('Cross-Hire request raised (stage 1 of 5: Request)'); onClose(); nav('/rental/cross-hire'); }}>
-      <Alert severity="warning" sx={{ mb: 2 }}>No owned {l.group} {l.category} unit is Ready for Hire, so this demand is sourced from a third-party supplier.</Alert>
+    <AppDialog open={open} title={bulk ? `Cross-Hire requests for ${lines.length} lines` : `Cross-Hire request: ${lines[0].group} ${lines[0].category}`} onClose={onClose} confirmLabel={bulk ? `Raise ${lines.length} Requests` : 'Raise Request'}
+      onConfirm={() => { const s = list.find((x) => x.id === sup); lines.forEach((l) => raiseCrossHire(so.id, l.id, s?.id, s?.name, Number(rate) || 0)); toast(bulk ? `${lines.length} Cross-Hire requests raised. Submit them, then create an RFQ or an Order (Process Cross Hire handles several at once)` : 'Cross-Hire request raised. Submit it, then create an RFQ or an Order'); onClose(); nav('/rental/cross-hire'); }}>
+      <Alert severity="warning" sx={{ mb: 2 }}>No owned unit is Ready for Hire for: {lines.map((l) => `${l.group} ${l.category} x ${l.qty}`).join(', ')}. {bulk ? 'One request is raised per line, all with the same preferred supplier and rate.' : 'This demand is sourced from a third-party supplier.'}</Alert>
       <FormGrid cols={1}>
-        <SelectInput label="Cross-Hire Supplier" required value={sup} options={list.map((s) => ({ value: s.id, label: s.name }))} onChange={setSup} hint="Suppliers of type Cross-Hire Company" />
-        <NumberInput label="Agreed Rate (per month, AED)" required value={rate} onChange={setRate} hint="Negotiated per transaction" />
+        <SelectInput label="Preferred Supplier (optional)" value={sup} options={list.map((s) => ({ value: s.id, label: s.name }))} onChange={setSup} hint="Suppliers of type Cross-Hire Company" />
+        <NumberInput label="Expected Rate (per month, AED, optional)" value={rate} onChange={setRate} hint="The RFQ award or the order fixes the agreed rate" />
       </FormGrid>
     </AppDialog>
   );
 }
 
-/** Per-line next step for the non-rental branches: Stock/Invoice, Charge/Invoice (particulars, hours or amount). */
 export function NextStepDialog({ open, onClose, soId, lineId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
   const toast = useToast();
   const so = getOrder(soId);
@@ -100,6 +101,19 @@ export function EmailDialog({ open, onClose, docNo, customerId, onSent }: { open
         <TextInput label="Subject" required value={f.subject} onChange={(v) => setF({ ...f, subject: v })} />
         <TextInput label="Body" multiline rows={5} value={f.body} onChange={(v) => setF({ ...f, body: v })} />
         <FileInput label="Attachments" multiple value={f.files} onChange={(v) => setF({ ...f, files: v })} hint="The document PDF is attached; add certificates or other files" />
+      </FormGrid>
+    </AppDialog>
+  );
+}
+
+/** Every printout asks which document template to use (5 Oct call: "I may have 10 formats for the sales order"). Templates are a master with Create New. */
+export function PrintDialog({ open, onClose, doc }: { open: boolean; onClose: () => void; doc: string }) {
+  const toast = useToast();
+  const [tpl, setTpl] = useState('');
+  return (
+    <AppDialog open={open} title={`Print ${doc}`} onClose={onClose} confirmLabel="Print" confirmDisabled={!tpl} onConfirm={() => { toast(`${doc} printed with the template "${tpl}"`, 'info'); onClose(); }}>
+      <FormGrid cols={1}>
+        <MasterSelect master="docTemplate" label="Document Template" required change="new" req={R.meet} value={tpl} onChange={setTpl} hint="Choose the format for this printout. Allocation Tag is never printed" />
       </FormGrid>
     </AppDialog>
   );

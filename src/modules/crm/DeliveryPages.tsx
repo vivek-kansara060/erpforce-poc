@@ -1,8 +1,11 @@
+import { PrintDialog } from './ActionDialogs';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import dayjs from 'dayjs';
-import { employees, locations } from '@/mock-data/masters';
+import { employees, locations, suppliers } from '@/mock-data/masters';
+import { useCollection } from '@/store/store';
+import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
@@ -12,10 +15,10 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { allLocations, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
-import { createDelivery, deliveredQty, getOrder } from './flow';
+import { allLocations, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
+import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { Note, R, aed, useDeliveries, useFleet, useOrders } from './shared';
+import { Note, R, RowMenu, aed, useDeliveries, useFleet, useOrders } from './shared';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
@@ -34,7 +37,7 @@ export function DeliveryList() {
           { key: 'number', label: 'ID' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'soNumber', label: 'Sale Order' },
           { key: 'status', label: 'Status', change: 'changed', req: R.del, render: (r) => <StatusChip status={r.status} /> },
           { key: 'salesperson', label: 'Salesperson', render: (r) => r.salesperson ?? getOrder(r.soId)?.owner ?? '-' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) },
-          { key: 'location', label: 'Location', render: (r) => r.location ?? 'Jebel Ali Main Yard' }, { key: 'supplierDoNo', label: "Supplier's DO No.", change: 'new', req: R.meet, render: (r) => r.supplierDoNo ?? '-' }, { key: 'company', label: 'Company', render: (r) => getOrder(r.soId)?.entity ?? '-' },
+          { key: 'location', label: 'Location', render: (r) => r.location ?? 'Jebel Ali Main Yard' }, { key: 'supplierDoNo', label: "Supplier's DO No.", change: 'new', req: R.meet, render: (r) => r.supplierDoNo ?? '-' }, { key: 'company', label: 'Entity', render: (r) => getOrder(r.soId)?.entity ?? '-' },
           { key: 'assets', label: 'Assigned Asset(s)', change: 'new', req: R.del, render: (r) => r.assetIds.map((h) => assetById(h)?.assetId).join(', ') || '-' },
           { key: 'type', label: 'Delivery Type', change: 'new', req: R.del }, { key: 'transport', label: 'Transport Type', change: 'new', req: R.del },
           { key: 'closed', label: 'DO Closure', change: 'new', req: R.rreturn, render: (r) => (r.closed ? 'Closed' : 'Open') },
@@ -45,15 +48,16 @@ export function DeliveryList() {
 
 /** Header fields of the existing Delivery Order form, in order. */
 const headerSpecs = (soOptions: { value: string; label: string }[]): Spec[] => [
+  { key: 'entity', label: 'Entity', type: 'readonly', change: 'changed', req: R.meet },
   { key: 'number', label: 'ID', hint: 'Auto-generated on save, editable', change: 'changed', req: R.del },
   { key: 'date', label: 'Date Time', type: 'datetime', required: true, change: 'changed', req: R.del, hint: 'Actual dispatch date and time, editable' },
   { key: 'customerName', label: 'Customer', type: 'readonly' },
   { key: 'location', label: 'Location', type: 'select', options: allLocations, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
   { key: 'supplierDoNo', label: "Supplier's Delivery Order No.", required: true, change: 'new', req: R.meet, show: (f) => supplierHeld(f.location), hint: 'The supplier delivers on your behalf and shares their own DO, recorded here for tracking' },
   { key: 'soId', label: 'Sales Order', type: 'select', options: soOptions, required: true },
+  { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R.meet, hint: 'Fetched from the Sales Order (Cost Centre / Project)' },
   { key: 'operationType', label: 'Operation Type', type: 'readonly' },
   { key: 'salesperson', label: 'Salesperson', type: 'readonly' },
-  { key: 'entity', label: 'Company', type: 'readonly' },
   { key: 'reference', label: 'Reference Number' },
   { key: 'status', label: 'Status', type: 'select', options: DELIVERY_STATUSES, required: true, change: 'changed', req: R.del, hint: 'Acknowledged added to Picked, Packed, Dispatched, Delivered' },
   { key: 'type', label: 'Delivery Type', type: 'select', options: DELIVERY_TYPES, required: true, change: 'new', req: R.del, hint: 'Full or Partial supports staged delivery against one order' },
@@ -62,8 +66,8 @@ const headerSpecs = (soOptions: { value: string; label: string }[]): Spec[] => [
 ];
 const transportSpecs: Spec[] = [
   { key: 'transport', label: 'Transport Type', type: 'select', options: TRANSPORT_TYPES, required: true, change: 'new', req: R.del },
-  { key: 'extCost', label: 'External Transport Cost (AED)', type: 'number', required: true, change: 'new', req: R.del, show: (f) => f.transport === 'External Transporter', hint: 'Posts to the same Order / Project cost centre' },
-  { key: 'transportedBy', label: 'Transported By' },
+  { key: 'extCost', label: 'External Transport Cost (AED)', type: 'number', required: true, change: 'new', req: R.del, show: (f) => f.transport === 'External Transporter', hint: 'Cost of the project. Posts to the same Order / Project cost centre' },
+  { key: 'transportedBy', label: 'Transported By', type: 'select', options: suppliers.filter((x) => x.type === 'Service Provider' && x.active).map((x) => x.name), required: true, change: 'changed', req: R.meet, show: (f) => f.transport === 'External Transporter', hint: 'The supplier (vendor) who transports, so the cost is paid back to them against the project' },
   { key: 'driver', label: 'Driver', type: 'select', options: employees.filter((e) => e.designation === 'Driver' || e.designation === 'Service Desk Dispatcher').map((e) => e.name) },
   { key: 'vehicleNumber', label: 'Vehicle Number' }, { key: 'iqama', label: 'Iqama / Resident Number', hint: '10 digits' }, { key: 'mobile', label: 'Mobile Number' },
 ];
@@ -93,22 +97,28 @@ export function DeliveryForm() {
   }));
   const [err, setErr] = useState<Record<string, string>>({});
   const [trace, setTrace] = useState<string | null>(null);
+  const [focLines, setFocLines] = useState<Line[]>([]);
+  const [focOpen, setFocOpen] = useState(false);
+  const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(f.soId);
-  const pending = pendingOf(so);
+  const pending = [...pendingOf(so), ...focLines];
   const set = (k: string, v: any) => setF((x) => (k === 'soId' ? { ...x, soId: v, items: autoItems(orders.get(v)), poNumber: orders.get(v)?.lpo ?? '', poDate: orders.get(v)?.lpoDate ?? '' } : { ...x, [k]: v }));
   const items = f.items as Record<string, DoItem>;
   const rentalSel = pending.filter((l) => l.activity === 'Rental' && (items[l.id]?.assetIds.length ?? 0) > 0);
   const supplierSite = supplierHeld(f.location);
   const late = rentalSel.length > 0 && f.rentalStart > f.date.slice(0, 10);
   const early = f.rentalStart < f.date.slice(0, 10);
-  const view = { ...f, customerName: so ? custName(so.customerId) : '', operationType: 'Delivery', salesperson: so?.owner ?? '', entity: so?.entity ?? '' };
+  const chosenAssets = Object.values(items).flatMap((it) => it.assetIds.map((h) => assetById(h)?.assetId));
+  const expiredCerts = certs.rows.filter((c) => chosenAssets.includes(c.assetId) && c.expiry < TODAY);
+  const view = { ...f, project: so?.costCentre ?? '', customerName: so ? custName(so.customerId) : '', operationType: 'Delivery', salesperson: so?.owner ?? '', entity: so?.entity ?? '' };
   const serviceLines = so ? so.lines.filter((l) => l.activity === 'Service') : [];
   const save = () => {
     const e: Record<string, string> = {};
     if (!so) e.soId = 'Select a confirmed Sales Order';
     const chosen = Object.values(items).filter((it) => it.qty > 0);
     if (so && !chosen.length) e.items = 'Select at least one item to deliver (use Trace Details for rental items)';
-    chosen.forEach((it) => { const l = so!.lines.find((x) => x.id === it.lineId)!; if (it.qty > remainingOf(l)) e.items = `Only ${remainingOf(l)} of ${l.item} remain`; });
+    chosen.forEach((it) => { const l = [...so!.lines, ...focLines].find((x) => x.id === it.lineId)!; if (it.qty > remainingOf(l)) e.items = `Only ${remainingOf(l)} of ${l.item} remain`; });
+    if (f.transport === 'External Transporter' && !String(f.transportedBy ?? '').trim()) e.transportedBy = 'Select the supplier who transports';
     if (f.transport === 'External Transporter' && !Number(f.extCost)) e.extCost = 'External Transport Cost is required for an external transporter';
     if (rentalSel.length) {
       if (!f.rentalStart) e.rentalStart = 'Rental Start Date is required';
@@ -120,7 +130,9 @@ export function DeliveryForm() {
     if (['Delivered', 'Acknowledged'].includes(f.status) && !f.signed && !f.manual.length) e.signature = 'A Delivery Order cannot be completed without a customer e-signature or an attached manual confirmation';
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const d = createDelivery({ soId: so!.id, date: f.date, type: f.type, items: chosen, description: f.description, transport: f.transport, extCost: Number(f.extCost) || 0, conditionFiles: f.conditionFiles,
+    const usedFoc = focLines.filter((l) => chosen.some((c) => c.lineId === l.id));
+    addFocLines(so!.id, usedFoc);
+    const d = createDelivery({ soId: so!.id, project: so!.costCentre, date: f.date, type: f.type, items: chosen, description: f.description, transport: f.transport, extCost: Number(f.extCost) || 0, conditionFiles: f.conditionFiles,
       signature: f.signed ? 'E-signature' : f.manual.length ? 'Manual attachment' : '', foc: f.foc, status: f.status, number: f.number || undefined, driver: f.driver, narration: f.narration, rentalStart: rentalSel.length ? f.rentalStart : f.date.slice(0, 10),
       startReason: late ? f.startReason : undefined, startBy: late ? f.startBy : undefined, waitingCharge: late ? Number(f.waitingCharge) || undefined : undefined, serviceLineIds: f.serviceLineIds,
       supplierDoNo: supplierSite ? f.supplierDoNo : undefined, reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: f.transportedBy, vehicleNumber: f.vehicleNumber, iqama: f.iqama, mobile: f.mobile, department: f.department, salesperson: so!.owner });
@@ -141,6 +153,8 @@ export function DeliveryForm() {
               <Section title="Items">
                 <ItemsGrid pending={pending} items={items} fleetRows={fleet.rows} onTrace={setTrace} onQty={(id, q) => set('items', { ...items, [id]: { ...(items[id] ?? { lineId: id, assetIds: [] }), qty: q } })} />
                 {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
+                {so && <Box sx={{ mt: 1 }}><Button size="small" variant="outlined" onClick={() => setFocOpen(true)}>+ Add FOC item</Button></Box>}
+                {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
                 <Note>Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.</Note>
               </Section>
               <Section title="Transportation"><SpecForm specs={transportSpecs} f={f} set={set} err={err} /></Section>
@@ -179,6 +193,7 @@ export function DeliveryForm() {
           { label: 'Promotion', content: <Text type="s4">No promotion applies to a Delivery Order.</Text> },
         ]} />
       </Page>
+      {focOpen && so && <FocDialog onClose={() => setFocOpen(false)} onAdd={(l) => { setFocLines((x) => [...x, l]); set('items', { ...items, [l.id]: { lineId: l.id, qty: serial(l) ? 0 : l.qty, assetIds: [] } }); setFocOpen(false); }} />}
       {traceLine && <TraceDialog line={traceLine} current={items[traceLine.id]} fleetRows={fleet.rows} onClose={() => setTrace(null)} onSave={(it) => { set('items', { ...items, [traceLine.id]: it }); setTrace(null); }} />}
     </>
   );
@@ -205,7 +220,7 @@ function ItemsGrid({ pending, items, fleetRows, onTrace, onQty }: { pending: Lin
                 <TableCell sx={{ fontSize: 13 }}>{l.qty}</TableCell><TableCell sx={{ fontSize: 13 }}>{onHand}</TableCell><TableCell sx={{ fontSize: 13 }}>0</TableCell><TableCell sx={{ fontSize: 13 }}>{remainingOf(l)}</TableCell>
                 <TableCell sx={{ fontSize: 13 }}>{rental ? (it?.qty ?? 0) : <input type="number" min={0} max={remainingOf(l)} value={it?.qty ?? 0} onChange={(e) => onQty(l.id, Number(e.target.value))} style={{ width: 70, padding: 4 }} />}</TableCell>
                 <TableCell sx={{ fontSize: 13 }}>{l.location ?? 'Jebel Ali Main Yard'}</TableCell><TableCell sx={{ fontSize: 13 }}>-</TableCell>
-                <TableCell sx={{ fontSize: 13 }}>{rental ? <Button size="small" variant={it?.assetIds.length ? 'outlined' : 'contained'} onClick={() => onTrace(l.id)}>{it?.assetIds.length ? it.assetIds.map((h) => assetById(h)?.assetId).join(', ') : 'Trace'}</Button> : <Text type="s5" color="theme.secondary.700">Allocated from stock</Text>}</TableCell>
+                <TableCell sx={{ fontSize: 13 }}><Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>{rental ? <Text type="s5">{it?.assetIds.length ? it.assetIds.map((h) => assetById(h)?.assetId).join(', ') : 'Not traced'}</Text> : <Text type="s5" color="theme.secondary.700">Allocated from stock</Text>}<RowMenu items={rental ? [{ label: it?.assetIds.length ? 'Edit Trace Details' : 'Trace Details', onClick: () => onTrace(l.id) }] : []} /></Box></TableCell>
               </TableRow>
             );
           })}
@@ -244,6 +259,7 @@ export function DeliveryView() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [printOpen, setPrintOpen] = useState(false);
   const dels = useDeliveries();
   const orders = useOrders();
   const d = dels.get(id);
@@ -263,7 +279,7 @@ export function DeliveryView() {
       <FormHeader crumbs={[{ label: 'Delivery Orders', to: '/crm/delivery-orders' }, { label: d.number }]} status={<StatusChip status={d.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${d.soId}`)}>View Sales Order</Button>
-          <Button variant="outlined" onClick={() => toast('Delivery Order print generated', 'info')}>Print</Button>
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Delivery Order" /><Button variant="outlined" onClick={() => setPrintOpen(true)}>Print</Button>
           {next && <Button variant="contained" onClick={advance}>Mark {next}</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
@@ -300,5 +316,34 @@ export function DeliveryView() {
         <SignaturePad onChange={(ok) => setSign({ open: true, ok })} />
       </AppDialog>
     </>
+  );
+}
+
+/** FOC extras added at delivery (5 Oct call): a normal inventory item or a fixed asset, zero price, still traced. */
+function FocDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (l: Line) => void }) {
+  const [kind, setKind] = useState<'Inventory item' | 'Fixed asset'>('Inventory item');
+  const [item, setItem] = useState('');
+  const [group, setGroup] = useState('Generator');
+  const [sub, setSub] = useState('');
+  const [qty, setQty] = useState('1');
+  const stock = liveItems().filter((i) => i.type !== 'Service' && i.tracking !== 'Serialized' && i.classification !== 'Rental');
+  const ok = Number(qty) > 0 && (kind === 'Inventory item' ? !!item : !!group && !!sub);
+  return (
+    <AppDialog open title="Add FOC item" onClose={onClose} confirmLabel="Add" confirmDisabled={!ok}
+      onConfirm={() => {
+        const m = stock.find((i) => i.name === item);
+        onAdd(kind === 'Inventory item'
+          ? mkLine({ activity: 'Trading', item, desc: item, unit: m?.unit ?? 'Nos', qty: Number(qty), price: 0, foc: true })
+          : mkLine({ activity: 'Fixed Asset Trading', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true }));
+      }}>
+      <Alert severity="info" sx={{ mb: 2 }}>Free of charge, no price. It is added to the Sales Order as a zero-priced line so what was asked and what was delivered stay traceable.</Alert>
+      <Box sx={{ display: 'grid', gap: 2 }}>
+        <SelectInput label="Type" value={kind} options={['Inventory item', 'Fixed asset']} onChange={(v) => setKind(v as 'Inventory item' | 'Fixed asset')} />
+        {kind === 'Inventory item'
+          ? <SelectInput label="Item" required value={item} options={stock.map((i) => i.name)} onChange={setItem} />
+          : <><SelectInput label="Category" required value={group} options={groupOptions()} onChange={(v) => { setGroup(v); setSub(''); }} /><SelectInput label="Subcategory" required value={sub} options={categoryOptions(group)} onChange={setSub} hint="Choose the exact asset with Trace after adding" /></>}
+        <TextInput label="Quantity" required type="number" value={qty} onChange={setQty} />
+      </Box>
+    </AppDialog>
   );
 }

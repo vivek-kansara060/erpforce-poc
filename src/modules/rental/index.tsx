@@ -2,7 +2,8 @@ import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import { Navigate } from 'react-router-dom';
 import type { ChangeEntry, ModuleDef } from '@/types';
 import { liveRoutes } from '@/modules/crm/reports';
-import { CrossHireList, CrossHireView, RenewalsPage, ReplacementForm, ReplacementList } from './RentalPages';
+import { RenewalsPage, ReplacementForm, ReplacementList } from './RentalPages';
+import { ChOrderList, ChOrderView, ChProcess, ChRequestForm, ChRequestList, ChRequestView, ChRfqList, ChRfqView } from './CrossHirePages';
 import { ExistingScreen } from './ExistingScreen';
 
 const M = 'Rental';
@@ -55,10 +56,10 @@ const mod: ModuleDef = {
     { path: 'agreements', element: ex('Agreements', ['ID', 'Date', 'Name', 'Type', 'Vendor', 'Valid Up To', 'Company', 'Currency', 'Status']) },
     { path: 'purchase-rfq', element: ex('Request for Quote', ['ID', 'Date', 'Vendor', 'Status']) },
     { path: 'purchase-orders', element: ex('Orders', ['ID', 'Date', 'Vendor', 'Receiving Status', 'Billing Status', 'Status']) },
-    { path: 'cross-hire', element: <CrossHireList /> }, { path: 'cross-hire/:id', element: <CrossHireView /> },
-    { path: 'cross-hire-process', element: ex('Process Cross Hire', ['Item', 'Rental Order ID', 'Request Quantity', 'On Hand', 'Available', 'Cross Hire Qty', 'Vendor', 'Cross Hire Type', 'Unit Rate']) },
-    { path: 'cross-hire-rfq', element: ex('Request for Quote', ['ID', 'Date', 'Vendors', 'Responses', 'Status']) },
-    { path: 'cross-hire-orders', element: ex('Orders', ['Hire Order Number', 'Rental Order(s)', 'Supplier', 'Cross Hire Type', 'Dates', 'Receiving Status', 'Status']) },
+    { path: 'cross-hire', element: <ChRequestList /> }, { path: 'cross-hire/add', element: <ChRequestForm /> }, { path: 'cross-hire/:id', element: <ChRequestView /> },
+    { path: 'cross-hire-process', element: <ChProcess /> },
+    { path: 'cross-hire-rfq', element: <ChRfqList /> }, { path: 'cross-hire-rfq/:id', element: <ChRfqView /> },
+    { path: 'cross-hire-orders', element: <ChOrderList /> }, { path: 'cross-hire-orders/:id', element: <ChOrderView /> },
     { path: 'settings', element: ex('Settings', ['Setting', 'Value']) },
     { path: 'billing-cycle', element: ex('Billing Cycle', ['Name', 'Count', 'Duration', 'Company', 'Invoicing Type', 'Max Schedule Count', 'Prorated']) },
     { path: 'terms', element: ex('Terms and Conditions', ['Name', 'Content', 'Status']) },
@@ -71,7 +72,10 @@ const mod: ModuleDef = {
     c('Rental Leads, Opportunity, Quotations, Orders', 'REMOVED', 'Separate rental leads, opportunities, quotations and orders', 'Not in the Rental module any more: the whole sales flow is managed in CRM, filtered by Activity Type = Rental. Rental keeps Replacement Orders, Renewals, Cross Hire and the operational screens', 'Meeting 5 Oct (rental module does not hold Lead, Opportunity, Quotation, Order)', '/crm/sales-orders'),
     c('Replacement Orders', 'EXISTING WITH CHANGE', 'Replacement Orders list and replacement quotation', 'Asset-in / asset-out transaction started from the order: same-category check, Cross-Hire fallback, reason, price adjustment, old asset to Under Maintenance, billing not paused', 'Rental > Replacement Processing', '/rental/replacements'),
     c('Renewals and Expiry', 'NEW', 'Upcoming Expiry report only', 'Notification, client confirmation, Extend the existing Sales Order, Early Termination or Proceed to Return, overdue fault attribution and escalation', 'Rental > Overdue On-Hire & Contract Expiry', '/rental/renewals'),
-    c('Cross Hire Requests', 'EXISTING WITH CHANGE', 'Cross hire requests, process, RFQ, orders, profitability', 'Five-stage lifecycle (Request, Received, Allocated, Returned to Us, Returned to Supplier), condition check, dispute charge, asset in the register without depreciation, profitability roll-up', 'Procurement > Cross-Hire Suppliers', '/rental/cross-hire'),
+    c('Cross Hire Requests', 'EXISTING WITH CHANGE', 'Requests list and form (Basic Details, Items, Classification, Attachment) raised from a Rental Order, statuses Draft, Pending, In Progress, Completed', 'Same list and form. Category and Subcategory come from the order line, a Raise Cross-Hire action on the Sales Order line creates the request, supplier and rate are optional here (the RFQ award or the order fixes them)', 'Procurement > Cross-Hire Suppliers; existing ERP Cross Hire', '/rental/cross-hire'),
+    c('Process Cross Hire', 'EXISTING WITH CHANGE', 'Grouped table by item with On Hand, Available, Cross Hire Quantity and Type, Create Order or RFQ', 'Same screen with live availability from the Fixed Asset Register; Create makes an Order or an RFQ from the selected requests', 'Existing ERP Cross Hire', '/rental/cross-hire-process'),
+    c('Cross Hire Request for Quote', 'EXISTING WITH CHANGE', 'RFQ with call for tender, supplier responses, Analyze and award', 'Same flow: Send, Add Response, compare (All, Low Price, Low MOQ, Lead time), Award with comment, Create Order from the awarded response. Suppliers limited to Cross-Hire Company', 'Existing ERP Cross Hire; Procurement > Cross-Hire Suppliers', '/rental/cross-hire-rfq'),
+    c('Cross Hire Orders', 'EXISTING WITH CHANGE', 'Hire Order list and form (Cross Hire Type Inventory or Dropship, Receive, Mark Shipped, Expenses, Receiving and Billing status)', 'Same order, with the five-stage lifecycle tracker (Request, Received, Allocated, Returned to Us, Returned to Supplier), condition check, supplier invoice reference, dispute charge, asset in the register without depreciation and a profitability panel rolled into the Sales Order. Dropship skips Receive and Return to Us', 'Procurement > Cross-Hire Suppliers', '/rental/cross-hire-orders'),
     c('Rental Reports and Dashboards', 'EXISTING WITH CHANGE', '12 rental reports, static dashboard', 'Existing reports kept and fed by live data, with Replacement History, Cross-Hire Frequency, Asset Ledger, Logistics Cost, Contract Expiry added. Fleet Status, Renewal and Overdue, Maintenance, Cross-Hire Cost vs Revenue dashboards', 'Rental > Reports and Dashboards', '/rental/reports'),
   ],
 };

@@ -1,3 +1,4 @@
+import { PrintDialog } from './ActionDialogs';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@mui/material';
@@ -21,6 +22,7 @@ export const blankFollow: FollowUp = { type: 'Call', date: '', remind: '', desc:
 
 /** Existing Lead form fields in the existing order; NEW items are marked. */
 const basic: Spec[] = [
+  { key: 'entity', label: 'Entity', type: 'master', master: 'entity', required: true, change: 'changed', req: R.meet, hint: 'Our own company, first field as agreed on the 5 Oct call' },
   { key: 'leadType', label: 'Type', type: 'radio', options: ['Company', 'Individual'], required: true, full: true },
   { key: 'number', label: 'ID', type: 'readonly' },
   { key: 'firstName', label: 'First Name', required: true, show: (f) => f.leadType === 'Individual' },
@@ -29,7 +31,6 @@ const basic: Spec[] = [
   { key: 'company', label: 'Lead Company', required: true, show: (f) => f.leadType !== 'Individual' },
   { key: 'phone', label: 'Phone No.', required: true },
   { key: 'email', label: 'Email ID', required: true },
-  { key: 'entity', label: 'Company', type: 'master', master: 'entity', required: true },
   { key: 'website', label: 'Website' },
   { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
   { key: 'activity', label: 'Activity Type', type: 'select', options: [...ACTIVITY_TYPES], required: true, change: 'new', req: R.meet, hint: 'One Activity Type per enquiry; it drives the Opportunity, Quotation and Sales Order' },
@@ -46,7 +47,6 @@ const basic: Spec[] = [
 ];
 const owner: Spec[] = [
   { key: 'owner', label: 'Salesperson', type: 'select', options: SALESPEOPLE, required: true },
-  { key: 'entity', label: 'Company', type: 'readonly' },
   { key: 'source', label: 'Source', type: 'master', master: 'leadSource', required: true },
   { key: 'industry', label: 'Industry', type: 'master', master: 'industry' },
   { key: 'annualRevenue', label: 'Annual Revenue', type: 'number' },
@@ -136,6 +136,7 @@ export function LeadView() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [printOpen, setPrintOpen] = useState(false);
   const leads = useLeads();
   const l = leads.get(id);
   const [conf, setConf] = useState(false);
@@ -152,7 +153,7 @@ export function LeadView() {
     <>
       <FormHeader crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: l.number }]} status={<StatusChip status={l.status} />}
         actions={<>
-          <MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`/crm/leads/${l.id}/edit`) }, { label: 'Duplicate', onClick: () => toast('Lead duplicated as a draft', 'info') }, { label: 'Delete', onClick: () => { leads.remove(l.id); nav('/crm/leads'); } }]} />
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Lead" /><MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`/crm/leads/${l.id}/edit`) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Duplicate', onClick: () => toast('Lead duplicated as a draft', 'info') }, { label: 'Delete', onClick: () => { leads.remove(l.id); nav('/crm/leads'); } }]} />
           <Button variant="outlined" onClick={() => setCom({ ...com, open: true })}>Communication Log</Button>
           {l.opportunityId ? <Button variant="contained" onClick={() => nav(`/crm/opportunities/${l.opportunityId}`)}>View Opportunity</Button> : <Button variant="contained" onClick={() => (l.activity ? setConf(true) : toast('An Activity Type is required before a Lead can be converted', 'error'))}>Convert</Button>}
         </>} />

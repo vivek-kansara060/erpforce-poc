@@ -141,7 +141,6 @@ export function ItemForm() {
       <FormGrid>
         <SelectInput label="Type" required value={f.type} options={existing ? ITEM_TYPES.filter((t) => t !== 'Heavy Equipment Fixed Asset') : ITEM_TYPES} error={errors.type}
           onChange={(v) => { if (v === 'Heavy Equipment Fixed Asset') { toast('Heavy Equipment Fixed Assets are created in the Heavy Equipment Fixed Asset form'); nav(`${HEAVY_PATH}/add`); return; } set('type')(v); }} />
-        <TextInput label="Item Code" change="new" req={REQ_ITEM} value={code} disabled hint="Auto-generated" />
         <TextInput label="SKU" required value={f.sku} onChange={set('sku')} error={errors.sku} />
         <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />
         <SelectInput label="Product Classification" required change="new" req={REQ_ITEM} value={f.classification}

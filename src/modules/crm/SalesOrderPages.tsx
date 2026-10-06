@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
-import { AppDialog, ConfirmDialog, MenuButton, SideDrawer, useToast } from '@/components/Dialogs';
+import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, SelectInput } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
@@ -14,11 +14,12 @@ import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
 import { NEXT_STEP, closeOrder, confirmOrder, days, deliveredQty, lineState, outstanding, releaseHold } from './flow';
-import { ActivityChip, R, aed, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes } from './shared';
+import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes } from './shared';
 import { ItemsTable } from './Items';
+import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
 import { Section, SpecForm, SpecView } from './FormKit';
-import { CrossHireDialog, EmailDialog, ExpiryDialog, NextStepDialog } from './ActionDialogs';
+import { CrossHireDialog, EmailDialog, ExpiryDialog, NextStepDialog, PrintDialog } from './ActionDialogs';
 
 const deliveryStatus = (so: SalesOrder) => {
   const rl = so.lines.filter((l) => l.activity === 'Rental' || l.activity === 'Trading' || l.activity === 'Fuel Trading');
@@ -44,7 +45,7 @@ export function SalesOrderList() {
           { key: 'activity', label: 'Activity Type', change: 'new', req: R.meet, render: (r) => <ActivityChip activity={r.activity} /> },
           { key: 'status', label: 'Sales Order Status', change: 'changed', req: R.so, render: (r) => <StatusChip status={r.status} /> },
           { key: 'delivery', label: 'Delivery Status', render: (r) => (deliveryStatus(r) === '-' ? '-' : <StatusChip status={deliveryStatus(r)} />) },
-          { key: 'owner', label: 'Salesperson' }, { key: 'entity', label: 'Company' },
+          { key: 'owner', label: 'Salesperson' }, { key: 'entity', label: 'Entity' },
           { key: 'end', label: 'Contract / LPO End', change: 'new', req: R.meet, render: (r) => r.contractEnd ?? r.amcEnd ?? r.lpoExpiry ?? '-' },
           { key: 'total', label: 'Total Amount', align: 'right', render: (r) => aed(docTotals(r.lines, r.discountPct, r.vatType).total) },
         ]}
@@ -143,17 +144,18 @@ export function SalesOrderView() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [printOpen, setPrintOpen] = useState(false);
   const orders = useOrders();
   const quotes = useQuotes();
   const opps = useOpps();
   const fleet = useFleet();
   const pricing = usePricing();
   const dels = useDeliveries();
-  const crossAll = useCrossHire();
+  const chReqAll = useChRequests();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
-  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step'; lineId?: string } | null>(null);
-  const [drawer, setDrawer] = useState(false);
+  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step'; lineId?: string; lineIds?: string[] } | null>(null);
+  const [sel, setSel] = useState<string[]>([]);
   const [mail, setMail] = useState(false);
   const [closeAsk, setCloseAsk] = useState(false);
   const compliance = useMemo(() => (so ? so.lines.flatMap((l) => outstanding(l).map((a) => assetById(a.assetId)).filter(Boolean).map((h) => ({ h: h!, certs: certs.rows.filter((c) => c.assetId === h!.assetId) }))) : []), [so, certs.rows, fleet.rows]);
@@ -161,30 +163,43 @@ export function SalesOrderView() {
   const myDels = dels.rows.filter((d) => d.soId === so.id);
   const rentalOut = so.lines.reduce((n, l) => n + outstanding(l).length, 0);
   const lpoLeft = so.lpoExpiry ? -days(so.lpoExpiry) : undefined;
-  const lineAction = (l: Line) => {
+  /** What the line is doing now. Actions are not shown here, they are in the three-dots menu of the row. */
+  const lineStatus = (l: Line) => {
+    if (l.activity === 'Rental') return <StatusChip status={lineState(l)} />;
+    if (l.activity === 'AMC') return <StatusChip status="AMC" tone="grey" />;
+    if (l.activity === 'Service' && l.billing === 'Recurring') return <Text type="s5">Billed with each rental cycle</Text>;
+    if (l.fulfilment) return <Box><StatusChip status={l.fulfilment} /><Text type="s5" color="theme.secondary.700">{l.fulfilmentRef}</Text></Box>;
+    return <StatusChip status="Pending" tone="amber" />;
+  };
+  const canCrossHire = (l: Line) => {
+    if (l.activity !== 'Rental' || l.qty - deliveredQty(l) <= 0) return false;
+    const av = availability(l.group, l.category, fleet.rows);
+    return av.owned.length === 0 && !chReqAll.rows.some((c) => c.lineId === l.id && (c.status === 'Pending' || c.status === 'In Progress'));
+  };
+  const lineActions = (l: Line): RowMenuItem[] => {
     if (l.activity === 'Rental') {
       const av = availability(l.group, l.category, fleet.rows);
       const remaining = l.qty - deliveredQty(l);
       const out = outstanding(l);
-      const ch = crossAll.rows.filter((c) => c.lineId === l.id);
-      return (
-        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-          <StatusChip status={lineState(l)} />
-          {remaining > 0 && av.owned.length + av.cross.length > 0 && <Button size="small" variant="contained" onClick={() => nav(`/crm/delivery-orders/add?so=${so.id}&line=${l.id}`)}>Deliver</Button>}
-          {remaining > 0 && av.owned.length === 0 && !ch.some((c) => c.stage < 2) && <Button size="small" variant="outlined" onClick={() => setDlg({ kind: 'cross', lineId: l.id })}>Cross-Hire</Button>}
-          {out.length > 0 && <MenuButton label="Manage" variant="outlined" items={[
-            ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (start invoicing today)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing started'); }) }] : []),
-            { label: 'Replace asset', onClick: () => nav(`/rental/replacements/add?so=${so.id}&line=${l.id}`) },
-            { label: 'Return asset', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}&line=${l.id}`) },
-          ]} />}
-        </Box>
-      );
+      return [
+        ...(remaining > 0 ? [{ label: 'Deliver', disabled: av.owned.length + av.cross.length === 0, onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&line=${l.id}`) }] : []),
+        ...(remaining > 0 ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => setDlg({ kind: 'cross', lineIds: [l.id] }) }] : []),
+        ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (start invoicing today)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing started'); }) }] : []),
+        ...(out.length > 0 ? [{ label: 'Replace asset', onClick: () => nav(`/rental/replacements/add?so=${so.id}&line=${l.id}`) }, { label: 'Return asset', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}&line=${l.id}`) }] : []),
+      ];
     }
-    if (l.activity === 'AMC') return <Button size="small" variant="outlined" onClick={() => nav(`/crm/amc-orders/${so.id}`)}>AMC Order</Button>;
-    if (l.activity === 'Service' && l.billing === 'Recurring') return <Text type="s5">Billed with each rental cycle</Text>;
-    if (l.fulfilment === 'Delivered') return <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}><StatusChip status="Delivered" /><Text type="s5">{l.fulfilmentRef}</Text><Button size="small" variant="contained" onClick={() => setDlg({ kind: 'step', lineId: l.id })}>Invoice</Button></Box>;
-    if (l.fulfilment) return <Box><StatusChip status={l.fulfilment} /><Text type="s5" color="theme.secondary.700">{l.fulfilmentRef}</Text></Box>;
-    return <Button size="small" variant="contained" onClick={() => setDlg({ kind: 'step', lineId: l.id })}>{(NEXT_STEP[l.activity] ?? NEXT_STEP.Service).label}</Button>;
+    if (l.activity === 'AMC') return [{ label: 'Open AMC Order', onClick: () => nav(`/crm/amc-orders/${so.id}`) }];
+    if (l.activity === 'Service' && l.billing === 'Recurring') return [];
+    if (l.fulfilment === 'Delivered') return [{ label: 'Invoice', onClick: () => setDlg({ kind: 'step', lineId: l.id }) }];
+    if (l.fulfilment) return [];
+    return [{ label: (NEXT_STEP[l.activity] ?? NEXT_STEP.Service).label, onClick: () => setDlg({ kind: 'step', lineId: l.id }) }];
+  };
+  const chosen = so.lines.filter((l) => sel.includes(l.id));
+  const bulkCross = () => {
+    if (!chosen.length) { toast('Select the equipment lines first', 'error'); return; }
+    const bad = chosen.filter((l) => !canCrossHire(l));
+    if (bad.length) { toast(`Cross Hire is not available for: ${bad.map((l) => l.item).join(', ')} (only rental lines with nothing Ready for Hire and no open request)`, 'error'); return; }
+    setDlg({ kind: 'cross', lineIds: chosen.map((l) => l.id) });
   };
   return (
     <>
@@ -193,9 +208,7 @@ export function SalesOrderView() {
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}/edit`)}>Edit</Button>
           {so.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(so); toast('Sales Order confirmed'); }}>Confirm</Button>}
           {so.activity === 'Rental' && rentalOut > 0 && <Button variant="outlined" onClick={() => setDlg({ kind: 'expiry' })}>Extend / Terminate</Button>}
-          <Button variant="outlined" onClick={() => setDrawer(true)}>Live DO</Button>
           <MenuButton label="Create" variant="outlined" items={[
-            { label: 'Quick Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&quick=1`) },
             { label: 'Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
             { label: 'Advance', onClick: () => { orders.update(so.id, { log: [log('Advance invoice raised', `Against ${so.number}`, 'blue'), ...so.log] }); toast('Advance invoice raised against the order'); } },
             { label: 'Invoice', disabled: !so.lines.some((l) => !['Rental', 'AMC'].includes(l.activity) && (!l.fulfilment || l.fulfilment === 'Delivered')), onClick: () => { const l = so.lines.find((x) => !['Rental', 'AMC'].includes(x.activity) && (!x.fulfilment || x.fulfilment === 'Delivered')); if (l) setDlg({ kind: 'step', lineId: l.id }); } },
@@ -203,7 +216,7 @@ export function SalesOrderView() {
             { label: 'Replacement', onClick: () => nav(`/rental/replacements/add?so=${so.id}`), disabled: rentalOut === 0 },
           ]} />
           <MenuButton label="View" variant="outlined" items={[{ label: 'Opportunity', onClick: () => nav(`/crm/opportunities/${so.oppId}`), disabled: !so.oppId }, { label: 'Quotation', onClick: () => nav(`/crm/quotations/${so.quoteId}`), disabled: !so.quoteId }, { label: 'Delivery Orders', onClick: () => nav('/crm/delivery-orders') }]} />
-          <MenuButton label="Actions" variant="outlined" items={[{ label: 'Send by Email', onClick: () => setMail(true) }, { label: 'Print', onClick: () => toast('Sales Order print generated as a formal agreement', 'info') }, { label: 'Close', disabled: ['Closed', 'Cancelled'].includes(so.status), onClick: () => setCloseAsk(true) }]} />
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Sales Order" /><MenuButton label="Actions" variant="outlined" items={[{ label: 'Send by Email', onClick: () => setMail(true) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Close', disabled: ['Closed', 'Cancelled'].includes(so.status), onClick: () => setCloseAsk(true) }]} />
         </>} />
       <Page sx={{ pt: 2 }}>
         {lpoLeft !== undefined && lpoLeft <= LPO_NOTICE_DAYS && !['Closed', 'Cancelled'].includes(so.status) && (
@@ -214,7 +227,11 @@ export function SalesOrderView() {
         <CommercialTabs kind="order" f={soForm(so, opps.get(so.oppId)?.number, quotes.get(so.quoteId)?.number)} set={() => undefined} locked
           belowGeneral={<Section title="Delivery"><SpecView specs={deliverySpecs} f={so} cols={4} /></Section>}
           items={<>
-            <ItemsTable lines={so.lines} header={so.activity} vatType={so.vatType} locked fleet={fleet.rows} pricing={pricing.rows} mode="order" extra={{ label: 'Status / Next step', render: lineAction }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+              <Text type="s5" color="theme.secondary.700">{sel.length ? `${sel.length} line(s) selected` : 'Select lines for a bulk action. Each line also has its own actions in the three-dots menu.'}</Text>
+              <MenuButton label="Bulk actions" variant="outlined" items={[{ label: 'Cross Hire (selected lines)', disabled: sel.length === 0, onClick: bulkCross }]} />
+            </Box>
+            <ItemsTable lines={so.lines} header={so.activity} vatType={so.vatType} locked fleet={fleet.rows} pricing={pricing.rows} mode="order" selectable selected={sel} onSelect={setSel} extra={{ label: 'Status', render: lineStatus }} rowActions={lineActions} />
             <Totals lines={so.lines} discountPct={so.discountPct} vatType={so.vatType} currency={so.currency} shipping={(so.shippingCost ?? 0) + (so.handlingCost ?? 0)} />
             <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>After the Sales Order: Rental, Deliver / Return. Trading and Fuel Trading, Stock / Invoice. Service, Charge / Invoice. AMC, Visit / Billing. Assets out: {rentalOut}. Logistics cost: {aed(so.logisticsCost)}.</Text>
           </>} />
@@ -236,17 +253,9 @@ export function SalesOrderView() {
           ]} />
         </Box>
       </Page>
-      <SideDrawer open={drawer} title={`Live Delivery Orders: ${so.number}`} onClose={() => setDrawer(false)}>
-        {myDels.length === 0 ? <Text type="s4">No deliveries yet.</Text> : myDels.map((d) => (
-          <Box key={d.id} sx={{ border: '1px solid #E0E0E0', borderRadius: '6px', p: 1.5, mb: 1, cursor: 'pointer' }} onClick={() => nav(`/crm/delivery-orders/${d.id}`)}>
-            <Text type="s3" weight="medium">{d.number} <StatusChip status={d.status} /></Text>
-            <Text type="s5">{d.date.replace('T', ' ')} - {d.assetIds.map((h) => assetById(h)?.assetId).join(', ')}</Text>
-          </Box>
-        ))}
-      </SideDrawer>
       <ConfirmDialog open={closeAsk} title="Close Sales Order" description="An order cannot be closed while any delivered asset is unreturned." confirmLabel="Close order" onClose={() => setCloseAsk(false)} onConfirm={() => { const r = closeOrder(so); toast(r.message, r.ok ? 'success' : 'error'); setCloseAsk(false); }} />
       <ExpiryDialog open={dlg?.kind === 'expiry'} onClose={() => setDlg(null)} soId={so.id} />
-      <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
+      <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => { setDlg(null); setSel([]); }} soId={so.id} lineIds={dlg?.lineIds} />
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
       <EmailDialog open={mail} onClose={() => setMail(false)} docNo={so.number} customerId={so.customerId} onSent={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
     </>
