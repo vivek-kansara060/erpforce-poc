@@ -505,7 +505,7 @@ export function HeavyView() {
               {isFleet && <ValueField label="Plate Number" value={r.plateNumber} change="new" req={REQ_FLEET} />}
               {isFleet && <ValueField label="Default Driver" value={r.defaultDriver || '-'} change="new" req={REQ_FLEET} />}
               {isFleet && <ValueField label="Fleet Status" change="new" req={REQ_FLEET} value={<StatusChip status={fleetNow ?? 'Free'} tone={fleetNow === 'Unavailable' ? 'grey' : undefined} />} />}
-              {isFleet && <ValueField label="Current Trip" change="new" req={REQ_FLEET} value={openTrip ? <Link to={`/rental/trips/${openTrip.id}`} style={{ color: '#0A6C3D', fontWeight: 500, textDecoration: 'none' }}>{openTrip.number} ({openTrip.kind}, {openTrip.docNumber})</Link> : '-'} />}
+              {isFleet && <ValueField label="Current Trip" change="new" req={REQ_FLEET} value={openTrip ? <Link to={`/crm/trips/${openTrip.id}`} style={{ color: '#0A6C3D', fontWeight: 500, textDecoration: 'none' }}>{openTrip.number} ({openTrip.kind}, {openTrip.docNumber})</Link> : '-'} />}
             </ValueGrid>
           </Box>
           <AssetTag assetId={r.assetId} name={r.name} />

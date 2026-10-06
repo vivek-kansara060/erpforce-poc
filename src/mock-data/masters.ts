@@ -156,6 +156,8 @@ export const employees: Employee[] = [
   { id: 'e15', code: 'EMP-0015', name: 'Imran Shah', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Sharjah', manager: 'Bilal Ahmed', joined: '2022-03-14', status: 'Active', nationality: 'Pakistan', mobile: '+971 55 418 2276' },
   { id: 'e16', code: 'EMP-0016', name: 'Joseph Mathew', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2023-01-09', status: 'Active', nationality: 'India', mobile: '+971 52 703 9154' },
   { id: 'e17', code: 'EMP-0017', name: 'Ravi Kumar', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2023-06-19', status: 'Active', nationality: 'India', mobile: '+971 56 129 6480' },
+  { id: 'e18', code: 'EMP-0018', name: 'Sameer Khan', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Abu Dhabi', manager: 'Bilal Ahmed', joined: '2023-09-04', status: 'Active', nationality: 'Pakistan', mobile: '+971 50 618 2204' },
+  { id: 'e19', code: 'EMP-0019', name: 'Arun Das', type: 'Expatriate', department: 'Operations', designation: 'Driver', branch: 'Dubai', manager: 'Bilal Ahmed', joined: '2024-02-12', status: 'Active', nationality: 'India', mobile: '+971 55 302 7716' },
 ];
 
 /** ERP user accounts (people with a login). An Employee location is assigned to these, not to the whole employee list (5 Oct call). */

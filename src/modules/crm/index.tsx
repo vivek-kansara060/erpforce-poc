@@ -10,6 +10,7 @@ import { ReturnForm, ReturnList, ReturnView } from './ReturnPages';
 import { liveRoutes } from './reports';
 import { AmcList, AmcView, JobCardPage } from './AmcPages';
 import { MasterView, MastersIndex } from './MasterPages';
+import { FleetBoard, TripList, TripView } from '@/modules/rental/FleetPages';
 
 const M = 'CRM / Sales';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -33,6 +34,10 @@ const mod: ModuleDef = {
         { label: 'Customer Returns', path: '/crm/customer-returns', change: 'changed' },
       ],
     },
+    { label: 'Fleet Management', change: 'new', children: [
+      { label: 'Fleet Availability', path: '/crm/fleet', change: 'new' },
+      { label: 'Trips', path: '/crm/trips', change: 'new' },
+    ] },
     { label: 'Settings', children: [{ label: 'Masters', path: '/crm/masters', change: 'new' }] },
     { label: 'Reports', path: '/crm/reports', change: 'new' },
   ],
@@ -45,10 +50,13 @@ const mod: ModuleDef = {
     { path: 'delivery-orders', element: <DeliveryList /> }, { path: 'delivery-orders/add', element: <DeliveryForm /> }, { path: 'delivery-orders/:id', element: <DeliveryView /> },
     { path: 'customer-returns', element: <ReturnList /> }, { path: 'customer-returns/add', element: <ReturnForm /> }, { path: 'customer-returns/:id', element: <ReturnView /> },
     { path: 'amc-orders', element: <AmcList /> }, { path: 'amc-orders/:id', element: <AmcView /> }, { path: 'job-cards/:id', element: <JobCardPage /> },
+    { path: 'fleet', element: <FleetBoard /> }, { path: 'trips', element: <TripList /> }, { path: 'trips/:id', element: <TripView /> },
     { path: 'masters', element: <MastersIndex /> }, { path: 'masters/:key', element: <MasterView /> },
     ...liveRoutes('crm'),
   ],
   changes: [
+    c('Fleet Availability', 'NEW', 'No screen for the own delivery vehicles (a placeholder fleet dashboard was removed on 2 Oct)', 'Dispatcher board of the own delivery vehicles with a status per vehicle (Free, Assigned, En Route, Stuck-Delayed, Unavailable), counts, filters by Vehicle Type and status, and the row actions of the trip. The same screen opens as a picker (Free vehicles only) from the Delivery Order, Return and Replacement', 'Rental > Delivery & Fleet Logistics; calls 17 Sep, 30 Sep, 5 Oct', '/crm/fleet'),
+    c('Trips', 'NEW', 'No trip record; a free-text driver and vehicle number on the Delivery Order', 'One trip per delivery, collection or replacement, by own vehicle or external transporter, with expenses (Salik, fuel, transporter charge) posted to the Sales Order logistics cost, a status log and Stuck-Delayed with a mandatory reason. Always created from its document. Design choice, not named in the requirement document', 'Rental > Delivery & Fleet Logistics; calls 18 Sep, 5 Oct', '/crm/trips'),
     c('Lead', 'EXISTING WITH CHANGE', 'Lead list and form (Basic Details, Address, Contact; Owner Details, Follow Up, Classifications), statuses, Communication Log, Convert', 'Form and flow kept as is. Added: Activity Type (single), Lost Reason, Next Follow-Up Date, Tags; Source, Lost Reason, Industry and Company are masters with "+ Add new". Duplicate check is not on the Lead (moved to the Opportunity)', 'CRM > Lead; meeting 22 Sep', '/crm/leads'),
     c('Opportunity', 'EXISTING WITH CHANGE', 'Opportunity form (Basic Details, Address, Contact, Promotion; Owner Detail, Classification, Items, Follow Up), stages, pipeline view, Make Quotation', 'Form and flow kept as is. Added: Opportunity Title, Project, Contact Person, Activity Type, Rating, Sales Forecast Value, Approval Required, LPO and Site, 4-field duplicate prompt, Category / Subcategory item rows with FOC and availability flag, stages Enquiry / Quoted / Won. Items are optional', 'CRM > Opportunity; meeting 22 Sep', '/crm/opportunities'),
     c('Quotation', 'EXISTING WITH CHANGE', 'Quotation form (General Details, Address and Contact, Shipping, Promotion), item table and item dialog, Discounts, totals summary, approval, revision, direct Send by Email', 'Form and flow kept as is. Company shown first as the Entity. Added: Activity Type, header Contract Type / Start / End and AMC fields, Document Template, Prepared By, VAT Type, Quotation Description, rental item columns (Category, Subcategory, pricing line, Frequency, Start, End, Periods), FOC, Allocation Tag, editable description, Send by Email dialog', 'CRM > Quotation; meetings 17, 18, 22, 25 Sep', '/crm/quotations'),

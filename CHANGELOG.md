@@ -12,6 +12,26 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 8:30 PM: The driver comes with the vehicle on a delivery, collection or replacement
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Rental > Replacement Orders
+**Where:** CRM / Sales > Fleet Management > Fleet Availability
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Drivers are linked to a vehicle by default (requirement document, Assigned Driver), but in the demo the only Free vehicle had no default driver, so the driver always had to be picked by hand, and the Driver field looked like a free choice.
+*What we did.* Picking a vehicle fills its Default Driver and mobile as read-only fields; a "Change driver" link opens the driver list for the rare swap (Service Desk reassignment). Every delivery vehicle now has a default driver: the Mitsubishi Fuso flatbed is paired with Sameer Khan (new driver), and a sixth vehicle was added, a MAN TGS low-bed (Dubai M 77042) with Arun Das (new driver), so two vehicles are Free on the board and every status still has an example.
+*Be aware.* A vehicle without a Default Driver still shows the driver list straight away.
+
+### 6 Oct, around 8:00 PM: Fleet Management moved from Rental to CRM
+**Where:** CRM / Sales > Fleet Management > Fleet Availability
+**Where:** CRM / Sales > Fleet Management > Trips
+**Type:** NEW
+
+*The problem.* Fleet Management (Fleet Availability, Trips) sat in the Rental sidebar. The team decided it belongs in CRM, next to the Delivery Orders and Customer Returns that create the trips.
+*What we did.* The Fleet Management group is now in the CRM sidebar (after Orders) at /crm/fleet and /crm/trips, and removed from Rental. Every trip and board link (Delivery Order, Customer Return, Sales Order Logistics tab, Heavy Equipment asset page) points to the new address; the old /rental/fleet and /rental/trips links redirect. The two Change Register rows moved to CRM.
+*Be aware.* This reverses requirement R12 of the fleet plan: on the 5 Oct morning call Ajin placed fleet management in the Rental module for the rental operations team. Decision taken by Anurag on 6 Oct.
+
 ### 6 Oct, around 7:30 PM: FOC visit on an AMC job card
 **Where:** CRM / Sales > Orders > AMC Orders
 **Where:** CRM / Sales > Orders > Sales Orders

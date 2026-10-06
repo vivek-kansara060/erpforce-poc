@@ -245,7 +245,7 @@ export function FleetBoard() {
               {r.status === 'Unavailable' && <Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{r.asset.status === 'Inactive' ? 'Inactive' : r.asset.assetStatus}</Text>}
             </Box>
           ) },
-          { key: 'trip', label: 'Current Trip', sortable: false, render: (r) => (r.trip ? <Box><Link to={`/rental/trips/${r.trip.id}`} style={RL}>{r.trip.number}</Link><Text type="s5" color="theme.secondary.700">{r.trip.kind}, {r.trip.docNumber}, {custName(r.trip.customerId)}{r.trip.site ? `, ${r.trip.site}` : ''}</Text></Box> : '-') },
+          { key: 'trip', label: 'Current Trip', sortable: false, render: (r) => (r.trip ? <Box><Link to={`/crm/trips/${r.trip.id}`} style={RL}>{r.trip.number}</Link><Text type="s5" color="theme.secondary.700">{r.trip.kind}, {r.trip.docNumber}, {custName(r.trip.customerId)}{r.trip.site ? `, ${r.trip.site}` : ''}</Text></Box> : '-') },
           { key: 'since', label: 'In Status Since', sortable: false },
           { key: 'location', label: 'Location' },
           { key: 'menu', label: '', sortable: false, width: 48, render: (r) => <span onClick={(e) => e.stopPropagation()}><RowMenu items={r.trip ? menu.items(r.trip) : [{ label: 'View Asset', onClick: () => nav(`${HEAVY}/${r.id}`) }, { label: 'View Trips', onClick: () => nav(`${HEAVY}/${r.id}`, { state: { tab: 'Trips' } }) }]} /></span> },
@@ -293,9 +293,12 @@ export function validateTransport(v: TransportValue): Record<string, string> {
 /** Own Fleet: pick a Free vehicle from Fleet Availability and the driver and mobile fill in. External Transporter: the supplier and its cost. */
 export function TransportSection({ value, onChange, errors = {}, hint }: { value: TransportValue; onChange: (v: TransportValue) => void; errors?: Record<string, string>; hint?: ReactNode }) {
   const [picker, setPicker] = useState(false);
+  const [swap, setSwap] = useState(false);
   const fleet = useFleet();
   const set = (p: Partial<TransportValue>) => onChange({ ...value, ...p });
   const v = fleet.get(value.vehicleId);
+  // The driver comes with the vehicle (its Default Driver); the dispatcher changes it only when needed.
+  const linked = !!v?.defaultDriver && !swap;
   const own = value.transport === 'Own Fleet';
   return (
     <>
@@ -309,8 +312,15 @@ export function TransportSection({ value, onChange, errors = {}, hint }: { value
               <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => setPicker(true)}>{v ? 'Change vehicle' : 'Select from fleet'}</Button>
             </Box>
             <Box />
-            <SelectInput label="Driver" change="changed" req={R.fleet} value={value.driver} options={driverOptions()} onChange={(d) => set({ driver: d, mobile: mobileOf(d) })} hint="Defaults to the vehicle's Default Driver, the dispatcher can change it" />
-            <TextInput label="Mobile Number" value={value.mobile} onChange={(m) => set({ mobile: m })} hint="Filled from the employee when the driver is picked" />
+            {linked ? (
+              <Box>
+                <TextInput label="Driver" change="changed" req={R.fleet} value={value.driver} disabled hint="The driver assigned to this vehicle (its Default Driver)" />
+                <Button size="small" variant="text" sx={{ mt: 0.5 }} onClick={() => setSwap(true)}>Change driver</Button>
+              </Box>
+            ) : (
+              <SelectInput label="Driver" change="changed" req={R.fleet} value={value.driver} options={driverOptions()} onChange={(d) => set({ driver: d, mobile: mobileOf(d) })} hint={v?.defaultDriver ? `Default Driver of this vehicle is ${v.defaultDriver}; pick another only when needed` : 'This vehicle has no Default Driver; pick the driver for this trip'} />
+            )}
+            <TextInput label="Mobile Number" value={value.mobile} disabled={linked} onChange={(m) => set({ mobile: m })} hint="Filled from the employee record of the driver" />
           </>
         ) : (
           <>
@@ -321,7 +331,7 @@ export function TransportSection({ value, onChange, errors = {}, hint }: { value
       </FormGrid>
       {hint && <Box sx={{ mt: 1 }}>{hint}</Box>}
       <FleetPickerDialog open={picker} onClose={() => setPicker(false)} onExternal={() => set({ transport: 'External Transporter', vehicleId: '', driver: '', mobile: '' })}
-        onPick={(a) => { const d = a.defaultDriver ?? ''; set({ vehicleId: a.id, driver: d, mobile: mobileOf(d) }); }} />
+        onPick={(a) => { const d = a.defaultDriver ?? ''; setSwap(false); set({ vehicleId: a.id, driver: d, mobile: mobileOf(d) }); }} />
     </>
   );
 }
@@ -341,7 +351,7 @@ export function TripList() {
   return (
     <Page>
       <PageTitle title="Trips" subtitle="Every delivery, collection and replacement movement, by own vehicle or external transporter. A trip is created from its document, never on its own" change="new" req={R.trip} />
-      <DataTable rows={rows} searchPlaceholder="Search trips..." filter={{ key: 'status', options: [...TRIP_STATUSES] }} onRowClick={(r) => nav(`/rental/trips/${r.id}`)}
+      <DataTable rows={rows} searchPlaceholder="Search trips..." filter={{ key: 'status', options: [...TRIP_STATUSES] }} onRowClick={(r) => nav(`/crm/trips/${r.id}`)}
         toolbarRight={<>
           <Select size="small" displayEmpty value={kind} onChange={(e) => setKind(e.target.value)} sx={compact} renderValue={(v) => (v ? `Kind: ${v}` : 'Kind: All')}>
             <MenuItem value="">All kinds</MenuItem>{['Delivery', 'Collection', 'Replacement'].map((k) => <MenuItem key={k} value={k}>{k}</MenuItem>)}
@@ -368,13 +378,13 @@ export function TripView() {
   const trips = useTrips();
   const menu = useTripMenu();
   const t = trips.get(id);
-  if (!t) return <Page><PageTitle title="Trip not found" right={<Button variant="outlined" onClick={() => nav('/rental/trips')}>Back</Button>} /></Page>;
+  if (!t) return <Page><PageTitle title="Trip not found" right={<Button variant="outlined" onClick={() => nav('/crm/trips')}>Back</Button>} /></Page>;
   const own = t.transport === 'Own Fleet';
   const vehicle = t.vehicleId ? assetById(t.vehicleId) : undefined;
   const items = menu.items(t);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Trips', to: '/rental/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
+      <FormHeader crumbs={[{ label: 'Trips', to: '/crm/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
         <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${t.soId}`)}>View Sales Order</Button>
         <Button variant="outlined" onClick={() => nav(docPath(t))}>View {t.kind === 'Delivery' ? 'Delivery Order' : t.kind === 'Collection' ? 'Return' : 'Replacements'}</Button>
         {items.length > 0 && <MenuButton label="Actions" items={items.map((i) => ({ label: i.label, onClick: i.onClick }))} variant="contained" />}
@@ -414,7 +424,7 @@ export function TripsTable({ rows, empty = 'No trips yet', hideVehicle }: { rows
   const nav = useNavigate();
   const data = [...rows].sort((a, b) => b.date.localeCompare(a.date)).map((t) => ({ ...t, vehicleOrTransporter: tripVehicle(t), customer: custName(t.customerId), total: tripTotal(t) }));
   return (
-    <DataTable hideToolbar rows={data} emptyText={empty} onRowClick={(r) => nav(`/rental/trips/${r.id}`)}
+    <DataTable hideToolbar rows={data} emptyText={empty} onRowClick={(r) => nav(`/crm/trips/${r.id}`)}
       columns={[
         { key: 'number', label: 'Trip No.' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'kind', label: 'Kind' }, { key: 'docNumber', label: 'Document' },
         { key: 'customer', label: 'Customer' }, { key: 'site', label: 'Site' },
