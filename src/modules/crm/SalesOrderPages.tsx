@@ -13,12 +13,14 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { CROSS_STAGES, costForSo, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
-import { NEXT_STEP, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
+import { NEXT_STEP, crossHireGap, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
 import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
 import { useInvoices, usePayments } from '@/modules/accounting/shared';
 import { ActivityChip, R, aed, useChRequests, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
 import { TripsTable } from '@/modules/rental/FleetPages';
+import { schedulesOf } from '@/modules/accounting/schedule';
+import { cycleOf } from '@/modules/accounting/billing';
 import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
@@ -110,7 +112,7 @@ export function SalesOrderForm() {
 
 const FREQ_TEXT = (l: Line) => (l.frequency ? l.frequency.toLowerCase() : 'period');
 function Ledger({ so }: { so: SalesOrder }) {
-  const invs = useInvoices().rows.filter((i) => i.soId === so.id && i.isRental);
+  const invs = useInvoices().rows.filter((i) => i.isRental && (i.soId === so.id || !!i.soIds?.includes(so.id)));
   const next = nextRentalPeriod(so.id);
   const lineTot = (l: { qty: number; rate: number; discountPct: number; vatPct: number }) => accLineGross(l as any) + accLineVat(l as any);
   const rows = so.lines.filter((l) => l.activity === 'Rental').flatMap((l) => l.assigned.map((a) => {
@@ -160,6 +162,27 @@ function OrderInvoices({ so }: { so: SalesOrder }) {
         <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Advances</Text>
         <DataTable hideToolbar rows={pays} onRowClick={(p) => nav(`/accounting/payment-entries/${p.id}`)} columns={[{ key: 'number', label: 'Collection' }, { key: 'date', label: 'Date' }, { key: 'amount', label: 'Amount', align: 'right', render: (p) => aed(p.amount) }, { key: 'left', label: 'Not yet applied', align: 'right', render: (p) => aed(advanceLeft(p)) }, { key: 'approval', label: 'Status', render: (p) => <StatusChip status={p.approval} /> }]} />
       </>}
+    </Box>
+  );
+}
+
+/** Scheduled Invoices (existing ERP rental order tab): the periods the Billing Cycle gives this order, with the invoice once it is raised. */
+function OrderSchedules({ so }: { so: SalesOrder }) {
+  const nav = useNavigate();
+  useInvoices();
+  const rows = schedulesOf(so.id);
+  const cycle = cycleOf(so.billingCycle);
+  const mode = so.invoicingType ?? cycle.invoicingType;
+  return (
+    <Box>
+      <Text type="s4" sx={{ mb: 1 }}>Billing Cycle {cycle.name} ({cycle.count} {cycle.duration}), Invoicing Type {mode}. {rows.some((r) => r.status !== 'processed') ? '' : 'Nothing is scheduled yet: the schedule starts with the first delivery.'}</Text>
+      <DataTable hideToolbar rows={rows} pageSize={20} emptyText="No asset has been delivered yet, so no invoice is scheduled" columns={[
+        { key: 'n', label: 'Schedule ID', render: (r) => `SCH-${rows.indexOf(r) + 1}` }, { key: 'kind', label: 'Type', render: (r) => <StatusChip status={r.kind === 'initial' ? 'Initial' : 'Recurring'} tone={r.kind === 'initial' ? 'blue' : 'amber'} /> },
+        { key: 'period', label: 'Period', render: (r) => `${r.from} to ${r.to}` }, { key: 'days', label: 'Days', align: 'right' }, { key: 'invoiceDate', label: 'Invoice Date' },
+        { key: 'amount', label: 'Amount (incl. VAT)', align: 'right', render: (r) => (r.amount ? aed(r.amount) : '-') }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} tone={r.status === 'processed' ? 'green' : r.status === 'failed' ? 'red' : 'amber'} /> },
+        { key: 'inv', label: 'Invoice', render: (r) => (r.invoiceId ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${r.invoiceId}`)}>{r.invoiceNumber}</Box> : r.error ?? '-') },
+      ]} />
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Invoices are raised on their invoice date: by the system for an Automatic order, and by Submit in Rental, Invoicing Rental Order for a Manual order. Up to {cycle.maxSchedule ?? 12} periods are scheduled ahead. A period is billed per asset from its own Rental Start to its off-hire day.</Text>
     </Box>
   );
 }
@@ -240,11 +263,7 @@ export function SalesOrderView() {
   };
   /** Cross Hire exists only on a Rental order (7 Oct): no option, action or tab for any other Activity Type. */
   const isRental = so.activity === 'Rental';
-  const canCrossHire = (l: Line) => {
-    if (!isRental || l.activity !== 'Rental' || l.qty - deliveredQty(l) <= 0) return false;
-    const av = availability(l.group, l.category, fleet.rows);
-    return av.owned.length === 0 && !chReqAll.rows.some((c) => c.lineId === l.id && (c.status === 'Pending' || c.status === 'In Progress'));
-  };
+  const canCrossHire = (l: Line) => isRental && l.activity === 'Rental' && l.qty - deliveredQty(l) > 0 && crossHireGap(so, l) > 0;
   const lineActions = (l: Line): RowMenuItem[] => {
     if (l.activity === 'Rental') {
       const av = availability(l.group, l.category, fleet.rows);
@@ -267,7 +286,7 @@ export function SalesOrderView() {
   const bulkCross = () => {
     if (!chosen.length) { toast('Select the equipment lines first', 'error'); return; }
     const bad = chosen.filter((l) => !canCrossHire(l));
-    if (bad.length) { toast(`Cross Hire is not available for: ${bad.map((l) => l.item).join(', ')} (only rental lines with nothing Ready for Hire and no open request)`, 'error'); return; }
+    if (bad.length) { toast(`Cross Hire is not available for: ${bad.map((l) => l.item).join(', ')} (only rental lines with units not covered by a Ready for Hire unit or an open request, RFQ or order)`, 'error'); return; }
     setDlg({ kind: 'cross', lineIds: chosen.map((l) => l.id) });
   };
   return (
@@ -307,6 +326,7 @@ export function SalesOrderView() {
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
             { label: 'Traceability', change: 'new', req: R.meet, hidden: so.activity !== 'Rental', content: <Traceability so={so} quoteNo={quotes.get(so.quoteId)?.number} /> },
+            { label: 'Scheduled Invoices', change: 'new', req: R.ledger, hidden: so.activity !== 'Rental', content: <OrderSchedules so={so} /> },
             { label: 'Asset Ledger', change: 'changed', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
             { label: 'AMC Visits', change: 'new', req: R.meet, hidden: so.activity !== 'AMC', content: (
               <DataTable hideToolbar rows={(so.visitPlan ?? []).map((v, i) => ({ id: String(i), i, ...v }))} columns={[

@@ -7,7 +7,8 @@ import { ChOrderList, ChOrderView, ChProcess, ChRequestForm, ChRequestList, ChRe
 import { ChGrnForm, ChGrnList, ChGrnView, ChOrderForm } from './CrossHireOrderPages';
 import { ChResponseForm, ChResponseList, ChResponseView, ChRfqAnalyze, ChRfqForm, ChRfqList, ChRfqView } from './CrossHireRfqPages';
 import { ExistingScreen } from './ExistingScreen';
-import { PreviousJobs, RentalInvoicingList } from './InvoicingPages';
+import { PreviousJobView, PreviousJobs, RentalInvoicingList } from './InvoicingPages';
+import { BillingCycleForm, BillingCycleList, BillingCycleView } from './BillingCyclePages';
 
 const M = 'Rental';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -43,7 +44,7 @@ const mod: ModuleDef = {
       { label: 'Orders', path: '/rental/cross-hire-orders', change: 'changed' },
     ] },
     { label: 'Settings', children: [
-      { label: 'Settings', path: '/rental/settings' }, { label: 'Billing Cycle', path: '/rental/billing-cycle' }, { label: 'Terms and Conditions', path: '/rental/terms' },
+      { label: 'Settings', path: '/rental/settings' }, { label: 'Billing Cycle', path: '/rental/billing-cycle', change: 'changed' }, { label: 'Terms and Conditions', path: '/rental/terms' },
       { label: 'Forms', path: '/rental/forms' }, { label: 'Template Editor', path: '/rental/template-editor' },
     ] },
     { label: 'Reports', path: '/rental/reports', change: 'new' },
@@ -55,7 +56,7 @@ const mod: ModuleDef = {
     { path: 'categories', element: ex('Category', ['Parent', 'Category Name', 'Brand', 'Description', 'Status'], { link: '/inventory/categories', linkLabel: 'Open Item Category in Inventory', note: 'One Category / Subcategory master is shared by Inventory, CRM and Rental.' }) },
     { path: 'demand-planning', element: ex('Demand Planning', ['Item', 'Demand', 'On Hand', 'On Order', 'Available', 'Committed', 'PR', 'Required']) },
     { path: 'invoicing', element: <RentalInvoicingList /> },
-    { path: 'previous-jobs', element: <PreviousJobs /> },
+    { path: 'previous-jobs', element: <PreviousJobs /> }, { path: 'previous-jobs/:id', element: <PreviousJobView /> },
     { path: 'replacements', element: <ReplacementList /> }, { path: 'replacements/add', element: <ReplacementForm /> },
     { path: 'renewals', element: <RenewalsPage /> },
     // Fleet Management moved to CRM (6 Oct); old links keep working.
@@ -70,7 +71,7 @@ const mod: ModuleDef = {
     { path: 'cross-hire-orders', element: <ChOrderList /> }, { path: 'cross-hire-orders/add', element: <ChOrderForm /> }, { path: 'cross-hire-orders/:id', element: <ChOrderView /> }, { path: 'cross-hire-orders/:id/edit', element: <ChOrderForm /> },
     { path: 'cross-hire-orders/:id/grns', element: <ChGrnList /> }, { path: 'cross-hire-orders/:id/grns/add', element: <ChGrnForm /> }, { path: 'cross-hire-orders/:id/grns/:gid', element: <ChGrnView /> }, { path: 'cross-hire-orders/:id/grns/:gid/edit', element: <ChGrnForm /> },
     { path: 'settings', element: ex('Settings', ['Setting', 'Value']) },
-    { path: 'billing-cycle', element: ex('Billing Cycle', ['Name', 'Count', 'Duration', 'Company', 'Invoicing Type', 'Max Schedule Count', 'Prorated']) },
+    { path: 'billing-cycle', element: <BillingCycleList /> }, { path: 'billing-cycle/add', element: <BillingCycleForm /> }, { path: 'billing-cycle/:id', element: <BillingCycleView /> }, { path: 'billing-cycle/:id/edit', element: <BillingCycleForm /> },
     { path: 'terms', element: ex('Terms and Conditions', ['Name', 'Content', 'Status']) },
     { path: 'forms', element: ex('Forms', ['Form', 'Module', 'Status']) },
     { path: 'template-editor', element: ex('Template Editor', ['Template', 'Type', 'Status']) },
@@ -89,6 +90,8 @@ const mod: ModuleDef = {
     c('Process Cross Hire', 'EXISTING WITH CHANGE', 'Grouped table by item with On Hand, Available, Cross Hire Quantity and Type, Create Order or RFQ', 'Same screen with live availability from the Fixed Asset Register; Create makes an Order or an RFQ from the selected requests', 'Existing ERP Cross Hire', '/rental/cross-hire-process'),
     c('Cross Hire Request for Quote', 'EXISTING WITH CHANGE', 'RFQ with call for tender, supplier responses, Analyze and award', 'Same flow: Send, Add Response, compare (All, Low Price, Low MOQ, Lead time), Award with comment, Create Order from the awarded response. Suppliers limited to Cross-Hire Company', 'Existing ERP Cross Hire; Procurement > Cross-Hire Suppliers', '/rental/cross-hire-rfq'),
     c('Cross Hire Orders', 'EXISTING WITH CHANGE', 'Hire Order list and form (Cross Hire Type Inventory or Dropship, Receive, Mark Shipped, Expenses, Receiving and Billing status)', 'Same order, with the five-stage lifecycle tracker (Request, Received, Allocated, Returned to Us, Returned to Supplier), condition check, supplier invoice reference, dispute charge, asset in the register without depreciation and a profitability panel rolled into the Sales Order. Dropship skips Receive and Return to Us', 'Procurement > Cross-Hire Suppliers', '/rental/cross-hire-orders'),
+    c('Billing Cycle and invoice schedules (7 Oct)', 'EXISTING WITH CHANGE', 'Billing Cycle master (Name, Count, Duration, Company, Invoicing Type, Max Schedule Count, Prorated) and a Scheduled Invoices tab on the rental order', 'Billing Cycle master rebuilt with Invoice Start Date (delivery, order creation, custom), Initial Invoicing and Prorated; the Sales Order has a Scheduled Invoices tab with the schedule built from its cycle (Initial and Recurring, Pending, Failed, Processed)', 'Existing ERP Rental > Settings > Billing Cycle and rental order Scheduled Invoices', '/rental/billing-cycle'),
+    c('Invoicing Rental Order, Accumulate and Previous Jobs (7 Oct)', 'EXISTING WITH CHANGE', 'One row per due schedule with Next Invoice Date, Subsidiary and Customer filters, Submit, Accumulate Orders; Previous Jobs with a job view and Retry; Automatic orders invoiced by the system', 'Same screens on live data: the list is per due schedule with the filters, Submit raises one invoice per order and period as a job, Accumulate Orders puts one customer\'s schedules on one invoice, Previous Jobs opens into one line per order with status, invoice link and Retry, and the scheduler raises Automatic invoices as a System job', 'Existing ERP Rental > Invoicing', '/rental/invoicing'),
     c('Cross Hire Orders: approval and Goods Receipt (7 Oct)', 'EXISTING WITH CHANGE', 'Order list, form (Basic Details, Address & Contact), approval (Submit, Quick Approval, Accept, Reject, Re-Submit), Receive creates a separate GRN form with trace details and Validate, then Bill', 'Brought back to the existing flow: Order, Approval, Receive (Goods Receipt form, Trace Details, Validate), Bill. Validate is the stock-in: the traced unit goes on the Fixed Asset Register as Cross-Hired. The five-stage lifecycle continues after that', 'Existing ERP Cross Hire Orders and GRN; Rental > Cross-Hire (Rental Side)', '/rental/cross-hire-orders'),
     c('Cross Hire Request for Quote: existing layout (7 Oct)', 'EXISTING WITH CHANGE', 'RFQ list, form (Basic Details, Address & Contact, Rental Period, Items, Call For Tender), view with Analyze & Award, separate Responses pages, Create Order', 'Rebuilt to the existing layout: list with Edit, Duplicate, Delete; form and view in two tabs; Call For Tender table; Responses as separate pages; Analyze & Award with the item list, All, Low Price, Low MOQ and Low Lead Time tabs, filter, award with comment, previous prices. Create > Order opens the order form prefilled from the awarded response', 'Existing ERP Cross Hire Request for Quote', '/rental/cross-hire-rfq'),
     c('Cross Hire new fields (7 Oct)', 'EXISTING WITH CHANGE', 'Cross Hire Requests, Process, RFQ and Orders as in the existing ERP', 'Screens and flow kept. Added from the requirement: Raised By and Decision Right on the request, a yard checklist on the Return to Us condition check, a Re-Issue to another project action after Return to Us (Re-Issue Reference is now a linked Sales Order), and a buy-vs-hire estimate beside the cross-hire profitability', 'Rental > Cross-Hire (Rental Side); Procurement > Cross-Hire Suppliers', '/rental/cross-hire-orders'),

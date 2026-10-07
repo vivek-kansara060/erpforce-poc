@@ -3,10 +3,12 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { ACTIVITY_TYPES, BILLING_CYCLES, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { ACTIVITY_TYPES, COL, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 import { nextRentalPeriod, rentalInvoicesOf } from '@/modules/accounting/engine';
+import { cycleOf } from '@/modules/accounting/billing';
+import { getCollection } from '@/store/store';
 
 type F = Record<string, any>;
 export type Kind = 'quote' | 'order';
@@ -65,8 +67,8 @@ export const contractSpecs: Spec[] = [
  * only when the Activity Type is Rental; the Rental, Invoicing Rental Order run follows it.
  */
 export const billingSpecs: Spec[] = [
-  { key: 'billingCycle', label: 'Billing Cycle', type: 'select', options: BILLING_CYCLES.map((c) => c.name), required: true, disabled: (f) => !!f.id && rentalInvoicesOf(f.id).length > 0, hint: 'From the Billing Cycle master of Rental, Settings. Locked once the first rental invoice is raised' },
-  { key: 'invoicingType', label: 'Invoicing Type', type: 'select', options: INVOICING_TYPES, required: true, hint: 'Manual: someone runs Rental, Invoicing Rental Order. Automatic: the run picks the order up when its period ends' },
+  { key: 'billingCycle', label: 'Billing Cycle', type: 'select', options: () => getCollection<{ name: string }>(COL.billingCycles).map((c) => c.name), required: true, disabled: (f) => !!f.id && rentalInvoicesOf(f.id).length > 0, hint: 'From the Billing Cycle master of Rental, Settings. Sets the invoice schedule. Locked once the first rental invoice is raised' },
+  { key: 'invoicingType', label: 'Invoicing Type', type: 'select', options: INVOICING_TYPES, required: true, hint: 'Copied from the Billing Cycle, can be changed per order. Manual: someone submits the schedule in Rental, Invoicing Rental Order. Automatic: the system raises the invoice on its date' },
   { key: 'lastInvoice', label: 'Last Invoice Date', type: 'readonly', value: (f) => (f.id ? rentalInvoicesOf(f.id).slice(-1)[0]?.periodTo ?? 'Not invoiced yet' : 'Not invoiced yet') },
   { key: 'nextInvoice', label: 'Next Invoice Date', type: 'readonly', value: (f) => (f.id ? nextRentalPeriod(f.id)?.to ?? '-' : '-') },
 ];
@@ -91,6 +93,7 @@ export function withHeaderCascade(x: F, k: string, v: any): F {
   const n: F = { ...x, [k]: v };
   if (k === 'contractType' && v === 'Open PO' && !x.contractEnd) n.contractEnd = yearEnd(x.contractStart || undefined);
   if (k === 'activity' && x.activity !== v) n.lines = [];
+  if (k === 'billingCycle') n.invoicingType = cycleOf(v).invoicingType;
   if (k === 'amcStart' && v) n.amcEnd = plusYear(v);
   // An AMC has no item lines: its single contract line follows the Contract Value and scope.
   if (n.activity === 'AMC' && ['activity', 'amcValue', 'amcScope'].includes(k)) n.lines = [amcLine(Number(n.amcValue) || 0, n.amcScope, (x.lines as Line[])[0]?.id)];

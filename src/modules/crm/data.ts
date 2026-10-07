@@ -15,6 +15,7 @@ export type LineKind = ActivityType | 'Service';
 export const COL = {
   leads: 'crm.leads', opps: 'crm.opportunities', quotes: 'crm.quotations', orders: 'crm.salesOrders', deliveries: 'crm.deliveries',
   returns: 'crm.returns', masters: 'crm.masters', serviceCharges: 'crm.serviceCharges', jobCards: 'crm.jobCards', replacements: 'rental.replacements', extensions: 'rental.extensions', crossHire: 'rental.crossHire', chRequests: 'rental.chRequests', chRfqs: 'rental.chRfqs', trips: 'rental.trips',
+  billingCycles: 'rental.billingCycles',
   /* read only from CRM: owned by Inventory */
   fleet: 'inventory.heavyEquipment', pricing: 'inventory.pricing',
 } as const;
@@ -30,10 +31,25 @@ export const CATEGORY_LABEL = 'Category';
 export const SUBCATEGORY_LABEL = 'Subcategory';
 export const CONTRACT_TYPES = ['Open PO', 'Closed', 'Project'];
 export const BILLING_STRUCTURES = ['Milestone', 'Lump Sum'];
-/** Billing Cycle master of the existing Rental module (Name, Count, Duration). The invoice engine bills one cycle at a time. */
-export const BILLING_CYCLES = [{ name: 'Monthly', months: 1 }, { name: '2 Months', months: 2 }, { name: 'Quarterly', months: 3 }];
+/**
+ * Billing Cycle master of the existing Rental module (Settings > Billing Cycle). A cycle is Count x Duration. The Sales Order carries the cycle name; the schedule of
+ * invoices is built from it (see accounting/billing.ts, periodsOf).
+ */
+export const CYCLE_DURATIONS = ['Day', 'Week', 'Month', 'Calendar Month', '3 Month', '6 Month', 'Year'] as const;
+export type CycleDuration = (typeof CYCLE_DURATIONS)[number];
+export const START_OPTIONS = [{ value: 'delivery', label: 'From delivery' }, { value: 'order_creation', label: 'From order creation' }, { value: 'custom', label: 'Custom date' }];
+export interface CycleRec {
+  id: string; name: string; count: number; duration: CycleDuration; company?: string; invoicingType: 'Automatic' | 'Manual';
+  startOption: 'delivery' | 'order_creation' | 'custom'; customStart?: string; maxSchedule?: number; initialEnabled: boolean; initialDays?: number; prorated: boolean;
+}
+export const cycleSeed: CycleRec[] = [
+  { id: 'bc1', name: 'Monthly', count: 1, duration: 'Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 12, initialEnabled: false, prorated: false },
+  { id: 'bc2', name: '2 Months', count: 2, duration: 'Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 6, initialEnabled: false, prorated: false },
+  { id: 'bc3', name: 'Quarterly', count: 1, duration: '3 Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 4, initialEnabled: false, prorated: false },
+  { id: 'bc4', name: 'Weekly', count: 1, duration: 'Week', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 8, initialEnabled: false, prorated: false },
+  { id: 'bc5', name: 'Calendar Month Prorated', count: 1, duration: 'Calendar Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 12, initialEnabled: true, initialDays: 1, prorated: true },
+];
 export const INVOICING_TYPES = ['Manual', 'Automatic'];
-export const cycleMonths = (name?: string) => BILLING_CYCLES.find((c) => c.name === name)?.months ?? 1;
 export const LINE_TYPES = ['Individual', 'Package'];
 export const VAT_TYPES = ['Standard (With VAT)', 'Export (Zero-Rated)'];
 export const TRANSACTION_TYPES = ['Cash', 'Credit'];
@@ -341,7 +357,7 @@ export function planVisits(start?: string, end?: string, visits?: number, total 
 
 /* ------------------------------------------------------------------ fleet (Fixed Asset Register) access */
 export function fleetRows(): HeavyRec[] {
-  seedCollection(COL.fleet, heavySeed);
+  seedCollection(COL.billingCycles, cycleSeed); seedCollection(COL.fleet, heavySeed);
   return getCollection<HeavyRec>(COL.fleet);
 }
 export const assetById = (id: string) => fleetRows().find((a) => a.id === id);
@@ -467,6 +483,12 @@ const S10 = 'Annual maintenance of the 500 KVA standby generator at the Al Makto
 const so10Lines = [amcLine(18000, S10, 'so10a')];
 const so10Plan = planVisits('2025-12-01', '2026-11-30', 4, 18000);
 const so11Lines = [R('so11a', 'Generator', '500 KVA', 52000, '2026-10-05', '2026-12-31'), S('so11b', 'Generator Installation & Commissioning', 3500, 'One-time'), S('so11c', 'Transportation', 1200, 'One-time')];
+/** Test order for Cross Hire (SO-26-00055): nothing delivered, no Ready for Hire 1500 KVA unit and the only 20 ft POD is under maintenance. */
+const so12Lines = [R('so12a', 'Generator', '1500 KVA', 145000, '2026-10-05', '2027-04-04', { qty: 2 }), R('so12b', 'POD', '20 ft POD', 7500, '2026-10-05', '2027-04-04', { crossHire: ['chr5'] }), S('so12c', 'Delivery Charge', 2000, 'One-time')];
+/** Test order for Rental invoicing (SO-26-00056): two 500 KVA units delivered on different days and one 200 KVA returned mid-cycle, a monthly damage waiver and delivery and return charges. */
+const so13Lines = [R('so13a', 'Generator', '500 KVA', 50000, '2026-09-01', '2027-02-28', { qty: 2 }), R('so13b', 'Generator', '200 KVA', 29500, '2026-09-01', '2027-02-28'), S('so13c', 'Delivery Charge', 1500, 'One-time'), S('so13d', 'Return Charge', 1500, 'One-time'), S('so13e', 'Damage Waiver (Monthly)', 150, 'Recurring', { frequency: 'Monthly', start: '2026-09-01', end: '2027-02-28' })];
+/** Test order for the weekly Automatic cycle (SO-26-00057): the scheduler raises its invoices. */
+const so14Lines = [R('so14a', 'Generator', '100 KVA', 18500, '2026-09-24', '2026-12-31')];
 const so7Lines = [L('so7a', { activity: 'Trading', item: 'ATS Panel 630A', unit: 'Nos', qty: 1, price: 61000 }), L('so7b', { activity: 'Trading', item: 'Oil Filter (Cummins C-Series)', unit: 'Nos', qty: 60, price: 85 })];
 const qLines = (ls: Line[], p: string) => ls.map((l) => ({ ...l, id: `${p}${l.id.slice(3)}`, assigned: [] }));
 
@@ -532,7 +554,36 @@ export const orderSeed: SalesOrder[] = [
   so({ id: 'so11', number: 'SO-26-00051', date: '2026-09-27', quoteId: 'qt11', oppId: 'op11', customerId: 'c6', owner: 'Yousef Karim', title: 'Rent 500 KVA with installation and commissioning for the Kiln 4 shutdown', reference: 'LPO-SCC-3402', status: 'Confirmed', activity: 'Rental', contractType: 'Closed', contractStart: '2026-10-05', contractEnd: '2026-12-31',
     lpo: 'LPO-SCC-3402', lpoDate: '2026-09-26', lpoExpiry: '2026-12-31', site: 'Sharjah Cement, Kiln 4', costCentre: 'Dubai Branch', lines: withAsg(so11Lines, {}),
     log: [lg('2026-09-27 09:15', 'Sales Order created from QT-26-00079', 'Yousef Karim')] }),
+  so({ id: 'so12', number: 'SO-26-00055', date: '2026-09-29', customerId: 'c4', owner: 'Yousef Karim', title: 'Rent 2 x 1500 KVA and a POD for Desert Pearl Resort Phase 2', reference: 'LPO-DPH-5001', status: 'Confirmed', activity: 'Rental', contractType: 'Closed', contractStart: '2026-10-05', contractEnd: '2027-04-04',
+    lpo: 'LPO-DPH-5001', lpoDate: '2026-09-28', lpoExpiry: '2027-04-30', site: 'Desert Pearl Resort, Sharjah', costCentre: 'Dubai Branch', docs: ['LPO-DPH-5001.pdf'], lines: withAsg(so12Lines, {}),
+    log: [lg('2026-09-30 09:00', 'Cross-Hire request CHR-26-00008 raised', 'Yousef Karim', 'POD 20 ft POD, quantity 1', 'blue'), lg('2026-09-29 10:00', 'Sales Order created', 'Yousef Karim')] }),
+  so({ id: 'so13', number: 'SO-26-00056', date: '2026-08-29', customerId: 'c1', owner: 'Omar Farouk', title: 'Rent 2 x 500 KVA and 200 KVA for the Al Maktoum terminal extension', reference: 'LPO-EIL-1180', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-09-01', contractEnd: '2027-02-28',
+    lpo: 'LPO-EIL-1180', lpoDate: '2026-08-28', lpoExpiry: '2027-03-15', site: 'Al Maktoum Airport Expansion', costCentre: 'Dubai Branch', docs: ['LPO-EIL-1180.pdf'],
+    lines: withAsg(so13Lines, { so13a: [asg('he51', 'dl11', '2026-09-01'), asg('he52', 'dl12', '2026-09-12')], so13b: [asg('he53', 'dl13', '2026-09-01', { state: 'Returned', stop: '2026-09-20' })] }),
+    log: [lg('2026-09-20 15:00', 'Return CN-26-00124: AST-1053 off hire', 'Omar Farouk', 'Billing stops on the off-hire day', 'amber'), lg('2026-09-12 08:00', 'Delivery DO-26-00127: AST-1052', 'Bilal Ahmed'), lg('2026-09-01 08:00', 'Delivery DO-26-00126, DO-26-00128: AST-1051, AST-1053', 'Bilal Ahmed'), lg('2026-08-29 09:00', 'Sales Order created', 'Omar Farouk')] }),
+  so({ id: 'so14', number: 'SO-26-00057', date: '2026-09-22', customerId: 'c7', owner: 'Yousef Karim', title: 'Rent 100 KVA, billed weekly, for the Al Safa substation test', reference: 'LPO-ASU-2201', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-09-24', contractEnd: '2026-12-31',
+    lpo: 'LPO-ASU-2201', lpoDate: '2026-09-21', lpoExpiry: '2027-01-15', site: 'Mussafah Substation, Abu Dhabi', costCentre: 'Dubai Branch', billingCycle: 'Weekly', invoicingType: 'Automatic', lines: withAsg(so14Lines, { so14a: [asg('he54', 'dl14', '2026-09-24')] }),
+    log: [lg('2026-09-24 08:00', 'Delivery DO-26-00129: AST-1054', 'Bilal Ahmed'), lg('2026-09-22 09:00', 'Sales Order created', 'Yousef Karim')] }),
 ];
+
+/**
+ * MASTER TEST ORDER (SO-26-00058, Gulf Build Contracting): one rental order that exercises Cross Hire, Fleet, Delivery, Replacement, Extension, Return and Invoicing.
+ * Owned Ready for Hire units today: 500 KVA x 2, 1000 KVA x 2, 200 KVA x 1, 1500 KVA x 0. So 500 KVA and 1000 KVA deliver from stock, 200 KVA needs one cross-hire unit
+ * and 1500 KVA needs one. Contract start is in the past so a delivery dated at the contract start has its first invoice due straight away. Nothing is delivered.
+ */
+const M_START = '2026-08-20';
+const M_END = '2027-02-19';
+const so15Lines = [
+  R('so15a', 'Generator', '500 KVA', 50000, M_START, M_END, { qty: 2 }), R('so15b', 'Generator', '1000 KVA', 98000, M_START, M_END), R('so15c', 'Generator', '200 KVA', 29500, M_START, M_END, { qty: 2 }), R('so15d', 'Generator', '1500 KVA', 145000, M_START, M_END),
+  S('so15e', 'Delivery Charge', 2000, 'One-time'), S('so15f', 'Generator Installation & Commissioning', 3500, 'One-time'), S('so15g', 'Damage Waiver (Monthly)', 150, 'Recurring', { frequency: 'Monthly', start: M_START, end: M_END }), S('so15h', 'Return Charge', 2000, 'One-time'),
+];
+leadSeed.push({ id: 'ld13', number: 'LD-26-00036', date: '2026-08-10', source: 'Referral', activity: 'Rental', company: 'Gulf Build Contracting', contact: 'Khaled Mansoor', phone: '+971 50 774 1203', email: 'khaled@gulfbuild.ae', owner: 'Yousef Karim', status: 'Converted', tags: 'Yas Island Phase 3', priority: 'High', leadType: 'Company', probability: 80, opportunityId: 'op15',
+  comms: [lg('2026-08-12 10:00', 'Converted to Opportunity OP-26-00029', 'Yousef Karim'), lg('2026-08-10 09:30', 'Lead created', 'Yousef Karim', 'Referral from the Yas Island Phase 2 team')] });
+oppSeed.push(O({ id: 'op15', number: 'OP-26-00029', date: '2026-08-12', customerId: 'c2', contact: 'Khaled Mansoor', project: 'Yas Island Villas Phase 3', owner: 'Yousef Karim', title: 'Rent 500, 1000, 200 and 1500 KVA for Yas Island Villas Phase 3', activity: 'Rental', stage: 'Won', rating: 'Hot', estimated: 620000, probability: 100, expectedClose: '2026-08-30', leadId: 'ld13', quotationId: 'qt13', site: 'Yas Island Phase 3, Abu Dhabi' }));
+quoteSeed.push(q('qt13', 'QT-26-00087', 'op15', 'c2', 'Converted to Sales Order', 'Rental', qLines(so15Lines, 'qt13'), { date: '2026-08-14', validUntil: '2026-09-14', contractType: 'Closed', contractStart: M_START, contractEnd: M_END, salesOrderId: 'so15', preparedBy: 'Yousef Karim' }));
+orderSeed.push(so({ id: 'so15', number: 'SO-26-00058', date: '2026-08-18', quoteId: 'qt13', oppId: 'op15', customerId: 'c2', owner: 'Yousef Karim', title: 'Master test: 500, 1000, 200 and 1500 KVA for Yas Island Villas Phase 3', reference: 'LPO-GBC-3305', status: 'Confirmed', activity: 'Rental', contractType: 'Closed', contractStart: M_START, contractEnd: M_END,
+  lpo: 'LPO-GBC-3305', lpoDate: '2026-08-17', lpoExpiry: '2027-03-31', site: 'Yas Island Phase 3, Abu Dhabi', costCentre: 'Dubai Branch', docs: ['LPO-GBC-3305.pdf'], billingCycle: 'Monthly', invoicingType: 'Manual', lines: withAsg(so15Lines, {}),
+  log: [lg('2026-08-18 10:00', 'Sales Order created from QT-26-00087', 'Yousef Karim')] }));
 
 const dl = (id: string, number: string, s: SalesOrder, lineId: string, assetId: string, date: string, over: Partial<Delivery> = {}): Delivery => {
   const l = s.lines.find((x) => x.id === lineId);
@@ -551,6 +602,10 @@ export const deliverySeed: Delivery[] = [
   dl('dl8', 'DO-26-00121', sx('so9'), 'so9a', 'he29', '2026-06-01', { closed: true }),
   dl('dl9', 'DO-26-00122', sx('so9'), 'so9b', 'he30', '2026-06-01', { closed: true }),
   dl('dl10', 'DO-26-00123', sx('so9'), 'so9c', 'he36', '2026-06-01', { closed: true }),
+  dl('dl11', 'DO-26-00126', sx('so13'), 'so13a', 'he51', '2026-09-01', { driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213' }),
+  dl('dl12', 'DO-26-00127', sx('so13'), 'so13a', 'he52', '2026-09-12', { type: 'Partial', driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213' }),
+  dl('dl14', 'DO-26-00129', sx('so14'), 'so14a', 'he54', '2026-09-24', { driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213' }),
+  dl('dl13', 'DO-26-00128', sx('so13'), 'so13b', 'he53', '2026-09-01', { closed: true, driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213' }),
 ];
 
 /** One return per stage: off hire waiting for the yard, in the yard waiting for inspection, damage charged, damage covered by a waiver. */
@@ -599,6 +654,7 @@ export const tripSeed: Trip[] = [
   tr('tr8', 8, sx('so2'), 'Replacement', { id: 'rp1', number: 'RP-26-00004' }, { date: '2026-07-04T09:30', status: 'Completed', since: '2026-07-04T14:00', vehicleId: 'he22', plate: 'Sharjah 3 22871', ...DRV.imran, expenses: [tx('Salik', 40, '2026-07-04'), tx('Fuel', 160, '2026-07-04')],
     log: [lg('2026-07-04 09:30', 'Trip created', 'Bilal Ahmed', 'Sharjah 3 22871, Imran Shah'), lg('2026-07-04 14:00', 'Trip completed', 'Bilal Ahmed', 'Salik AED 40, Fuel AED 160', 'green')] }),
 ];
+orderSeed.forEach((o) => { if (o.activity === 'Rental') { o.billingCycle = o.billingCycle ?? 'Monthly'; o.invoicingType = o.invoicingType ?? 'Manual'; } });
 orderSeed.forEach((o) => { const t = tripSeed.filter((x) => x.soId === o.id && x.status !== 'Cancelled'); if (t.length) o.logisticsCost = t.reduce((n, x) => n + tripTotal(x), 0); });
 export const extensionSeed: Extension[] = [
   { id: 'ex1', number: 'EX-26-00007', soId: 'so1', kind: 'Extension', oldEnd: '2026-09-08', newEnd: '2026-10-08', date: '2026-09-10', note: 'Client extended the hire by one month', status: 'Applied', clientConfirmedBy: 'Sergei Petrov' },
@@ -658,10 +714,18 @@ export const chRequestSeed: CrossHireRequest[] = [
   { id: 'chr4', number: 'CHR-26-00007', date: '2026-09-25', soId: 'so1', soNumber: 'SO-26-00041', lineId: 'so1b', group: 'Generator', category: '1000 KVA', qty: 1, frequency: 'Monthly', rate: 0, company: ENT, representative: 'Bilal Ahmed', currency: 'AED', narration: 'Second 1000 KVA unit for the depot extension, 6 months', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Completed', rfqId: 'rfq1',
     log: [lg('2026-09-25 10:00', 'Request raised from SO-26-00041', 'Bilal Ahmed'), lg('2026-09-25 10:05', 'Submitted and approved', 'Bilal Ahmed', undefined, 'green'), lg('2026-09-26 10:00', 'RFQ RFQ-26-00012 created', 'Bilal Ahmed')] },
 ];
+chRequestSeed.push({ id: 'chr5', number: 'CHR-26-00008', date: '2026-09-29', soId: 'so12', soNumber: 'SO-26-00055', lineId: 'so12b', group: 'POD', category: '20 ft POD', qty: 1, frequency: 'Monthly', rate: 0, company: ENT, representative: 'Yousef Karim', currency: 'AED',
+  narration: 'No 20 ft POD is Ready for Hire (the only unit is under maintenance)', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Completed', rfqId: 'rfq2',
+  log: [lg('2026-09-29 15:00', 'Request raised from SO-26-00055', 'Yousef Karim', 'POD 20 ft POD, quantity 1'), lg('2026-09-29 15:05', 'Submitted and approved', 'Yousef Karim', undefined, 'green'), lg('2026-09-30 09:00', 'RFQ RFQ-26-00013 created', 'Yousef Karim')] });
 export const chRfqSeed: CrossHireRfq[] = [
   { id: 'rfq1', number: 'RFQ-26-00012', date: '2026-09-26', requestIds: ['chr4'], soNumbers: ['SO-26-00041'], group: 'Generator', category: '1000 KVA', qty: 1, vendorIds: ['s5', 's6'], orderDeadline: '2026-10-08', expectedDate: '2026-10-12', currency: 'AED', paymentTerms: 'Net 30', start: '2026-10-12', end: '2027-04-11', narration: 'Quote for one 1000 KVA generator, 6 months',
     status: 'Response Received', responses: [{ vendorId: 's5', vendor: 'Falcon Equipment Hire LLC', rate: 61000, leadTime: 5, moq: 1, date: '2026-09-27' }, { vendorId: 's6', vendor: 'Gulf Genset Rentals', rate: 58500, leadTime: 9, moq: 1, date: '2026-09-28' }], log: [lg('2026-09-26 10:00', 'RFQ created', 'Bilal Ahmed', 'From CHR-26-00007'), lg('2026-09-26 10:10', 'RFQ sent to 2 suppliers', 'Bilal Ahmed'), lg('2026-09-27 12:00', 'Response received from Falcon Equipment Hire LLC', 'Bilal Ahmed'), lg('2026-09-28 09:00', 'Response received from Gulf Genset Rentals', 'Bilal Ahmed')] },
 ];
+
+chRfqSeed.push({ id: 'rfq2', number: 'RFQ-26-00013', date: '2026-09-30', requestIds: ['chr5'], soNumbers: ['SO-26-00055'], group: 'POD', category: '20 ft POD', qty: 1, vendorIds: ['s5', 's6'], orderDeadline: '2026-10-10', expectedDate: '2026-10-14', currency: 'AED', paymentTerms: 'Net 30', start: '2026-10-05', end: '2027-04-04',
+  narration: 'Quote for one 20 ft POD, 6 months', status: 'Pending Order', awardedVendorId: 's6', awardComment: 'Lowest rate and the shortest lead time',
+  responses: [{ vendorId: 's5', vendor: 'Falcon Equipment Hire LLC', rate: 5200, leadTime: 6, moq: 1, date: '2026-10-01' }, { vendorId: 's6', vendor: 'Gulf Genset Rentals', rate: 4800, leadTime: 4, moq: 1, date: '2026-10-02' }],
+  log: [lg('2026-09-30 09:00', 'RFQ created', 'Yousef Karim', 'From CHR-26-00008'), lg('2026-09-30 09:10', 'RFQ sent to 2 suppliers', 'Yousef Karim'), lg('2026-10-01 11:00', 'Response received from Falcon Equipment Hire LLC', 'Yousef Karim'), lg('2026-10-02 10:00', 'Response received from Gulf Genset Rentals', 'Yousef Karim'), lg('2026-10-02 11:00', 'Awarded to Gulf Genset Rentals', 'Yousef Karim', 'Lowest rate and the shortest lead time', 'green')] });
 
 export function seedAll() {
   seedCollection(COL.fleet, heavySeed); seedCollection(COL.pricing, pricingSeed); seedCollection(COL.masters, masterSeed);

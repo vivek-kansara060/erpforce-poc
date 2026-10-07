@@ -35,6 +35,8 @@ export interface SalesInvoice extends DocBase {
   transactionType: 'Cash' | 'Credit'; salesperson?: string; lpo?: string; soId?: string; soNumber?: string;
   contactPerson?: string; billingAddress?: string; shippingAddress?: string; placeOfSupply?: string; vatType: string;
   lines: InvLine[]; isRental?: boolean; periodFrom?: string; periodTo?: string; creditNoteIds: string[];
+  /** One invoice for the rental periods of several orders of the same customer (Accumulate Orders): the orders it covers and the nature of goods title. */
+  soIds?: string[]; soPeriods?: { soId: string; from: string; to: string }[]; accumulatedTitle?: string;
 }
 export interface Bill extends DocBase {
   supplierId?: string; supplierName: string; supplierInvoiceNo: string; supplierInvoiceDate: string;
@@ -57,12 +59,17 @@ export interface Journal {
   id: string; number: string; postingDate: string; journalType: JournalType;
   refType: string; refId: string; refNumber: string; status: 'Posted'; currency: string; narration: string; createdBy: string; lines: JournalLine[];
 }
-export interface RentalRun { id: string; number: string; runAt: string; soIds: string[]; soNumbers: string[]; invoiceIds: string[]; status: 'Processed' | 'Nothing to bill'; message: string; by: string }
+/** One order and period inside an invoicing job (existing ERP: Previous Jobs > job). */
+export interface JobLine { soId: string; soNumber: string; from: string; to: string; kind: 'initial' | 'recurring'; status: 'processed' | 'failed' | 'queued' | 'cancelled' | 'pending'; invoiceId?: string; invoiceNumber?: string; error?: string }
+export interface RentalRun {
+  id: string; number: string; runAt: string; soIds: string[]; soNumbers: string[]; invoiceIds: string[]; status: 'Processed' | 'Partially Processed' | 'Failed' | 'Nothing to bill'; message: string; by: string;
+  lines?: JobLine[]; accumulated?: boolean; title?: string; mode?: 'Manual' | 'Automatic';
+}
 
 /* ------------------------------------------------------------------ collections and number series */
 export const COLA = {
   invoices: 'accounting.invoices', bills: 'accounting.bills', payments: 'accounting.payments', creditNotes: 'accounting.creditNotes',
-  debitNotes: 'accounting.debitNotes', journals: 'accounting.journals', rentalRuns: 'accounting.rentalRuns',
+  debitNotes: 'accounting.debitNotes', journals: 'accounting.journals', rentalRuns: 'accounting.rentalRuns', schedFail: 'accounting.scheduleFailures',
 } as const;
 /**
  * One call site per series. The seed raises these to its highest number before the first runtime document, so new numbers always follow the seeded ones.

@@ -3,7 +3,8 @@
  * so seeded history and new invoices follow exactly the same rules.
  */
 import dayjs from 'dayjs';
-import { cycleMonths, custName, cust, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
+import { COL, cycleSeed, custName, cust, type CycleRec, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
+import { getCollection } from '@/store/store';
 import {
   ACC, addDays, bankAccountCode, daysBetween, incomeAccountFor, lineAmount, lineDisc, lineGross, lineVat, maxDate, minDate, round2, totalsOf, vatPctOf,
   type Bill, type InvLine, type JournalLine, type NoteDoc, type PaymentEntry, type SalesInvoice,
@@ -45,8 +46,9 @@ export function linesFromJobCard(jc: JobCard, o?: SalesOrder): InvLine[] {
 }
 
 /* ------------------------------------------------------------------ rental billing */
-export const RENTAL_RULE = 'Billing cycle of the order (Monthly unless changed in its Billing section) anchored on the first Rental Start of the order; partial periods are pro-rated by days in the period. Billing stops on the off-hire day.';
-/** Quantity of a line for `days` of a billing period of `periodDays` days and `months` months (the order's Billing Cycle; 1 for Monthly). */
+export const RENTAL_RULE = 'Periods follow the order\'s Billing Cycle from its start (first delivery, order creation or a custom date); partial periods are pro-rated by days. Billing stops on the off-hire day.';
+const MONTH_DAYS = 30.4375;
+/** Quantity of a line for `days` of a period of `periodDays` days that is `months` months long (the cycle length; 1 for a calendar month). */
 const qtyFor = (freq: string | undefined, days: number, periodDays: number, months = 1) => {
   switch (freq) {
     case 'Daily': return days;
@@ -58,17 +60,105 @@ const qtyFor = (freq: string | undefined, days: number, periodDays: number, mont
 };
 const unitFor = (freq?: string) => ({ Daily: 'Day', Weekly: 'Week', Quarterly: 'Quarter', Yearly: 'Year' } as Record<string, string>)[freq ?? ''] ?? 'Month';
 
-export interface RentalBuild { lines: InvLine[]; oneTimeLineIds: string[]; isFinal: boolean; message: string }
-/** Earliest Rental Start of any assignment on the order (the cycle anchor). */
+/* ---- billing cycle and the periods it produces */
+/** The cycle named on the order (the master can be edited; the raw seed is used before the store is filled, e.g. while the accounting seed is built). */
+export function cycleOf(name?: string): CycleRec {
+  const list = getCollection<CycleRec>(COL.billingCycles);
+  const src = list.length ? list : cycleSeed;
+  return src.find((c) => c.name === name) ?? src[0];
+}
+export const cycleMonthsEq = (c: CycleRec) => {
+  switch (c.duration) {
+    case 'Day': return c.count / MONTH_DAYS;
+    case 'Week': return (c.count * 7) / MONTH_DAYS;
+    case '3 Month': return c.count * 3;
+    case '6 Month': return c.count * 6;
+    case 'Year': return c.count * 12;
+    default: return c.count;
+  }
+};
+const stepOf = (c: CycleRec): [number, 'day' | 'week' | 'month' | 'year'] => {
+  switch (c.duration) {
+    case 'Day': return [c.count, 'day'];
+    case 'Week': return [c.count, 'week'];
+    case '3 Month': return [c.count * 3, 'month'];
+    case '6 Month': return [c.count * 6, 'month'];
+    case 'Year': return [c.count, 'year'];
+    default: return [c.count, 'month'];
+  }
+};
+export interface Period { from: string; to: string; kind: 'initial' | 'recurring'; months: number; basis: number }
+const fmt = (d: dayjs.Dayjs) => d.format('YYYY-MM-DD');
+/** Earliest Rental Start of any assignment on the order. */
 export const firstRentalStart = (o: SalesOrder) => o.lines.filter((l) => l.activity === 'Rental').flatMap((l) => l.assigned).map((a) => a.start).sort()[0];
-/** Next billing period of the order: the day after the last billed period, else the first Rental Start; one month long. */
+/** Where the schedule starts, as the Billing Cycle says: first delivery, order creation or a custom date. */
+export function invoiceAnchor(o: SalesOrder, c: CycleRec): string | undefined {
+  if (!firstRentalStart(o)) return undefined;
+  if (c.startOption === 'order_creation') return o.date;
+  if (c.startOption === 'custom' && c.customStart) return c.customStart;
+  return firstRentalStart(o);
+}
+/** Last off-hire day once every asset is off hire (that day is not billed, so no period starts on it); undefined while any asset is still out. */
+function returnCap(o: SalesOrder): string | undefined {
+  const as = o.lines.filter((l) => l.activity === 'Rental').flatMap((l) => l.assigned);
+  if (!as.length || as.some((a) => a.state === 'On Hire' || a.state === 'Hold')) return undefined;
+  const stops = as.map((a) => a.stop).filter(Boolean) as string[];
+  return stops.length ? stops.sort().pop() : undefined;
+}
+/**
+ * The invoice schedule of an order: initial periods first when the cycle has Initial Invoicing (pro-rated to month end when Prorated), then recurring periods
+ * Count x Duration long, up to `limit`. Periods stop at the return of the last asset. Pure function of the order and its cycle.
+ */
+export function periodsOf(o: SalesOrder, c: CycleRec = cycleOf(o.billingCycle), limit = 60): Period[] {
+  const anchor = invoiceAnchor(o, c);
+  if (!anchor) return [];
+  const out: Period[] = [];
+  let cur = dayjs(anchor);
+  if (c.initialEnabled) {
+    const n = c.initialDays || 1;
+    if (c.prorated) {
+      const eom = cur.endOf('month');
+      const toEom = eom.diff(cur, 'day') + 1;
+      out.push({ from: fmt(cur), to: fmt(eom), kind: 'initial', months: 1, basis: cur.daysInMonth() });
+      const rem = n - toEom;
+      if (rem > 0) { const s2 = eom.add(1, 'day'); const e2 = s2.add(rem - 1, 'day'); out.push({ from: fmt(s2), to: fmt(e2), kind: 'initial', months: 1, basis: s2.daysInMonth() }); cur = e2.add(1, 'day'); } else cur = eom.add(1, 'day');
+    } else {
+      const e = cur.add(n - 1, 'day');
+      out.push({ from: fmt(cur), to: fmt(e), kind: 'initial', months: 1, basis: cur.daysInMonth() });
+      cur = e.add(1, 'day');
+    }
+  }
+  const base = cur;
+  const [n, unit] = stepOf(c);
+  for (let k = 0; out.length < limit && k < limit; k += 1) {
+    let start: dayjs.Dayjs; let end: dayjs.Dayjs; let months: number; let basis: number;
+    if (c.duration === 'Calendar Month') {
+      start = k === 0 ? base : dayjs(out[out.length - 1].to).add(1, 'day');
+      end = start.add(c.count - 1, 'month').endOf('month');
+      months = c.count; basis = end.diff(start.startOf('month'), 'day') + 1;
+    } else {
+      start = base.add(k * n, unit); end = base.add((k + 1) * n, unit).subtract(1, 'day');
+      months = cycleMonthsEq(c); basis = end.diff(start, 'day') + 1;
+    }
+    out.push({ from: fmt(start), to: fmt(end), kind: 'recurring', months, basis });
+  }
+  const first = firstRentalStart(o);
+  const cap = returnCap(o);
+  return out.filter((p) => p.to >= first && (!cap || p.from < cap)).map((p) => (cap && p.to > cap ? { ...p, to: cap } : p));
+}
+/** Last day covered by an invoice for this order (an accumulated invoice covers several orders, so its own lines are read). */
+const coveredTo = (i: SalesInvoice, o: SalesOrder) => {
+  if (!i.soIds?.length) return i.periodTo;
+  return (i.soPeriods ?? []).filter((x) => x.soId === o.id).map((x) => x.to).sort().pop();
+};
+/** Next period to invoice: the first scheduled period that starts after what has been invoiced. */
 export function nextPeriodFor(o: SalesOrder, prior: SalesInvoice[]): { from: string; to: string } | undefined {
-  const lastTo = prior.filter((i) => i.isRental && i.periodTo).map((i) => i.periodTo!).sort().pop();
-  const from = lastTo ? addDays(lastTo, 1) : firstRentalStart(o);
-  if (!from) return undefined;
-  return { from, to: dayjs(from).add(cycleMonths(o.billingCycle), 'month').subtract(1, 'day').format('YYYY-MM-DD') };
+  const lastTo = prior.filter((i) => i.isRental).map((i) => coveredTo(i, o) ?? '').filter(Boolean).sort().pop();
+  const p = periodsOf(o).find((x) => !lastTo || x.from > lastTo);
+  return p ? { from: p.from, to: p.to } : undefined;
 }
 
+export interface RentalBuild { lines: InvLine[]; oneTimeLineIds: string[]; isFinal: boolean; message: string }
 /**
  * One invoice for one period of a Rental Sales Order. Each delivered asset is billed from its own Rental Start (Hold excluded until then) to its off-hire
  * day; recurring services (damage waiver) follow the rental; one-time services go on the first invoice, return or collection charges on the final one;
@@ -77,8 +167,9 @@ export function nextPeriodFor(o: SalesOrder, prior: SalesInvoice[]): { from: str
  */
 export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: SalesInvoice[], from: string, to: string, assetLabel: (id: string) => string): RentalBuild {
   const vat = vatPctOf(o.vatType);
-  const periodDays = daysBetween(from, to) + 1;
-  const months = cycleMonths(o.billingCycle);
+  const meta = periodsOf(o).find((p) => p.from === from);
+  const periodDays = meta?.basis ?? daysBetween(from, to) + 1;
+  const months = meta?.months ?? cycleMonthsEq(cycleOf(o.billingCycle));
   const priorLines = prior.flatMap((i) => i.lines);
   const priorTo = (key: (l: InvLine) => boolean) => priorLines.filter(key).map((l) => l.periodTo ?? '').sort().pop();
   const lines: InvLine[] = [];

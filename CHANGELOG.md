@@ -12,6 +12,44 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 8 Oct, around 2:00 AM: A customer return of a cross-hired unit is its Return to Us
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Recording a customer return of a cross-hired unit left its Cross Hire Order at Allocated, so Return to Us had to be recorded a second time.
+*What we did.* Saving the customer return moves the unit in its Cross Hire Order to Returned to Us (with a log line and the customer return number), ready for Re-Issue or Return to Supplier. The yard inspection of the return then fills in the unit's condition check, and the unit is flagged idle at our yard once it reaches the yard.
+*Be aware.* Record Return to Us on the order stays for a unit that came back without a customer return.
+
+### 8 Oct, around 1:30 AM: One master test order for the whole rental journey
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Testing Cross Hire, Fleet, Replacement, Extension, Return and Invoicing needed several orders and manual set-up.
+*What we did.* SO-26-00058 (Gulf Build Contracting) is seeded with its Lead, Opportunity and Quotation: 500 KVA x 2 and 1000 KVA x 1 from stock, 200 KVA x 2 (one by Cross Hire) and 1500 KVA x 1 (all by Cross Hire), delivery, installation and return charges and a monthly damage waiver. Nothing is delivered, and the contract start is in the past so the first invoice is due after a backdated delivery. The numbered steps are at the top of docs/rental-flow-test-plan.md.
+*Be aware.* The order carries a Damage Waiver, so inspection damage is covered and not charged; use SO-26-00049 for a chargeable damage. A new Lead takes numbers from LD-26-00037.
+
+### 8 Oct, around 12:30 AM: Billing Cycle master, invoice schedules, Invoicing Rental Order per schedule, Accumulate Orders, Previous Jobs with Retry, Automatic scheduler
+**Where:** Rental > Settings > Billing Cycle
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Where:** Rental > Invoicing > Previous Jobs
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The POC billed every rental order on three hard-coded monthly cycles, had no invoice schedule, listed Invoicing Rental Order per order, had no Accumulate Orders, recorded a run as one line, and Invoicing Type did nothing. The existing ERP does all of this with a backend scheduler.
+*What we did.* (1) Billing Cycle is a master again: Name, Count x Duration (Day, Week, Month, Calendar Month, 3 Month, 6 Month, Year), Company, Invoicing Type, Invoice Start Date (from delivery, from order creation, custom date), Max Schedule Count, Initial Invoicing with its days, and Prorated. The Sales Order picks a cycle in its Billing section and takes its Invoicing Type from it. (2) The schedule of an order follows its cycle: initial periods first, then recurring periods, up to Max Schedule Count ahead, ending when the last asset is off hire. The Sales Order has a Scheduled Invoices tab (Initial or Recurring, period, days, invoice date, amount, Pending, Failed or Processed, invoice link). (3) Invoicing Rental Order lists one row per due schedule with Next Invoice Date, Customer and Subsidiary filters, an Initial or Recurring tag, Refresh, Submit (one invoice per order and period, saved as a job) and Accumulate Orders (one customer's schedules on one invoice with a nature of goods title; each order keeps its own ledger and next period). (4) Previous Jobs lists every job with status, customer and type; a job opens into one line per order and period with its status, invoice link and Retry for a failed line. (5) The scheduler raises the invoices of Automatic orders when they are due, as a System job; in the POC it runs when the app opens and from Run scheduler now.
+*Be aware.* The period of an order is billed per asset from its own Rental Start, as before; the existing ERP bills an order-level daily rate. Initial Invoicing and Prorated follow the existing ERP's backend rule (first days, to month end) but their exact amounts are to be confirmed. Add Schedule and Delete Schedule of the existing order tab are not built. A failed invoice is simulated only by the seeded failed job. The scheduler needs a back end in the real system.
+
+### 7 Oct, around 11:30 PM: Rental flow review: test data, month-end billing fix, Cross Hire request quantity
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* A walk through Lead to Invoice found four defects: seeded rental orders had no Billing Cycle or Invoicing Type; a billing period starting on the 31st drifted to the 29th and 30th of later months; a Cross Hire Request asked for the whole line quantity even when units were already ordered or received; Cross Hire was refused whenever an owned unit was Ready for Hire, even if demand was larger.
+*What we did.* Seeded rental orders now carry Monthly and Manual. Billing periods follow the cycle from the first Rental Start (31 Aug, 30 Sep, 31 Oct). A Cross Hire Request is raised only for the units not covered by Ready for Hire units (owned or cross-hired) and by open requests, RFQs and orders of the line, and the request carries that number. Two test orders were added: SO-26-00055 for Cross Hire (1500 KVA x 2 with no unit anywhere, and a POD with a request and an awarded RFQ already prepared) and SO-26-00056 for invoicing (two 500 KVA delivered on different days, one 200 KVA returned mid-cycle, delivery and return charges, a monthly damage waiver, first period due). The steps are in docs/rental-flow-test-plan.md.
+*Be aware.* The existing ERP generates invoice schedules in the backend (a Scheduled Invoices tab on the order, an Invoicing Rental Order list with one row per due schedule, jobs with Retry, Accumulate Orders). The POC still works out the next period on the fly. See the review notes for what would be needed to match it.
+
 ### 7 Oct, around 10:00 PM: Goods Receipt tracing is a receiving grid on the page
 **Where:** Rental > Cross Hire > Orders
 **Type:** EXISTING WITH CHANGE

@@ -17,7 +17,7 @@ const FIN = 'Priya Menon';
 const lg = (when: string, title: string, detail?: string, tone?: LogItem['tone'], by = FIN): LogItem => ({ when, title, detail, by, tone });
 const assetLabelRaw = (id: string) => { const h = heavySeed.find((x) => x.id === id); return h ? `${h.assetId} - ${h.name}` : id; };
 
-interface Built { invoices: SalesInvoice[]; bills: Bill[]; payments: PaymentEntry[]; creditNotes: NoteDoc[]; debitNotes: NoteDoc[]; journals: Journal[]; rentalRuns: RentalRun[] }
+interface Built { invoices: SalesInvoice[]; bills: Bill[]; payments: PaymentEntry[]; creditNotes: NoteDoc[]; debitNotes: NoteDoc[]; journals: Journal[]; rentalRuns: RentalRun[]; failures: { id: string; soId: string; from: string; to: string; error: string; jobId?: string }[] }
 
 export function buildAccountingSeed(): Built {
   const invoices: SalesInvoice[] = [];
@@ -194,10 +194,22 @@ export function buildAccountingSeed(): Built {
     return { id: `run-${n}`, number: seriesNo('RUN', n), runAt: `${at} 06:00`, soIds: [...new Set(list.map((r) => r.soId!))], soNumbers: [...new Set(list.map((r) => r.soNumber!))], invoiceIds: list.map((r) => r.id), status: 'Processed', message: `${list.length} invoice(s) raised`, by: 'System (scheduled run)' };
   });
 
+  /* -------- one failed job line: SO-26-00046 was submitted but its invoice could not be saved, so its period is still waiting (Retry) */
+  const failures: Built['failures'] = [];
+  const so2Prior = rentalBuilt.filter((x) => x.o.id === 'so2').map((x) => x.r);
+  const so2Next = nextPeriodFor(order('so2'), so2Prior);
+  if (so2Next) {
+    const n = 9 + rentalRuns.length;
+    const err = 'Customer credit approval is pending in Accounting, the invoice could not be saved';
+    rentalRuns.push({ id: `run-${n}`, number: seriesNo('RUN', n), runAt: `${ASOF} 07:30`, soIds: ['so2'], soNumbers: ['SO-26-00046'], invoiceIds: [], status: 'Failed', message: '0 of 1 invoice(s) raised', by: FIN, mode: 'Manual',
+      lines: [{ soId: 'so2', soNumber: 'SO-26-00046', from: so2Next.from, to: so2Next.to, kind: 'recurring', status: 'failed', error: err }] });
+    failures.push({ id: `so2|${so2Next.from}`, soId: 'so2', from: so2Next.from, to: so2Next.to, error: err, jobId: `run-${n}` });
+  }
+
   SEED_MAX.PAY = Math.max(SEED_MAX.PAY, payN);
   SEED_MAX.JV = Math.max(400, 200 + journals.length);
   SEED_MAX.RUN = Math.max(SEED_MAX.RUN, 8 + rentalRuns.length);
-  return { invoices, bills, payments, creditNotes, debitNotes, journals, rentalRuns };
+  return { invoices, bills, payments, creditNotes, debitNotes, journals, rentalRuns, failures };
 }
 
 let seeded = false;
@@ -207,6 +219,6 @@ export function seedAccounting() {
   seeded = true;
   const b = buildAccountingSeed();
   seedCollection(COLA.invoices, b.invoices); seedCollection(COLA.bills, b.bills); seedCollection(COLA.payments, b.payments);
-  seedCollection(COLA.creditNotes, b.creditNotes); seedCollection(COLA.debitNotes, b.debitNotes); seedCollection(COLA.journals, b.journals); seedCollection(COLA.rentalRuns, b.rentalRuns);
+  seedCollection(COLA.creditNotes, b.creditNotes); seedCollection(COLA.debitNotes, b.debitNotes); seedCollection(COLA.journals, b.journals); seedCollection(COLA.rentalRuns, b.rentalRuns); seedCollection(COLA.schedFail, b.failures);
 }
 export { vatPctOf };

@@ -34,10 +34,10 @@ export const invoiceByRef = (ref?: string) => (ref ? invoices().find((i) => i.id
 export const billByRef = (ref?: string) => (ref ? bills().find((b) => b.id === ref || b.number === ref) : undefined);
 export const paymentByRef = (ref?: string) => (ref ? payments().find((p) => p.id === ref || p.number === ref) : undefined);
 export const journalByRef = (ref?: string) => (ref ? journals().find((j) => j.id === ref || j.number === ref) : undefined);
-export const invoicesOfOrder = (soId: string) => invoices().filter((i) => i.soId === soId || i.source.soId === soId);
+export const invoicesOfOrder = (soId: string) => invoices().filter((i) => i.soId === soId || i.source.soId === soId || !!i.soIds?.includes(soId));
 export const invoicesOfSource = (type: SourceRef['type'], id: string) => invoices().filter((i) => i.source.type === type && i.source.id === id);
 export const billsOfSource = (type: SourceRef['type'], id: string) => bills().filter((b) => b.source.type === type && b.source.id === id);
-export const rentalInvoicesOf = (soId: string) => invoices().filter((i) => i.isRental && i.soId === soId).sort((a, b) => ((a.periodFrom ?? '') < (b.periodFrom ?? '') ? -1 : 1));
+export const rentalInvoicesOf = (soId: string) => invoices().filter((i) => i.isRental && (i.soId === soId || !!i.soIds?.includes(soId))).sort((a, b) => ((a.periodFrom ?? '') < (b.periodFrom ?? '') ? -1 : 1));
 
 /* ------------------------------------------------------------------ balances */
 export const invoiceTotal = (i: SalesInvoice) => totalsOf(i).total;
@@ -296,8 +296,32 @@ export function invoiceRentalPeriod(soId: string, from: string, to: string): { i
     source: { type: 'Rental Cycle', id: o.id, number: o.number, soId: o.id, lineIds: b.oneTimeLineIds } });
   return { invoice, oneTimeLineIds: b.oneTimeLineIds, message: `${invoice.number} raised for ${o.number}` };
 }
-export function recordRun(r: Omit<RentalRun, 'id' | 'number' | 'runAt' | 'by'>): RentalRun {
-  const run: RentalRun = { ...r, id: uid('run'), number: nextRunNo(), runAt: `${TODAY} ${now()}`, by: ACTOR };
+export function patchRun(id: string, fn: (r: RentalRun) => RentalRun) { patch<RentalRun>(COLA.rentalRuns, id, fn); }
+/**
+ * Accumulate Orders (existing ERP): the due periods of several orders of one customer on ONE invoice, with a nature of goods title. Each order still keeps its own
+ * ledger and next period, because the invoice records which period it covers for which order.
+ */
+export function invoiceAccumulated(items: { soId: string; from: string; to: string }[], title: string): { invoice?: SalesInvoice; oneTime: Record<string, string[]>; message: string } {
+  const lines: InvLine[] = [];
+  const oneTime: Record<string, string[]> = {};
+  const periods: { soId: string; from: string; to: string }[] = [];
+  for (const it of items) {
+    const o = orderOf(it.soId);
+    if (!o) continue;
+    const b = buildRentalLines(o, deliveries(), rentalInvoicesOf(it.soId), it.from, it.to, assetLabelLive);
+    if (!b.lines.length) continue;
+    lines.push(...b.lines.map((l) => ({ ...l, desc: `${o.number}: ${l.desc}` })));
+    oneTime[it.soId] = b.oneTimeLineIds;
+    periods.push(it);
+  }
+  const first = periods[0] && orderOf(periods[0].soId);
+  if (!first) return { oneTime, message: 'Nothing to bill for the selected orders' };
+  const invoice = createInvoice({ ...headerFromOrder(first), date: TODAY, lines, isRental: true, periodFrom: periods.map((p) => p.from).sort()[0], periodTo: periods.map((p) => p.to).sort().pop(), soIds: periods.map((p) => p.soId), soPeriods: periods, accumulatedTitle: title,
+    narration: `${title}. Accumulated rental invoice for ${periods.length} order(s)`, source: { type: 'Rental Cycle', id: first.id, number: periods.map((p) => orderOf(p.soId)?.number).join(', '), soId: first.id } });
+  return { invoice, oneTime, message: `${invoice.number} raised for ${periods.length} order(s)` };
+}
+export function recordRun(r: Omit<RentalRun, 'id' | 'number' | 'runAt' | 'by'> & { by?: string }): RentalRun {
+  const run: RentalRun = { ...r, id: uid('run'), number: nextRunNo(), runAt: `${TODAY} ${now()}`, by: r.by ?? ACTOR };
   put(COLA.rentalRuns, run);
   return run;
 }
