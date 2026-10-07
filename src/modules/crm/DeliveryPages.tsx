@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import dayjs from 'dayjs';
-import { employees, locations, suppliers } from '@/mock-data/masters';
+import { employees, suppliers } from '@/mock-data/masters';
 import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { DataTable } from '@/components/DataTable';
@@ -15,16 +15,16 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { allLocations, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line } from './data';
+import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
 import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { Note, R, RowMenu, aed, useDeliveries, useFleet, useOrders } from './shared';
+import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, useTrips } from './shared';
+import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
 const serial = (l: Line) => l.activity === 'Rental' || l.activity === 'Fixed Asset Trading';
 const remainingOf = (l: Line) => (serial(l) ? l.qty - deliveredQty(l) : l.activity === 'Trading' || l.activity === 'Fuel Trading' ? (l.fulfilment ? 0 : l.qty) : 0);
-const supplierHeld = (name?: string) => locations.find((x) => x.name === name)?.type === 'Supplier-Held Location';
 
 export function DeliveryList() {
   const nav = useNavigate();
@@ -52,8 +52,8 @@ const headerSpecs = (soOptions: { value: string; label: string }[]): Spec[] => [
   { key: 'number', label: 'ID', hint: 'Auto-generated on save, editable', change: 'changed', req: R.del },
   { key: 'date', label: 'Date Time', type: 'datetime', required: true, change: 'changed', req: R.del, hint: 'Actual dispatch date and time, editable' },
   { key: 'customerName', label: 'Customer', type: 'readonly' },
-  { key: 'location', label: 'Location', type: 'select', options: allLocations, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
-  { key: 'supplierDoNo', label: "Supplier's Delivery Order No.", required: true, change: 'new', req: R.meet, show: (f) => supplierHeld(f.location), hint: 'The supplier delivers on your behalf and shares their own DO, recorded here for tracking' },
+  { key: 'location', label: 'Location', type: 'select', options: stockLocations, required: true, hint: 'Own yard, or a supplier yard for Fuel Trading' },
+  { key: 'supplierDoNo', label: "Supplier's Delivery Order No.", required: true, change: 'new', req: R.meet, show: (f) => isSupplierHeld(f.location), hint: 'The supplier delivers on your behalf and shares their own DO, recorded here for tracking' },
   { key: 'soId', label: 'Sales Order', type: 'select', options: soOptions, required: true },
   { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R.meet, hint: 'Fetched from the Sales Order (Cost Centre / Project)' },
   { key: 'operationType', label: 'Operation Type', type: 'readonly' },
@@ -69,7 +69,7 @@ const transportSpecs: Spec[] = [
   { key: 'extCost', label: 'External Transport Cost (AED)', type: 'number', required: true, change: 'new', req: R.del, show: (f) => f.transport === 'External Transporter', hint: 'Cost of the project. Posts to the same Order / Project cost centre' },
   { key: 'transportedBy', label: 'Transported By', type: 'select', options: suppliers.filter((x) => x.type === 'Service Provider' && x.active).map((x) => x.name), required: true, change: 'changed', req: R.meet, show: (f) => f.transport === 'External Transporter', hint: 'The supplier (vendor) who transports, so the cost is paid back to them against the project' },
   { key: 'driver', label: 'Driver', type: 'select', options: employees.filter((e) => e.designation === 'Driver' || e.designation === 'Service Desk Dispatcher').map((e) => e.name) },
-  { key: 'vehicleNumber', label: 'Vehicle Number' }, { key: 'iqama', label: 'Iqama / Resident Number', hint: '10 digits' }, { key: 'mobile', label: 'Mobile Number' },
+  { key: 'vehicleNumber', label: 'Vehicle Number' }, { key: 'iqama', label: 'Iqama / Resident Number' }, { key: 'mobile', label: 'Mobile Number' },
 ];
 
 export function DeliveryForm() {
@@ -96,6 +96,7 @@ export function DeliveryForm() {
     department: '', description: '', conditionFiles: [] as string[], signed: false, manual: [] as string[], foc: false, rentalStart: TODAY, startReason: '', startBy: '', waitingCharge: '', serviceLineIds: [] as string[], items: autoItems(initSo),
   }));
   const [err, setErr] = useState<Record<string, string>>({});
+  const [tp, setTp] = useState(blankTransport);
   const [trace, setTrace] = useState<string | null>(null);
   const [focLines, setFocLines] = useState<Line[]>([]);
   const [focOpen, setFocOpen] = useState(false);
@@ -105,7 +106,7 @@ export function DeliveryForm() {
   const set = (k: string, v: any) => setF((x) => (k === 'soId' ? { ...x, soId: v, items: autoItems(orders.get(v)), poNumber: orders.get(v)?.lpo ?? '', poDate: orders.get(v)?.lpoDate ?? '' } : { ...x, [k]: v }));
   const items = f.items as Record<string, DoItem>;
   const rentalSel = pending.filter((l) => l.activity === 'Rental' && (items[l.id]?.assetIds.length ?? 0) > 0);
-  const supplierSite = supplierHeld(f.location);
+  const supplierSite = isSupplierHeld(f.location);
   const late = rentalSel.length > 0 && f.rentalStart > f.date.slice(0, 10);
   const early = f.rentalStart < f.date.slice(0, 10);
   const chosenAssets = Object.values(items).flatMap((it) => it.assetIds.map((h) => assetById(h)?.assetId));
@@ -118,24 +119,22 @@ export function DeliveryForm() {
     const chosen = Object.values(items).filter((it) => it.qty > 0);
     if (so && !chosen.length) e.items = 'Select at least one item to deliver (use Trace Details for rental items)';
     chosen.forEach((it) => { const l = [...so!.lines, ...focLines].find((x) => x.id === it.lineId)!; if (it.qty > remainingOf(l)) e.items = `Only ${remainingOf(l)} of ${l.item} remain`; });
-    if (f.transport === 'External Transporter' && !String(f.transportedBy ?? '').trim()) e.transportedBy = 'Select the supplier who transports';
-    if (f.transport === 'External Transporter' && !Number(f.extCost)) e.extCost = 'External Transport Cost is required for an external transporter';
+    Object.assign(e, validateTransport(tp));
     if (rentalSel.length) {
       if (!f.rentalStart) e.rentalStart = 'Rental Start Date is required';
       else if (early) e.rentalStart = 'Rental Start Date cannot be before the delivery date';
       if (late && (!f.startReason || !f.startBy)) e.late = 'A reason and who is responsible are required when the Rental Start Date differs from the delivery date';
     }
     if (supplierSite && !String(f.supplierDoNo ?? '').trim()) e.supplierDoNo = "Enter the supplier's Delivery Order number";
-    if (f.iqama && !/^\d{10}$/.test(f.iqama)) e.iqama = 'Iqama / Resident Number must be 10 digits';
     if (['Delivered', 'Acknowledged'].includes(f.status) && !f.signed && !f.manual.length) e.signature = 'A Delivery Order cannot be completed without a customer e-signature or an attached manual confirmation';
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const usedFoc = focLines.filter((l) => chosen.some((c) => c.lineId === l.id));
     addFocLines(so!.id, usedFoc);
-    const d = createDelivery({ soId: so!.id, project: so!.costCentre, date: f.date, type: f.type, items: chosen, description: f.description, transport: f.transport, extCost: Number(f.extCost) || 0, conditionFiles: f.conditionFiles,
-      signature: f.signed ? 'E-signature' : f.manual.length ? 'Manual attachment' : '', foc: f.foc, status: f.status, number: f.number || undefined, driver: f.driver, narration: f.narration, rentalStart: rentalSel.length ? f.rentalStart : f.date.slice(0, 10),
+    const d = createDelivery({ soId: so!.id, project: so!.costCentre, date: f.date, type: f.type, items: chosen, description: f.description, transport: tp.transport, extCost: Number(tp.charge) || 0, conditionFiles: f.conditionFiles,
+      signature: f.signed ? 'E-signature' : f.manual.length ? 'Manual attachment' : '', foc: f.foc, status: f.status, number: f.number || undefined, driver: tp.driver, narration: f.narration, vehicleId: toTransportInput(tp).vehicleId, mobile: tp.mobile, rentalStart: rentalSel.length ? f.rentalStart : f.date.slice(0, 10),
       startReason: late ? f.startReason : undefined, startBy: late ? f.startBy : undefined, waitingCharge: late ? Number(f.waitingCharge) || undefined : undefined, serviceLineIds: f.serviceLineIds,
-      supplierDoNo: supplierSite ? f.supplierDoNo : undefined, reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: f.transportedBy, vehicleNumber: f.vehicleNumber, iqama: f.iqama, mobile: f.mobile, department: f.department, salesperson: so!.owner });
+      supplierDoNo: supplierSite ? f.supplierDoNo : undefined, reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: tp.transporter, iqama: f.iqama, department: f.department, salesperson: so!.owner });
     toast(`${d.number} created. ${rentalSel.length ? (late ? `Assets are on Hold, billing starts ${f.rentalStart}` : 'Assets are On Hire and the billing cycle has started') : 'Stock delivered, ready to invoice'}`);
     nav(`/crm/delivery-orders/${d.id}`);
   };
@@ -150,23 +149,24 @@ export function DeliveryForm() {
           { label: 'Basic Details', content: (
             <>
               <SpecForm specs={headerSpecs(soOptions)} f={view} set={set} err={err} />
-              <Section title="Items">
+              <Section title="Items" hint="Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.">
                 <ItemsGrid pending={pending} items={items} fleetRows={fleet.rows} onTrace={setTrace} onQty={(id, q) => set('items', { ...items, [id]: { ...(items[id] ?? { lineId: id, assetIds: [] }), qty: q } })} />
                 {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
                 {so && <Box sx={{ mt: 1 }}><Button size="small" variant="outlined" onClick={() => setFocOpen(true)}>+ Add FOC item</Button></Box>}
                 {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
-                <Note>Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.</Note>
               </Section>
-              <Section title="Transportation"><SpecForm specs={transportSpecs} f={f} set={set} err={err} /></Section>
+              <Section title="Transportation" change="changed" req={R.fleet} hint="Own Fleet creates a trip for the chosen vehicle and driver. An external transporter's cost is recorded on the trip and posted to the order once.">
+                <TransportSection value={tp} onChange={setTp} errors={err} />
+                <Box sx={{ mt: 2 }}><SpecForm specs={[{ key: 'iqama', label: 'Iqama / Resident Number' }]} f={f} set={set} /></Box>
+              </Section>
               {rentalSel.length > 0 && (
-                <Section title="Rental Start" change="new" req={R.meet}>
+                <Section title="Rental Start" change="new" req={R.meet} hint={late ? 'The assets stay on Hold until the Rental Start Date; invoicing does not start before it.' : undefined}>
                   <SpecForm specs={[
                     { key: 'rentalStart', label: 'Rental Start Date (Invoice Start)', type: 'date', required: true, hint: 'Defaults to the delivery date, editable. Billing for this delivery starts on this date' },
                     { key: 'startReason', label: 'Reason for the later start', type: 'master', master: 'delayReason', required: true, show: () => late },
                     { key: 'startBy', label: 'Delay is the responsibility of', type: 'select', options: FAULT_ATTRIBUTION, required: true, show: () => late, hint: 'Company: no penalty. Client: a waiting charge may apply' },
                     { key: 'waitingCharge', label: 'Lump sum for the waiting period (AED, optional)', type: 'number', show: () => late },
                   ]} f={f} set={set} err={err} />
-                  {late && <Note>The assets stay on Hold until the Rental Start Date; invoicing does not start before it.</Note>}
                   {err.late && <Text type="s5" color="#C64D4D">{err.late}</Text>}
                 </Section>
               )}
@@ -193,7 +193,7 @@ export function DeliveryForm() {
           { label: 'Promotion', content: <Text type="s4">No promotion applies to a Delivery Order.</Text> },
         ]} />
       </Page>
-      {focOpen && so && <FocDialog onClose={() => setFocOpen(false)} onAdd={(l) => { setFocLines((x) => [...x, l]); set('items', { ...items, [l.id]: { lineId: l.id, qty: serial(l) ? 0 : l.qty, assetIds: [] } }); setFocOpen(false); }} />}
+      {focOpen && so && <FocDialog so={so} onClose={() => setFocOpen(false)} onAdd={(l) => { setFocLines((x) => [...x, l]); set('items', { ...items, [l.id]: { lineId: l.id, qty: serial(l) ? 0 : l.qty, assetIds: [] } }); setFocOpen(false); }} />}
       {traceLine && <TraceDialog line={traceLine} current={items[traceLine.id]} fleetRows={fleet.rows} onClose={() => setTrace(null)} onSave={(it) => { set('items', { ...items, [traceLine.id]: it }); setTrace(null); }} />}
     </>
   );
@@ -255,6 +255,18 @@ function TraceDialog({ line, current, fleetRows, onClose, onSave }: { line: Line
   );
 }
 
+/** Shipping: the trip of this Delivery Order (vehicle, driver, status, link). Orders from before Fleet Management keep their original transport fields. */
+function DeliveryTransport({ d, f }: { d: Delivery; f: Record<string, any> }) {
+  const trips = useTrips().rows.filter((t) => t.docId === d.id);
+  if (!trips.length) return <SpecView specs={transportSpecs} f={f} />;
+  return (
+    <>
+      <TripsTable rows={trips} empty="No trip" />
+      <Box sx={{ mt: 1 }}><SpecView specs={[{ key: 'iqama', label: 'Iqama / Resident Number' }]} f={f} /></Box>
+    </>
+  );
+}
+
 export function DeliveryView() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -295,7 +307,7 @@ export function DeliveryView() {
                   { key: 'trace', label: 'Trace Details', change: 'new', req: R.del, render: (r) => r.assetIds.map((h: string) => assetById(h)?.assetId).join(', ') || '-' },
                 ]} />
               </Section>
-              <Section title="Transportation"><SpecView specs={transportSpecs} f={f} /></Section>
+              <Section title="Transportation" change="changed" req={R.fleet} hint="The trip carries the transport cost to the Sales Order. Open it to start, complete or add expenses such as Salik and fuel."><DeliveryTransport d={d} f={f} /></Section>
               <Section title="Rental Start" change="new" req={R.meet}>
                 <SpecView f={{ rentalStart: start, later: d.startReason ? `${d.startReason} (${d.startBy})${d.waitingCharge ? `, waiting charge ${aed(d.waitingCharge)}` : ''}` : '-', billing: `Starts ${start}`, closure: d.closed ? 'Closed automatically on return' : 'Open' }}
                   specs={[{ key: 'rentalStart', label: 'Rental Start Date' }, { key: 'later', label: 'Later start' }, { key: 'billing', label: 'Billing' }, { key: 'closure', label: 'Delivery Order closure' }]} />
@@ -306,7 +318,7 @@ export function DeliveryView() {
             </>) },
           { label: 'Package', content: <Text type="s4">Packages are packed and labelled in the existing Package flow (unchanged).</Text> },
           { label: 'Address and Contact', content: <Text type="s4">Shipping address and contact come from the Sales Order: {so?.shippingAddress ?? so?.site}, {so?.contactPerson ?? '-'}.</Text> },
-          { label: 'Shipping', content: <SpecView specs={transportSpecs} f={f} /> },
+          { label: 'Shipping', content: <DeliveryTransport d={d} f={f} /> },
           { label: 'Promotion', content: <Text type="s4">No promotion applies to a Delivery Order.</Text> },
         ]} />
       </Page>
@@ -319,8 +331,13 @@ export function DeliveryView() {
   );
 }
 
-/** FOC extras added at delivery (5 Oct call): a normal inventory item or a fixed asset, zero price, still traced. */
-function FocDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (l: Line) => void }) {
+/**
+ * FOC extras added at delivery (5 Oct call): a normal inventory item or a fixed asset, zero price, still traced.
+ * A fixed asset given free with a rental is lent, not sold: it becomes a zero-priced Rental line, goes On Hire and comes back on return.
+ * Only on a Fixed Asset Trading order is it a sale.
+ */
+function FocDialog({ so, onClose, onAdd }: { so: SalesOrder; onClose: () => void; onAdd: (l: Line) => void }) {
+  const lent = so.activity !== 'Fixed Asset Trading';
   const [kind, setKind] = useState<'Inventory item' | 'Fixed asset'>('Inventory item');
   const [item, setItem] = useState('');
   const [group, setGroup] = useState('Generator');
@@ -334,14 +351,16 @@ function FocDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (l: Line) =
         const m = stock.find((i) => i.name === item);
         onAdd(kind === 'Inventory item'
           ? mkLine({ activity: 'Trading', item, desc: item, unit: m?.unit ?? 'Nos', qty: Number(qty), price: 0, foc: true })
-          : mkLine({ activity: 'Fixed Asset Trading', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true }));
+          : lent
+            ? mkLine({ activity: 'Rental', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true, start: so.contractStart, end: so.contractEnd })
+            : mkLine({ activity: 'Fixed Asset Trading', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true }));
       }}>
       <Alert severity="info" sx={{ mb: 2 }}>Free of charge, no price. It is added to the Sales Order as a zero-priced line so what was asked and what was delivered stay traceable.</Alert>
       <Box sx={{ display: 'grid', gap: 2 }}>
         <SelectInput label="Type" value={kind} options={['Inventory item', 'Fixed asset']} onChange={(v) => setKind(v as 'Inventory item' | 'Fixed asset')} />
         {kind === 'Inventory item'
           ? <SelectInput label="Item" required value={item} options={stock.map((i) => i.name)} onChange={setItem} />
-          : <><SelectInput label="Category" required value={group} options={groupOptions()} onChange={(v) => { setGroup(v); setSub(''); }} /><SelectInput label="Subcategory" required value={sub} options={categoryOptions(group)} onChange={setSub} hint="Choose the exact asset with Trace after adding" /></>}
+          : <><SelectInput label="Category" required value={group} options={lent ? rentalGroupOptions() : groupOptions()} onChange={(v) => { setGroup(v); setSub(''); }} /><SelectInput label="Subcategory" required value={sub} options={categoryOptions(group)} onChange={setSub} hint="Choose the exact asset with Trace after adding" /></>}
         <TextInput label="Quantity" required type="number" value={qty} onChange={setQty} />
       </Box>
     </AppDialog>

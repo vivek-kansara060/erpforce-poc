@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { ACTIVITY_TYPES, BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { ACTIVITY_TYPES, BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 
@@ -39,7 +39,7 @@ export const generalSpecs = (kind: Kind): Spec[] => [
   { key: 'untilDate', label: 'Until Date', type: 'date', required: true, show: (f) => !!f.recurring },
   { key: 'status', label: kind === 'quote' ? 'Status' : 'Sales Order Status', type: 'readonly' },
   ...(kind === 'quote' ? [{ key: 'version', label: 'Version Number', type: 'readonly' } as Spec] : []),
-  { key: 'vatNumber', label: 'VAT Number', hint: '15 digits' }, { key: 'crn', label: 'CRN', hint: '10 digits' },
+  { key: 'vatNumber', label: 'VAT Number' }, { key: 'crn', label: 'CRN' },
   { key: 'vatType', label: 'VAT Type', type: 'select', options: VAT_TYPES, required: true, change: 'new', req: R.quote, hint: 'Standard or Export (Zero-Rated)' },
   ...(kind === 'quote' ? [{ key: 'quotePercentage', label: 'Quote Percentage (%)', type: 'number' } as Spec, { key: 'template', label: 'Document Template', type: 'master', master: 'docTemplate', required: true, change: 'new', req: R.quote, hint: 'Chosen by the sales rep per quotation' } as Spec, { key: 'description', label: 'Quotation Description', change: 'new', req: R.quote, hint: 'Quotation level only, does not sync back to the Opportunity' } as Spec] : []),
   { key: 'terms', label: 'Terms & Conditions', type: 'textarea', required: true },
@@ -56,6 +56,8 @@ export const contractSpecs: Spec[] = [
   { key: 'amcStart', label: 'AMC Start Date', type: 'date', required: true, show: (f) => f.activity === 'AMC' },
   { key: 'amcEnd', label: 'AMC End Date', type: 'date', required: true, show: (f) => f.activity === 'AMC', hint: 'Start + 1 year by default, editable' },
   { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order' },
+  { key: 'amcValue', label: 'Contract Value (AED, before VAT)', type: 'number', required: true, change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', hint: 'The whole AMC value. It is split evenly across the planned visits' },
+  { key: 'amcScope', label: 'Scope of the AMC', type: 'textarea', change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', full: true, hint: 'What the contract covers, printed on the quotation' },
 ];
 const classification: Spec[] = [{ key: 'location', label: 'Location', type: 'select', options: yards, required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }];
 const discounts: Spec[] = [
@@ -79,6 +81,8 @@ export function withHeaderCascade(x: F, k: string, v: any): F {
   if (k === 'contractType' && v === 'Open PO' && !x.contractEnd) n.contractEnd = yearEnd(x.contractStart || undefined);
   if (k === 'activity' && x.activity !== v) n.lines = [];
   if (k === 'amcStart' && v) n.amcEnd = plusYear(v);
+  // An AMC has no item lines: its single contract line follows the Contract Value and scope.
+  if (n.activity === 'AMC' && ['activity', 'amcValue', 'amcScope'].includes(k)) n.lines = [amcLine(Number(n.amcValue) || 0, n.amcScope, (x.lines as Line[])[0]?.id)];
   if (k === 'contractStart' || k === 'contractEnd') {
     const lk = k === 'contractStart' ? 'start' : 'end';
     n.lines = (x.lines as Line[]).map((l) => (l.activity === 'Rental' || (l.activity === 'Service' && l.billing === 'Recurring') ? { ...l, [lk]: v } : l));
@@ -92,8 +96,6 @@ export function commercialErrors(f: F): Record<string, string> {
   if (f.oppId !== undefined && !f.activity) e.activity = 'Activity Type is required';
   if (f.recurring && !f.untilDate) e.untilDate = 'Until Date is required when Recurring is set';
   if (f.currency !== 'AED' && !Number(f.exchangeRate)) e.exchangeRate = 'Exchange Rate is required';
-  if (f.vatNumber && !/^\d{15}$/.test(f.vatNumber)) e.vatNumber = 'VAT Number must be 15 digits';
-  if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
   if (f.transactionType === 'Credit' && !String(f.contactPerson ?? '').trim()) e.contactPerson = 'Contact Person is required for Credit';
   if (!f.location) e.location = 'Location is required';
   if (!f.costCentre) e.costCentre = 'Cost Centre / Project is required in the header';
@@ -108,6 +110,7 @@ export function commercialErrors(f: F): Record<string, string> {
     if (!f.amcStart) e.amcStart = 'AMC Start Date is required';
     if (!f.amcEnd) e.amcEnd = 'AMC End Date is required';
     if (!Number(f.visits)) e.visits = 'Number of Visits is required';
+    if (!(Number(f.amcValue) > 0)) e.amcValue = 'Contract Value is required';
   }
   return e;
 }
@@ -131,7 +134,9 @@ export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral,
           {kind === 'quote' && <Section title="Prepared By" change="new" req={R.quote}>{g(preparedSpecs, 4)}</Section>}
           {belowGeneral}
           <Section title="Classification">{g(classification)}</Section>
-          <Section title="Items" change="changed" req={R.meet}>{items}</Section>
+          {f.activity === 'AMC'
+            ? <Section title="Contract Value" change="new" req={R.meet} hint="An AMC has no item lines. The Contract Value is split across the planned visits; materials used on a visit are recorded on its job card and billed separately."><Totals lines={f.lines ?? []} discountPct={Number(f.discountPct) || 0} vatType={f.vatType} currency={f.currency} /></Section>
+            : <Section title="Items" change="changed" req={R.meet}>{items}</Section>}
           <Section title="Discounts">{g(discounts, 3)}</Section>
           {!locked && <Section title="Attachment"><SpecForm specs={[{ key: 'attachments', label: 'Attachment', type: 'file' }]} f={f} set={set} /></Section>}
         </>) },

@@ -15,6 +15,7 @@ import { deliveredQty, getOrder, outstanding, receiveCrossHire, replaceAsset, re
 import { R, aed, useCrossHire, useExtensions, useFleet, useOrders, useReplacements } from '@/modules/crm/shared';
 import { CrossHireDialog, ExpiryDialog } from '@/modules/crm/ActionDialogs';
 import { expiryRows } from '@/modules/crm/reports';
+import { TransportSection, blankTransport, toTransportInput, validateTransport } from './FleetPages';
 
 /* ------------------------------------------------------------------ Replacements */
 export function ReplacementList() {
@@ -43,6 +44,7 @@ export function ReplacementForm() {
   const [f, setF] = useState<Record<string, any>>({ soId: sp.get('so') ?? '', key: '', reason: '', newId: '', priceAdjust: '', notified: false });
   const [dlg, setDlg] = useState(false);
   const [err, setErr] = useState<Record<string, string>>({});
+  const [tp, setTp] = useState(blankTransport);
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
   const so = orders.get(f.soId);
   const outs = (so?.lines ?? []).flatMap((l) => outstanding(l).filter((a) => a.state === 'On Hire').map((a) => ({ l, a })));
@@ -55,9 +57,10 @@ export function ReplacementForm() {
     if (!pick) e.key = 'Select the asset to replace';
     if (!f.reason) e.reason = 'Replacement Reason is required';
     if (!f.newId) e.newId = 'Select the replacement asset';
+    Object.assign(e, validateTransport(tp));
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
-    const r = replaceAsset({ soId: so!.id, lineId: pick!.l.id, oldId: pick!.a.assetId, newId: f.newId, reason: f.reason, priceAdjust: Number(f.priceAdjust) || 0, notified: f.notified });
+    const r = replaceAsset({ soId: so!.id, lineId: pick!.l.id, oldId: pick!.a.assetId, newId: f.newId, reason: f.reason, priceAdjust: Number(f.priceAdjust) || 0, notified: f.notified, transport: toTransportInput(tp) });
     toast(`${r.number}: asset swapped. Old asset moved to Under Maintenance, billing cycle not paused`);
     nav('/rental/replacements');
   };
@@ -86,6 +89,9 @@ export function ReplacementForm() {
             <CheckInput label="Customer notified of the replacement" change="new" req={R.repl} checked={f.notified} onChange={set('notified')} />
             <TextInput label="Resulting status of the faulty asset" disabled value="Under Maintenance" hint="Always Under Maintenance first. Disposal is a separate manual decision, the system never auto-disposes" />
           </FormGrid>
+        </FormSection>
+        <FormSection title="Transport" change="new" req={R.fleet} hint="One Replacement trip carries the new unit out and brings the old unit back.">
+          <TransportSection value={tp} onChange={setTp} errors={err} />
         </FormSection>
       </Page>
       <CrossHireDialog open={dlg} onClose={() => setDlg(false)} soId={so?.id} lineId={pick?.l.id} />

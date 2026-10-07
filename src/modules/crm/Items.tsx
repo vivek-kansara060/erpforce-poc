@@ -11,7 +11,7 @@ void _fmt;
 import { fmtAED } from '@/mock-data/masters';
 import { neutral } from '@/theme/color';
 import {
-  allLocations, yards, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
+  stockLocations, yards, CATEGORY_LABEL, COST_CENTRES, FUEL_UNITS, SUBCATEGORY_LABEL, availability, categoryOptions, groupOptions, rentalGroupOptions, isPeriodic, isRentalLine, lineActivitiesFor, lineGross, linePeriods, lineTaxable, lineVat, mkLine, pricingName,
   type ActivityType, type HeavyRec, type Line, type PricingRec,
 } from './data';
 import { ChangeTag } from '@/components/ChangeTag';
@@ -147,7 +147,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
   const rental = l.activity === 'Rental';
   const priceOpts = pricing.filter((p) => p.activity === 'Rental' && p.category === l.group && (!l.category || p.subCategory === l.category));
   const inv = liveItems();
-  const itemList = inv.filter((i) => i.type !== 'Service').filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.classification === 'AMC' : ['Trading', 'Inventory'].includes(i.classification)));
+  const itemList = inv.filter((i) => i.type !== 'Service' || l.activity === 'AMC').filter((i) => (l.activity === 'Fuel Trading' ? i.classification === 'Fuel Trading' : l.activity === 'AMC' ? i.type === 'Service' : ['Trading', 'Inventory'].includes(i.classification)));
   const pick = (pid: string) => { const p = pricing.find((x) => x.id === pid); if (p) set({ pricingId: pid, item: pricingName(p), price: l.foc ? 0 : p.price, frequency: p.frequency, desc: descEdited ? l.desc : pricingName(p) }); };
   const pickService = (name: string) => {
     const m = services.find((x) => x.name === name);
@@ -175,7 +175,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
       actions={isNew ? <Button variant="outlined" onClick={() => save(true)}>Save and Add another</Button> : undefined}>
       {rental && (err.contract || !contract?.start || !contract?.end) && <Alert severity={err.contract ? 'error' : 'info'} sx={{ mb: 2 }}>Set the Contract Start and End Date in the main form before adding rental equipment. They apply to every rental line.</Alert>}
       <FormGrid cols={3}>
-        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={groupOptions()} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
+        {equipment && <SelectInput label={CATEGORY_LABEL} required change="new" req={R.meet} value={l.group} options={l.activity === 'Rental' ? rentalGroupOptions() : groupOptions()} onChange={(v) => set({ group: v, category: undefined, pricingId: undefined })} error={err.group} />}
         {equipment && <SelectInput label={SUBCATEGORY_LABEL} required change="new" req={R.meet} value={l.category} options={categoryOptions(l.group)} onChange={(v) => set({ category: v, pricingId: undefined, item: rental ? `Rental ${l.group} ${v}` : `${l.group} ${v} (sale)`, ...(!rental && !l.foc ? { price: pricing.find((p) => p.activity === 'Fixed Asset Trading' && p.category === l.group && p.subCategory === v)?.price ?? l.price } : {}) })} error={err.category} hint="The exact serialized asset is chosen at Delivery" />}
         {rental && (priceOpts.length
           ? <SelectInput label="Pricing" required change="new" req={R.meet} value={l.pricingId} options={priceOpts.map((p) => ({ value: p.id, label: `${pricingName(p)} (${fmtAED(p.price)})` }))} onChange={pick} error={err.item} hint="From Inventory, Heavy Equipment Pricing" />
@@ -198,7 +198,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
         <TextInput label="Tax Template" disabled value={vat.startsWith('Export') ? 'Zero Rated' : 'VAT 5%'} />
         <TextInput label="Tax Amount" disabled value={aed(lineVat(l, vat))} />
         <TextInput label="Total Amount" disabled value={aed(net + lineVat(l, vat))} />
-        {!service && <SelectInput label="Location" value={l.location} options={l.activity === 'Fuel Trading' || l.activity === 'Trading' ? allLocations() : yards()} onChange={(v) => set({ location: v })} hint={l.activity === 'Fuel Trading' ? 'Own yard or a supplier yard' : undefined} />}
+        {!service && <SelectInput label="Location" value={l.location} options={l.activity === 'Fuel Trading' || l.activity === 'Trading' ? stockLocations() : yards()} onChange={(v) => set({ location: v })} hint={l.activity === 'Fuel Trading' ? 'Own yard or a supplier yard' : undefined} />}
         {!service && l.activity !== 'AMC' && <DateInput label="Delivery Commitment Date" value={l.deliveryDate} onChange={(v) => set({ deliveryDate: v })} hint="One date per item, as there may be several delivery commitments" />}
         {!service && l.activity !== 'AMC' && <DateInput label="Expected Shipping Date" value={l.shipDate} onChange={(v) => set({ shipDate: v })} />}
         {mode === 'quote' && rental && <NumberInput label="Replacement Cost" value={l.replacementCost ?? 0} onChange={(v) => set({ replacementCost: Number(v) })} />}

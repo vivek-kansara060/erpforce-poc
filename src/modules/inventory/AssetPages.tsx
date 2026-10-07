@@ -18,6 +18,7 @@ import {
 } from './data';
 import { FileList, aed, isBlank, num, requireFields, type Errors, CertTypeSelect } from './shared';
 import dayjs from 'dayjs';
+import { invoiceFromDisposal } from '@/modules/accounting/engine';
 
 const REQ_CERT = 'Compliance & Certificates (Asset-Level)';
 const REQ_CERT_ASSET = 'Compliance & Certificates (2 Oct call: on the individual asset, many per asset, optional approval)';
@@ -293,7 +294,7 @@ export function CountForm() {
   // System quantity is what this location holds (not the item's total across all locations).
   const snapshot = (location: string) =>
     locStock.rows.filter((r) => r.location === location && r.qty > 0)
-      .flatMap((r) => { const i = items.get(r.itemId); return i && i.tracking !== 'Serialized' && i.category !== 'Service' ? [{ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: r.qty, countedQty: null as number | null }] : []; });
+      .flatMap((r) => { const i = items.get(r.itemId); return i && i.tracking !== 'Serialized' && i.type !== 'Service' ? [{ itemId: i.id, code: i.code, name: i.name, unit: i.unit, systemQty: r.qty, countedQty: null as number | null }] : []; });
   const hasStockDiff = lines.some((l) => { const v = variance(l); return v !== null && v !== 0; });
   const save = (complete: boolean) => {
     const e: Errors = {};
@@ -621,20 +622,22 @@ export function DisposalView() {
     toast(`Request approved, asset inactivated. Next: record the ${sale ? 'sale' : 'scrap'}`);
   };
   const seq = (prefix: string, base: number) => `${prefix}-26-${String(base + disposals.rows.length).padStart(5, '0')}`;
-  const openOutcome = () => { setO({ date: TODAY, source: INVOICE_TO_SOURCES[0], buyer: '', saleValue: r.value ? String(r.value) : '', invoiceRef: seq('INV', 140), scrapRef: '' }); setOErr({}); setOutDlg(true); };
+  const openOutcome = () => { setO({ date: TODAY, source: INVOICE_TO_SOURCES[0], buyer: '', saleValue: r.value ? String(r.value) : '', invoiceRef: 'Assigned on save', scrapRef: '' }); setOErr({}); setOutDlg(true); };
   const completeOutcome = () => {
     const e: Errors = isBlank(o.date) ? { date: 'Date is required' } : {};
     if (isBlank(o.buyer)) e.buyer = 'Invoice To is required';
     if (!(num(o.saleValue) > 0)) e.saleValue = 'Invoice amount must be greater than 0';
-    if (isBlank(o.invoiceRef)) e.invoiceRef = 'Invoice number is required';
     setOErr(e);
     if (Object.keys(e).length) return;
     const nbv = asset?.nbv ?? 0;
-    const outcome: DisposalOutcome = { date: o.date, journalRef: seq('JV', 360), nbvAtDisposal: nbv, by: 'Current User', buyer: o.buyer.trim(), buyerSource: o.source, saleValue: Number(o.saleValue), invoiceRef: o.invoiceRef.trim(), scrapRef: sale ? undefined : o.scrapRef.trim() || undefined };
+    // A real sales invoice in Accounting, created Pending (instruction 6 Oct: disposal sale invoiced in Finance).
+    const buyerId = (customers.rows as any[]).find((x) => x.name === o.buyer.trim())?.id as string | undefined;
+    const inv = invoiceFromDisposal({ disposalId: r.id, number: r.number, assetId: r.assetId, assetName: asset?.name, method: r.method, buyer: o.buyer.trim(), customerId: buyerId, amount: Number(o.saleValue), date: o.date });
+    const outcome: DisposalOutcome = { date: o.date, journalRef: seq('JV', 360), nbvAtDisposal: nbv, by: 'Current User', buyer: o.buyer.trim(), buyerSource: o.source, saleValue: Number(o.saleValue), invoiceRef: inv.number, scrapRef: sale ? undefined : o.scrapRef.trim() || undefined };
     push({ outcome }, sale ? 'Sale invoiced' : 'Scrap invoiced', `Invoice ${outcome.invoiceRef} to ${outcome.buyer} for ${aed(o.saleValue)}; journal ${outcome.journalRef}`);
     setOutDlg(false);
-    toast(`Invoice ${outcome.invoiceRef} created`);
-    nav(`/accounting/invoices/${outcome.invoiceRef}`);
+    toast(`Invoice ${inv.number} created, pending approval in Accounting`);
+    nav(`/accounting/invoices/${inv.id}`);
   };
   const out = r.outcome;
   const gain = out ? (out.saleValue ?? 0) - out.nbvAtDisposal : 0;
@@ -686,7 +689,7 @@ export function DisposalView() {
       <AppDialog open={outDlg} title={`Create Invoice for ${sale ? 'Sale' : 'Scrap'}`} onClose={() => setOutDlg(false)} onConfirm={completeOutcome} confirmLabel="Create Invoice" maxWidth="md">
         <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>A {sale ? 'sale' : 'scrap'} always results in an amount, so an invoice is raised to the party taking the asset.</Text>
         <FormGrid>
-          <TextInput label="Invoice Number" required change="new" req={REQ_DSP_INV} value={o.invoiceRef} onChange={(v) => setO({ ...o, invoiceRef: v })} error={oErr.invoiceRef} hint="Suggested next number; in the live system the invoice is raised in Finance" />
+          <TextInput label="Invoice Number" disabled change="changed" req={REQ_DSP_INV} value={o.invoiceRef} hint="The sales invoice is created in Accounting (Pending approval) when you save" />
           <DateInput label="Invoice Date" required change="new" req={REQ_DSP_INV} value={o.date} onChange={(v) => setO({ ...o, date: v })} error={oErr.date} />
           <SelectInput label="Invoice To Taken From" required change="new" req={REQ_DSP_INV} value={o.source} options={INVOICE_TO_SOURCES} onChange={(v) => setO({ ...o, source: v, buyer: '' })} hint="Whether the invoiced party is picked by the system or entered by hand is to be confirmed with client" />
           {o.source === 'Customer list'

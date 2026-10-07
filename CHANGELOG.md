@@ -12,6 +12,176 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 6 Oct, around 12:50 PM: Every invoice in the POC is now a real invoice in Accounting
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Fleet Management > Trips
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Where:** Rental > Invoicing > Previous Jobs
+**Where:** Rental > Cross Hire > Orders
+**Where:** Inventory & Fixed Assets > Asset Disposal Requests
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Invoices existed only as numbers typed on a Sales Order line, a job card or a disposal. Nothing could be approved, paid or traced, the Sales Order Asset Ledger showed sample "received" figures, and cross-hire supplier invoices were a text field.
+*What we did.* Every flow now creates a real document in Accounting, always Pending until approved there. Sales Order: Create, Invoice raises one invoice for the selected non-rental lines (the line step does the same); Advance records a Pending advance collection; a new Invoices tab shows invoices, payments and advances; the Asset Ledger reads invoiced and received from the rental invoices and shows Invoiced up to and Next Invoice Date; the Charges tab raises the damage or failed-collection invoice. Rental invoices are raised only from Rental, Invoicing Rental Order with Run Invoicing (decision of 6 Oct): each delivered asset from its own Rental Start (Hold excluded) to its off-hire day, pro-rated, plus the monthly damage waiver, delivery and installation charges on the first invoice, return charges on the final invoice and any waiting charge; Previous Jobs lists every run. AMC job cards raise their invoice (visit share, non-FOC materials and services). A return with damage raises its invoice, except when a damage waiver was paid. Cross-hire Receive (or Create, Bill for Dropship) raises the supplier bill with the agreed rate and expenses; a dispute charge raises a supplementary bill. Completing an external transporter trip raises the transporter's bill. Recording a disposal sale or scrap raises the buyer's invoice. The seven invoice numbers already in the demo data (INV-26-00118, 00287, 00344, 00371, 00396, 00402, 00415) are now real invoices, plus about 20 months of rental history.
+*Be aware.* Invoices are Pending until approved in Accounting (decision D4) and payments are Pending until approved (D5), so a job card shows Paid only after the invoice and its collection are both approved. The rental cycle is monthly from the first Rental Start of the order, pro-rated by days, and billing stops on the off-hire day: rule to be confirmed with client. The credit limit is a warning only, also to be confirmed. The invoice engine sits in Accounting and is called by CRM, Rental and Inventory; this is the one deliberate exception to "modules do not read each other's data".
+
+### 6 Oct, around 12:45 PM: Accounting POC: Invoices, Bills, Collections, Payments, Credit and Debit Notes, Journals
+**Where:** Accounting & Finance > Dashboard
+**Where:** Accounting & Finance > Journal Entry
+**Where:** Accounting & Finance > Payment Entry > Payment
+**Where:** Accounting & Finance > Payment Entry > Collection
+**Where:** Accounting & Finance > Invoice > Bills
+**Where:** Accounting & Finance > Invoice > Invoices
+**Where:** Accounting & Finance > Credits > Debit Notes
+**Where:** Accounting & Finance > Credits > Credit Notes
+**Where:** Accounting & Finance > Reports
+**Where:** Accounting & Finance > Settings > Chart of Accounts
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Accounting had only a dashboard placeholder and a reference page for disposal invoices (on 5 Oct accounting was "not designed in this POC"). Anurag asked on 6 Oct for a sales and purchase invoicing POC connected to the existing flows.
+*What we did.* The existing ERP accounting sidebar is reproduced in its order. Invoices (sales) and Bills (purchase) follow the existing ERP: list, form and view with Submit for Approval, Quick Approval, Accept and Reject, Edit and Delete only before approval, Collection Entry or Payment Entry, Apply Payment (advance), Credit Note or Debit Note, View Accounting Ledger, Payment Request when overdue, Duplicate, Print and Email. Added on top of the ERP: Activity Type and Cost Centre / Project inherited from the source, a Source document link, rental period lines per asset, and a credit-limit warning. Collection and Payment allocate to open invoices or bills (or record an advance) and change them only when approved. Every approval posts a journal following the existing posting rules (Dr Receivable, Cr income and Output VAT; Dr expense and Input VAT, Cr Payable; Dr bank, Cr Receivable; credit and debit notes reverse), with Cost Centre on the journal lines. Chart of Accounts lists the accounts used, with balances. Aged Receivable, Aged Payable, Customer SOA and General Ledger read the live documents. The other accounting screens show their existing columns and are not rebuilt.
+*Be aware.* Invoice and bill numbers are assigned at creation (the ERP assigns the sales invoice number at approval) so the source documents can show them at once. ZATCA (Saudi) is not shown: the client is in the UAE. Numbers continue from the demo data: INV-26-00416, BILL-26-00024, PAY-26-00055, CRN-26-00009, DBN-26-00004, JV-26-00401.
+
+### 6 Oct, around 12:40 PM: AMC Order and Job Card become view pages; the form is only for creating and editing
+**Where:** CRM / Sales > Orders > AMC Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The Job Card page was an editable form even after it was saved, and the AMC Order page had no Generate or Actions menus, unlike the Sales Order.
+*What we did.* The AMC Order keeps exactly its fields, panels and tabs; only the page header changes to the Sales Order view style: Edit, Generate (Job Card for the next planned visit, Invoice for completed job cards), View (Sales Order, Quotation, Opportunity, Invoices) and Actions (Send by Email, Print, Print consolidated report, Close). The Job Card keeps its fields and sections, shown read-only, with Complete Visit, Generate (Invoice), View and Actions (Edit, Print, Send by Email, Upload signed copy, Record Payment). The form opens only to create a job card for a planned visit (nothing is saved until Save) and through Actions, Edit until the job card is invoiced.
+*Be aware.* Payment on the job card, the AMC order and the AMC list is now read from the invoice in Accounting, so Mark Payment Received is replaced by Record Payment, which creates a Pending collection.
+
+### 6 Oct, around 8:30 PM: The driver comes with the vehicle on a delivery, collection or replacement
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Rental > Replacement Orders
+**Where:** CRM / Sales > Fleet Management > Fleet Availability
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Drivers are linked to a vehicle by default (requirement document, Assigned Driver), but in the demo the only Free vehicle had no default driver, so the driver always had to be picked by hand, and the Driver field looked like a free choice.
+*What we did.* Picking a vehicle fills its Default Driver and mobile as read-only fields; a "Change driver" link opens the driver list for the rare swap (Service Desk reassignment). Every delivery vehicle now has a default driver: the Mitsubishi Fuso flatbed is paired with Sameer Khan (new driver), and a sixth vehicle was added, a MAN TGS low-bed (Dubai M 77042) with Arun Das (new driver), so two vehicles are Free on the board and every status still has an example.
+*Be aware.* A vehicle without a Default Driver still shows the driver list straight away.
+
+### 6 Oct, around 8:00 PM: Fleet Management moved from Rental to CRM
+**Where:** CRM / Sales > Fleet Management > Fleet Availability
+**Where:** CRM / Sales > Fleet Management > Trips
+**Type:** NEW
+
+*The problem.* Fleet Management (Fleet Availability, Trips) sat in the Rental sidebar. The team decided it belongs in CRM, next to the Delivery Orders and Customer Returns that create the trips.
+*What we did.* The Fleet Management group is now in the CRM sidebar (after Orders) at /crm/fleet and /crm/trips, and removed from Rental. Every trip and board link (Delivery Order, Customer Return, Sales Order Logistics tab, Heavy Equipment asset page) points to the new address; the old /rental/fleet and /rental/trips links redirect. The two Change Register rows moved to CRM.
+*Be aware.* This reverses requirement R12 of the fleet plan: on the 5 Oct morning call Ajin placed fleet management in the Rental module for the rental operations team. Decision taken by Anurag on 6 Oct.
+
+### 6 Oct, around 7:30 PM: FOC visit on an AMC job card
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* FOC existed on job card materials and services, but a whole visit could not be given free (for example AED 20,000 over 4 visits, one visit of AED 5,000 not billed).
+*What we did.* The job card has an "FOC visit" tick: that visit's share of the Contract Value is not invoiced; materials and services keep their own FOC tick. Free of cost is shown everywhere the AMC money appears: the job card totals, a "Free of cost" KPI and an FOC chip on the planned visits of the AMC order, a Free of cost column and total in the consolidated report, a Free of cost column on the AMC Orders list, "(FOC)" on the AMC Visits tab of the Sales Order, and the invoice log. Also fixed: a material's cost stayed 0 when the row was added before the item was picked.
+*Be aware.* An FOC visit is not moved onto the other visits: the total billed drops by that visit's share.
+
+### 6 Oct, around 7:00 PM: AMC job card: FOC per material and service line; a van with AMC stock for every technician
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The requirement document (AMC Billing) lets the Project Team mark a normally chargeable consumable or extra task as Free of Cost for a specific job; the job card had no way to do it. For the AMC demo, Sanjay Kumar had no AMC materials in any van, and Sales Representatives were offered as technicians although they have no van.
+*What we did.* Each material and service row on the job card has an FOC tick: the line is not billed (the invoice total drops and a "Free of cost (not billed)" line shows the value), but the material still leaves the van stock and its cost is still counted. Added Service Van 3 (Sanjay Kumar) and AMC stock (Engine Oil, Air Filter, Battery) in all three vans; Battery 12V 200Ah is now classified AMC. The Technician list on the job card shows Service Technicians and the Yard Supervisor only.
+*Be aware.* Oil Filter stays an Inventory item (it is sold on a Trading order), so it is not offered as an AMC material.
+
+### 6 Oct, around 6:00 PM: AMC has no item lines; materials come from AMC items on the job card
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* An AMC Quotation asked for item lines (an "AMC Scheduled Visit" item with quantity and rate), as if materials or visits were sold as items. Ajin defined an AMC as a period and a number of visits (22 Sep call), with a contract value split across the visits (2 Oct call); materials are recorded on each visit's job card from the AMC items in inventory (2 Oct and 5 Oct calls).
+*What we did.* AMC Quotations and Sales Orders have no Items grid. The Contract section asks for AMC Start Date, End Date, Number of Visits, **Contract Value** and **Scope of the AMC**; a Contract Value section shows the totals. The visit plan splits the Contract Value across the visits as before. An AMC Opportunity has no item lines (the Estimated Value carries the expected value into the Quotation). The AMC Orders list, the AMC order view and the job card show the Scope instead of an "AMC Item". On the job card, materials are only inventory items with Product Classification = AMC carried in the technician's van. The "AMC Scheduled Visit (Generator)" service item is removed. Fuel Filter, Engine Oil and Air Filter are now classified AMC. Demo AMC records keep their values (SO-26-00053 AED 24,000, SO-26-00050 AED 18,000, QT-26-00080 AED 7,000).
+*Be aware.* Behind the scenes an AMC document still holds one "AMC Annual Contract" line built from the Contract Value, so totals, invoices and reports keep working; it is never edited as an item.
+
+### 6 Oct, around 4:30 PM: Service is no longer an Activity Type; it is a charge
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* "Service" was listed as an Activity Type next to Rental, Trading and AMC, and a service item carried a Product Classification, a Category and a Subcategory. A service is not a kind of business. It is a charge we levy (delivery charge, labor, installation, waiver), added to an order from the Inventory service master.
+*What we did.* Removed Service from every Activity Type list (Lead, Opportunity, Quotation, Sales Order, the Activity Type Performance report and the document templates). Service items in Inventory no longer have Product Classification, Category or Subcategory (hidden on the form, list and view, and no longer required). Service charge lines are still added to Rental and Fixed Asset Trading orders from the service master. The seven demo records that were Service only now sit under real Activity Types: the Emirates Infrastructure lead is Rental, the Oasis Data Centre lead is AMC, the Kiln 4 job (OP-26-00018, QT-26-00079, SO-26-00051) is now a Rental order for a 500 KVA unit with installation and transportation as service charges, and the resort load bank test (OP-26-00019, QT-26-00080) is an AMC with two scheduled visits. AMC is no longer a Service Type either (Service Type is Charge, Waiver or Insurance); the AMC Scheduled Visit item is a Charge billed per visit, and an AMC order line picks from the service master.
+*Be aware.* SO-26-00051 now has a 500 KVA unit pending delivery. Internally a service line is still tagged "Service" as a line kind, but it is no longer an Activity Type anywhere you can see or choose.
+
+### 6 Oct, around 2:30 PM: Fleet Management: own delivery vehicles, Fleet Availability board, Trips and trip costs
+**Where:** Rental > Fleet Management > Fleet Availability
+**Where:** Rental > Fleet Management > Trips
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Rental > Replacement Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** CRM / Sales > Settings > Masters
+**Type:** NEW
+
+*The problem.* Ajin asked for a way to see which own vehicle is free before a delivery, collection or replacement, to assign one, and to charge every trip's cost (Salik, fuel, transporter) to the project. The POC only had a free-text driver and vehicle number on the Delivery Order, and the three trucks sat in the hire pool, so a truck could even be quoted for rent.
+*What we did.* Own delivery vehicles are the same Heavy Equipment Fixed Asset record, marked with a new **Delivery fleet vehicle** checkbox (Owned assets only) with a Plate Number and Default Driver. They are In Service, never rented out, never offered on a quote and never counted in the rental fleet (the Vehicle category no longer appears on a rental line and the low-bed truck rental price is removed). A new **Fleet Availability** board shows each vehicle as Free, Assigned, En Route, Stuck-Delayed (reason and Responsible required) or Unavailable, with counts and filters by Vehicle Type and status. A new **Trips** list and view hold one trip per delivery, collection or replacement, with expenses and a log. The Delivery Order, Customer Return (Company Collection) and Replacement Order get a transport section: Select from fleet opens the board as a picker of Free vehicles, which fills vehicle, driver and mobile; no free vehicle offers an external transporter; an Assigned trip can be switched to an external transporter. Every trip expense is added to the Sales Order logistics cost (new Logistics tab), and an external transporter's cost is posted once. Collection Failed marks the collection trip Stuck-Delayed; the Collection Note prints driver and vehicle. Trip Expense Types is a new CRM master. Section hints in the touched forms are now "?" tooltips.
+*Be aware.* The Trips list is our own design choice (not named in the requirement document). Vehicle status is derived from the trips, never typed. The Iqama field is kept for now (open question for Ajin). Data is in memory, a refresh restores the demo trips. CN-26-00123 shows two trips on purpose: a stuck first attempt and a second crane-truck trip.
+
+### 7 Oct, around 12:30 AM: Format checks removed from fields; business checks kept
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Some fields rejected values that did not match a fixed format, which gets in the way of a POC demo where any sample value should be accepted.
+*What we did.* Removed the format checks: Email on the Lead (any text is accepted), VAT Number (15 digits) and CRN (10 digits) on the Lead, Opportunity, Quotation and Sales Order, and Iqama / Resident Number (10 digits) on the Delivery Order. The "15 digits" and "10 digits" hints under those fields are gone too. Phone and mobile fields had no format check and still accept anything.
+*Be aware.* Business checks are unchanged: required fields, amounts greater than 0, percentages between 0 and 100, values that cannot be negative, date order, and stock limits.
+### 6 Oct, around 11:30 PM: Employee location type for service vans, with Transfer stock in and van stock on AMC job cards
+**Where:** Inventory & Fixed Assets > Configuration > Location
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* AMC technicians carry spare parts in a van and use them on visits. A location could only be an Own Yard or a Supplier-Held Location, so there was nowhere to keep van stock, and an AMC job card could "consume" from any location, including a yard far away, without reducing any stock.
+*What we did.* Location Type now has a third value, **Employee**. Choosing it replaces Linked Supplier with **Assigned Users**, a required multi-select of ERP user accounts (people with a login, not the whole employee list). The location list shows an Assigned Users column and can be filtered by Employee. An Employee location's page shows its users and has **Transfer stock in**, which moves a quantity of a stock item from a yard or supplier location into the van, never more than is available there. On the AMC job card, "Consume from location" lists only the vans assigned to the chosen technician (picked automatically when there is one), the materials list offers only what that van holds and shows the quantities, the visit cannot be completed with more than the van holds, and completing it reduces the van's stock. Vans are kept out of places a generator is dispatched from: Delivery Order location, quotation and order line locations, cross-hire receiving location, the asset's Initial Location and movement places. Physical Stock Verification can count a van like any other location. Sample data: a list of system users, Service Van 1 (Rajesh Pillai) and Service Van 2 (Rajesh Pillai and Sanjay Kumar), each with spare parts; seeded job cards now draw from Service Van 1.
+*Be aware.* In the real ERP the van is filled with the existing Stock Transfer screen; Transfer stock in stands in for it in this POC. A van can be assigned to several users, as agreed on the 5 Oct call.
+### 6 Oct, around 10:30 PM: Demo data now covers every flow, and its dates follow the demo day
+**Where:** CRM / Sales > Orders > Lead
+**Where:** CRM / Sales > Orders > Opportunity
+**Where:** CRM / Sales > Orders > Quotation
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Rental > Cross Hire > Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Inventory & Fixed Assets > Product Management > Heavy Equipment Pricing
+**Where:** Inventory & Fixed Assets > Operations > Physical Stock Verification
+**Where:** Inventory & Fixed Assets > Fixed Asset Management > Disposal Requests
+**Where:** Inventory & Fixed Assets > Dashboards
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Several flows could not be shown from the sample data. A new AMC quotation had no item to pick. No cross-hire order was waiting to be received or linked to an asset, the RFQ had no request behind it, and its dates were in the future. Nothing was on Hold, no return was waiting at any step, no order could be closed, no LPO was close to expiry, there was no Service order and no AMC order with invoiced and paid job cards. Pricing had no 1500 KVA, Quarterly or Yearly rows, few units were Ready for Hire, and there were no Off Hire, Breakdown or end-of-life units, no Fixed Assets count in progress and no scrap or draft disposal. A Lost lead still offered Convert.
+*What we did.* The AMC item list now shows the Inventory AMC items. New sample records, all dated relative to the demo day: cross-hire orders CH-26-00008 (to receive), CH-26-00009 (for the asset form picker) and CH-26-00010 (received, unit AST-1031 ready to deliver on SO-26-00052); request CHR-26-00006 (Pending) and CHR-26-00007 (behind RFQ-26-00012, so the order created from the award is linked to SO-26-00041); AST-1019 on Hold on SO-26-00052 until its Rental Start Date; SO-26-00049 fully returned and ready to close, with returns at every step (CN-26-00123 off hire, CN-26-00122 in the yard awaiting inspection, CN-26-00121 damage charged) and CN-26-00132 damage covered by the waiver on SO-26-00046; LPO on SO-26-00041 expiring within the notice period and on SO-26-00048 expired; a Service opportunity, approved quotation QT-26-00080 and confirmed order SO-26-00051; AMC order SO-26-00050 with job cards Invoiced and Paid, Invoiced and Unpaid, Completed and Open; 1500 KVA, Quarterly, Yearly and a 500 KVA Fixed Asset Trading price; more Ready for Hire units; Off Hire, Breakdown and an end-of-life unit; count sessions SCS-26-00006 (in progress) and SCS-26-00007 (approved); disposals DSP-26-00006 (scrap invoiced), DSP-26-00007 (invoice to create) and DSP-26-00008 (draft); leads in every status; a Lost and a Negotiation opportunity; a One-time damage waiver item. CH-26-00006 is now linked to SO-26-00046 as the cover for the broken-down AST-1014. Palm Marina Development is active again. Convert is hidden on Lost, Unqualified and Not qualified leads.
+*Be aware.* Sample data only; refreshing the browser restores it. New cross-hire orders and requests now start numbering after CH-26-00010 and CHR-26-00007. SO-26-00052 now asks for two 100 KVA units, one per cross-hire order.
+
+### 6 Oct, around 9:00 PM: Six fixes: FOC assets on rentals, one cross-hire record, real movement origins, hold release, live locations, real date
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Six things behaved wrongly. A free-of-charge fixed asset added on a rental delivery was recorded as sold and left the fleet. Inventory kept its own cross-hire records with different numbers and rates from the Rental cross-hire orders, so the same unit showed two rates and a unit received through Rental showed "No cross-hire record is linked". Every delivery and replacement movement said it left Jebel Ali Main Yard. Release Hold started billing on the release day, and a hold never ended by itself. The supplier DO number check and the asset's Initial Location used a fixed list, so new locations were ignored. "Today" was fixed at 30 Sep while times came from the real clock.
+*What we did.* On a Rental order a free-of-charge fixed asset is now a zero-priced Rental line: it goes On Hire and comes back on return; only a Fixed Asset Trading order treats it as a sale. The asset page now reads the Rental cross-hire order (one record, one rate), and Returned to Us and Return to Supplier on the asset page run the same Rental flow. Movements start from where the asset actually is (its last movement), with the DO location as the fallback. A hold now bills from the planned Rental Start Date, ends by itself when that date arrives (checked when the Sales Order is opened), and Release Hold is for a site that is ready early, billing from that day. The supplier DO check and Initial Location read the live Locations list. Today is the real date.
+*Be aware.* The three Inventory-only cross-hire samples (CH-26-00027, 00028, 00031) are gone; the asset pages show the Rental orders CH-26-00007 and CH-26-00006 instead. A new cross-hired asset is normally created by receiving the cross-hire order in Rental; the manual picker on the asset form only lists orders not yet linked to an asset. With the real date, demo dates near 30 Sep may now show as past due.
+
 ### 6 Oct, around 7:30 PM: Line item actions moved into a three-dots menu, bulk Cross Hire on Sales Order lines
 **Where:** CRM / Sales > Orders > Quotation
 **Where:** CRM / Sales > Orders > Sales Orders

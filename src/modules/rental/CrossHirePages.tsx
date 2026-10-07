@@ -11,18 +11,20 @@ import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { suppliers } from '@/mock-data/masters';
 import {
-  COL, CH_RFQ_STATUSES, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, allLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
+  COL, CH_RFQ_STATUSES, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, stockLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
 } from '@/modules/crm/data';
-import { addChExpense, addChResponse, awardChRfq, createChRfq, createHireOrder, markChShipped, raiseCrossHire, receiveCrossHire, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
+import { addChExpense, addChResponse, awardChRfq, billCrossHire, createChRfq, createHireOrder, markChShipped, raiseCrossHire, receiveCrossHire, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
 import { SpecForm, type Spec } from '@/modules/crm/FormKit';
 import { R, aed, useChRequests, useChRfqs, useCrossHire, useOrders } from '@/modules/crm/shared';
 import { getCollection } from '@/store/store';
+import { billTotal, billsOfSource } from '@/modules/accounting/engine';
+import { useBills } from '@/modules/accounting/shared';
 
 const HIRE_SUPPLIERS = suppliers.filter((s) => s.type === 'Cross-Hire Company');
 const supOpts = HIRE_SUPPLIERS.map((s) => ({ value: s.id, label: s.name }));
 const R_CH = 'Existing ERP Cross Hire (Requests, Process, Request for Quote, Orders) combined with Procurement > Cross-Hire Suppliers';
 
-const onHand = (g: string, c: string) => fleetRows().filter((a) => isLive(a) && a.category === g && a.subCategory === c && a.ownership !== 'Cross-Hired').length;
+const onHand = (g: string, c: string) => fleetRows().filter((a) => isLive(a) && !a.deliveryFleet && a.category === g && a.subCategory === c && a.ownership !== 'Cross-Hired').length;
 
 /* ------------------------------------------------------------------ shared create dialogs (Create > Order, Create > RFQ) */
 export function ChOrderDialog({ open, onClose, requestIds, rfq, qty, type }: { open: boolean; onClose: () => void; requestIds: string[]; rfq?: CrossHireRfq; qty?: number; type?: 'Inventory' | 'Dropship' }) {
@@ -96,7 +98,7 @@ const requestSpecs = (soOpts: { value: string; label: string }[], lineOpts: { va
   { key: 'vendorId', label: 'Vendor', type: 'select', options: supOpts, hint: 'Optional. The RFQ award or the order fixes the supplier' },
   { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
   { key: 'narration', label: 'Narration', type: 'textarea', full: true },
-  { key: 'location', label: 'Location', type: 'select', options: allLocations },
+  { key: 'location', label: 'Location', type: 'select', options: stockLocations },
   { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS },
   { key: 'attachments', label: 'Attachment', type: 'file', full: true },
 ];
@@ -326,14 +328,17 @@ export function ChOrderView() {
   const nav = useNavigate();
   const toast = useToast();
   const all = useCrossHire();
+  useBills();
   const c = all.get(id);
-  const [dlg, setDlg] = useState<'receive' | 'return' | 'supplier' | 'expense' | null>(null);
-  const [v, setV] = useState({ inv: '', notes: '', files: [] as string[], dispute: '', reissue: '', account: '', amount: '', note: '' });
+  const [dlg, setDlg] = useState<'receive' | 'return' | 'supplier' | 'expense' | 'bill' | null>(null);
+  const [v, setV] = useState({ inv: '', invDate: TODAY, notes: '', files: [] as string[], dispute: '', reissue: '', account: '', amount: '', note: '' });
   if (!c) return <Page><PageTitle title="Cross Hire Order not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire-orders')}>Back</Button>} /></Page>;
   const dropship = c.type === 'Dropship';
   const a = assetById(c.assetId ?? '');
   const cost = orderCost(c);
   const margin = c.revenue - cost;
+  const myBills = billsOfSource('Cross Hire', c.id);
+  const billing = myBills.length ? 'Fully Billed' : 'Pending Billing';
   return (
     <>
       <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={orderStatus(c)} />}
@@ -344,6 +349,8 @@ export function ChOrderView() {
           {c.stage === 0 && dropship && <Button variant="contained" onClick={() => { markChShipped(c); toast('Marked shipped to the client site'); }}>Mark Shipped</Button>}
           {c.stage === 1 && <Button variant="contained" onClick={() => nav(`/crm/delivery-orders/add?so=${c.soId}&line=${c.lineId}`)}>Allocate through Delivery</Button>}
           {c.stage === 2 && !dropship && <Button variant="contained" onClick={() => setDlg('return')}>Record Return to Us</Button>}
+          <MenuButton label="Create" items={[{ label: myBills.length ? 'Bill (already billed)' : 'Bill', disabled: !!myBills.length || (c.stage === 0 && !dropship) || (dropship && c.status !== 'Shipped' && c.stage < 2), onClick: () => setDlg('bill') }]} />
+          {myBills[0] && <Button variant="outlined" onClick={() => nav(`/accounting/bills/${myBills[0].id}`)}>View Bill</Button>}
           {(c.stage === 3 || (c.stage === 2 && dropship)) && <Button variant="contained" onClick={() => setDlg('supplier')}>Return to Supplier</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
@@ -353,7 +360,7 @@ export function ChOrderView() {
           <ValueField label="Hire Order Number" value={c.number} /><ValueField label="Date" value={c.date} /><ValueField label="Rental Order(s)" value={c.soNumber} /><ValueField label="Supplier" value={c.supplier} />
           <ValueField label="Cross Hire Type" value={c.type ?? 'Inventory'} /><ValueField label="Group + Category" value={`${c.group} ${c.category}`} /><ValueField label="Quantity" value={String(c.qty ?? 1)} /><ValueField label="Agreed Rate (total)" change="new" req={R_CH} value={aed(c.rate)} />
           <ValueField label="Confirmation Date" value={c.confirmationDate} /><ValueField label="Expected Receipt Date" value={c.expectedReceipt} /><ValueField label="Payment Terms" value={c.paymentTerms} /><ValueField label="Rental Period" value={c.startDate ? `${c.startDate}${c.endDate ? ` to ${c.endDate}` : ''}` : undefined} />
-          <ValueField label="Receiving Status" value={c.receiving} /><ValueField label="Billing Status" value={c.billing} /><ValueField label="Request(s)" value={c.requestIds?.length ? 'Linked' : 'Direct'} />
+          <ValueField label="Receiving Status" value={c.receiving} /><ValueField label="Billing Status" change="changed" req={R.cross} value={billing} /><ValueField label="Request(s)" value={c.requestIds?.length ? 'Linked' : 'Direct'} />
           <ValueField label="Lifecycle Stage" change="new" req={R.cross} value={CROSS_STAGES[c.stage]} />
           <ValueField label="Asset (Fixed Asset Register)" change="new" req={R.cross} value={a ? `${a.assetId}, ${a.assetStatus}, ownership ${a.ownership}` : dropship ? 'Not applicable (Dropship)' : 'Not received yet'} /><ValueField label="Depreciation" change="new" req={R.cross} value="Not posted (cross-hired asset)" />
           <ValueField label="Supplier Invoice Reference" change="new" req={R.cross} value={c.supplierInvoice} /><ValueField label="Condition Check (on Return to Us)" change="new" req={R.cross} value={c.condition?.notes} /><ValueField label="Supplier dispute charge" change="new" req={R.cross} value={c.dispute ? aed(c.dispute) : undefined} />
@@ -365,12 +372,14 @@ export function ChOrderView() {
           <TabPanels tabs={[
             { label: 'Item Entries', content: <DataTable hideToolbar rows={[c]} columns={[{ key: 'item', label: 'Item', render: (x) => `${x.group} ${x.category}` }, { key: 'u', label: 'UOM', render: () => 'Nos' }, { key: 'q', label: 'Quantity', align: 'right', render: (x) => x.qty ?? 1 }, { key: 'r', label: 'Rental Rate', align: 'right', render: (x) => aed(x.rate / (x.qty ?? 1)) }, { key: 't', label: 'Total Amount', align: 'right', render: (x) => aed(x.rate) }]} /> },
             { label: 'Expenses', content: <DataTable hideToolbar rows={(c.expenses ?? []).map((e, i) => ({ id: String(i), ...e }))} emptyText="No expenses" columns={[{ key: 'account', label: 'Account' }, { key: 'note', label: 'Narration' }, { key: 'amount', label: 'Total Amount', align: 'right', render: (x) => aed(x.amount) }]} /> },
+            { label: 'Bills', change: 'new', req: R.cross, content: <DataTable hideToolbar rows={myBills} emptyText={dropship ? 'No bill yet. Create, Bill when the supplier invoice arrives' : 'The bill is created when the unit is received'} onRowClick={(b) => nav(`/accounting/bills/${b.id}`)} columns={[{ key: 'number', label: 'Bill' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice' }, { key: 'date', label: 'Date' }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (b) => aed(billTotal(b)) }, { key: 'a', label: 'Status', render: (b) => <StatusChip status={b.approval} /> }, { key: 'p', label: 'Payment', render: (b) => (b.approval === 'Approved' ? <StatusChip status={b.payStatus} /> : '-') }]} /> },
             { label: 'Stage history', content: <Timeline items={[...c.history].reverse()} /> },
           ]} />
         </Box>
       </Page>
-      <AppDialog open={dlg === 'receive'} title="Receive cross-hired unit" onClose={() => setDlg(null)} confirmLabel="Receive" confirmDisabled={!v.inv.trim()} onConfirm={() => { receiveCrossHire(c, v.inv); toast('Unit received and added to the Fixed Asset Register as Cross-Hired, Ready for Hire'); setDlg(null); }}>
-        <TextInput label="Supplier Invoice Reference" required value={v.inv} onChange={(x) => setV({ ...v, inv: x })} hint="Cross-hire cost feeds into the supplier's invoice" />
+      <AppDialog open={dlg === 'receive'} title="Receive cross-hired unit" onClose={() => setDlg(null)} confirmLabel="Receive" confirmDisabled={!v.inv.trim()} onConfirm={() => { receiveCrossHire(c, v.inv, v.invDate); toast('Unit received as Cross-Hired, Ready for Hire. A bill is pending approval in Accounting'); setDlg(null); }}>
+        <FormGrid cols={1}><TextInput label="Supplier Invoice Reference" required value={v.inv} onChange={(x) => setV({ ...v, inv: x })} hint="A Pending bill is created in Accounting with the agreed rate and the expenses" />
+        <DateInput label="Supplier Invoice Date" required change="new" req={R.cross} value={v.invDate} onChange={(x) => setV({ ...v, invDate: x })} /></FormGrid>
       </AppDialog>
       <AppDialog open={dlg === 'return'} title="Return to Us: condition check" onClose={() => setDlg(null)} confirmLabel="Save" confirmDisabled={!v.notes.trim()} onConfirm={() => { returnToUs(c, v.notes, v.files); toast('Returned to us. The unit is flagged as Cross-Hire idle at our location'); setDlg(null); }}>
         <FormGrid cols={1}><TextInput label="Condition inspection notes" required multiline rows={3} value={v.notes} onChange={(x) => setV({ ...v, notes: x })} hint="Same inspection process as an owned asset returned by a customer" /><FileInput label="Attachments" multiple value={v.files} onChange={(x) => setV({ ...v, files: x })} /></FormGrid>
@@ -380,6 +389,9 @@ export function ChOrderView() {
       </AppDialog>
       <AppDialog open={dlg === 'expense'} title="Expense Entry" onClose={() => setDlg(null)} confirmLabel="Add" confirmDisabled={!v.account || !Number(v.amount)} onConfirm={() => { addChExpense(c.id, { account: v.account, amount: Number(v.amount), note: v.note }); toast('Expense added'); setV({ ...v, account: '', amount: '', note: '' }); setDlg(null); }}>
         <FormGrid cols={1}><SelectInput label="Account" required value={v.account} options={['Transportation Expense', 'Loading and Unloading', 'Fuel Expense', 'Insurance Expense', 'Other Direct Expense']} onChange={(x) => setV({ ...v, account: x })} /><NumberInput label="Total Amount (AED)" required value={v.amount} onChange={(x) => setV({ ...v, amount: x })} /><TextInput label="Narration" value={v.note} onChange={(x) => setV({ ...v, note: x })} /></FormGrid>
+      </AppDialog>
+      <AppDialog open={dlg === 'bill'} title="Create Bill" onClose={() => setDlg(null)} confirmLabel="Create Bill" confirmDisabled={!v.inv.trim()} onConfirm={() => { const n = billCrossHire(c, v.inv, v.invDate); toast(`Bill ${n} created, pending approval in Accounting`); setDlg(null); }}>
+        <FormGrid cols={1}><TextInput label="Supplier Invoice Reference" required value={v.inv} onChange={(x) => setV({ ...v, inv: x })} hint="The bill carries the agreed rate and the expenses of this order" /><DateInput label="Supplier Invoice Date" required value={v.invDate} onChange={(x) => setV({ ...v, invDate: x })} /></FormGrid>
       </AppDialog>
     </>
   );

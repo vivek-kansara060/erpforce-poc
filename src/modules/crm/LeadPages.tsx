@@ -40,8 +40,8 @@ const basic: Spec[] = [
   { key: 'nextFollowUp', label: 'Next Follow-Up Date', type: 'date', change: 'new', req: R.lead, hint: 'Drives follow-up reminders' },
   { key: 'reference', label: 'Reference No.' },
   { key: 'priority', label: 'Priority', type: 'select', options: PRIORITIES },
-  { key: 'vat', label: 'Vat Number', hint: '15 digits' },
-  { key: 'crn', label: 'CRN', hint: '10 digits' },
+  { key: 'vat', label: 'Vat Number' },
+  { key: 'crn', label: 'CRN' },
   { key: 'responsible', label: 'Responsible Person', required: true },
   { key: 'tags', label: 'Classification / Tags', change: 'new', req: R.lead },
 ];
@@ -96,9 +96,6 @@ export function LeadForm() {
     const e: Record<string, string> = {};
     const req = ['phone', 'email', 'entity', 'currency', 'activity', 'status', 'responsible', 'owner', 'source', ...(f.leadType === 'Individual' ? ['firstName', 'lastName'] : ['company'])];
     req.forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
-    if (f.email && !/^\S+@\S+\.\S+$/.test(f.email)) e.email = 'Enter a valid email';
-    if (f.vat && !/^\d{15}$/.test(f.vat)) e.vat = 'VAT Number must be 15 digits';
-    if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
     if (needsLost(f.status) && !f.lostReason) e.lostReason = 'Lost Reason is required when the status is Lost or Unqualified';
     setErr(e);
     if (!draft && Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
@@ -155,7 +152,7 @@ export function LeadView() {
         actions={<>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Lead" /><MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`/crm/leads/${l.id}/edit`) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Duplicate', onClick: () => toast('Lead duplicated as a draft', 'info') }, { label: 'Delete', onClick: () => { leads.remove(l.id); nav('/crm/leads'); } }]} />
           <Button variant="outlined" onClick={() => setCom({ ...com, open: true })}>Communication Log</Button>
-          {l.opportunityId ? <Button variant="contained" onClick={() => nav(`/crm/opportunities/${l.opportunityId}`)}>View Opportunity</Button> : <Button variant="contained" onClick={() => (l.activity ? setConf(true) : toast('An Activity Type is required before a Lead can be converted', 'error'))}>Convert</Button>}
+          {l.opportunityId ? <Button variant="contained" onClick={() => nav(`/crm/opportunities/${l.opportunityId}`)}>View Opportunity</Button> : ['Lost', 'Unqualified', 'Not qualified'].includes(l.status) ? null : <Button variant="contained" onClick={() => (l.activity ? setConf(true) : toast('An Activity Type is required before a Lead can be converted', 'error'))}>Convert</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[

@@ -20,6 +20,7 @@ export const MASTER_LABELS: Record<string, { label: string; used: string }> = {
   siteChecklist: { label: 'Pre-Return Site Checklist', used: 'Customer Returns' },
   yardChecklist: { label: 'Yard Inspection Checklist', used: 'Customer Returns' },
   replacementReason: { label: 'Replacement Reason', used: 'Rental, Replacement Orders' },
+  tripExpenseTypes: { label: 'Trip Expense Types', used: 'Rental, Fleet Management: Trips (Complete Trip, Add Expense)' },
 };
 
 function MasterRows({ k }: { k: string }) {

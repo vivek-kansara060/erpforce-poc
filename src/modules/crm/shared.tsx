@@ -10,7 +10,7 @@ import { useCollection } from '@/store/store';
 import { itemSeed, type ItemRec } from '@/modules/inventory/data';
 import {
   COL, availability, toServiceCharge,
-  type CrossHire, type CrossHireRequest, type CrossHireRfq, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type CrossHire, type CrossHireRequest, type CrossHireRfq, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder, type Trip,
 } from './data';
 
 export const useLeads = () => useCollection<Lead>(COL.leads);
@@ -25,6 +25,7 @@ export const useChRfqs = () => useCollection<CrossHireRfq>(COL.chRfqs);
 export const useReplacements = () => useCollection<Replacement>(COL.replacements);
 export const useExtensions = () => useCollection<Extension>(COL.extensions);
 export const useFleet = () => useCollection<HeavyRec>(COL.fleet);
+export const useTrips = () => useCollection<Trip>(COL.trips);
 /** Service lines come from the Inventory service items (Item Type = Service), not from a CRM-owned master. */
 export const useServiceCharges = () => {
   const items = useCollection<ItemRec>('items', itemSeed);
@@ -38,6 +39,8 @@ export const R = {
   lead: 'CRM > Lead', opp: 'CRM > Opportunity', quote: 'CRM > Quotation', so: 'CRM > Sales Order', del: 'CRM > Delivery Order', ret: 'CRM > Customer Returns',
   rental: 'Rental > Rental Order & Status Lifecycle', repl: 'Rental > Replacement Processing', cross: 'Procurement > Cross-Hire Suppliers / Rental > Cross-Hire', exp: 'Rental > Overdue On-Hire & Contract Expiry',
   rreturn: 'Rental > Customer Return & Condition Assessment', ledger: 'Rental > Rental Invoicing & Billing Cycle',
+  fleet: 'Rental > Delivery & Fleet Logistics (Fleet Availability, Vehicle / Job Status; 17 Sep, 30 Sep, 2 Oct, 5 Oct calls)',
+  trip: 'Rental > Delivery & Fleet Logistics (per-delivery expense capture, outside-fleet tracking; 18 Sep, 5 Oct calls)',
   meet: 'Client meetings 17 Sep to 2 Oct (docs/crm-decisions.md)',
 };
 export const TO_CONFIRM = 'Rule to be confirmed with client';

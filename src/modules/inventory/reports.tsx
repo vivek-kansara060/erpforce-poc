@@ -100,9 +100,9 @@ const records = (links: { label: string; to: string }[]) => ({
 
 export const dashboards: DashboardDef[] = [
   { slug: 'fleet-status', title: 'Fleet Status Dashboard', purpose: 'Live counts of Available / On-Hire / Under-Maintenance / Disposed, by category.', change: 'new', req: REQ + 'Dashboards',
-    get kpis() { const f = liveFleet(); return STATUS_GROUPS.map((g) => ({ title: g, value: f.filter((h) => groupOf(h) === g).length })); },
+    get kpis() { const f = liveFleet().filter((h) => !h.deliveryFleet); return STATUS_GROUPS.map((g) => ({ title: g, value: f.filter((h) => groupOf(h) === g).length })); },
     get widgets() {
-      const f = liveFleet();
+      const f = liveFleet().filter((h) => !h.deliveryFleet);
       const cats = Array.from(new Set(f.map((h) => h.category)));
       return [
         { type: 'donut' as const, title: 'Fleet by status', data: STATUS_GROUPS.map((g) => ({ label: g, value: f.filter((h) => groupOf(h) === g).length })), centerLabel: 'Units' },

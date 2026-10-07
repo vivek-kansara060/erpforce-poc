@@ -56,7 +56,7 @@ const specs = (): { basic: Spec[]; owner: Spec[]; classification: Spec[] } => ({
     { key: 'winLossReason', label: 'Win/Loss Reason', type: 'select', options: WIN_LOSS_REASONS, show: (f) => ['Won', 'Lost'].includes(f.stage) },
     { key: 'phone', label: 'Phone Number' }, { key: 'emailId', label: 'Email ID' },
     { key: 'website', label: 'Website' }, { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
-    { key: 'vat', label: 'VAT Number', hint: '15 digits' }, { key: 'crn', label: 'CRN', hint: '10 digits' }, { key: 'reference', label: 'Reference No.' },
+    { key: 'vat', label: 'VAT Number' }, { key: 'crn', label: 'CRN' }, { key: 'reference', label: 'Reference No.' },
     { key: 'priority', label: 'Priority', type: 'select', options: PRIORITIES },
     { key: 'rating', label: 'Rating', type: 'select', options: RATINGS, change: 'new', req: R.opp },
     { key: 'forecast', label: 'Sales Forecast Value', type: 'readonly', change: 'new', req: R.opp, value: (f) => aed(forecast({ estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 })), hint: 'Expected Revenue x Probability. Formula and period to be confirmed with client' },
@@ -120,8 +120,6 @@ export function OpportunityForm() {
   const save = () => {
     const e: Record<string, string> = {};
     ['customerId', 'contact', 'project', 'title', 'owner', 'stage', 'expectedClose', 'entity', 'currency'].forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
-    if (f.vat && !/^\d{15}$/.test(f.vat)) e.vat = 'VAT Number must be 15 digits';
-    if (f.crn && !/^\d{10}$/.test(f.crn)) e.crn = 'CRN must be 10 digits';
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const d = duplicateOpportunity({ id: ex?.id ?? '', title: f.title, project: f.project, customerId: f.customerId, contact: f.contact });
@@ -140,9 +138,9 @@ export function OpportunityForm() {
               <Section title="Attachments"><SpecForm specs={[{ key: 'attachments', label: 'Attachments', type: 'file' }, { key: 'recordStatus', label: 'Status', type: 'toggle', value: (x) => x.recordStatus !== 'Inactive' }]} f={f} set={(k, v) => (k === 'recordStatus' ? set(k, v ? 'Active' : 'Inactive') : set(k, v))} /></Section>
               <Section title="Opportunity Owner Detail"><SpecForm specs={S.owner} f={f} set={set} /></Section>
               <Section title="Classification"><SpecForm specs={S.classification} f={f} set={set} /></Section>
-              <Section title={f.activity === 'Rental' || f.activity === 'AMC' ? 'Items (Category / Subcategory, optional)' : 'Items (optional)'} change="changed" req={R.meet}>
+              {f.activity !== 'AMC' && <Section title={f.activity === 'Rental' ? 'Items (Category / Subcategory, optional)' : 'Items (optional)'} change="changed" req={R.meet}>
                 {f.activity ? <ItemsTable lines={f.lines} onChange={(l) => set('lines', l)} header={f.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" /> : <Text type="s4">Select the Activity Type to add items.</Text>}
-              </Section>
+              </Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={f.followUps} onChange={(r) => set('followUps', r)} blank={blankFollow} addLabel="Add Follow Up" empty="No follow ups" /></Section>
             </>) },
           { label: 'Address', content: <RowsEditor cols={addrCols} rows={f.addresses} onChange={(r) => set('addresses', r)} blank={blankAddr} addLabel="Add Address" empty="No addresses" /> },
@@ -184,7 +182,7 @@ export function OpportunityView() {
               <SpecView specs={S.basic} f={f} />
               <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} cols={3} /></Section>
               <Section title="Classification"><SpecView specs={S.classification} f={f} cols={3} /></Section>
-              <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>
+              {o.activity !== 'AMC' && <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={o.followUps ?? []} locked blank={blankFollow} empty="No follow ups" /></Section>
             </>) },
           { label: 'Address', content: <RowsEditor cols={addrCols} rows={o.addresses ?? []} locked blank={blankAddr} empty="No addresses" /> },
