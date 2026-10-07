@@ -1,7 +1,7 @@
 import { Navigate, useParams, type RouteObject } from 'react-router-dom';
 import { DashboardPage, DashboardsIndex, ReportPage, ReportsIndex, type DashboardDef, type ReportDef } from '@/components/ReportsAndDashboards';
 import { ASSET_STATUSES } from '@/mock-data/masters';
-import { ACTIVITY_TYPES, categoryOptions, groupOptions, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, assetById, availability, custName, docTotals, isLive, lineTotal, type HeavyRec } from './data';
+import { ACTIVITY_TYPES, categoryOptions, groupOptions, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, assetById, availability, custName, docTotals, isLive, lineTotal, ownedEquivalent, type HeavyRec } from './data';
 import { CrmReportPage, type CrmReportDef } from './CrmReport';
 import { days, deliveredQty, outstanding } from './flow';
 import { aed, useCrossHire, useDeliveries, useExtensions, useFleet, useLeads, useOpps, useOrders, useQuotes, useReplacements } from './shared';
@@ -119,7 +119,7 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
     { slug: 'maintenance-breakdown', title: 'Maintenance / Breakdown Dashboard', purpose: 'Assets due for service or currently down, by category.', change: 'new', req: RR,
       widgets: [{ type: 'table', title: 'Assets in maintenance or breakdown', span: 2, columns: [{ key: 'a', label: 'Asset' }, { key: 'c', label: 'Category' }, { key: 's', label: 'Status', status: true }, { key: 'l', label: 'Last movement' }], rows: live.filter((a) => ['Under Maintenance', 'Breakdown'].includes(a.assetStatus)).map((a) => ({ a: `${a.assetId} - ${a.name}`, c: `${a.category} ${a.subCategory}`, s: a.assetStatus, l: [...a.movements].sort((x, y) => y.date.localeCompare(x.date))[0]?.type })) }] },
     { slug: 'cross-hire-cost-revenue', title: 'Cross-Hire Cost vs. Rental Revenue Dashboard', purpose: 'Cost of cross-hired units vs. revenue earned.', change: 'new', req: RR,
-      widgets: [{ type: 'bar', title: 'Cost vs revenue per request (AED)', data: d.ch.flatMap((c) => [{ label: `${c.number} cost`, value: c.rate + (c.dispute ?? 0), color: '#C64D4D' }, { label: `${c.number} revenue`, value: c.revenue, color: '#2EB273' }]), format: (n) => `${Math.round(n / 1000)}k` }, { type: 'table', title: 'Cross-hire profitability', columns: [{ key: 'n', label: 'Request' }, { key: 'cost', label: 'Cost', align: 'right' }, { key: 'rev', label: 'Revenue', align: 'right' }, { key: 'm', label: 'Margin', align: 'right' }], rows: d.ch.map((c) => ({ n: c.number, cost: aed(c.rate + (c.dispute ?? 0)), rev: aed(c.revenue), m: aed(c.revenue - c.rate - (c.dispute ?? 0)) })) }] },
+      widgets: [{ type: 'bar', title: 'Cost vs revenue per request (AED)', data: d.ch.flatMap((c) => [{ label: `${c.number} cost`, value: c.rate + (c.dispute ?? 0), color: '#C64D4D' }, { label: `${c.number} revenue`, value: c.revenue, color: '#2EB273' }]), format: (n) => `${Math.round(n / 1000)}k` }, { type: 'table', title: 'Cross-hire profitability', columns: [{ key: 'n', label: 'Request' }, { key: 'cost', label: 'Cost', align: 'right' }, { key: 'rev', label: 'Revenue', align: 'right' }, { key: 'm', label: 'Margin', align: 'right' }, { key: 'o', label: 'Margin if owned (estimate)', align: 'right' }], rows: d.ch.map((c) => ({ n: c.number, cost: aed(c.rate + (c.dispute ?? 0)), rev: aed(c.revenue), m: aed(c.revenue - c.rate - (c.dispute ?? 0)), o: ownedEquivalent(c) ? aed(ownedEquivalent(c)!.margin) : '-' })) }] },
   ];
   return { reports: [...existing, ...reports], dashboards };
 }

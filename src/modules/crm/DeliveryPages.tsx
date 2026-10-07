@@ -19,7 +19,7 @@ import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_
 import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, useTrips } from './shared';
-import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
+import { ArrangeTransportDialog, TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
@@ -119,7 +119,7 @@ export function DeliveryForm() {
     const chosen = Object.values(items).filter((it) => it.qty > 0);
     if (so && !chosen.length) e.items = 'Select at least one item to deliver (use Trace Details for rental items)';
     chosen.forEach((it) => { const l = [...so!.lines, ...focLines].find((x) => x.id === it.lineId)!; if (it.qty > remainingOf(l)) e.items = `Only ${remainingOf(l)} of ${l.item} remain`; });
-    Object.assign(e, validateTransport(tp));
+    Object.assign(e, validateTransport(tp, f.date));
     if (rentalSel.length) {
       if (!f.rentalStart) e.rentalStart = 'Rental Start Date is required';
       else if (early) e.rentalStart = 'Rental Start Date cannot be before the delivery date';
@@ -156,7 +156,7 @@ export function DeliveryForm() {
                 {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
               </Section>
               <Section title="Transportation" change="changed" req={R.fleet} hint="Own Fleet creates a trip for the chosen vehicle and driver. An external transporter's cost is recorded on the trip and posted to the order once.">
-                <TransportSection value={tp} onChange={setTp} errors={err} />
+                <TransportSection value={tp} onChange={setTp} errors={err} date={f.date} />
                 <Box sx={{ mt: 2 }}><SpecForm specs={[{ key: 'iqama', label: 'Iqama / Resident Number' }]} f={f} set={set} /></Box>
               </Section>
               {rentalSel.length > 0 && (
@@ -258,10 +258,15 @@ function TraceDialog({ line, current, fleetRows, onClose, onSave }: { line: Line
 /** Shipping: the trip of this Delivery Order (vehicle, driver, status, link). Orders from before Fleet Management keep their original transport fields. */
 function DeliveryTransport({ d, f }: { d: Delivery; f: Record<string, any> }) {
   const trips = useTrips().rows.filter((t) => t.docId === d.id);
+  const [arrange, setArrange] = useState(false);
   if (!trips.length) return <SpecView specs={transportSpecs} f={f} />;
+  // Every trip was cancelled and the goods are not delivered yet: the order needs new transport.
+  const needsTransport = trips.every((t) => t.status === 'Cancelled') && !['Delivered', 'Acknowledged'].includes(d.status);
   return (
     <>
+      {needsTransport && <Alert severity="warning" sx={{ mb: 1.5 }} action={<Button size="small" color="inherit" onClick={() => setArrange(true)}>Arrange Transport</Button>}>The trip of this Delivery Order was cancelled, so nothing is arranged to deliver it.</Alert>}
       <TripsTable rows={trips} empty="No trip" />
+      {arrange && <ArrangeTransportDialog docId={d.id} docNumber={d.number} onClose={() => setArrange(false)} />}
       <Box sx={{ mt: 1 }}><SpecView specs={[{ key: 'iqama', label: 'Iqama / Resident Number' }]} f={f} /></Box>
     </>
   );

@@ -74,7 +74,7 @@ export function ReturnForm() {
     if (!f.method) e.method = 'Return Method is required';
     if (f.checks.length < SITE_CHECKLIST.length) e.checks = 'The Pre-Return Site Checklist must be completed before Off-Hire is confirmed';
     if (!f.photos.length) e.photos = 'Photos are mandatory at Return';
-    if (f.method === 'Company Collection') Object.assign(e, validateTransport(tp));
+    if (f.method === 'Company Collection') Object.assign(e, validateTransport(tp, f.timestamp));
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const r = raiseReturn({ soId: so!.id, lineId: pick!.line.id, assetId: pick!.a.assetId, method: f.method, timestamp: f.timestamp, siteChecklist: f.checks, photos: f.photos, fuelNote: f.fuelNote, transport: f.method === 'Company Collection' ? toTransportInput(tp) : undefined });
@@ -101,7 +101,7 @@ export function ReturnForm() {
         </FormSection>
         {f.method === 'Company Collection' && (
           <FormSection title="Collection Transport" change="new" req={R.fleet} hint="Creates a Collection trip. If the collection fails, the trip is marked Stuck-Delayed with the same note and Responsible.">
-            <TransportSection value={tp} onChange={setTp} errors={err} />
+            <TransportSection value={tp} onChange={setTp} errors={err} date={f.timestamp} />
           </FormSection>
         )}
         <FormSection title="Photos and Fuel Note">

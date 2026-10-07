@@ -6,7 +6,7 @@ import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow } from '@/components/Widgets';
-import { modules } from '@/modules';
+import { visibleModules as modules } from '@/modules';
 import type { ChangeEntry } from '@/types';
 
 type Row = ChangeEntry & { id: string };

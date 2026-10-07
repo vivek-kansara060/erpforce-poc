@@ -13,7 +13,7 @@ import { Text } from '@/components/Text';
 import { ChangeTag, useReviewMode } from '@/components/ChangeTag';
 import { neutral, primaryGreen } from '@/theme/color';
 import type { MenuItem as Menu, ModuleDef } from '@/types';
-import { modules } from '@/modules';
+import { changedMenu, visibleModules } from '@/modules';
 import { NotificationBell } from './NotificationBell';
 
 const DRAWER = 300;
@@ -39,8 +39,8 @@ function TopBar({ mod, drawerWidth, launcher }: { mod?: ModuleDef; drawerWidth: 
             <>
               {/* Same as the existing ERP header (window.history.back()); falls back to the module screen when there is no earlier in-app page, e.g. a link opened in a new tab. */}
               <Tooltip title="Back"><IconButton size="small" onClick={() => ((window.history.state?.idx ?? 0) > 0 ? nav(-1) : nav('/'))}><KeyboardBackspaceIcon sx={{ color: neutral[1000] }} /></IconButton></Tooltip>
-              <Select size="small" variant="standard" disableUnderline value={mod?.id ?? ''} onChange={(e) => { const m = modules.find((x) => x.id === e.target.value); if (m) nav(m.basePath); }} sx={{ minWidth: 250, '& .MuiSelect-select': { display: 'flex', alignItems: 'center', gap: 1, fontSize: 16, fontWeight: 500, py: 1 } }}>
-                {modules.map((m) => <MenuItem key={m.id} value={m.id} sx={{ gap: 1 }}><Box sx={{ display: 'flex', '& svg': { fontSize: 20 } }}>{m.icon}</Box>{m.label}</MenuItem>)}
+              <Select size="small" variant="standard" disableUnderline value={visibleModules.some((x) => x.id === mod?.id) ? mod?.id : ''} onChange={(e) => { const m = visibleModules.find((x) => x.id === e.target.value); if (m) nav(m.basePath); }} sx={{ minWidth: 250, '& .MuiSelect-select': { display: 'flex', alignItems: 'center', gap: 1, fontSize: 16, fontWeight: 500, py: 1 } }}>
+                {visibleModules.map((m) => <MenuItem key={m.id} value={m.id} sx={{ gap: 1 }}><Box sx={{ display: 'flex', '& svg': { fontSize: 20 } }}>{m.icon}</Box>{m.label}</MenuItem>)}
               </Select>
             </>
           )}
@@ -117,7 +117,7 @@ function MenuNode({ item, depth, current, base, collapsed, forceOpen }: { item: 
 function SideBar({ mod, open, onToggle }: { mod: ModuleDef; open: boolean; onToggle: () => void }) {
   const loc = useLocation();
   const [q, setQ] = useState('');
-  const items = useMemo(() => filterMenu(mod.menu, q), [mod, q]);
+  const items = useMemo(() => filterMenu(changedMenu(mod.menu), q), [mod, q]);
   const w = open ? DRAWER : COLLAPSED;
   return (
     <Drawer variant="permanent" sx={{ width: w, flexShrink: 0, transition: 'width .2s', '& .MuiDrawer-paper': { width: w, transition: 'width .2s', bgcolor: '#FBFBFB', borderRight: `1px solid ${neutral[200]}`, overflowX: 'hidden' } }}>

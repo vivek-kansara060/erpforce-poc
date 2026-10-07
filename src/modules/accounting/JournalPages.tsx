@@ -15,6 +15,7 @@ const refPath = (j: Journal) => {
     case 'Collection': case 'Payment': return `/accounting/payment-entries/${j.refId}`;
     case 'Credit Note': return `/accounting/credit-notes/${j.refId}`;
     case 'Debit Note': return `/accounting/debit-notes/${j.refId}`;
+    case 'Trip': return `/crm/trips/${j.refId}`;
     default: return undefined;
   }
 };
@@ -26,7 +27,7 @@ export function JournalList() {
   return (
     <Page>
       <PageTitle title="Journal Entry" subtitle="Posted automatically when an invoice, bill, collection, payment or note is approved" change="changed" req={R_ACC.gl} />
-      <DataTable<Journal> rows={j.rows} searchPlaceholder="Search journals..." filter={{ key: 'journalType', options: ['Sales', 'Purchases', 'Cash Receipt Voucher', 'Payment', 'Credit Note', 'Debit Note'], label: 'Journal Type' }} onRowClick={(r) => nav(`/accounting/journals/${r.id}`)}
+      <DataTable<Journal> rows={j.rows} searchPlaceholder="Search journals..." filter={{ key: 'journalType', options: ['Sales', 'Purchases', 'Cash Receipt Voucher', 'Payment', 'Credit Note', 'Debit Note', 'Trip Expense'], label: 'Journal Type' }} onRowClick={(r) => nav(`/accounting/journals/${r.id}`)}
         columns={[
           { key: 'postingDate', label: 'Posting Date' }, { key: 'number', label: 'Series Number' }, { key: 'refType', label: 'Reference Type' }, { key: 'refNumber', label: 'Reference' },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} tone="green" /> }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => money(amountOf(r)) },

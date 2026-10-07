@@ -30,6 +30,10 @@ export const CATEGORY_LABEL = 'Category';
 export const SUBCATEGORY_LABEL = 'Subcategory';
 export const CONTRACT_TYPES = ['Open PO', 'Closed', 'Project'];
 export const BILLING_STRUCTURES = ['Milestone', 'Lump Sum'];
+/** Billing Cycle master of the existing Rental module (Name, Count, Duration). The invoice engine bills one cycle at a time. */
+export const BILLING_CYCLES = [{ name: 'Monthly', months: 1 }, { name: '2 Months', months: 2 }, { name: 'Quarterly', months: 3 }];
+export const INVOICING_TYPES = ['Manual', 'Automatic'];
+export const cycleMonths = (name?: string) => BILLING_CYCLES.find((c) => c.name === name)?.months ?? 1;
 export const LINE_TYPES = ['Individual', 'Package'];
 export const VAT_TYPES = ['Standard (With VAT)', 'Export (Zero-Rated)'];
 export const TRANSACTION_TYPES = ['Cash', 'Credit'];
@@ -163,7 +167,9 @@ export interface JobCard {
 export interface SalesOrder extends Commercial {
   id: string; number: string; date: string; quoteId?: string; oppId?: string; owner: string; title: string; reference: string; status: string;
   lpo: string; lpoDate: string; lpoExpiry: string; site: string; costCentre: string; deliveryMethod: string; log: LogItem[]; docs: string[];
-  damageCharges: { assetId: string; amount: number; note: string; date: string; invoiceId?: string }[]; logisticsCost: number; visitPlan?: Visit[]; deliveryDate?: string; poExpiry?: string;
+  damageCharges: { assetId: string; amount: number; note: string; date: string; invoiceId?: string }[]; logisticsCost: number;
+  /** Rental only (Billing section, as in the existing Rental Order): the cycle the Rental invoicing run follows, and whether the run is started by hand or automatically. */
+  billingCycle?: string; invoicingType?: string; visitPlan?: Visit[]; deliveryDate?: string; poExpiry?: string;
 }
 export interface DoItem { lineId: string; qty: number; assetIds: string[]; deliveredSub?: string; package?: string }
 export interface Delivery {
@@ -189,24 +195,66 @@ export interface Replacement {
 export interface Extension { id: string; number: string; soId: string; lineId?: string; kind: 'Extension' | 'Early Termination'; oldEnd: string; newEnd: string; date: string; note: string; status: string; clientConfirmedBy: string }
 export interface CrossHire {
   id: string; number: string; soId: string; soNumber: string; lineId: string; group: string; category: string; supplierId: string; supplier: string; rate: number; stage: number; assetId?: string;
-  history: LogItem[]; condition?: { notes: string; files: string[] }; reissueRef?: string; supplierInvoice?: string; dispute?: number; revenue: number; date: string;
+  history: LogItem[]; condition?: { notes: string; files: string[]; checks?: string[] }; reissueRef?: string; reissueSoId?: string; supplierInvoice?: string; dispute?: number; revenue: number; date: string;
   /** Cross Hire Order (Hire Order) fields of the existing ERP; the record above is the order, the five stages are tracked on it */
   type?: 'Inventory' | 'Dropship'; requestIds?: string[]; rfqId?: string; confirmationDate?: string; expectedReceipt?: string; paymentTerms?: string; startDate?: string; endDate?: string;
   status?: string; receiving?: string; billing?: string; expenses?: { account: string; amount: number; note: string }[]; qty?: number;
+  /** Goods Receipt Notes of the order (a separate form, created from the approved order) and the other order form fields of the existing ERP. */
+  grns?: CrossHireGrn[]; form?: Record<string, any>; approvedBy?: string;
+  /** One entry per received asset (1 fixed asset = 1 unit). The order is Category and Subcategory with a number of units; the assets are defined on the Goods Receipt. */
+  units?: CrossUnit[];
 }
+export interface CrossUnit { assetId: string; stage: number; soId?: string; soNumber?: string; lineId?: string; grnId?: string; condition?: { notes: string; files: string[]; checks?: string[] }; reissueRef?: string; dispute?: number }
+/** Units of an order. Older records without units carry their single asset on the order itself. */
+export const unitsOf = (c: CrossHire): CrossUnit[] => c.units ?? (c.assetId ? [{ assetId: c.assetId, stage: c.stage, soId: c.stage >= 2 ? c.soId : undefined, soNumber: c.stage >= 2 ? c.soNumber : undefined, lineId: c.lineId, condition: c.condition, reissueRef: c.reissueRef, dispute: c.dispute }] : []);
+/** Cost of an order that belongs to one Sales Order: the units delivered to it (rate share, expenses share, own dispute); an order with no unit delivered yet counts against the order it was raised for. */
+export function costForSo(c: CrossHire, soId: string): number {
+  const n = c.qty ?? 1;
+  const us = unitsOf(c);
+  const exp = (c.expenses ?? []).reduce((t, e) => t + e.amount, 0);
+  const mine = us.filter((u) => u.soId === soId);
+  if (mine.length) return mine.reduce((t, u) => t + (c.rate + exp) / n + (u.dispute ?? 0), 0);
+  return !us.some((u) => u.soId) && c.soId === soId ? c.rate + exp + (c.dispute ?? 0) : 0;
+}
+/** Goods Receipt Note of a Cross Hire Order. The unit is traced on it (serial number), and Validate puts the unit on the Fixed Asset Register. */
+export interface CrossHireGrn {
+  id: string; number: string; date: string; receivedBy: string; narration: string; transportedBy: string; driver: string; driverId: string; vehicle: string; location: string; department: string;
+  attachments: string[]; qty: number; traces: { serial: string; group: string; category: string; condition?: 'OK' | 'Damaged' | 'Needs check'; photo?: string; hours?: string; remarks?: string }[]; validated: boolean; address?: Record<string, string>;
+}
+export interface RfqItem { id: string; group: string; category: string; uom: string; description: string; specification: string; duration: string; qty: number; estYear: number; location: string; department: string; narration: string; orderNumber?: string }
 export interface CrossHireRequest {
   id: string; number: string; date: string; soId: string; soNumber: string; lineId: string; group: string; category: string; qty: number; frequency: string; rate: number;
   vendorId?: string; vendor?: string; company: string; representative: string; currency: string; narration: string; location: string; department: string; attachments: string[];
+  /** Cross-Hire Decision Right: who raised it and in which role (the permission is gated, not tied to one fixed role). */
+  raisedBy?: string; raisedRole?: string;
   status: 'Draft' | 'Pending' | 'In Progress' | 'Completed' | 'Rejected'; rfqId?: string; orderId?: string; log: LogItem[];
 }
-export interface RfqResponse { vendorId: string; vendor: string; rate: number; leadTime: number; moq: number; date: string; note?: string }
+export interface RfqResponse { vendorId: string; vendor: string; rate: number; leadTime: number; moq: number; date: string; note?: string; number?: string; paymentTerms?: string; incoterm?: string; reference?: string; narration?: string; condition?: string; specification?: string; vendorUom?: string; vendorDuration?: string; estYear?: number }
 export interface CrossHireRfq {
   id: string; number: string; date: string; requestIds: string[]; soNumbers: string[]; group: string; category: string; qty: number; vendorIds: string[]; orderDeadline: string; expectedDate: string;
-  currency: string; paymentTerms: string; start?: string; end?: string; narration: string; status: 'Draft' | 'Open' | 'RFQ Sent' | 'Response Received' | 'Order'; responses: RfqResponse[]; awardedVendorId?: string; awardComment?: string; orderId?: string; log: LogItem[];
+  currency: string; paymentTerms: string; start?: string; end?: string; narration: string; status: 'Draft' | 'Open' | 'RFQ Sent' | 'Response Received' | 'Pending Order' | 'Order' | 'Cancelled';
+  items?: RfqItem[]; reference?: string; location?: string; representative?: string; company?: string; form?: Record<string, any>; responses: RfqResponse[]; awardedVendorId?: string; awardComment?: string; orderId?: string; log: LogItem[];
 }
 export const CH_REQUEST_STATUSES = ['Draft', 'Pending', 'In Progress', 'Completed', 'Rejected'];
-export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Order'];
+export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Pending Order', 'Order', 'Cancelled'];
+export const CH_ORDER_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Approved', 'Received', 'Billed', 'Rejected', 'Cancelled', 'Closed'];
+export const RENTAL_DURATIONS = ['Daily', 'Hourly', '3 Hours', 'Weekly', '2 Weeks', 'Monthly', '2 Months', 'Half Yearly', 'Yearly'];
 export const CH_TYPES = ['Inventory', 'Dropship'];
+/** Roles that hold the permission to initiate a cross-hire request. Primarily the Operational Desk; an admin can grant it to any other user. */
+export const CROSS_HIRE_ROLES = ['Operational Desk', 'Dispatcher / Service Desk', 'General Manager'];
+/**
+ * Buy-vs-hire view (decision support): what the same hire would have cost if the business owned an equivalent unit, estimated as the average purchase value of
+ * the owned units of the Category + Subcategory spread over their useful life, for the months of the hire. Returns undefined when there is no owned unit to compare.
+ */
+export function ownedEquivalent(c: Pick<CrossHire, 'group' | 'category' | 'startDate' | 'endDate' | 'revenue' | 'date'>) {
+  const owned = fleetRows().filter((a) => isLive(a) && !a.deliveryFleet && a.category === c.group && a.subCategory === c.category && a.ownership !== 'Cross-Hired' && a.assetValue > 0);
+  if (!owned.length) return undefined;
+  const monthly = owned.reduce((n, a) => n + a.assetValue / Math.max(1, a.usefulLifeYears * 12), 0) / owned.length;
+  const from = c.startDate ?? c.date;
+  const months = c.endDate ? Math.max(1, Math.round((new Date(c.endDate).getTime() - new Date(from).getTime()) / (30.4375 * 86400000))) : 1;
+  const cost = Math.round(monthly * months);
+  return { monthly: Math.round(monthly), months, cost, margin: c.revenue - cost };
+}
 
 /* ------------------------------------------------------------------ Fleet Management: trips (own delivery vehicles and external transporters) */
 export const TRIP_STATUSES = ['Assigned', 'En Route', 'Stuck-Delayed', 'Completed', 'Cancelled'] as const;
@@ -215,7 +263,8 @@ export const OPEN_TRIP: TripStatus[] = ['Assigned', 'En Route', 'Stuck-Delayed']
 export type TripKind = 'Delivery' | 'Collection' | 'Replacement';
 export type FleetStatus = 'Free' | 'Assigned' | 'En Route' | 'Stuck-Delayed' | 'Unavailable';
 export const FLEET_STATUSES: FleetStatus[] = ['Free', 'Assigned', 'En Route', 'Stuck-Delayed', 'Unavailable'];
-export interface TripExpense { type: string; amount: number; note?: string; date: string }
+/** journalId: an own-fleet cost posted to the ledger when it was added. billId: an external transporter's Transport Charge billed to the transporter. */
+export interface TripExpense { type: string; amount: number; note?: string; date: string; journalId?: string; billId?: string }
 /** One movement of a vehicle (or of an external transporter) for a Delivery Order, a Collection or a Replacement. Always created from its document, so it is always tied to a project. */
 export interface Trip {
   id: string; number: string;
@@ -224,6 +273,8 @@ export interface Trip {
   docId: string; docNumber: string;
   soId: string; soNumber: string; customerId: string; site: string; costCentre?: string;
   transport: 'Own Fleet' | 'External Transporter';
+  /** Where the vehicle was when the trip started; it goes back there when the trip completes. */
+  origin?: string;
   vehicleId?: string; plate?: string;
   driver?: string; mobile?: string;
   transporter?: string;
@@ -313,13 +364,29 @@ export const rentalGroupOptions = () => {
 export function tripRows(): Trip[] { seedCollection(COL.trips, tripSeed); return getCollection<Trip>(COL.trips); }
 /** The Heavy Equipment Fixed Assets ticked as Delivery fleet vehicle. */
 export const deliveryVehicles = (rows: HeavyRec[] = fleetRows()) => rows.filter((a) => a.deliveryFleet && a.assetStatus !== 'Disposed');
-export const openTripOf = (vehicleId: string, trips: Trip[] = tripRows()) => trips.find((t) => t.vehicleId === vehicleId && isOpenTrip(t));
+const tripDay = (t: Pick<Trip, 'date'>) => t.date.slice(0, 10);
+/** A trip that already occupies its vehicle: started (En Route, Stuck-Delayed) or Assigned for today or an earlier day that has not started yet. */
+const occupiesNow = (t: Trip) => t.status === 'Stuck-Delayed' || t.status === 'En Route' || (t.status === 'Assigned' && tripDay(t) <= TODAY);
+/** The trip a vehicle is busy with right now (a trip booked for a later day does not occupy it yet). */
+export const openTripOf = (vehicleId: string, trips: Trip[] = tripRows()) => trips.find((t) => t.vehicleId === vehicleId && isOpenTrip(t) && occupiesNow(t));
+/** The next trip booked for a later day, shown on the board so the dispatcher knows the vehicle is spoken for. */
+export const nextBookingOf = (vehicleId: string, trips: Trip[] = tripRows()) => trips.filter((t) => t.vehicleId === vehicleId && t.status === 'Assigned' && tripDay(t) > TODAY).sort((a, b) => a.date.localeCompare(b.date))[0];
+const notInService = (a: HeavyRec) => a.status === 'Inactive' || ['Under Maintenance', 'Breakdown', 'Disposed'].includes(a.assetStatus);
 /**
- * Derived, never stored (one source of truth: the trips). Free when there is no open trip, otherwise the open trip's status.
+ * Whether a vehicle can take a trip on a given day (default today). Availability is by date: a trip booked for next week does not block today.
+ * A vehicle that is Stuck-Delayed is blocked for any day (nobody knows when it is released); En Route blocks the rest of today; Assigned blocks its own day.
+ */
+export function vehicleFreeOn(a: HeavyRec, date?: string, trips: Trip[] = tripRows(), exceptTripId?: string): boolean {
+  if (notInService(a)) return false;
+  const day = (date ?? TODAY).slice(0, 10);
+  return !trips.some((t) => t.id !== exceptTripId && t.vehicleId === a.id && isOpenTrip(t) && (t.status === 'Stuck-Delayed' || (t.status === 'En Route' && day <= TODAY) || (t.status === 'Assigned' && (tripDay(t) === day || (tripDay(t) <= TODAY && day <= TODAY)))));
+}
+/**
+ * Derived, never stored (one source of truth: the trips). Free when no open trip occupies it now, otherwise that trip's status.
  * Unavailable when the vehicle is not in service (Under Maintenance, Breakdown, Disposed or Inactive).
  */
 export function fleetStatus(a: HeavyRec, trips: Trip[] = tripRows()): FleetStatus {
-  if (a.status === 'Inactive' || ['Under Maintenance', 'Breakdown', 'Disposed'].includes(a.assetStatus)) return 'Unavailable';
+  if (notInService(a)) return 'Unavailable';
   return (openTripOf(a.id, trips)?.status as FleetStatus | undefined) ?? 'Free';
 }
 export function patchAsset(id: string, patch: Partial<HeavyRec>, audit?: { title: string; detail?: string }, movement?: { type: string; from: string; to: string; reference: string; customer?: string; project?: string }) {
@@ -536,7 +603,7 @@ orderSeed.forEach((o) => { const t = tripSeed.filter((x) => x.soId === o.id && x
 export const extensionSeed: Extension[] = [
   { id: 'ex1', number: 'EX-26-00007', soId: 'so1', kind: 'Extension', oldEnd: '2026-09-08', newEnd: '2026-10-08', date: '2026-09-10', note: 'Client extended the hire by one month', status: 'Applied', clientConfirmedBy: 'Sergei Petrov' },
 ];
-const chOrderExtra = (c: CrossHire): CrossHire => ({ type: 'Inventory', status: c.stage >= 4 ? 'Closed' : c.stage >= 1 ? 'Received' : 'Approved', receiving: c.stage >= 1 ? 'Fully Received' : 'Pending Receiving', billing: c.supplierInvoice ? 'Pending Billing' : 'Pending Billing', expenses: [], qty: 1, confirmationDate: c.date, expectedReceipt: c.date, paymentTerms: 'Net 30', startDate: c.date, endDate: undefined, ...c });
+const chOrderExtra = (c: CrossHire): CrossHire => ({ type: 'Inventory', status: c.stage >= 4 ? 'Closed' : c.stage >= 1 ? 'Received' : 'Approved', receiving: c.stage >= 1 ? 'Fully Received' : 'Pending Receiving', billing: c.supplierInvoice ? 'Pending Billing' : 'Pending Billing', expenses: [], qty: 1, confirmationDate: c.date, expectedReceipt: c.date, paymentTerms: 'Net 30', startDate: c.date, endDate: undefined, grns: c.stage >= 1 ? [{ id: `${c.id}-grn`, number: `GRN-26-${String(c.number.slice(-5))}`, date: c.date, receivedBy: 'Sanjay Kumar', narration: 'Received at the yard', transportedBy: c.supplier, driver: 'Supplier driver', driverId: '', vehicle: '', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], qty: 1, traces: [{ serial: `XH-${c.number.slice(-4)}`, group: c.group, category: c.category }], validated: true }] : [], ...c });
 export const crossHireSeed: CrossHire[] = ([
   { id: 'ch1', number: 'CH-26-00007', soId: 'so3', soNumber: 'SO-26-00044', lineId: 'so3a', group: 'Generator', category: '500 KVA', supplierId: 's5', supplier: 'Falcon Equipment Hire LLC', rate: 36000, stage: 2, assetId: 'he27', revenue: 48000, date: '2026-05-02', supplierInvoice: 'FAL-INV-9921',
     history: [lg('2026-05-02 10:00', 'Request raised: no owned 500 KVA unit available', 'Bilal Ahmed'), lg('2026-05-02 16:00', 'Received from Falcon Equipment Hire LLC', 'Sanjay Kumar'), lg('2026-05-06 09:00', 'Allocated to SO-26-00044', 'Bilal Ahmed')] },
@@ -545,7 +612,7 @@ export const crossHireSeed: CrossHire[] = ([
     history: [lg('2026-06-10 09:00', 'Request raised: AST-1014 broke down on site', 'Bilal Ahmed'), lg('2026-06-10 15:00', 'Received at Sharjah Yard', 'Sanjay Kumar'), lg('2026-06-12 10:00', 'Allocated to SO-26-00046 as a replacement', 'Bilal Ahmed', 'RP-26-00003'), lg('2026-07-04 15:00', 'Returned to us, idle at Sharjah Yard', 'Sanjay Kumar', 'Own unit AST-1013 took over (RP-26-00004). Condition check completed', 'amber')] },
   { id: 'ch3', number: 'CH-26-00008', soId: 'so4', soNumber: 'SO-26-00052', lineId: 'so4b', group: 'Generator', category: '100 KVA', supplierId: 's6', supplier: 'Gulf Genset Rentals', rate: 13500, stage: 0, revenue: 18500, date: '2026-09-29', expectedReceipt: '2026-10-02', startDate: '2026-10-05', endDate: '2027-03-31',
     history: [lg('2026-09-29 10:00', 'Request', 'Bilal Ahmed', 'No owned 100 KVA unit Ready for Hire for SO-26-00052; direct order; Inventory'), lg('2026-09-29 10:05', 'Order created', 'Bilal Ahmed', 'CH-26-00008 with Gulf Genset Rentals at AED 13500 per unit', 'blue')] },
-  { id: 'ch4', number: 'CH-26-00009', soId: 'so1', soNumber: 'SO-26-00041', lineId: 'so1a', group: 'Generator', category: '500 KVA', supplierId: 's5', supplier: 'Falcon Equipment Hire LLC', rate: 36000, stage: 0, revenue: 52000, date: '2026-09-28', expectedReceipt: '2026-10-03', startDate: '2026-10-03', endDate: '2026-11-30',
+  { id: 'ch4', number: 'CH-26-00009', status: 'Pending Approval', soId: 'so1', soNumber: 'SO-26-00041', lineId: 'so1a', group: 'Generator', category: '500 KVA', supplierId: 's5', supplier: 'Falcon Equipment Hire LLC', rate: 36000, stage: 0, revenue: 52000, date: '2026-09-28', expectedReceipt: '2026-10-03', startDate: '2026-10-03', endDate: '2026-11-30',
     history: [lg('2026-09-28 09:00', 'Request', 'Bilal Ahmed', 'Standby cover for AST-1015 during its major service; direct order; Inventory'), lg('2026-09-28 09:10', 'Order created', 'Bilal Ahmed', 'CH-26-00009 with Falcon Equipment Hire LLC at AED 36000 per unit', 'blue')] },
   { id: 'ch5', number: 'CH-26-00010', soId: 'so4', soNumber: 'SO-26-00052', lineId: 'so4b', group: 'Generator', category: '100 KVA', supplierId: 's6', supplier: 'Gulf Genset Rentals', rate: 13500, stage: 1, assetId: 'he31', revenue: 18500, date: '2026-09-26', supplierInvoice: 'GGR-2291', expectedReceipt: '2026-09-28', startDate: '2026-09-28', endDate: '2027-03-31',
     history: [lg('2026-09-26 11:00', 'Request', 'Bilal Ahmed', 'No owned 100 KVA unit Ready for Hire for SO-26-00052; direct order; Inventory'), lg('2026-09-26 11:05', 'Order created', 'Bilal Ahmed', 'CH-26-00010 with Gulf Genset Rentals at AED 13500 per unit', 'blue'), lg('2026-09-28 14:00', 'Received into our custody as AST-1031', 'Sanjay Kumar', 'Supplier invoice GGR-2291')] },

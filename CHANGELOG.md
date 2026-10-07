@@ -12,6 +12,55 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 7 Oct, around 10:00 PM: Goods Receipt tracing is a receiving grid on the page
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Tracing assets on the Goods Receipt needed a modal, then an Add dialog and a Save for every unit.
+*What we did.* A new Receiving tab on the Goods Receipt shows Ordered, Already received, Still to come and This receipt, with one pre-filled row per unit still to come (+ and - change the count). Each row is one asset: Serial Number, Received as (Category and Subcategory, flagged when it differs from the order), Condition (OK, Needs check, Damaged), Photo, Hours reading and Remarks. Serials can be pasted or scanned as a list and fill the rows from the top. Rows are checked as you type for a missing serial, a duplicate on the receipt and a serial already on the register. Validate shows a preview; each row becomes a Cross-Hired asset, a Damaged unit enters as Under Maintenance, and Print Labels is offered afterwards. Saving a new Goods Receipt opens it on the Receiving tab.
+*Be aware.* The photo only keeps the file name in the POC and Print Labels is a placeholder. Hours reading and remarks go into the asset's audit trail.
+
+### 7 Oct, around 9:00 PM: Cross Hire works like Sales Order and Delivery Order: Category and Subcategory on the order, assets defined on the Goods Receipt
+**Where:** Rental > Cross Hire > Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* A Cross Hire Order was tied to one Sales Order line and one asset, and the Goods Receipt asked for a quantity. A fixed asset is always one unit, and on the rental Sales Order the line carries only Category and Subcategory; the asset is picked at delivery.
+*What we did.* The order is Category, Subcategory and a number of units (Units required); the Rental Order is optional and only says which demand it serves. The Goods Receipt has no quantity or bin: each row of Trace Details is one asset (serial number, Category and Subcategory actually received, flagged when it differs from the order). Validate puts one Cross-Hired asset on the Fixed Asset Register per row. The order shows Units ordered, Assets received and Remaining, with Receiving Status Partially or Fully Received, and Receive stays available until all units are in. Each asset has its own lifecycle (Received, Allocated, Returned to Us, Returned to Supplier) in a new Units tab, with Return to Us, Re-Issue and Return to Supplier on the unit. The unit is bound to a Sales Order at the Delivery Order. The Sales Order Cross Hire tab shows the units delivered to it and the cost of those units.
+*Be aware.* Cost of an order is shared equally over its units (rate and expenses); a unit that serves two projects over time is not split by days yet, to be confirmed with the client. Order Profitability and the Cross-Hire reports still follow the Sales Order line the request was raised from. The asset form in Inventory still links one asset to an order.
+
+### 7 Oct, around 8:00 PM: Cross Hire Orders follow the existing flow (approval, Goods Receipt); Request for Quote rebuilt to the existing layout
+**Where:** Rental > Cross Hire > Orders
+**Where:** Rental > Cross Hire > Request for Quote
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The POC received a unit straight from the order and raised the supplier bill at the same time, and its Request for Quote screen looked nothing like the existing ERP.
+*What we did.* (1) Orders: the list has the existing columns and statuses (Draft, Pending, Pending Approval, Approved, Received, Billed, Rejected, Cancelled, Closed) with Edit and Delete; Add New opens the order form (Basic Details, Address & Contact, Rental Period, Items, Attachment, Classification). The order is approved as in the existing ERP: Submit for Approval or Quick Approval, then Accept or Reject, and Re-Submit when rejected. An approved Inventory order has Receive, which opens a separate Goods Receipt form; the unit is traced on it (serial number, bin) and Validate puts it on the Fixed Asset Register as Cross-Hired, Ready for Hire. Bill is its own action. A Dropship order has Mark Shipped instead. The five-stage lifecycle, condition check, re-issue, dispute charge and profitability continue unchanged after Validate. (2) Request for Quote: list with Edit, Duplicate, Delete; the form and the view have Basic Details and Address & Contact tabs, Rental Period, Items, Call For Tender and Attachment. Responses are separate pages (list, add, view, edit). Analyze & Award has the items list on the left and the responses on the right, with the All, Low Price, Low MOQ and Low Lead Time tabs, a filter, previous prices, and an award that asks for a comment. The RFQ becomes Pending Order after the award, and Create > Order opens the order form prefilled from the awarded response.
+*Be aware.* This reverses the 6 Oct rule that Cross Hire Receive raises the supplier bill: the bill is now raised with Bill, after approval, as in the existing ERP. Allocations and View Profitability modals of the existing order screen are not rebuilt (the profitability panel stays on the order). An RFQ response carries one rate for the RFQ, not one per item. A GRN traces one unit; several units per order are not split into several register entries in the POC. The approver is the signed-in user, there is no approver pick list.
+
+### 7 Oct, around 6:00 PM: Only new or changed modules shown; Billing section and Cross Hire move to the Rental Sales Order; Cross Hire gets the requirement's new fields
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Orders
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The POC still showed modules and screens of the existing ERP that nothing in the requirement touches. The Billing section of the existing Rental Order had no home now that rental orders are managed in CRM. Cross Hire could be started from any Sales Order. The Cross Hire module did not yet carry every field of the requirement.
+*What we did.* (1) Review view: the launcher, the module switcher, the sidebars and the Change Register show only what is new or changed. Procurement, HRMS and User & Administration have no change and are hidden; unchanged screens (for example Rental Demand Planning, Agreements, Purchase, Settings, or the Accounting PDC, Commission and Budget screens) are hidden from the sidebar but still open by link. (2) The Sales Order has a Billing section, shown only for Activity Type Rental, with Billing Cycle, Invoicing Type, Last Invoice Date and Next Invoice Date, as on the existing Rental Order. The Rental, Invoicing Rental Order run follows the cycle (Monthly, 2 Months, Quarterly) and shows the Invoicing Type. The cycle is locked once the first rental invoice exists. (3) Cross Hire (line action, bulk action, Cross Hire tab with requests, orders and the cost rolled into the order) appears on a Sales Order only when its Activity Type is Rental. (4) Rental Cross Hire keeps its screens and flow. Added from the requirement: Raised By and Decision Right on the request; a yard checklist on the Return to Us condition check; Re-Issue to another project after Return to Us, with the Re-Issue Reference as a linked Sales Order; a buy-vs-hire estimate on the order and in the Cross-Hire Cost vs Revenue dashboard.
+*Be aware.* Re-Issue puts the unit back to Ready for Hire; the Delivery Order to the new project then moves the order's cost roll-up to that project, and the earlier hire stays in the stage history. How to split the supplier cost between two projects is to be confirmed. The buy-vs-hire figure is an estimate (average purchase value of the owned units over their useful life), method to be confirmed with the client. Cross Hire permission is shown on the request but not enforced, because User & Administration is not built in this POC.
+
+### 7 Oct, around 4:00 PM: Fleet Management review: date-based availability, trips tied to the Delivery Order, trip costs in Accounting
+**Where:** CRM / Sales > Fleet Management > Fleet Availability
+**Where:** CRM / Sales > Fleet Management > Trips
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Accounting > Journals
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Review of Fleet Management found gaps: a vehicle was blocked from the moment a trip was booked, whatever the date; only the form checked that a vehicle was Free; a Delivery Order was Dispatched while its trip had not started and never became Delivered; cancelling a trip left its cost on the Sales Order; Salik and fuel never reached the ledger; a transporter charge added after completion was never billed.
+*What we did.* (1) Availability is by date: a vehicle is offered for a delivery only when it is Free on that day, a trip booked for a later day does not block today, and the board has a Next Booking column. (2) The vehicle is re-checked when a Delivery Order, Return or Replacement is saved, and on Reassign and Switch to External, so a stale screen cannot double-book it. (3) A Delivery Order is Packed when its trip is created, Dispatched when the trip starts, and Delivered when the trip completes (if the customer signature is already captured). Completing a Collection puts the asset in the yard. Start and Complete write the vehicle's Movement History, and it returns to where it left from. (4) Cancelling a trip takes its expenses off the Sales Order logistics cost, reverses its ledger entries, voids or debit-notes the transporter bill, and the Delivery Order shows an Arrange Transport button. (5) Own-fleet expenses post a journal (Dr expense, Cr Accrued Trip Expenses, on the order's cost centre); each external Transport Charge becomes its own Pending bill to the transporter, also when added after completion. (6) The Sales Order Logistics tab shows quoted Delivery and Return Charge lines against the actual trip cost.
+*Be aware.* Assets still go On Hire when the Delivery Order is saved; only its status follows the trip. The customer is not invoiced for trip expenses, only for the quoted Delivery and Return Charge lines; whether an overrun or a client-caused delay is re-billed is still to be confirmed with the client. Availability is by day, not by hour. Seeded trips have no ledger entries. Fleet Management stays in CRM for now.
+
 ### 6 Oct, around 12:50 PM: Every invoice in the POC is now a real invoice in Accounting
 **Where:** CRM / Sales > Orders > Sales Orders
 **Where:** CRM / Sales > Orders > AMC Orders

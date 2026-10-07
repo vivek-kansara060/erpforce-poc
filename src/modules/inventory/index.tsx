@@ -21,7 +21,7 @@ const mod: ModuleDef = {
   menu: [
     {
       label: 'Product Management', icon: <Inventory2OutlinedIcon />, children: [
-        { label: 'Items', path: '/inventory/items' },
+        { label: 'Items', path: '/inventory/items', change: 'changed' },
         { label: 'Item Category', path: '/inventory/categories', change: 'changed' },
         { label: 'Item Sub-Category', path: '/inventory/sub-categories', change: 'new' },
         { label: 'Brand', path: '/inventory/brands', change: 'new' },

@@ -52,7 +52,7 @@ export interface NoteDoc {
   againstId: string; againstNumber: string; lines: InvLine[]; approval: ApprovalStatus; journalId?: string; costCentre?: string; log: LogItem[];
 }
 export interface JournalLine { account: string; party?: string; debit: number; credit: number; costCentre?: string; memo?: string }
-export type JournalType = 'Sales' | 'Purchases' | 'Cash Receipt Voucher' | 'Payment' | 'Credit Note' | 'Debit Note';
+export type JournalType = 'Sales' | 'Purchases' | 'Cash Receipt Voucher' | 'Payment' | 'Credit Note' | 'Debit Note' | 'Trip Expense';
 export interface Journal {
   id: string; number: string; postingDate: string; journalType: JournalType;
   refType: string; refId: string; refNumber: string; status: 'Posted'; currency: string; narration: string; createdBy: string; lines: JournalLine[];
@@ -100,6 +100,7 @@ export const COA: Account[] = [
   { code: '210100', name: 'Accounts Payable', type: 'Liability' },
   { code: '210300', name: 'Output VAT Payable', type: 'Liability' },
   { code: '210400', name: 'Customer Advances', type: 'Liability' },
+  { code: '210500', name: 'Accrued Trip Expenses', type: 'Liability' },
   { code: '410100', name: 'Rental Income', type: 'Income' },
   { code: '410200', name: 'Trading Sales', type: 'Income' },
   { code: '410300', name: 'Fuel Sales', type: 'Income' },
@@ -117,7 +118,7 @@ export const COA: Account[] = [
   { code: '520100', name: 'Insurance Expense', type: 'Expense' },
   { code: '590100', name: 'Round Off', type: 'Expense' },
 ];
-export const ACC = { cash: '110100', bank1: '110200', bank2: '110300', ar: '130100', inputVat: '130200', ap: '210100', outputVat: '210300', advances: '210400', discount: '410900', roundOff: '590100' } as const;
+export const ACC = { cash: '110100', bank1: '110200', bank2: '110300', ar: '130100', inputVat: '130200', ap: '210100', outputVat: '210300', advances: '210400', tripAccrual: '210500', discount: '410900', roundOff: '590100' } as const;
 export const accName = (code?: string) => COA.find((a) => a.code === code)?.name ?? code ?? '-';
 export const accLabel = (code?: string) => (code ? `${code} ${accName(code)}` : '-');
 export const incomeAccounts = COA.filter((a) => a.type === 'Income' && a.code !== ACC.discount);
@@ -136,6 +137,12 @@ export function incomeAccountFor(kind?: string): string {
 export function expenseAccountFor(name?: string): string {
   const m: Record<string, string> = { 'Transportation Expense': '510300', 'Loading and Unloading': '510310', 'Fuel Expense': '510320', 'Insurance Expense': '520100', 'Other Direct Expense': '510500' };
   return m[name ?? ''] ?? '510500';
+}
+/** Ledger account of a trip expense type (the Trip Expense Types master): fuel to Fuel Expense, driver allowance and the rest to Other Direct, tolls, parking and transport to Transportation. */
+export function tripExpenseAccount(type?: string): string {
+  if (type === 'Fuel') return '510320';
+  if (type === 'Driver Allowance' || type === 'Other') return '510500';
+  return '510300';
 }
 export const bankAccountCode = (bank?: string) => (bank?.startsWith('Cash') ? ACC.cash : bank?.startsWith('ADCB') ? ACC.bank2 : ACC.bank1);
 

@@ -3,7 +3,7 @@
  * so seeded history and new invoices follow exactly the same rules.
  */
 import dayjs from 'dayjs';
-import { custName, cust, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
+import { cycleMonths, custName, cust, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
 import {
   ACC, addDays, bankAccountCode, daysBetween, incomeAccountFor, lineAmount, lineDisc, lineGross, lineVat, maxDate, minDate, round2, totalsOf, vatPctOf,
   type Bill, type InvLine, type JournalLine, type NoteDoc, type PaymentEntry, type SalesInvoice,
@@ -45,14 +45,15 @@ export function linesFromJobCard(jc: JobCard, o?: SalesOrder): InvLine[] {
 }
 
 /* ------------------------------------------------------------------ rental billing */
-export const RENTAL_RULE = 'Monthly cycle anchored on the first Rental Start of the order; partial periods are pro-rated by days in the period. Billing stops on the off-hire day.';
-const qtyFor = (freq: string | undefined, days: number, periodDays: number) => {
+export const RENTAL_RULE = 'Billing cycle of the order (Monthly unless changed in its Billing section) anchored on the first Rental Start of the order; partial periods are pro-rated by days in the period. Billing stops on the off-hire day.';
+/** Quantity of a line for `days` of a billing period of `periodDays` days and `months` months (the order's Billing Cycle; 1 for Monthly). */
+const qtyFor = (freq: string | undefined, days: number, periodDays: number, months = 1) => {
   switch (freq) {
     case 'Daily': return days;
     case 'Weekly': return round4(days / 7);
-    case 'Quarterly': return round4(days / periodDays / 3);
-    case 'Yearly': return round4(days / periodDays / 12);
-    default: return round4(days / periodDays);
+    case 'Quarterly': return round4((days / periodDays / 3) * months);
+    case 'Yearly': return round4((days / periodDays / 12) * months);
+    default: return round4((days / periodDays) * months);
   }
 };
 const unitFor = (freq?: string) => ({ Daily: 'Day', Weekly: 'Week', Quarterly: 'Quarter', Yearly: 'Year' } as Record<string, string>)[freq ?? ''] ?? 'Month';
@@ -65,7 +66,7 @@ export function nextPeriodFor(o: SalesOrder, prior: SalesInvoice[]): { from: str
   const lastTo = prior.filter((i) => i.isRental && i.periodTo).map((i) => i.periodTo!).sort().pop();
   const from = lastTo ? addDays(lastTo, 1) : firstRentalStart(o);
   if (!from) return undefined;
-  return { from, to: dayjs(from).add(1, 'month').subtract(1, 'day').format('YYYY-MM-DD') };
+  return { from, to: dayjs(from).add(cycleMonths(o.billingCycle), 'month').subtract(1, 'day').format('YYYY-MM-DD') };
 }
 
 /**
@@ -77,6 +78,7 @@ export function nextPeriodFor(o: SalesOrder, prior: SalesInvoice[]): { from: str
 export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: SalesInvoice[], from: string, to: string, assetLabel: (id: string) => string): RentalBuild {
   const vat = vatPctOf(o.vatType);
   const periodDays = daysBetween(from, to) + 1;
+  const months = cycleMonths(o.billingCycle);
   const priorLines = prior.flatMap((i) => i.lines);
   const priorTo = (key: (l: InvLine) => boolean) => priorLines.filter(key).map((l) => l.periodTo ?? '').sort().pop();
   const lines: InvLine[] = [];
@@ -94,7 +96,7 @@ export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: S
       if (!firstRentalFrom || start < firstRentalFrom) firstRentalFrom = start;
       if (end > lastRentalEnd) lastRentalEnd = end;
       lines.push({
-        id: lid(), item: l.item, desc: `${assetLabel(a.assetId)} (${days} of ${periodDays} days)`, account: '410100', qty: qtyFor(l.frequency, days, periodDays), unit: unitFor(l.frequency),
+        id: lid(), item: l.item, desc: `${assetLabel(a.assetId)} (${days} of ${periodDays} days)`, account: '410100', qty: qtyFor(l.frequency, days, periodDays, months), unit: unitFor(l.frequency),
         rate: l.foc ? 0 : l.price, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Rental', costCentre: l.costCentre ?? o.costCentre,
         periodFrom: start, periodTo: end, days, periodDays, assetId: a.assetId, deliveryId: a.deliveryId, soLineId: l.id, tag: 'rental',
       });
@@ -113,7 +115,7 @@ export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: S
         const end = minDate(minDate(to, l.end ?? to), lastRentalEnd);
         if (start > end) continue;
         const days = daysBetween(start, end) + 1;
-        lines.push({ id: lid(), item: l.item, desc: `${l.desc || l.item} (${days} of ${periodDays} days)`, account: '410500', qty: round4(l.qty * qtyFor(l.frequency ?? 'Monthly', days, periodDays)), unit: unitFor(l.frequency ?? 'Monthly'),
+        lines.push({ id: lid(), item: l.item, desc: `${l.desc || l.item} (${days} of ${periodDays} days)`, account: '410500', qty: round4(l.qty * qtyFor(l.frequency ?? 'Monthly', days, periodDays, months)), unit: unitFor(l.frequency ?? 'Monthly'),
           rate: l.foc ? 0 : l.price, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Service', costCentre: l.costCentre ?? o.costCentre, periodFrom: start, periodTo: end, days, periodDays, soLineId: l.id, tag: 'recurring-service' });
         continue;
       }

@@ -5,10 +5,10 @@
  */
 import { getCollection, setCollection } from '@/store/store';
 import { customers, suppliers } from '@/mock-data/masters';
-import { ACTOR, COL, TODAY, assetById, assetLabel, cust, custName, hasWaiver, log, type Delivery, type JobCard, type SalesOrder, type Trip } from '@/modules/crm/data';
+import { ACTOR, COL, TODAY, assetById, assetLabel, cust, custName, hasWaiver, log, type Delivery, type JobCard, type SalesOrder, type Trip, type TripExpense } from '@/modules/crm/data';
 import { advanceJournal, buildRentalLines, headerFromOrder, lid, linesFromJobCard, linesFromOrder, nextPeriodFor, noteJournal, paymentJournal, purchaseJournal, salesJournal, type RentalBuild } from './billing';
 import {
-  COLA, EDITABLE, dueDateFor, expenseAccountFor, nextBillNo, nextCreditNo, nextDebitNo, nextInvoiceNo, nextJournalNo, nextPaymentNo, nextRunNo, payStatusOf, round2, totalsOf, uid, vatPctOf,
+  ACC, COLA, EDITABLE, dueDateFor, expenseAccountFor, tripExpenseAccount, nextBillNo, nextCreditNo, nextDebitNo, nextInvoiceNo, nextJournalNo, nextPaymentNo, nextRunNo, payStatusOf, round2, totalsOf, uid, vatPctOf,
   type Allocation, type Bill, type InvLine, type Journal, type JournalLine, type JournalType, type NoteDoc, type PaymentEntry, type RentalRun, type SalesInvoice, type SourceRef,
 } from './data';
 import { seedAccounting } from './seed';
@@ -341,15 +341,37 @@ export function billDisputeCharge(ch: CrossHireLike, amount: number): Bill {
     lines: [{ id: lid(), item: 'Supplier dispute / additional charge', desc: `${ch.number}, charged on return to supplier`, account: '510500', qty: 1, unit: 'Lump sum', rate: amount, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre, tag: 'cross-hire' }],
     expenses: [], narration: `Supplementary bill for ${ch.number}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } });
 }
-/** External transporter trip: its Transport Charge becomes a Pending bill to the transporter. Own-vehicle costs (Salik, fuel) are not bills. */
-export function billFromTrip(t: Trip): Bill | undefined {
-  if (t.transport !== 'External Transporter') return undefined;
-  const ex = t.expenses.filter((e) => e.type === 'Transport Charge' && e.amount > 0);
-  if (!ex.length || billsOfSource('Trip', t.id).length) return undefined;
+/** An external transporter's Transport Charge is billed to the transporter (a supplier): one Pending bill per charge, so a charge added after completion gets its own bill. */
+export function billTripCharge(t: Trip, e: Pick<TripExpense, 'amount' | 'note'>): Bill {
   const sup = suppliers.find((s) => s.name === t.transporter);
   return createBill({ supplierId: sup?.id, supplierName: t.transporter ?? 'External transporter', supplierInvoiceNo: '', supplierInvoiceDate: TODAY, date: TODAY, orderRef: t.number, costCentre: t.costCentre,
-    lines: ex.map((e) => ({ id: lid(), item: `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: '510300', qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: 5, costCentre: t.costCentre, tag: 'transport' as const })),
+    lines: [{ id: lid(), item: `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: tripExpenseAccount('Transport Charge'), qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: 5, costCentre: t.costCentre, tag: 'transport' as const }],
     expenses: [], narration: `Trip ${t.number}`, source: { type: 'Trip', id: t.id, number: t.number, soId: t.soId } });
+}
+/** Own-fleet cost (Salik, fuel, parking...) posted to the ledger when it is added: Dr the expense account, Cr Accrued Trip Expenses, both on the order's cost centre. */
+export function postTripExpense(t: Trip, e: Pick<TripExpense, 'type' | 'amount' | 'note'>): string {
+  const memo = `${t.number}: ${e.type}${e.note ? `, ${e.note}` : ''}`;
+  return postJournal('Trip Expense', 'Trip', t.id, t.number, `Trip expense ${t.number} for ${t.docNumber}, ${e.type}`, [
+    { account: tripExpenseAccount(e.type), debit: e.amount, credit: 0, costCentre: t.costCentre, memo },
+    { account: ACC.tripAccrual, debit: 0, credit: e.amount, costCentre: t.costCentre, memo },
+  ]);
+}
+/** A posted journal is never edited: removing or cancelling an expense posts the opposite journal. */
+export function reverseJournal(journalId: string, why: string): string | undefined {
+  const j = journalByRef(journalId);
+  if (!j) return undefined;
+  return postJournal('Trip Expense', j.refType, j.refId, j.refNumber, `Reversal of ${j.number}: ${why}`, j.lines.map((l) => ({ ...l, debit: l.credit, credit: l.debit })));
+}
+/** A trip cost is taken back: a bill that is not yet approved is rejected, an approved one gets a Pending Debit Note for the full amount. */
+export function voidTripBill(billId: string, why: string): { ok: boolean; message: string } {
+  const b = billByRef(billId);
+  if (!b) return fail('Bill not found');
+  if (b.approval !== 'Approved') {
+    patch<Bill>(COLA.bills, b.id, (x) => ({ ...x, approval: 'Rejected', log: [...x.log, log('Voided', why, 'red')] }));
+    return ok(`${b.number} voided`);
+  }
+  const r = createNote('Debit', b.id, b.lines, 'Other');
+  return r.ok ? ok(`Debit Note ${r.note?.number} raised against ${b.number}, pending approval`) : fail(`${b.number} is approved and cannot be reversed automatically: ${r.message}`);
 }
 
 /* ------------------------------------------------------------------ allocations helper for the payment forms */

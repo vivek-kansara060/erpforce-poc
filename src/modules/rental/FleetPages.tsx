@@ -11,8 +11,8 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
-import { FLEET_STATUSES, TRIP_STATUSES, assetById, custName, deliveryVehicles, fleetStatus, isOpenTrip, tripTotal, type FleetStatus, type HeavyRec, type Trip } from '@/modules/crm/data';
-import { addTripExpense, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
+import { FLEET_STATUSES, TODAY, TRIP_STATUSES, assetById, custName, deliveryVehicles, fleetStatus, isOpenTrip, nextBookingOf, openTripOf, tripTotal, vehicleFreeOn, type FleetStatus, type HeavyRec, type Trip } from '@/modules/crm/data';
+import { addTripExpense, arrangeDeliveryTransport, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
 import { MasterSelect, R, RowMenu, aed, useFleet, useTrips, type RowMenuItem } from '@/modules/crm/shared';
 import { currentLocation } from '@/modules/inventory/data';
 import { billsOfSource } from '@/modules/accounting/engine';
@@ -58,7 +58,7 @@ export function useTripMenu() {
     if (t.status === 'En Route') m.push({ label: 'Mark Stuck-Delayed', onClick: () => open('stuck', t) });
     if (t.status === 'Stuck-Delayed') m.push({ label: 'Resume (En Route)', onClick: () => { resumeTrip(t); toast(`${t.number} resumed`); } });
     if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Complete Trip', onClick: () => open('complete', t) });
-    if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Add Expense', onClick: () => open('expense', t) });
+    if (t.status === 'En Route' || t.status === 'Stuck-Delayed' || t.status === 'Completed') m.push({ label: 'Add Expense', onClick: () => open('expense', t) });
     if (isOpenTrip(t)) m.push({ label: 'Cancel Trip', danger: true, onClick: () => open('cancel', t) });
     return m;
   };
@@ -144,15 +144,15 @@ function ExpenseDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
 function VehicleDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const toast = useToast();
   const fleet = useFleet();
-  const options = deliveryVehicles(fleet.rows).filter((a) => a.id === trip.vehicleId || vehicleIsFree(a.id, trip.id));
+  const options = deliveryVehicles(fleet.rows).filter((a) => a.id === trip.vehicleId || vehicleIsFree(a.id, trip.id, trip.date));
   const [vid, setVid] = useState(trip.vehicleId ?? '');
   const [driver, setDriver] = useState(trip.driver ?? '');
   const pick = (id: string) => { setVid(id); const d = assetById(id)?.defaultDriver ?? ''; setDriver(d); };
   return (
-    <AppDialog open title="Reassign Vehicle / Driver" onClose={onClose} confirmLabel="Save" confirmDisabled={!vid} onConfirm={() => { reassignTrip(trip, vid, driver, mobileOf(driver)); toast(`${trip.number} reassigned`); onClose(); }}>
+    <AppDialog open title="Reassign Vehicle / Driver" onClose={onClose} confirmLabel="Save" confirmDisabled={!vid} onConfirm={() => { const err = reassignTrip(trip, vid, driver, mobileOf(driver)); if (err) { toast(err, 'error'); return; } toast(`${trip.number} reassigned`); onClose(); }}>
       <TripSummary trip={trip} />
       <FormGrid cols={1}>
-        <SelectInput label="Vehicle (Free only)" required value={vid} options={options.map((a) => ({ value: a.id, label: vehicleLabel(a) }))} onChange={pick} error={options.length === 0 ? 'No vehicle is Free' : undefined} />
+        <SelectInput label={`Vehicle (Free on ${trip.date.slice(0, 10)})`} required value={vid} options={options.map((a) => ({ value: a.id, label: vehicleLabel(a) }))} onChange={pick} error={options.length === 0 ? 'No vehicle is Free' : undefined} />
         <SelectInput label="Driver" value={driver} options={driverOptions()} onChange={setDriver} hint="Defaults to the vehicle's Default Driver" />
         <TextInput label="Mobile" disabled value={mobileOf(driver)} />
       </FormGrid>
@@ -164,7 +164,7 @@ function ExternalDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) 
   const [by, setBy] = useState('');
   const [cost, setCost] = useState('');
   return (
-    <AppDialog open title="Switch to External Transporter" onClose={onClose} confirmLabel="Switch" confirmDisabled={!by || !(Number(cost) > 0)} onConfirm={() => { switchToExternal(trip, by, Number(cost)); toast(`${trip.number} moved to ${by}, the own vehicle is Free`); onClose(); }}>
+    <AppDialog open title="Switch to External Transporter" onClose={onClose} confirmLabel="Switch" confirmDisabled={!by || !(Number(cost) > 0)} onConfirm={() => { const err = switchToExternal(trip, by, Number(cost)); if (err) { toast(err, 'error'); return; } toast(`${trip.number} moved to ${by}, the own vehicle is Free`); onClose(); }}>
       <TripSummary trip={trip} />
       <FormGrid cols={1}>
         <SelectInput label="Transported By" required value={by} options={transporterOptions()} onChange={setBy} hint="The supplier who transports, so the cost is paid back to them against the project" />
@@ -179,6 +179,7 @@ function CancelDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   return (
     <AppDialog open title="Cancel Trip" onClose={onClose} confirmLabel="Cancel Trip" confirmColor="error" confirmDisabled={!reason.trim()} onConfirm={() => { cancelTrip(trip, reason.trim()); toast(`${trip.number} cancelled, the vehicle is Free`); onClose(); }}>
       <TripSummary trip={trip} />
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Cancelling frees the vehicle and takes the trip's expenses ({aed(tripTotal(trip))}) back off {trip.soNumber}. Ledger entries are reversed and a transporter bill is voided. The document needs new transport afterwards.</Text>
       <TextInput label="Reason" required value={reason} onChange={setReason} multiline rows={2} />
     </AppDialog>
   );
@@ -186,15 +187,15 @@ function CancelDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
 
 /* ------------------------------------------------------------------ Fleet Availability */
 interface BoardRow {
-  id: string; plate: string; name: string; type: string; driver: string; status: FleetStatus; trip?: Trip; since: string; location: string; asset: HeavyRec;
+  id: string; plate: string; name: string; type: string; driver: string; status: FleetStatus; trip?: Trip; booking?: Trip; since: string; location: string; asset: HeavyRec;
 }
 const useBoardRows = (): BoardRow[] => {
   const fleet = useFleet();
   const trips = useTrips();
   return deliveryVehicles(fleet.rows).map((a): BoardRow => {
     const status = fleetStatus(a, trips.rows);
-    const trip = trips.rows.find((t) => t.vehicleId === a.id && isOpenTrip(t));
-    return { id: a.id, plate: a.plateNumber ?? '-', name: a.name, type: a.subCategory, driver: trip?.driver ?? a.defaultDriver ?? '-', status, trip, since: trip ? sinceLabel(trip.since) : '-', location: currentLocation(a), asset: a };
+    const trip = openTripOf(a.id, trips.rows);
+    return { id: a.id, plate: a.plateNumber ?? '-', name: a.name, type: a.subCategory, driver: trip?.driver ?? a.defaultDriver ?? '-', status, trip, booking: nextBookingOf(a.id, trips.rows), since: trip ? sinceLabel(trip.since) : '-', location: currentLocation(a), asset: a };
   });
 };
 const compact = { minWidth: 160, bgcolor: '#fff', fontSize: 13, height: 36 } as const;
@@ -248,6 +249,7 @@ export function FleetBoard() {
             </Box>
           ) },
           { key: 'trip', label: 'Current Trip', sortable: false, render: (r) => (r.trip ? <Box><Link to={`/crm/trips/${r.trip.id}`} style={RL}>{r.trip.number}</Link><Text type="s5" color="theme.secondary.700">{r.trip.kind}, {r.trip.docNumber}, {custName(r.trip.customerId)}{r.trip.site ? `, ${r.trip.site}` : ''}</Text></Box> : '-') },
+          { key: 'booking', label: 'Next Booking', change: 'new', req: 'Fleet review 7 Oct: availability is by date, so a vehicle booked for a later day stays Free today', sortable: false, render: (r) => (r.booking ? <Box><Link to={`/crm/trips/${r.booking.id}`} style={RL}>{r.booking.number}</Link><Text type="s5" color="theme.secondary.700">{r.booking.date.replace('T', ' ')}, {r.booking.kind}, {r.booking.docNumber}</Text></Box> : '-') },
           { key: 'since', label: 'In Status Since', sortable: false },
           { key: 'location', label: 'Location' },
           { key: 'menu', label: '', sortable: false, width: 48, render: (r) => <span onClick={(e) => e.stopPropagation()}><RowMenu items={r.trip ? menu.items(r.trip) : [{ label: 'View Asset', onClick: () => nav(`${HEAVY}/${r.id}`) }, { label: 'View Trips', onClick: () => nav(`${HEAVY}/${r.id}`, { state: { tab: 'Trips' } }) }]} /></span> },
@@ -258,16 +260,19 @@ export function FleetBoard() {
 }
 
 /** Used inside a dialog by the Delivery Order, Return and Replacement: only Free vehicles, a Select button per row. */
-export function FleetPickerDialog({ open, onClose, onPick, onExternal }: { open: boolean; onClose: () => void; onPick: (a: HeavyRec) => void; onExternal?: () => void }) {
+export function FleetPickerDialog({ open, onClose, onPick, onExternal, date }: { open: boolean; onClose: () => void; onPick: (a: HeavyRec) => void; onExternal?: () => void; date?: string }) {
   const rows = useBoardRows();
+  const trips = useTrips();
+  const day = (date ?? TODAY).slice(0, 10);
+  const isFree = (r: BoardRow) => vehicleFreeOn(r.asset, day, trips.rows);
   const [type, setType] = useState('');
   const types = useMemo(() => Array.from(new Set(rows.map((r) => r.type))).sort(), [rows]);
-  const free = rows.filter((r) => r.status === 'Free' && (!type || r.type === type));
+  const free = rows.filter((r) => isFree(r) && (!type || r.type === type));
   return (
     <AppDialog open={open} title="Select from fleet" onClose={onClose} maxWidth="lg">
-      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Only Free vehicles are listed. {rows.filter((r) => r.status === 'Free').length} of {rows.length} delivery vehicles are Free.</Text>
-      {rows.filter((r) => r.status === 'Free').length === 0 && (
-        <Alert severity="warning" sx={{ mb: 1.5 }} action={onExternal && <Button size="small" color="inherit" onClick={() => { onClose(); onExternal(); }}>Use External Transporter</Button>}>No vehicle is Free right now. Wait for one to be released, or use an external transporter.</Alert>
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Only vehicles that are Free on {day} are listed. {rows.filter(isFree).length} of {rows.length} delivery vehicles are Free.</Text>
+      {rows.filter(isFree).length === 0 && (
+        <Alert severity="warning" sx={{ mb: 1.5 }} action={onExternal && <Button size="small" color="inherit" onClick={() => { onClose(); onExternal(); }}>Use External Transporter</Button>}>No vehicle is Free on {day}. Change the date, wait for one to be released, or use an external transporter.</Alert>
       )}
       <DataTable<BoardRow> rows={free} searchPlaceholder="Search plate, vehicle or driver..." toolbarRight={<FleetFilters types={types} type={type} setType={setType} status="" setStatus={() => undefined} hideStatus />} pageSize={8} emptyText="No Free vehicle matches"
         columns={[
@@ -281,11 +286,11 @@ export function FleetPickerDialog({ open, onClose, onPick, onExternal }: { open:
 /* ------------------------------------------------------------------ transport section (Delivery Order, Return, Replacement) */
 export interface TransportValue { transport: string; vehicleId: string; driver: string; mobile: string; transporter: string; charge: string }
 export const blankTransport = (): TransportValue => ({ transport: 'Own Fleet', vehicleId: '', driver: '', mobile: '', transporter: '', charge: '' });
-export function validateTransport(v: TransportValue): Record<string, string> {
+export function validateTransport(v: TransportValue, date?: string): Record<string, string> {
   const e: Record<string, string> = {};
   if (v.transport === 'Own Fleet') {
     if (!v.vehicleId) e.vehicleId = 'Select a Free vehicle from the fleet';
-    else if (!vehicleIsFree(v.vehicleId)) e.vehicleId = 'This vehicle is no longer Free. Select another';
+    else if (!vehicleIsFree(v.vehicleId, undefined, date)) e.vehicleId = `This vehicle is not Free on ${(date ?? TODAY).slice(0, 10)}. Select another`;
   } else {
     if (!v.transporter.trim()) e.transporter = 'Select the supplier who transports';
     if (!Number(v.charge)) e.charge = 'External Transport Cost is required for an external transporter';
@@ -293,7 +298,8 @@ export function validateTransport(v: TransportValue): Record<string, string> {
   return e;
 }
 /** Own Fleet: pick a Free vehicle from Fleet Availability and the driver and mobile fill in. External Transporter: the supplier and its cost. */
-export function TransportSection({ value, onChange, errors = {}, hint }: { value: TransportValue; onChange: (v: TransportValue) => void; errors?: Record<string, string>; hint?: ReactNode }) {
+/** `date` is the day of the delivery, collection or replacement: a vehicle is offered only when it is Free on that day. */
+export function TransportSection({ value, onChange, errors = {}, hint, date }: { value: TransportValue; onChange: (v: TransportValue) => void; errors?: Record<string, string>; hint?: ReactNode; date?: string }) {
   const [picker, setPicker] = useState(false);
   const [swap, setSwap] = useState(false);
   const fleet = useFleet();
@@ -310,7 +316,7 @@ export function TransportSection({ value, onChange, errors = {}, hint }: { value
         {own ? (
           <>
             <Box>
-              <TextInput label="Vehicle" required change="new" req={R.fleet} value={v ? vehicleLabel(v) : ''} disabled error={errors.vehicleId} placeholder="No vehicle selected" hint="Picked from Fleet Availability, Free vehicles only" />
+              <TextInput label="Vehicle" required change="new" req={R.fleet} value={v ? vehicleLabel(v) : ''} disabled error={errors.vehicleId} placeholder="No vehicle selected" hint="Picked from Fleet Availability, vehicles Free on the document date only" />
               <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => setPicker(true)}>{v ? 'Change vehicle' : 'Select from fleet'}</Button>
             </Box>
             <Box />
@@ -332,7 +338,7 @@ export function TransportSection({ value, onChange, errors = {}, hint }: { value
         )}
       </FormGrid>
       {hint && <Box sx={{ mt: 1 }}>{hint}</Box>}
-      <FleetPickerDialog open={picker} onClose={() => setPicker(false)} onExternal={() => set({ transport: 'External Transporter', vehicleId: '', driver: '', mobile: '' })}
+      <FleetPickerDialog open={picker} date={date} onClose={() => setPicker(false)} onExternal={() => set({ transport: 'External Transporter', vehicleId: '', driver: '', mobile: '' })}
         onPick={(a) => { const d = a.defaultDriver ?? ''; setSwap(false); set({ vehicleId: a.id, driver: d, mobile: mobileOf(d) }); }} />
     </>
   );
@@ -341,6 +347,29 @@ export function TransportSection({ value, onChange, errors = {}, hint }: { value
 export const toTransportInput = (v: TransportValue) => ({
   transport: v.transport as Trip['transport'], vehicleId: v.vehicleId || undefined, driver: v.driver || undefined, mobile: v.mobile || undefined, transporter: v.transporter || undefined, charge: Number(v.charge) || undefined,
 });
+
+/** A Delivery Order whose trip was cancelled gets a new trip: own vehicle (Free on the chosen day) or an external transporter. */
+export function ArrangeTransportDialog({ docId, docNumber, onClose }: { docId: string; docNumber: string; onClose: () => void }) {
+  const toast = useToast();
+  const [tp, setTp] = useState(blankTransport);
+  const [date, setDate] = useState(`${TODAY}T${dayjs().format('HH:mm')}`);
+  const [err, setErr] = useState<Record<string, string>>({});
+  const save = () => {
+    const e = validateTransport(tp, date);
+    setErr(e);
+    if (Object.keys(e).length) return;
+    const msg = arrangeDeliveryTransport(docId, { ...toTransportInput(tp), date });
+    if (msg) { toast(msg, 'error'); return; }
+    toast(`New trip created for ${docNumber}`);
+    onClose();
+  };
+  return (
+    <AppDialog open title={`Arrange Transport for ${docNumber}`} onClose={onClose} maxWidth="md" confirmLabel="Create Trip" onConfirm={save}>
+      <FormGrid cols={1}><TextInput label="Planned Dispatch" required value={date.replace('T', ' ')} disabled hint="The new trip is planned for now" /></FormGrid>
+      <Box sx={{ mt: 2 }}><TransportSection value={tp} onChange={setTp} errors={err} date={date} /></Box>
+    </AppDialog>
+  );
+}
 
 /* ------------------------------------------------------------------ Trips */
 const tripVehicle = (t: Trip) => (t.transport === 'Own Fleet' ? t.plate ?? '-' : t.transporter ?? '-');
@@ -405,15 +434,16 @@ export function TripView() {
                 <ValueField label="Vehicle" value={vehicle ? <Link to={`${HEAVY}/${vehicle.id}`} style={RL}>{vehicleLabel(vehicle)}</Link> : t.plate ?? '-'} />
                 <ValueField label="Driver" value={t.driver || '-'} /><ValueField label="Mobile" value={t.mobile || '-'} />
               </>
-            ) : <><ValueField label="Transported By" value={t.transporter || '-'} /><ValueField label="Transporter Bill" change="new" req="Instruction 6 Oct (accounting POC): the external transporter's charge becomes a Pending bill" value={(() => { const b = billsOfSource('Trip', t.id)[0]; return b ? <Link to={`/accounting/bills/${b.id}`} style={RL}>{b.number} ({b.approval})</Link> : t.status === 'Completed' ? 'No transport charge' : 'Raised when the trip is completed'; })()} /></>}
+            ) : <><ValueField label="Transported By" value={t.transporter || '-'} /><ValueField label="Transporter Bill" change="new" req="Instruction 6 Oct (accounting POC): each external transporter charge becomes a Pending bill to the transporter" value={(() => { const bs = billsOfSource('Trip', t.id); return bs.length ? <>{bs.map((b, n) => <span key={b.id}>{n > 0 && ', '}<Link to={`/accounting/bills/${b.id}`} style={RL}>{b.number} ({b.approval})</Link></span>)}</> : t.status === 'Completed' ? 'No transport charge' : 'Raised when the trip is completed'; })()} /></>}
             <ValueField label="In Status Since" value={sinceLabel(t.since)} /><ValueField label="Total Expenses" value={aed(tripTotal(t))} />
           </ValueGrid>
         </Panel>
         <Panel title="Expenses" change="new" req={R.trip} sx={{ mt: 2 }} right={items.some((i) => i.label === 'Add Expense') && <Button size="small" variant="outlined" onClick={() => items.find((i) => i.label === 'Add Expense')?.onClick()}>Add Expense</Button>}>
           <DataTable hideToolbar rows={t.expenses.map((e, i) => ({ id: String(i), i, ...e }))} emptyText="No expenses yet. Add Salik, fuel or the transporter's charge; each one is added to the Sales Order logistics cost"
             actions={t.status === 'Cancelled' ? undefined : [{ label: 'Remove', danger: true, onClick: (r) => removeTripExpense(t, r.i) }]}
-            columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' }]} />
-          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Total {aed(tripTotal(t))}. Every expense is part of the logistics cost of {t.soNumber}.</Text>
+            columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' },
+              { key: 'acc', label: 'Accounting', change: 'new', req: 'Fleet review 7 Oct: trip costs reach the ledger. Own-fleet costs post a journal, an external Transport Charge becomes a bill', sortable: false, render: (r) => (r.billId ? <Link to={`/accounting/bills/${r.billId}`} style={RL}>Bill to transporter</Link> : r.journalId ? <Link to={`/accounting/journals/${r.journalId}`} style={RL}>Posted to ledger</Link> : <Text type="s5" color="theme.secondary.700">{t.transport === 'External Transporter' && r.type === 'Transport Charge' ? 'Billed when the trip is completed' : '-'}</Text>) }]} />
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Total {aed(tripTotal(t))}. Every expense is part of the logistics cost of {t.soNumber}. Own-fleet costs post to the ledger (Dr expense, Cr Accrued Trip Expenses) on the order's cost centre; an external Transport Charge is billed to the transporter. Neither is invoiced to the customer; the customer pays only the Delivery and Return Charge lines quoted on the order.</Text>
         </Panel>
         <Panel title="Log" sx={{ mt: 2 }}><Timeline items={[...t.log].reverse()} /></Panel>
       </Page>

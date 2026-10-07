@@ -60,7 +60,7 @@ export function RentalInvoicingList() {
           { key: 'next', label: 'Next Invoice Date', render: (r) => (r.next ? <Box><Text type="s4">{r.next.to}</Text><Text type="s5" color="theme.secondary.700">Period {r.next.from} to {r.next.to}</Text></Box> : '-') },
           { key: 'due', label: 'Status', change: 'new', req: R_ACC.rental, render: (r) => (r.due ? <StatusChip status="Due" tone="amber" /> : r.lines ? <StatusChip status="Not due yet" tone="grey" /> : <StatusChip status="Nothing to bill" tone="grey" />) },
           { key: 'preview', label: 'Next invoice (incl. VAT)', align: 'right', change: 'new', req: R_ACC.rental, render: (r) => (r.preview ? aed(r.preview) : '-') },
-          { key: 'cycle', label: 'Billing Cycle', render: () => 'Monthly' }, { key: 'currency', label: 'Currency', render: (r) => r.so.currency },
+          { key: 'cycle', label: 'Billing Cycle', render: (r) => r.so.billingCycle ?? 'Monthly' }, { key: 'itype', label: 'Invoicing Type', change: 'new', req: R_ACC.rental, render: (r) => r.so.invoicingType ?? 'Manual' }, { key: 'currency', label: 'Currency', render: (r) => r.so.currency },
           { key: 'narration', label: 'Narration', render: (r) => `${r.so.lines.reduce((n, l) => n + outstanding(l).length, 0)} asset(s) out` },
         ]} />
       <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>{RENTAL_RULE} {TO_CONFIRM}.</Text>

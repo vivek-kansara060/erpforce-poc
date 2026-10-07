@@ -2,20 +2,21 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
-import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { DateInput, FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
+import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
+import { CheckInput, DateInput, FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { LifecycleStepper, Timeline } from '@/components/Flow';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
+import { ChangeTag } from '@/components/ChangeTag';
 import { suppliers } from '@/mock-data/masters';
 import {
-  COL, CH_RFQ_STATUSES, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, stockLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
+  COL, CH_ORDER_STATUSES, ownedEquivalent, unitsOf, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, stockLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
 } from '@/modules/crm/data';
-import { addChExpense, addChResponse, awardChRfq, billCrossHire, createChRfq, createHireOrder, markChShipped, raiseCrossHire, receiveCrossHire, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
+import { addChExpense, billCrossHire, createChRfq, createHireOrder, decideChOrder, deleteChOrder, markChShipped, raiseCrossHire, reissueCrossHire, setChOrderStatus, submitChOrder, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
 import { SpecForm, type Spec } from '@/modules/crm/FormKit';
-import { R, aed, useChRequests, useChRfqs, useCrossHire, useOrders } from '@/modules/crm/shared';
+import { R, aed, useChRequests, useChRfqs, useCrossHire, useMaster, useOrders } from '@/modules/crm/shared';
 import { getCollection } from '@/store/store';
 import { billTotal, billsOfSource } from '@/modules/accounting/engine';
 import { useBills } from '@/modules/accounting/shared';
@@ -156,7 +157,7 @@ export function ChRequestView() {
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
           <ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Rental Order ID" value={r.soNumber} /><ValueField label="Company" value={r.company} />
-          <ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
+          <ValueField label="Raised By" change="new" req={R_CH} value={r.raisedBy} /><ValueField label="Decision Right" change="new" req={R_CH} value={r.raisedRole ? `${r.raisedRole} (permission to initiate a cross-hire)` : undefined} /><ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
         </ValueGrid>
         <Panel title="Items" sx={{ mt: 3 }}>
           <DataTable hideToolbar rows={[r]} columns={[
@@ -212,113 +213,33 @@ export function ChProcess() {
   );
 }
 
-/* ------------------------------------------------------------------ 3. Request for Quote */
-export function ChRfqList() {
-  const nav = useNavigate();
-  const rfqs = useChRfqs();
-  const [dlg, setDlg] = useState(false);
-  return (
-    <Page>
-      <PageTitle title="Request for Quote" subtitle="Call for tender to Cross-Hire Company suppliers. Record their responses, compare and award, then create the order." change="changed" req={R_CH} />
-      <DataTable<CrossHireRfq> rows={rfqs.rows} searchPlaceholder="Search RFQs..." filter={{ key: 'status', options: CH_RFQ_STATUSES }} onAdd={() => setDlg(true)} addLabel="Add New" onRowClick={(r) => nav(`/rental/cross-hire-rfq/${r.id}`)}
-        columns={[
-          { key: 'number', label: 'ID' }, { key: 'date', label: 'Date' }, { key: 'so', label: 'Rental Order(s)', render: (r) => r.soNumbers.join(', ') || '-' }, { key: 'cat', label: 'Category + Subcategory', render: (r) => `${r.group} ${r.category}` },
-          { key: 'v', label: 'Suppliers', align: 'right', render: (r) => r.vendorIds.length }, { key: 'resp', label: 'Responses', align: 'right', render: (r) => r.responses.length },
-          { key: 'orderDeadline', label: 'Order Deadline' }, { key: 'expectedDate', label: 'Expected Required Date' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> },
-        ]} />
-      {dlg && <ChRfqDialog open onClose={() => setDlg(false)} requestIds={[]} />}
-    </Page>
-  );
-}
-
-type Sort = 'All' | 'Low Price' | 'Low MOQ' | 'Lead time';
-export function ChRfqView() {
-  const { id } = useParams();
-  const nav = useNavigate();
-  const toast = useToast();
-  const rfqs = useChRfqs();
-  const r = rfqs.get(id);
-  const [resp, setResp] = useState<Partial<RfqResponse> | null>(null);
-  const [award, setAward] = useState<{ vendorId: string; comment: string } | null>(null);
-  const [order, setOrder] = useState(false);
-  const [sort, setSort] = useState<Sort>('All');
-  if (!r) return <Page><PageTitle title="RFQ not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire-rfq')}>Back</Button>} /></Page>;
-  const rows = [...r.responses].sort((a, b) => (sort === 'Low Price' ? a.rate - b.rate : sort === 'Low MOQ' ? a.moq - b.moq : sort === 'Lead time' ? a.leadTime - b.leadTime : 0));
-  const best = r.responses.length ? Math.min(...r.responses.map((x) => x.rate)) : 0;
-  return (
-    <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: '/rental/cross-hire-rfq' }, { label: r.number }]} status={<StatusChip status={r.status} />}
-        actions={<>
-          {r.status === 'Open' && <Button variant="outlined" onClick={() => { sendChRfq(r.id); toast('RFQ sent to the suppliers'); }}>Send</Button>}
-          {r.status !== 'Order' && <Button variant="outlined" onClick={() => setResp({ vendorId: '', date: TODAY, moq: 1 })}>Add Response</Button>}
-          {r.status !== 'Order' && <Button variant="contained" disabled={!r.awardedVendorId} onClick={() => setOrder(true)}>Create Order</Button>}
-          {r.status === 'Order' && r.orderId && <Button variant="contained" onClick={() => nav(`/rental/cross-hire-orders/${r.orderId}`)}>View Order</Button>}
-        </>} />
-      <Page sx={{ pt: 2 }}>
-        <ValueGrid>
-          <ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Rental Order(s)" value={r.soNumbers.join(', ')} /><ValueField label="Category + Subcategory" value={`${r.group} ${r.category}`} />
-          <ValueField label="Quantity" value={String(r.qty)} /><ValueField label="Currency" value={r.currency} /><ValueField label="Payment Terms" value={r.paymentTerms} /><ValueField label="Order Deadline" value={r.orderDeadline} />
-          <ValueField label="Expected Required Date" value={r.expectedDate} /><ValueField label="Rental Period" value={r.start && r.end ? `${r.start} to ${r.end}` : undefined} /><ValueField label="Narration" value={r.narration} />
-          <ValueField label="Awarded to" change="new" req={R_CH} value={r.responses.find((x) => x.vendorId === r.awardedVendorId)?.vendor ?? 'Not awarded yet'} />
-        </ValueGrid>
-        <Box sx={{ mt: 3 }}>
-          <TabPanels tabs={[
-            { label: 'Compare responses', content: (
-              <>
-                <Box sx={{ display: 'flex', gap: 1, mb: 1.5 }}>
-                  {(['All', 'Low Price', 'Low MOQ', 'Lead time'] as Sort[]).map((s) => <Button key={s} size="small" variant={sort === s ? 'contained' : 'outlined'} onClick={() => setSort(s)}>{s}</Button>)}
-                </Box>
-                <DataTable<RfqResponse & { id: string }> hideToolbar rows={rows.map((x) => ({ ...x, id: x.vendorId }))} emptyText="No supplier has responded yet"
-                  columns={[
-                    { key: 'vendor', label: 'Vendor' }, { key: 'rate', label: 'Rate (per unit)', align: 'right', render: (x) => <span>{aed(x.rate)} {x.rate === best && <StatusChip status="Lowest" tone="green" />}</span> }, { key: 'leadTime', label: 'Lead time (days)', align: 'right' },
-                    { key: 'moq', label: 'Minimum Order Quantity', align: 'right' }, { key: 'date', label: 'Response date' },
-                    { key: 'award', label: 'Award', render: (x) => (r.awardedVendorId === x.vendorId ? <StatusChip status="Awarded" tone="green" /> : r.status === 'Order' ? '-' : <Button size="small" variant="outlined" onClick={() => setAward({ vendorId: x.vendorId, comment: '' })}>Award</Button>) },
-                  ]} />
-              </>
-            ) },
-            { label: 'Call for tender', content: <DataTable hideToolbar rows={r.vendorIds.map((v) => ({ id: v, name: HIRE_SUPPLIERS.find((s) => s.id === v)?.name ?? v, got: r.responses.some((x) => x.vendorId === v) }))} columns={[{ key: 'name', label: 'Vendor' }, { key: 'got', label: 'Response', render: (x) => <StatusChip status={x.got ? 'Received' : 'Pending'} tone={x.got ? 'green' : 'amber'} /> }]} /> },
-            { label: 'Activity', content: <Timeline items={[...r.log].reverse()} /> },
-          ]} />
-        </Box>
-      </Page>
-      <AppDialog open={!!resp} title="Request for Quote Response" onClose={() => setResp(null)} confirmLabel="Save" confirmDisabled={!resp?.vendorId || !Number(resp?.rate)}
-        onConfirm={() => { if (!resp?.vendorId) return; addChResponse(r.id, { vendorId: resp.vendorId, vendor: HIRE_SUPPLIERS.find((s) => s.id === resp.vendorId)?.name ?? '', rate: Number(resp.rate), leadTime: Number(resp.leadTime) || 0, moq: Number(resp.moq) || 1, date: resp.date ?? TODAY }); toast('Response saved. RFQ status: Response Received'); setResp(null); }}>
-        {resp && <FormGrid cols={1}>
-          <SelectInput label="Vendor" required value={resp.vendorId} options={supOpts.filter((o) => r.vendorIds.includes(o.value))} onChange={(v) => setResp({ ...resp, vendorId: v })} />
-          <NumberInput label="Rate (per unit, AED)" required value={resp.rate} onChange={(v) => setResp({ ...resp, rate: Number(v) })} />
-          <NumberInput label="Lead Time (days)" value={resp.leadTime} onChange={(v) => setResp({ ...resp, leadTime: Number(v) })} />
-          <NumberInput label="Minimum Order Quantity" value={resp.moq} onChange={(v) => setResp({ ...resp, moq: Number(v) })} />
-          <DateInput label="Response Date" value={resp.date} onChange={(v) => setResp({ ...resp, date: v })} />
-        </FormGrid>}
-      </AppDialog>
-      <AppDialog open={!!award} title="Award vendor" onClose={() => setAward(null)} confirmLabel="Award" onConfirm={() => { if (!award) return; awardChRfq(r.id, award.vendorId, award.comment); toast('Vendor awarded'); setAward(null); }}>
-        {award && <FormGrid cols={1}>
-          {r.awardedVendorId && r.awardedVendorId !== award.vendorId && <Alert severity="warning">You have already selected the vendor for this item. Do you want to update the vendor details?</Alert>}
-          <TextInput label="Add Comment" multiline rows={3} value={award.comment} onChange={(v) => setAward({ ...award, comment: v })} />
-        </FormGrid>}
-      </AppDialog>
-      {order && <ChOrderDialog open onClose={() => setOrder(false)} requestIds={r.requestIds} rfq={r} qty={r.qty} />}
-    </>
-  );
-}
-
 /* ------------------------------------------------------------------ 4. Orders (Hire Orders), the five stages are tracked here */
 const orderStatus = (c: CrossHire) => c.status ?? 'Approved';
 const orderCost = (c: CrossHire) => c.rate + (c.dispute ?? 0) + (c.expenses ?? []).reduce((t, e) => t + e.amount, 0);
+const EDITABLE = ['Draft', 'Pending', 'Pending Approval', 'Rejected'];
+const DELETABLE = [...EDITABLE, 'Cancelled'];
 export function ChOrderList() {
   const nav = useNavigate();
+  const toast = useToast();
   const ch = useCrossHire();
+  const [del, setDel] = useState<CrossHire | null>(null);
+  useBills();
+  const billingOf = (r: CrossHire) => (billsOfSource('Cross Hire', r.id).length ? 'Fully Billed' : 'Pending Billing');
+  const shown = (r: CrossHire) => ['Approved', 'Received', 'Billed', 'Shipped', 'Closed'].includes(orderStatus(r));
   return (
     <Page>
-      <PageTitle title="Orders" subtitle="Cross Hire Orders (Hire Orders). Created from a request, the Process screen or an awarded RFQ." change="changed" req={R.cross} />
-      <DataTable<CrossHire & { stageName: string }> rows={ch.rows.map((r) => ({ ...r, stageName: CROSS_STAGES[r.stage] }))} searchPlaceholder="Search orders..." filter={{ key: 'stageName', options: CROSS_STAGES, label: 'Stage' }} onRowClick={(r) => nav(`/rental/cross-hire-orders/${r.id}`)}
+      <PageTitle title="Orders" subtitle="Cross Hire Orders (Hire Orders). Created here or from a request or an awarded RFQ, approved, then received on a Goods Receipt." change="changed" req={R.cross} />
+      <DataTable<CrossHire & { stageName: string }> rows={ch.rows.map((r) => ({ ...r, stageName: CROSS_STAGES[r.stage] }))} searchPlaceholder="Search orders..." filter={{ key: 'status', options: CH_ORDER_STATUSES }} onAdd={() => nav('/rental/cross-hire-orders/add')} addLabel="Add New" onRowClick={(r) => nav(`/rental/cross-hire-orders/${r.id}`)}
+        actions={[{ label: 'Edit', hidden: (r) => !EDITABLE.includes(orderStatus(r)), onClick: (r) => nav(`/rental/cross-hire-orders/${r.id}/edit`) }, { label: 'Delete', danger: true, hidden: (r) => !DELETABLE.includes(orderStatus(r)), onClick: (r) => setDel(r) }]}
         columns={[
-          { key: 'number', label: 'Hire Order Number' }, { key: 'so', label: 'Rental Order(s)', render: (r) => r.soNumber }, { key: 'supplier', label: 'Supplier' }, { key: 'type', label: 'Cross Hire Type', render: (r) => r.type ?? 'Inventory' },
-          { key: 'cat', label: 'Category + Subcategory', render: (r) => `${r.group} ${r.category}` }, { key: 'dates', label: 'Dates', render: (r) => (r.startDate ? `${r.startDate}${r.endDate ? ` to ${r.endDate}` : ''}` : r.date) },
-          { key: 'rec', label: 'Receiving Status', render: (r) => <StatusChip status={r.receiving ?? 'Pending Receiving'} /> }, { key: 'total', label: 'Total Value', align: 'right', render: (r) => aed(orderCost(r)) },
+          { key: 'number', label: 'Hire Order No.' }, { key: 'date', label: 'Date' }, { key: 'reference', label: 'Reference No.', render: (r) => r.form?.reference ?? '-' }, { key: 'supplier', label: 'Vendor' },
+          { key: 'rep', label: 'Purchase Representative', render: (r) => r.form?.representative ?? '-' }, { key: 'company', label: 'Company', render: (r) => r.form?.company ?? masterValues('entity')[0] },
+          { key: 'expected', label: 'Expected Receipt Date', render: (r) => r.expectedReceipt ?? '-' }, { key: 'total', label: 'Total Value', align: 'right', render: (r) => aed(orderCost(r)) },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={orderStatus(r)} /> },
-          { key: 'stageName', label: 'Lifecycle Stage', change: 'new', req: R.cross, render: (r) => <StatusChip status={r.stageName} /> },
+          { key: 'billing', label: 'Billing Status', render: (r) => (shown(r) ? <StatusChip status={billingOf(r)} /> : '-') }, { key: 'rec', label: 'Receiving Status', render: (r) => (shown(r) ? <StatusChip status={r.receiving ?? 'Pending Receiving'} /> : '-') },
+          { key: 'so', label: 'Rental Order(s)', change: 'new', req: R.cross, render: (r) => r.soNumber }, { key: 'stageName', label: 'Lifecycle Stage', change: 'new', req: R.cross, render: (r) => <StatusChip status={r.stageName} /> },
         ]} />
+      <ConfirmDialog open={!!del} title="Delete Orders" description={`Delete ${del?.number} ?`} danger confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { deleteChOrder(del.id); toast('Order deleted'); } setDel(null); }} />
     </Page>
   );
 }
@@ -330,62 +251,109 @@ export function ChOrderView() {
   const all = useCrossHire();
   useBills();
   const c = all.get(id);
-  const [dlg, setDlg] = useState<'receive' | 'return' | 'supplier' | 'expense' | 'bill' | null>(null);
-  const [v, setV] = useState({ inv: '', invDate: TODAY, notes: '', files: [] as string[], dispute: '', reissue: '', account: '', amount: '', note: '' });
+  const [dlg, setDlg] = useState<'return' | 'supplier' | 'expense' | 'bill' | 'reissue' | null>(null);
+  const [tgt, setTgt] = useState('');
+  const [ask, setAsk] = useState<'accept' | 'reject' | 'cancel' | 'close' | 'delete' | null>(null);
+  const yardChecklist = useMaster('yardChecklist').values;
+  const reissueOpts = useOrders().rows.filter((o) => o.activity === 'Rental' && !['Closed', 'Cancelled', 'Rejected'].includes(o.status));
+  const [v, setV] = useState({ inv: '', invDate: TODAY, notes: '', files: [] as string[], checks: [] as string[], dispute: '', reissue: '', account: '', amount: '', note: '' });
   if (!c) return <Page><PageTitle title="Cross Hire Order not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire-orders')}>Back</Button>} /></Page>;
   const dropship = c.type === 'Dropship';
-  const a = assetById(c.assetId ?? '');
+  const units = unitsOf(c);
+  const nUnits = c.qty ?? 1;
   const cost = orderCost(c);
   const margin = c.revenue - cost;
+  const owned = ownedEquivalent(c);
   const myBills = billsOfSource('Cross Hire', c.id);
   const billing = myBills.length ? 'Fully Billed' : 'Pending Billing';
+  const st = orderStatus(c);
+  const base = `/rental/cross-hire-orders/${c.id}`;
+  const live = ['Approved', 'Received', 'Billed', 'Shipped'].includes(st);
+  const actionItems = [
+    { label: 'Edit', disabled: !EDITABLE.includes(st), onClick: () => nav(`${base}/edit`) },
+    { label: 'Cancel', disabled: !['Draft', 'Pending', 'Pending Approval'].includes(st), onClick: () => setAsk('cancel') },
+    { label: 'Close', disabled: !['Approved', 'Received', 'Billed'].includes(st), onClick: () => setAsk('close') },
+    { label: 'Delete', disabled: !DELETABLE.includes(st), onClick: () => setAsk('delete') },
+  ];
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={orderStatus(c)} />}
+      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={st} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${c.soId}`)}>View Sales Order</Button>
-          {c.stage < 4 && <Button variant="outlined" onClick={() => setDlg('expense')}>Add Expense</Button>}
-          {c.stage === 0 && !dropship && <Button variant="contained" onClick={() => setDlg('receive')}>Receive</Button>}
-          {c.stage === 0 && dropship && <Button variant="contained" onClick={() => { markChShipped(c); toast('Marked shipped to the client site'); }}>Mark Shipped</Button>}
-          {c.stage === 1 && <Button variant="contained" onClick={() => nav(`/crm/delivery-orders/add?so=${c.soId}&line=${c.lineId}`)}>Allocate through Delivery</Button>}
-          {c.stage === 2 && !dropship && <Button variant="contained" onClick={() => setDlg('return')}>Record Return to Us</Button>}
-          <MenuButton label="Create" items={[{ label: myBills.length ? 'Bill (already billed)' : 'Bill', disabled: !!myBills.length || (c.stage === 0 && !dropship) || (dropship && c.status !== 'Shipped' && c.stage < 2), onClick: () => setDlg('bill') }]} />
-          {myBills[0] && <Button variant="outlined" onClick={() => nav(`/accounting/bills/${myBills[0].id}`)}>View Bill</Button>}
-          {(c.stage === 3 || (c.stage === 2 && dropship)) && <Button variant="contained" onClick={() => setDlg('supplier')}>Return to Supplier</Button>}
+          <MenuButton label="Actions" items={actionItems} />
+          {st === 'Pending' && <MenuButton label="Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
+          {st === 'Pending Approval' && <MenuButton label="Accept" variant="contained" items={[{ label: 'Accept', onClick: () => setAsk('accept') }, { label: 'Reject', onClick: () => setAsk('reject') }]} />}
+          {st === 'Rejected' && <MenuButton label="Re-Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
+          {live && c.stage < 4 && <Button variant="outlined" onClick={() => setDlg('expense')}>Add Expense</Button>}
+          {live && !myBills.length && <Button variant="outlined" onClick={() => setDlg('bill')}>Bill</Button>}
+          {['Approved', 'Received', 'Billed'].includes(st) && !dropship && units.length < nUnits && <Button variant="contained" onClick={() => nav(`${base}/grns/add`)}>Receive</Button>}
+          {st === 'Approved' && c.stage === 0 && dropship && <Button variant="contained" onClick={() => { markChShipped(c); toast('Marked shipped to the client site'); }}>Mark Shipped</Button>}
+          {units.some((u) => u.stage === 1) && <Button variant="contained" onClick={() => nav(c.soId && c.lineId ? `/crm/delivery-orders/add?so=${c.soId}&line=${c.lineId}` : '/crm/delivery-orders')}>Allocate through Delivery</Button>}
+          <MenuButton label="View" items={[{ label: 'GRN', disabled: dropship, onClick: () => nav(`${base}/grns`) }, { label: 'Bill', disabled: !myBills[0], onClick: () => nav(`/accounting/bills/${myBills[0].id}`) }]} />
+          {dropship && c.stage === 2 && <Button variant="contained" onClick={() => { setTgt(''); setDlg('supplier'); }}>Return to Supplier</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
         <LifecycleStepper steps={CROSS_STAGES} current={c.stage} />
         {dropship && <Alert severity="info" sx={{ mt: 2 }}>Dropship: the supplier ships straight to the client site, so there is no goods receipt, no Return to Us and no Fixed Asset Register entry.</Alert>}
         <ValueGrid>
-          <ValueField label="Hire Order Number" value={c.number} /><ValueField label="Date" value={c.date} /><ValueField label="Rental Order(s)" value={c.soNumber} /><ValueField label="Supplier" value={c.supplier} />
-          <ValueField label="Cross Hire Type" value={c.type ?? 'Inventory'} /><ValueField label="Group + Category" value={`${c.group} ${c.category}`} /><ValueField label="Quantity" value={String(c.qty ?? 1)} /><ValueField label="Agreed Rate (total)" change="new" req={R_CH} value={aed(c.rate)} />
+          <ValueField label="Hire Order Number" value={c.number} /><ValueField label="Date" value={c.date} /><ValueField label="Rental Order (demand)" value={c.soNumber || 'Not tied to an order'} /><ValueField label="Supplier" value={c.supplier} />
+          <ValueField label="Cross Hire Type" value={c.type ?? 'Inventory'} /><ValueField label="Group + Category" value={`${c.group} ${c.category}`} /><ValueField label="Units" change="changed" req={R.cross} value={`${nUnits} ordered, ${units.length} received`} /><ValueField label="Agreed Rate (total)" change="new" req={R_CH} value={aed(c.rate)} />
           <ValueField label="Confirmation Date" value={c.confirmationDate} /><ValueField label="Expected Receipt Date" value={c.expectedReceipt} /><ValueField label="Payment Terms" value={c.paymentTerms} /><ValueField label="Rental Period" value={c.startDate ? `${c.startDate}${c.endDate ? ` to ${c.endDate}` : ''}` : undefined} />
           <ValueField label="Receiving Status" value={c.receiving} /><ValueField label="Billing Status" change="changed" req={R.cross} value={billing} /><ValueField label="Request(s)" value={c.requestIds?.length ? 'Linked' : 'Direct'} />
           <ValueField label="Lifecycle Stage" change="new" req={R.cross} value={CROSS_STAGES[c.stage]} />
-          <ValueField label="Asset (Fixed Asset Register)" change="new" req={R.cross} value={a ? `${a.assetId}, ${a.assetStatus}, ownership ${a.ownership}` : dropship ? 'Not applicable (Dropship)' : 'Not received yet'} /><ValueField label="Depreciation" change="new" req={R.cross} value="Not posted (cross-hired asset)" />
-          <ValueField label="Supplier Invoice Reference" change="new" req={R.cross} value={c.supplierInvoice} /><ValueField label="Condition Check (on Return to Us)" change="new" req={R.cross} value={c.condition?.notes} /><ValueField label="Supplier dispute charge" change="new" req={R.cross} value={c.dispute ? aed(c.dispute) : undefined} />
+          <ValueField label="Assets (Fixed Asset Register)" change="new" req={R.cross} value={dropship ? 'Not applicable (Dropship)' : units.length ? units.map((u) => assetById(u.assetId)?.assetId).join(', ') : 'Not received yet'} /><ValueField label="Depreciation" change="new" req={R.cross} value="Not posted (cross-hired asset)" />
+          <ValueField label="Supplier Invoice Reference" change="new" req={R.cross} value={c.supplierInvoice} /><ValueField label="Condition Check (on Return to Us)" change="new" req={R.cross} value={c.condition ? `${c.condition.checks?.length ? `${c.condition.checks.length} of ${yardChecklist.length} checks. ` : ''}${c.condition.notes}${c.condition.files.length ? ` (${c.condition.files.length} attachment(s))` : ''}` : undefined} /><ValueField label="Supplier dispute charge" change="new" req={R.cross} value={c.dispute ? aed(c.dispute) : undefined} /><ValueField label="Re-Issue Reference" change="new" req={R.cross} value={c.reissueRef ?? 'Not re-issued'} />
         </ValueGrid>
         <Panel title="Profitability (rolls into the originating Sales Order)" sx={{ mt: 3 }} change="new" req={R.cross}>
           <ValueGrid><ValueField label="Vendor Cost (incl. expenses and dispute)" value={aed(cost)} /><ValueField label="Customer Revenue" value={aed(c.revenue)} /><ValueField label="Profit" value={aed(margin)} /><ValueField label="Margin %" value={c.revenue ? `${Math.round((margin / c.revenue) * 100)}%` : '-'} /></ValueGrid>
+          <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Buy vs hire (if the business owned an equivalent unit)<ChangeTag kind="new" req={R.cross} /></Text>
+          {owned ? <ValueGrid>
+            <ValueField label="Owned cost per month (estimate)" value={aed(owned.monthly)} /><ValueField label={`Owned cost for ${owned.months} month(s)`} value={aed(owned.cost)} />
+            <ValueField label="Margin if owned" value={aed(owned.margin)} /><ValueField label="Difference to cross-hire margin" value={<span style={{ color: owned.margin - margin >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(owned.margin - margin)}</span>} />
+          </ValueGrid> : <Text type="s5" color="theme.secondary.700">No owned unit of {c.group} {c.category} on the register to compare with.</Text>}
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Estimate from the average purchase value of the owned units of this Category and Subcategory over their useful life, for the hire period of this order. It supports the decision to buy or keep cross-hiring; the exact method is to be confirmed with the client.</Text>
         </Panel>
         <Box sx={{ mt: 3 }}>
           <TabPanels tabs={[
             { label: 'Item Entries', content: <DataTable hideToolbar rows={[c]} columns={[{ key: 'item', label: 'Item', render: (x) => `${x.group} ${x.category}` }, { key: 'u', label: 'UOM', render: () => 'Nos' }, { key: 'q', label: 'Quantity', align: 'right', render: (x) => x.qty ?? 1 }, { key: 'r', label: 'Rental Rate', align: 'right', render: (x) => aed(x.rate / (x.qty ?? 1)) }, { key: 't', label: 'Total Amount', align: 'right', render: (x) => aed(x.rate) }]} /> },
+            { label: 'Units', change: 'new', req: R.cross, content: (
+              <>
+                <DataTable hideToolbar rows={units.map((u) => ({ ...u, id: u.assetId }))} emptyText={dropship ? 'Dropship: the supplier delivers to the client site, no asset enters the register' : 'No asset received yet. Receive creates a Goods Receipt where the assets are defined'}
+                  actions={[
+                    { label: 'Record Return to Us', hidden: (u) => u.stage !== 2, onClick: (u) => { setTgt(u.assetId); setDlg('return'); } },
+                    { label: 'Re-Issue to another project', hidden: (u) => u.stage !== 3, onClick: (u) => { setTgt(u.assetId); setDlg('reissue'); } },
+                    { label: 'Return to Supplier', hidden: (u) => u.stage !== 3, onClick: (u) => { setTgt(u.assetId); setDlg('supplier'); } },
+                  ]}
+                  columns={[
+                    { key: 'a', label: 'Asset ID', render: (u) => assetById(u.assetId)?.assetId ?? '-' }, { key: 'sn', label: 'Serial Number', render: (u) => assetById(u.assetId)?.engineNo ?? '-' },
+                    { key: 'cat', label: 'Received as', render: (u) => { const h = assetById(u.assetId); return h ? `${h.category} ${h.subCategory}` : '-'; } },
+                    { key: 'st', label: 'Lifecycle Stage', render: (u) => <StatusChip status={CROSS_STAGES[u.stage]} /> }, { key: 'so', label: 'Sales Order', render: (u) => u.soNumber ?? 'Not delivered yet' },
+                    { key: 'cc', label: 'Condition Check', render: (u) => (u.condition ? `${u.condition.checks?.length ?? 0} checks` : '-') }, { key: 'rf', label: 'Re-Issue Reference', render: (u) => u.reissueRef ?? '-' }, { key: 'ds', label: 'Dispute Charge', align: 'right', render: (u) => (u.dispute ? aed(u.dispute) : '-') },
+                  ]} />
+                <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The order is by Category and Subcategory. Each asset received is one unit and moves through the lifecycle on its own; it is bound to a Sales Order at the Delivery Order.</Text>
+              </>) },
             { label: 'Expenses', content: <DataTable hideToolbar rows={(c.expenses ?? []).map((e, i) => ({ id: String(i), ...e }))} emptyText="No expenses" columns={[{ key: 'account', label: 'Account' }, { key: 'note', label: 'Narration' }, { key: 'amount', label: 'Total Amount', align: 'right', render: (x) => aed(x.amount) }]} /> },
             { label: 'Bills', change: 'new', req: R.cross, content: <DataTable hideToolbar rows={myBills} emptyText={dropship ? 'No bill yet. Create, Bill when the supplier invoice arrives' : 'The bill is created when the unit is received'} onRowClick={(b) => nav(`/accounting/bills/${b.id}`)} columns={[{ key: 'number', label: 'Bill' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice' }, { key: 'date', label: 'Date' }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (b) => aed(billTotal(b)) }, { key: 'a', label: 'Status', render: (b) => <StatusChip status={b.approval} /> }, { key: 'p', label: 'Payment', render: (b) => (b.approval === 'Approved' ? <StatusChip status={b.payStatus} /> : '-') }]} /> },
             { label: 'Stage history', content: <Timeline items={[...c.history].reverse()} /> },
           ]} />
         </Box>
       </Page>
-      <AppDialog open={dlg === 'receive'} title="Receive cross-hired unit" onClose={() => setDlg(null)} confirmLabel="Receive" confirmDisabled={!v.inv.trim()} onConfirm={() => { receiveCrossHire(c, v.inv, v.invDate); toast('Unit received as Cross-Hired, Ready for Hire. A bill is pending approval in Accounting'); setDlg(null); }}>
-        <FormGrid cols={1}><TextInput label="Supplier Invoice Reference" required value={v.inv} onChange={(x) => setV({ ...v, inv: x })} hint="A Pending bill is created in Accounting with the agreed rate and the expenses" />
-        <DateInput label="Supplier Invoice Date" required change="new" req={R.cross} value={v.invDate} onChange={(x) => setV({ ...v, invDate: x })} /></FormGrid>
+      <ConfirmDialog open={ask === 'accept' || ask === 'reject'} title={ask === 'accept' ? 'Approved request' : 'Rejected request'} description={`Are you sure you want to ${ask === 'accept' ? 'approve' : 'reject'} ${c.number}?`} confirmLabel="Submit" onClose={() => setAsk(null)}
+        onConfirm={() => { decideChOrder(c.id, ask === 'accept'); toast(ask === 'accept' ? 'Order has been approved successfully.' : 'Order has been rejected successfully.'); setAsk(null); }} />
+      <ConfirmDialog open={ask === 'cancel' || ask === 'close'} title={ask === 'cancel' ? 'Cancel Order' : 'Close Order'} description={`${ask === 'cancel' ? 'Cancel' : 'Close'} ${c.number}?`} confirmLabel="Yes" onClose={() => setAsk(null)}
+        onConfirm={() => { setChOrderStatus(c.id, ask === 'cancel' ? 'Cancelled' : 'Closed'); setAsk(null); }} />
+      <ConfirmDialog open={ask === 'delete'} title="Delete Orders" description={`Delete ${c.number} ?`} danger confirmLabel="Delete" onClose={() => setAsk(null)} onConfirm={() => { deleteChOrder(c.id); toast('Order deleted'); nav('/rental/cross-hire-orders'); }} />
+      <AppDialog open={dlg === 'return'} title="Return to Us: condition check" onClose={() => setDlg(null)} confirmLabel="Save" confirmDisabled={v.checks.length < yardChecklist.length && !v.notes.trim()} onConfirm={() => { returnToUs(c, v.notes, v.files, v.checks, tgt || undefined); toast('Returned to us. The unit is flagged as Cross-Hire idle at our location'); setDlg(null); }}>
+        <Text type="s3" weight="medium" sx={{ mb: 0.5 }}>Yard checklist<ChangeTag kind="new" req={R.cross} /></Text>
+        <FormGrid cols={1}>{yardChecklist.map((k) => <CheckInput key={k} label={k} checked={v.checks.includes(k)} onChange={(on) => setV({ ...v, checks: on ? [...v.checks, k] : v.checks.filter((x) => x !== k) })} />)}</FormGrid>
+        <FormGrid cols={1}><TextInput label="Condition inspection notes" required={v.checks.length < yardChecklist.length} multiline rows={3} value={v.notes} onChange={(x) => setV({ ...v, notes: x })} hint="Same inspection process as an owned asset returned by a customer. Notes are required when a check is not ticked" /><FileInput label="Attachments" multiple value={v.files} onChange={(x) => setV({ ...v, files: x })} /></FormGrid>
       </AppDialog>
-      <AppDialog open={dlg === 'return'} title="Return to Us: condition check" onClose={() => setDlg(null)} confirmLabel="Save" confirmDisabled={!v.notes.trim()} onConfirm={() => { returnToUs(c, v.notes, v.files); toast('Returned to us. The unit is flagged as Cross-Hire idle at our location'); setDlg(null); }}>
-        <FormGrid cols={1}><TextInput label="Condition inspection notes" required multiline rows={3} value={v.notes} onChange={(x) => setV({ ...v, notes: x })} hint="Same inspection process as an owned asset returned by a customer" /><FileInput label="Attachments" multiple value={v.files} onChange={(x) => setV({ ...v, files: x })} /></FormGrid>
+      <AppDialog open={dlg === 'reissue'} title="Re-Issue to another project" onClose={() => setDlg(null)} confirmLabel="Re-Issue" confirmDisabled={!v.reissue} onConfirm={() => { reissueCrossHire(c, v.reissue, tgt || undefined); toast('Unit is Ready for Hire again. Allocate it with a Delivery Order'); setV({ ...v, reissue: '' }); setDlg(null); }}>
+        <Alert severity="info" sx={{ mb: 2 }}>The unit has passed the Return to Us condition check. Instead of going back to the supplier it is offered to another client project; its supplier and rate stay as agreed.</Alert>
+        <FormGrid cols={1}><SelectInput label="Re-Issue Reference (Sales Order)" required change="new" req={R.cross} value={v.reissue} options={reissueOpts.filter((o) => o.id !== (units.find((u) => u.assetId === tgt)?.soId ?? c.soId)).map((o) => ({ value: o.id, label: `${o.number} - ${o.title}` }))} onChange={(x) => setV({ ...v, reissue: x })} hint="The rental order that will use the unit next" /></FormGrid>
       </AppDialog>
-      <AppDialog open={dlg === 'supplier'} title="Return to Supplier" onClose={() => setDlg(null)} confirmLabel="Close the loop" onConfirm={() => { returnToSupplier(c, Number(v.dispute) || 0, v.reissue || undefined); toast('Returned to supplier'); setDlg(null); }}>
-        <FormGrid cols={1}><NumberInput label="Supplier dispute / additional charge (AED, if any)" value={v.dispute} onChange={(x) => setV({ ...v, dispute: x })} hint="Traced back to the client project so its true profitability is visible" /><TextInput label="Re-Issue Reference (optional)" value={v.reissue} onChange={(x) => setV({ ...v, reissue: x })} hint="If the unit was re-issued to another project first" /></FormGrid>
+      <AppDialog open={dlg === 'supplier'} title="Return to Supplier" onClose={() => setDlg(null)} confirmLabel="Close the loop" onConfirm={() => { returnToSupplier(c, Number(v.dispute) || 0, undefined, tgt || undefined); toast('Returned to supplier'); setDlg(null); }}>
+        <FormGrid cols={1}><NumberInput label="Supplier dispute / additional charge (AED, if any)" value={v.dispute} onChange={(x) => setV({ ...v, dispute: x })} hint="Traced back to the client project so its true profitability is visible" /></FormGrid>
       </AppDialog>
       <AppDialog open={dlg === 'expense'} title="Expense Entry" onClose={() => setDlg(null)} confirmLabel="Add" confirmDisabled={!v.account || !Number(v.amount)} onConfirm={() => { addChExpense(c.id, { account: v.account, amount: Number(v.amount), note: v.note }); toast('Expense added'); setV({ ...v, account: '', amount: '', note: '' }); setDlg(null); }}>
         <FormGrid cols={1}><SelectInput label="Account" required value={v.account} options={['Transportation Expense', 'Loading and Unloading', 'Fuel Expense', 'Insurance Expense', 'Other Direct Expense']} onChange={(x) => setV({ ...v, account: x })} /><NumberInput label="Total Amount (AED)" required value={v.amount} onChange={(x) => setV({ ...v, amount: x })} /><TextInput label="Narration" value={v.note} onChange={(x) => setV({ ...v, note: x })} /></FormGrid>

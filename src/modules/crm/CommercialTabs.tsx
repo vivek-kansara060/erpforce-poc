@@ -3,9 +3,10 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { ACTIVITY_TYPES, BILLING_STRUCTURES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { ACTIVITY_TYPES, BILLING_CYCLES, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
+import { nextRentalPeriod, rentalInvoicesOf } from '@/modules/accounting/engine';
 
 type F = Record<string, any>;
 export type Kind = 'quote' | 'order';
@@ -58,6 +59,16 @@ export const contractSpecs: Spec[] = [
   { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order' },
   { key: 'amcValue', label: 'Contract Value (AED, before VAT)', type: 'number', required: true, change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', hint: 'The whole AMC value. It is split evenly across the planned visits' },
   { key: 'amcScope', label: 'Scope of the AMC', type: 'textarea', change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', full: true, hint: 'What the contract covers, printed on the quotation' },
+];
+/**
+ * Billing section of the existing Rental Order (Billing Cycle, Last / Next Invoice Date, Invoicing Type). In the POC it lives on the CRM Sales Order and is shown
+ * only when the Activity Type is Rental; the Rental, Invoicing Rental Order run follows it.
+ */
+export const billingSpecs: Spec[] = [
+  { key: 'billingCycle', label: 'Billing Cycle', type: 'select', options: BILLING_CYCLES.map((c) => c.name), required: true, disabled: (f) => !!f.id && rentalInvoicesOf(f.id).length > 0, hint: 'From the Billing Cycle master of Rental, Settings. Locked once the first rental invoice is raised' },
+  { key: 'invoicingType', label: 'Invoicing Type', type: 'select', options: INVOICING_TYPES, required: true, hint: 'Manual: someone runs Rental, Invoicing Rental Order. Automatic: the run picks the order up when its period ends' },
+  { key: 'lastInvoice', label: 'Last Invoice Date', type: 'readonly', value: (f) => (f.id ? rentalInvoicesOf(f.id).slice(-1)[0]?.periodTo ?? 'Not invoiced yet' : 'Not invoiced yet') },
+  { key: 'nextInvoice', label: 'Next Invoice Date', type: 'readonly', value: (f) => (f.id ? nextRentalPeriod(f.id)?.to ?? '-' : '-') },
 ];
 const classification: Spec[] = [{ key: 'location', label: 'Location', type: 'select', options: yards, required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }];
 const discounts: Spec[] = [
@@ -131,6 +142,7 @@ export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral,
           {aboveGeneral}
           {g(generalSpecs(kind))}
           <Section title="Contract" change="new" req={R.meet}>{g(contractSpecs, 3)}</Section>
+          {kind === 'order' && f.activity === 'Rental' && <Section title="Billing" change="changed" req={R.rental} hint="Same section as the Billing section of the existing Rental Order, now on the Sales Order and only for the Rental Activity Type">{g(billingSpecs, 3)}</Section>}
           {kind === 'quote' && <Section title="Prepared By" change="new" req={R.quote}>{g(preparedSpecs, 4)}</Section>}
           {belowGeneral}
           <Section title="Classification">{g(classification)}</Section>

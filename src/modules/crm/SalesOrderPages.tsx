@@ -3,21 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { FileInput, FormGrid, SelectInput } from '@/components/Form';
+import { FileInput, FormGrid, SelectInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
-import { TabPanels } from '@/components/Widgets';
+import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
-import { LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, periods, type Line, type SalesOrder } from './data';
+import { CROSS_STAGES, costForSo, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
 import { NEXT_STEP, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
 import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
 import { useInvoices, usePayments } from '@/modules/accounting/shared';
-import { ActivityChip, R, aed, useChRequests, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
+import { ActivityChip, R, aed, useChRequests, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useTrips } from './shared';
 import { TripsTable } from '@/modules/rental/FleetPages';
 import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
@@ -63,7 +63,7 @@ export function SalesOrderList() {
 }
 
 export const soForm = (so: SalesOrder, oppNo = '', quoteNo = ''): Record<string, any> => ({
-  transactionType: 'Credit', postingTime: '09:00', exchangeRate: 1, location: 'Jebel Ali Main Yard', salesperson: so.owner, discountOn: 'Gross Amount', ...so,
+  transactionType: 'Credit', postingTime: '09:00', exchangeRate: 1, location: 'Jebel Ali Main Yard', salesperson: so.owner, discountOn: 'Gross Amount', ...(so.activity === 'Rental' ? { billingCycle: 'Monthly', invoicingType: 'Manual' } : {}), ...so,
   oppNo, quoteNo, contactPerson: so.contactPerson ?? cust(so.customerId)?.contact ?? '', deliveryCommitment: so.deliveryCommitment ?? so.lines.find((l) => l.deliveryDate)?.deliveryDate,
 });
 const deliverySpecs = [{ key: 'deliveryDate', label: 'Delivery Date', type: 'date' as const }, { key: 'deliveryMethod', label: 'Delivery Method', type: 'select' as const, options: ['Own Fleet', 'External Transporter'], hint: 'Informational here, finalised at the Delivery Order' }, { key: 'site', label: 'Location / Site' }];
@@ -86,6 +86,7 @@ export function SalesOrderForm() {
   const save = () => {
     const e = commercialErrors(f);
     if (!String(f.lpo ?? '').trim()) e.lpo = 'PO Number is required';
+    if (so.activity === 'Rental') { if (!f.billingCycle) e.billingCycle = 'Billing Cycle is required'; if (!f.invoicingType) e.invoicingType = 'Invoicing Type is required'; }
     setErr(e);
     if (Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const { oppNo, quoteNo, ...rest } = f;
@@ -179,6 +180,26 @@ function Traceability({ so, quoteNo }: { so: SalesOrder; quoteNo?: string }) {
   );
 }
 
+/** Cross Hire requests and orders of a Rental order with their cost, which rolls into the order's profitability (Rental > Cross-Hire, Cost Roll-Up). */
+function OrderCrossHire({ so }: { so: SalesOrder }) {
+  const nav = useNavigate();
+  const reqs = useChRequests().rows.filter((r) => r.soId === so.id);
+  const hires = useCrossHire().rows.filter((c) => c.soId === so.id || unitsOf(c).some((u) => u.soId === so.id));
+  const cost = hires.reduce((n, c) => n + costForSo(c, so.id), 0);
+  return (
+    <Box>
+      <Text type="s4" weight="medium" sx={{ mb: 1 }}>Requests</Text>
+      <DataTable hideToolbar rows={reqs} emptyText="No cross-hire request. Use Cross Hire on a line when no owned unit is Ready for Hire" onRowClick={(r) => nav(`/rental/cross-hire/${r.id}`)}
+        columns={[{ key: 'number', label: 'Request' }, { key: 'date', label: 'Date' }, { key: 'cat', label: 'Category', render: (r) => `${r.group} ${r.category}` }, { key: 'qty', label: 'Qty', align: 'right' }, { key: 'by', label: 'Raised By', render: (r) => r.raisedBy ?? '-' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }]} />
+      <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Orders</Text>
+      <DataTable hideToolbar rows={hires} emptyText="No cross-hire order yet" onRowClick={(c) => nav(`/rental/cross-hire-orders/${c.id}`)}
+        columns={[{ key: 'number', label: 'Hire Order' }, { key: 'supplier', label: 'Supplier' }, { key: 'stage', label: 'Lifecycle Stage', render: (c) => CROSS_STAGES[c.stage] }, { key: 'rate', label: 'Agreed Rate', align: 'right', render: (c) => aed(c.rate) }, { key: 'units', label: 'Units delivered here', align: 'right', render: (c) => unitsOf(c).filter((u) => u.soId === so.id).length }, { key: 'mine', label: 'Cost for this order', align: 'right', render: (c) => aed(costForSo(c, so.id)) }]} />
+      <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Cross-hire cost rolled into this order: {aed(cost)}</Text>
+      <Text type="s5" color="theme.secondary.700">Supplier rate, expenses and any supplier dispute charge. It feeds the Order Profitability report.</Text>
+    </Box>
+  );
+}
+
 export function SalesOrderView() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -205,6 +226,8 @@ export function SalesOrderView() {
   if (!so) return <Page><PageTitle title="Sales Order not found" right={<Button variant="outlined" onClick={() => nav('/crm/sales-orders')}>Back</Button>} /></Page>;
   const myDels = dels.rows.filter((d) => d.soId === so.id);
   const soTrips = trips.rows.filter((t) => t.soId === so.id);
+  const quotedLines = so.lines.filter((l) => l.activity === 'Service' && !l.foc && /delivery|return|collection|transport|haulage|mobili[sz]ation/i.test(l.item));
+  const quotedLogistics = quotedLines.reduce((n, l) => n + lineTotal(l), 0);
   const rentalOut = so.lines.reduce((n, l) => n + outstanding(l).length, 0);
   const lpoLeft = so.lpoExpiry ? -days(so.lpoExpiry) : undefined;
   /** What the line is doing now. Actions are not shown here, they are in the three-dots menu of the row. */
@@ -215,8 +238,10 @@ export function SalesOrderView() {
     if (l.fulfilment) return <Box><StatusChip status={l.fulfilment} /><Text type="s5" color="theme.secondary.700">{l.fulfilmentRef}</Text></Box>;
     return <StatusChip status="Pending" tone="amber" />;
   };
+  /** Cross Hire exists only on a Rental order (7 Oct): no option, action or tab for any other Activity Type. */
+  const isRental = so.activity === 'Rental';
   const canCrossHire = (l: Line) => {
-    if (l.activity !== 'Rental' || l.qty - deliveredQty(l) <= 0) return false;
+    if (!isRental || l.activity !== 'Rental' || l.qty - deliveredQty(l) <= 0) return false;
     const av = availability(l.group, l.category, fleet.rows);
     return av.owned.length === 0 && !chReqAll.rows.some((c) => c.lineId === l.id && (c.status === 'Pending' || c.status === 'In Progress'));
   };
@@ -227,7 +252,7 @@ export function SalesOrderView() {
       const out = outstanding(l);
       return [
         ...(remaining > 0 ? [{ label: 'Deliver', disabled: av.owned.length + av.cross.length === 0, onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&line=${l.id}`) }] : []),
-        ...(remaining > 0 ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => setDlg({ kind: 'cross', lineIds: [l.id] }) }] : []),
+        ...(remaining > 0 && isRental ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => setDlg({ kind: 'cross', lineIds: [l.id] }) }] : []),
         ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (site ready early)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing starts today'); }) }] : []),
         ...(out.length > 0 ? [{ label: 'Replace asset', onClick: () => nav(`/rental/replacements/add?so=${so.id}&line=${l.id}`) }, { label: 'Return asset', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}&line=${l.id}`) }] : []),
       ];
@@ -271,11 +296,11 @@ export function SalesOrderView() {
         <CommercialTabs kind="order" f={soForm(so, opps.get(so.oppId)?.number, quotes.get(so.quoteId)?.number)} set={() => undefined} locked
           belowGeneral={<Section title="Delivery"><SpecView specs={deliverySpecs} f={so} cols={4} /></Section>}
           items={<>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            {isRental && <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Text type="s5" color="theme.secondary.700">{sel.length ? `${sel.length} line(s) selected` : 'Select lines for a bulk action. Each line also has its own actions in the three-dots menu.'}</Text>
               <MenuButton label="Bulk actions" variant="outlined" items={[{ label: 'Cross Hire (selected lines)', disabled: sel.length === 0, onClick: bulkCross }]} />
-            </Box>
-            <ItemsTable lines={so.lines} header={so.activity} vatType={so.vatType} locked fleet={fleet.rows} pricing={pricing.rows} mode="order" selectable selected={sel} onSelect={setSel} extra={{ label: 'Status', render: lineStatus }} rowActions={lineActions} />
+            </Box>}
+            <ItemsTable lines={so.lines} header={so.activity} vatType={so.vatType} locked fleet={fleet.rows} pricing={pricing.rows} mode="order" selectable={isRental} selected={sel} onSelect={setSel} extra={{ label: 'Status', render: lineStatus }} rowActions={lineActions} />
             <Totals lines={so.lines} discountPct={so.discountPct} vatType={so.vatType} currency={so.currency} shipping={(so.shippingCost ?? 0) + (so.handlingCost ?? 0)} />
             <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>After the Sales Order: Rental, Deliver / Return. Trading and Fuel Trading, Stock / Invoice. A service charge, Charge / Invoice. AMC, Visit / Billing. Assets out: {rentalOut}. Logistics cost: {aed(so.logisticsCost)}.</Text>
           </>} />
@@ -291,11 +316,21 @@ export function SalesOrderView() {
             { label: 'Compliance Status', change: 'new', req: R.so, hidden: so.activity !== 'Rental', content: compliance.length ? <DataTable hideToolbar rows={compliance.flatMap((c) => (c.certs.length ? c.certs.map((x) => ({ id: x.id, asset: `${c.h.assetId} - ${c.h.name}`, type: x.type, expiry: x.expiry, status: certStatus(x).label })) : [{ id: c.h.id, asset: `${c.h.assetId} - ${c.h.name}`, type: 'No certificate on record', expiry: '-', status: '-' }]))}
               columns={[{ key: 'asset', label: 'Asset' }, { key: 'type', label: 'Certificate' }, { key: 'expiry', label: 'Expiry' }, { key: 'status', label: 'Status', render: (r) => (r.status === '-' ? '-' : <StatusChip status={r.status} />) }]} /> : <Text type="s4">No assets are out against this order.</Text> },
             { label: 'Deliveries', hidden: so.activity !== 'Rental', content: <DataTable hideToolbar rows={myDels} emptyText="No deliveries yet" onRowClick={(d) => nav(`/crm/delivery-orders/${d.id}`)} columns={[{ key: 'number', label: 'Delivery Order' }, { key: 'date', label: 'Date' }, { key: 'rentalStart', label: 'Rental Start' }, { key: 'assets', label: 'Assets', render: (d) => d.assetIds.map((h) => assetById(h)?.assetId).join(', ') }, { key: 'status', label: 'Status', render: (d) => <StatusChip status={d.status} /> }, { key: 'closed', label: 'DO Closure', change: 'new', req: R.rreturn, render: (d) => (d.closed ? 'Closed on return' : 'Open') }]} /> },
+            { label: 'Cross Hire', change: 'new', req: R.cross, hidden: !isRental, content: <OrderCrossHire so={so} /> },
             { label: 'Logistics', change: 'new', req: R.trip, hidden: !soTrips.length && so.activity !== 'Rental', content: (
               <>
                 <TripsTable rows={soTrips} empty="No trips yet. A trip is created with each delivery, collection and replacement" />
                 <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Logistics cost of this order: {aed(so.logisticsCost)}</Text>
                 <Text type="s5" color="theme.secondary.700">The total of every trip expense (transporter charges, Salik, fuel and other vehicle costs). It feeds the Logistics Cost and Order Profitability reports.</Text>
+                <Panel title="Quoted vs actual" change="new" req="Fleet review 7 Oct: the customer is charged only the Delivery and Return Charge lines of the order. The real trip cost is our cost, so this shows what is left" sx={{ mt: 2 }}>
+                  <ValueGrid cols={4}>
+                    <ValueField label="Quoted to customer (excl. VAT)" value={aed(quotedLogistics)} />
+                    <ValueField label="Actual trip cost" value={aed(so.logisticsCost)} />
+                    <ValueField label={quotedLogistics - so.logisticsCost >= 0 ? 'Left after trip cost' : 'Absorbed by the company'} value={<span style={{ color: quotedLogistics - so.logisticsCost >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(Math.abs(quotedLogistics - so.logisticsCost))}</span>} />
+                    <ValueField label="Charge lines" value={quotedLines.map((l) => l.item).join(', ') || 'None quoted'} />
+                  </ValueGrid>
+                  <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Trip expenses are not added to the customer's invoice. Whether a client-caused delay or an overrun is re-billed is still to be confirmed with the client.</Text>
+                </Panel>
               </>) },
             { label: 'Charges', change: 'new', req: R.meet, hidden: !so.damageCharges.length, content: <DataTable hideToolbar rows={so.damageCharges.map((c, i) => ({ id: String(i), idx: i, ...c, asset: assetById(c.assetId)?.assetId }))} columns={[{ key: 'date', label: 'Date' }, { key: 'asset', label: 'Asset' }, { key: 'note', label: 'Charge' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) },
               { key: 'inv', label: 'Invoice', change: 'new', req: R.meet, render: (r) => { const i = invoiceByRef(r.invoiceId); return i ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${i.id}`)}>{i.number} ({i.approval === 'Approved' ? i.payStatus : i.approval})</Box> : 'Not invoiced'; } },
@@ -308,7 +343,7 @@ export function SalesOrderView() {
       </Page>
       <ConfirmDialog open={closeAsk} title="Close Sales Order" description="An order cannot be closed while any delivered asset is unreturned." confirmLabel="Close order" onClose={() => setCloseAsk(false)} onConfirm={() => { const r = closeOrder(so); toast(r.message, r.ok ? 'success' : 'error'); setCloseAsk(false); }} />
       <ExpiryDialog open={dlg?.kind === 'expiry'} onClose={() => setDlg(null)} soId={so.id} />
-      <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => { setDlg(null); setSel([]); }} soId={so.id} lineIds={dlg?.lineIds} />
+      {isRental && <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => { setDlg(null); setSel([]); }} soId={so.id} lineIds={dlg?.lineIds} />}
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
       <InvoiceLinesDialog open={dlg?.kind === 'invoice'} onClose={() => setDlg(null)} soId={so.id} />
       <AdvanceDialog open={dlg?.kind === 'advance'} onClose={() => setDlg(null)} soId={so.id} onDone={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
