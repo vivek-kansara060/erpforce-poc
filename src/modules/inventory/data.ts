@@ -32,7 +32,7 @@ export const assetTypeSeed: AssetTypeRec[] = [
 ];
 export const MOVEMENT_TYPES = ['Delivery', 'Return', 'Internal Transfer', 'Sent for Repair', 'Cross-Hire Stage Change'];
 export const ATTRIBUTE_TYPES = ['Text', 'Number', 'Date', 'Picklist'];
-export const BRANDS = ['Cummins', 'Perkins', 'Mercedes', 'Volvo', 'Isuzu', 'Emirates Cable & Panel', 'Local'];
+export const BRANDS = ['Cummins', 'Perkins', 'Mercedes', 'Volvo', 'Isuzu', 'Emirates Cable & Panel', 'Local', 'MAN', 'Mitsubishi', 'Toyota'];
 /** Brand master (5 Oct call): one global list used by every fixed asset and item, so brand filters and reports never depend on spelling. */
 export interface BrandRec { id: string; name: string; status: 'Active' | 'Inactive' }
 export const brandSeed: BrandRec[] = BRANDS.map((n, i) => ({ id: `br${i + 1}`, name: n, status: 'Active' as const }));
@@ -139,6 +139,57 @@ export const pricingSeed: PricingRec[] = [
   tp('pr11', 'Panel', 'ATS Panel', 61000, 'ATS panel 630A, sale price'),
   tp('pr12', 'Cable', '4 Core 185 mm', 95, 'Power cable 4C x 185 mm, sale price per meter'),
 ];
+/** More rate cards (Oct 2026 demo data): every sub-category priced for the frequencies it is normally hired on, plus further sale prices. Frequencies already above are not repeated. */
+pricingSeed.push(
+  rp('pr20', 'Generator', '200 KVA', 'Daily', 1450, 'Rental 200 KVA generator, daily'),
+  rp('pr20w', 'Generator', '200 KVA', 'Weekly', 8400, 'Rental 200 KVA generator, weekly'),
+  rp('pr20q', 'Generator', '200 KVA', 'Quarterly', 83000, 'Rental 200 KVA generator, quarterly'),
+  rp('pr20y', 'Generator', '200 KVA', 'Yearly', 315000, 'Rental 200 KVA generator, yearly'),
+  rp('pr21d', 'Generator', '500 KVA', 'Daily', 2450, 'Rental 500 KVA generator, daily'),
+  rp('pr22d', 'Generator', '1000 KVA', 'Daily', 4600, 'Rental 1000 KVA generator, daily'),
+  rp('pr22w', 'Generator', '1000 KVA', 'Weekly', 24500, 'Rental 1000 KVA generator, weekly'),
+  rp('pr23d', 'Generator', '1500 KVA', 'Daily', 6900, 'Rental 1500 KVA generator, daily'),
+  rp('pr23w', 'Generator', '1500 KVA', 'Weekly', 36000, 'Rental 1500 KVA generator, weekly'),
+  rp('pr23q', 'Generator', '1500 KVA', 'Quarterly', 410000, 'Rental 1500 KVA generator, quarterly'),
+  rp('pr23y', 'Generator', '1500 KVA', 'Yearly', 1560000, 'Rental 1500 KVA generator, yearly'),
+  rp('pr24', 'Cable', '4 Core 95 mm', 'Monthly', 9, 'Rental power cable 4C x 95 mm, per meter'),
+  rp('pr24w', 'Cable', '4 Core 95 mm', 'Weekly', 3.2, 'Rental power cable 4C x 95 mm, per meter, weekly'),
+  rp('pr24q', 'Cable', '4 Core 95 mm', 'Quarterly', 24, 'Rental power cable 4C x 95 mm, per meter, quarterly'),
+  rp('pr25d', 'Cable', '4 Core 185 mm', 'Daily', 0.8, 'Rental power cable 4C x 185 mm, per meter, daily'),
+  rp('pr25w', 'Cable', '4 Core 185 mm', 'Weekly', 4.8, 'Rental power cable 4C x 185 mm, per meter, weekly'),
+  rp('pr25q', 'Cable', '4 Core 185 mm', 'Quarterly', 38, 'Rental power cable 4C x 185 mm, per meter, quarterly'),
+  rp('pr26', 'Cable', '4 Core 300 mm', 'Monthly', 22, 'Rental power cable 4C x 300 mm, per meter'),
+  rp('pr26w', 'Cable', '4 Core 300 mm', 'Weekly', 7.5, 'Rental power cable 4C x 300 mm, per meter, weekly'),
+  rp('pr26q', 'Cable', '4 Core 300 mm', 'Quarterly', 60, 'Rental power cable 4C x 300 mm, per meter, quarterly'),
+  rp('pr27d', 'Panel', 'ATS Panel', 'Daily', 380, 'Rental ATS panel, daily'),
+  rp('pr27w', 'Panel', 'ATS Panel', 'Weekly', 2300, 'Rental ATS panel, weekly'),
+  rp('pr27q', 'Panel', 'ATS Panel', 'Quarterly', 18500, 'Rental ATS panel, quarterly'),
+  rp('pr28', 'Panel', 'Synchronizing Panel', 'Monthly', 14500, 'Rental synchronizing panel 1250 A'),
+  rp('pr28w', 'Panel', 'Synchronizing Panel', 'Weekly', 4200, 'Rental synchronizing panel 1250 A, weekly'),
+  rp('pr28q', 'Panel', 'Synchronizing Panel', 'Quarterly', 40000, 'Rental synchronizing panel 1250 A, quarterly'),
+  rp('pr29', 'Panel', 'Distribution Panel', 'Monthly', 3900, 'Rental distribution panel 630 A'),
+  rp('pr30w', 'POD', '20 ft POD', 'Weekly', 2600, 'Rental 20 ft power container, weekly'),
+  rp('pr30q', 'POD', '20 ft POD', 'Quarterly', 21000, 'Rental 20 ft power container, quarterly'),
+  rp('pr31', 'POD', '40 ft POD', 'Monthly', 12500, 'Rental 40 ft power container'),
+  rp('pr31w', 'POD', '40 ft POD', 'Weekly', 4100, 'Rental 40 ft power container, weekly'),
+  rp('pr31q', 'POD', '40 ft POD', 'Quarterly', 34000, 'Rental 40 ft power container, quarterly'),
+  rp('pr32', 'Trolley', 'Generator Trolley', 'Monthly', 1400, 'Rental generator trolley'),
+  rp('pr33', 'Tray', 'Cable Tray', 'Monthly', 650, 'Rental cable tray set (60 m)'),
+  rp('pr34', 'Day Tank', '500 L Day Tank', 'Monthly', 1300, 'Rental 500 L day tank'),
+  rp('pr35', 'Day Tank', '1000 L Day Tank', 'Monthly', 1950, 'Rental 1000 L day tank'),
+  rp('pr36', 'Spare Engine', 'Cummins Spare Engine', 'Monthly', 9500, 'Rental Cummins standby engine assembly'),
+  rp('pr37', 'Spare Engine', 'Perkins Spare Engine', 'Monthly', 7800, 'Rental Perkins standby engine assembly'),
+  tp('pr40', 'Generator', '200 KVA', 258000, 'New 200 KVA diesel generator, sale price'),
+  tp('pr41', 'Generator', '1000 KVA', 740000, 'Ex-fleet 1000 KVA diesel generator with service history, sale price'),
+  tp('pr42', 'Generator', '1500 KVA', 1720000, 'New 1500 KVA container generator, sale price'),
+  tp('pr43', 'Cable', '4 Core 95 mm', 68, 'Power cable 4C x 95 mm, sale price per meter'),
+  tp('pr44', 'Cable', '4 Core 300 mm', 195, 'Power cable 4C x 300 mm, sale price per meter'),
+  tp('pr45', 'Panel', 'Distribution Panel', 29500, 'Distribution panel 630A, sale price'),
+  tp('pr46', 'Panel', 'Synchronizing Panel', 138000, 'Synchronizing panel 1250A, sale price'),
+  tp('pr47', 'POD', '20 ft POD', 98000, '20 ft power container, ex-fleet, sale price'),
+  tp('pr48', 'Day Tank', '1000 L Day Tank', 32000, '1000 L day tank, sale price'),
+  tp('pr49', 'Trolley', 'Generator Trolley', 24500, 'Generator trolley, sale price'),
+);
 
 /* ------------------------------------------------------------------ items (existing Item Master + new fields) */
 export interface ItemRec extends ItemMaster {
@@ -178,6 +229,25 @@ export const locationStockSeed: LocationStock[] = [
   { id: 'ls-i6-6', itemId: 'i6', location: 'Service Van 2 (Shared)', qty: 2 }, { id: 'ls-i12-6', itemId: 'i12', location: 'Service Van 2 (Shared)', qty: 2 },
   { id: 'ls-i6-7', itemId: 'i6', location: 'Service Van 3 (Sanjay Kumar)', qty: 3 }, { id: 'ls-i12-7', itemId: 'i12', location: 'Service Van 3 (Sanjay Kumar)', qty: 2 }, { id: 'ls-i5-7', itemId: 'i5', location: 'Service Van 3 (Sanjay Kumar)', qty: 1 },
 ];
+// [item id, Jebel Ali Main Yard, Sharjah Yard, Abu Dhabi Mussafah Yard] for the stock items added in the Oct 2026 data set. Zero rows are kept on purpose.
+const EXTRA_YARD_STOCK: [string, number, number, number][] = [
+  ['i13', 24, 10, 6], ['i14', 5, 3, 0], ['i15', 30, 14, 9], ['i16', 10, 4, 3], ['i17', 6, 2, 0], ['i18', 12, 5, 0], ['i19', 3, 1, 1], ['i20', 14, 6, 4],
+  ['i21', 2, 0, 1], ['i22', 2, 0, 1], ['i23', 1, 1, 0], ['i24', 900, 350, 0], ['i25', 500, 0, 250], ['i26', 120, 40, 22],
+  ['i28', 120, 40, 0], ['i29', 0, 0, 0], ['i30', 0, 0, 0], ['i31', 8, 4, 2], ['i32', 3, 0, 1],
+];
+locationStockSeed.push(
+  ...EXTRA_YARD_STOCK.flatMap(([itemId, a, b, c]) => [
+    { id: `ls-${itemId}-1`, itemId, location: 'Jebel Ali Main Yard', qty: a },
+    { id: `ls-${itemId}-2`, itemId, location: 'Sharjah Yard', qty: b },
+    { id: `ls-${itemId}-3`, itemId, location: 'Abu Dhabi Mussafah Yard', qty: c },
+  ]),
+  { id: 'ls-i27-4', itemId: 'i27', location: FUEL_DEPOT, qty: 6200, consumed: 3800 },
+  // Spare parts carried in the service vans for the new stock items.
+  { id: 'ls-i13-5', itemId: 'i13', location: 'Service Van 1 (Rajesh Pillai)', qty: 3 }, { id: 'ls-i15-5', itemId: 'i15', location: 'Service Van 1 (Rajesh Pillai)', qty: 5 },
+  { id: 'ls-i20-5', itemId: 'i20', location: 'Service Van 1 (Rajesh Pillai)', qty: 2 }, { id: 'ls-i15-7', itemId: 'i15', location: 'Service Van 3 (Sanjay Kumar)', qty: 2 },
+  { id: 'ls-i20-7', itemId: 'i20', location: 'Service Van 3 (Sanjay Kumar)', qty: 2 }, { id: 'ls-i18-6', itemId: 'i18', location: 'Service Van 2 (Shared)', qty: 2 },
+  { id: 'ls-i31-6', itemId: 'i31', location: 'Service Van 2 (Shared)', qty: 1 }, { id: 'ls-i19-7', itemId: 'i19', location: 'Service Van 3 (Sanjay Kumar)', qty: 0 },
+);
 const stockTotal = (itemId: string, fallback: number) => {
   const rows = locationStockSeed.filter((r) => r.itemId === itemId);
   return rows.length ? rows.reduce((t, r) => t + r.qty, 0) : fallback;
@@ -200,6 +270,43 @@ export const serviceItemSeed: ItemRec[] = [
   svc(18, 'sv6', 'Equipment Insurance (Monthly)', 'Insurance', 'Recurring', 300, 'Insurance cover billed with every rental cycle'),
   svc(19, 'sv7', 'Operator Charge (Monthly)', 'Charge', 'Recurring', 4500, 'Operator provided with the equipment'),
 ];
+serviceItemSeed.push(
+  svc(321, 'sv9', 'Operator Charge (Weekly)', 'Charge', 'Recurring', 1100, 'Operator provided with the equipment, billed every week of the hire'),
+  svc(322, 'sv10', 'Delivery Charge (Low-bed, Heavy Unit)', 'Charge', 'One-time', 2800, 'Delivery of 500 KVA and larger units on a low-bed truck, billed on the first invoice'),
+  svc(323, 'sv11', 'Return Charge (Low-bed, Heavy Unit)', 'Charge', 'One-time', 3200, 'Collection of 500 KVA and larger units on a low-bed truck, billed on the final invoice'),
+  svc(324, 'sv12', 'Cable Laying and Termination', 'Charge', 'One-time', 1800, 'Laying, glanding and termination of hired power cable at site', 'Job'),
+  svc(325, 'sv13', 'Crane Offloading and Positioning', 'Charge', 'One-time', 1500, 'Crane truck attendance to offload and position the unit on site', 'Visit'),
+  svc(326, 'sv14', 'Equipment Insurance (Lump Sum)', 'Insurance', 'Lump sum', 1200, 'One-time insurance cover for the whole contract period'),
+  svc(327, 'sv15', 'Standby Charge (Daily)', 'Charge', 'Recurring', 650, 'Charged for each day the unit is kept on site but not run, at the client request'),
+);
+/** Stock items added in the Oct 2026 data set. Stock is the total of the location rows above, like the original items. */
+const stk = (n: number, id: string, name: string, classification: ItemRec['classification'], category: string, tracking: ItemRec['tracking'], unit: string, price: number, cost: number, p: Partial<ItemRec> = {}): ItemRec => ({
+  id, code: `ITM-${String(n).padStart(4, '0')}`, name, classification, category, tracking, unit, price, stock: stockTotal(id, 0),
+  type: 'Inventory', sku: `SKU-${String(n).padStart(4, '0')}`, status: 'Active', costingMethod: 'Average Cost', traceability: tracking === 'Serialized' ? 'Serial Number Tracking' : 'No Tracking',
+  useBins: tracking === 'Quantity' && !!p.spare, costPrice: cost, ...p,
+});
+const extraItemSeed: ItemRec[] = [
+  stk(301, 'i13', 'Oil Filter (Perkins 1106)', 'Inventory', 'Spare Part', 'Quantity', 'Nos', 78, 54, { minStock: 20, reorderQty: 60, spare: true, brand: 'Perkins' }),
+  stk(302, 'i14', 'Air Filter (Cummins QSX15)', 'Inventory', 'Spare Part', 'Quantity', 'Nos', 245, 172, { minStock: 12, reorderQty: 24, spare: true, brand: 'Cummins' }),
+  stk(303, 'i15', 'Fuel Filter (Cummins C-Series)', 'AMC', 'Spare Part', 'Quantity', 'Nos', 68, 47, { minStock: 25, reorderQty: 60, spare: true, brand: 'Cummins' }),
+  stk(304, 'i16', 'Coolant Extended Life 50/50 (20 L)', 'Inventory', 'Consumable', 'Quantity', 'Drum', 310, 226, { minStock: 8, reorderQty: 16, spare: true }),
+  stk(305, 'i17', 'Engine Oil 15W-40 (208 L Drum)', 'Trading', 'Consumable', 'Quantity', 'Drum', 1450, 1180, { minStock: 4, reorderQty: 8, spare: true }),
+  stk(306, 'i18', 'Fan Belt (Perkins 1106)', 'AMC', 'Spare Part', 'Quantity', 'Nos', 95, 63, { minStock: 10, reorderQty: 20, spare: true, brand: 'Perkins' }),
+  stk(307, 'i19', 'Alternator Belt (Cummins QSX15)', 'AMC', 'Spare Part', 'Quantity', 'Nos', 120, 84, { minStock: 6, reorderQty: 12, spare: true, brand: 'Cummins' }),
+  stk(308, 'i20', 'Battery 12V 100Ah', 'Trading', 'Spare Part', 'Quantity', 'Nos', 380, 295, { minStock: 10, reorderQty: 20, spare: true }),
+  stk(309, 'i21', 'Generator Controller Module (DSE 7320)', 'Trading', 'Spare Part', 'Quantity', 'Nos', 3200, 2480, { minStock: 2, reorderQty: 4, spare: true }),
+  stk(310, 'i22', 'ATS Panel 400A', 'Trading', 'Panel', 'Serialized', 'Nos', 38500, 29800, { subCategory: 'ATS Panel', brand: 'Emirates Cable & Panel', model: 'ATS-400', capacity: '400 A', attrs: { 'at-p1': '400' } }),
+  stk(311, 'i23', 'Distribution Panel 630A', 'Trading', 'Panel', 'Serialized', 'Nos', 27500, 21300, { subCategory: 'Distribution Panel', brand: 'Emirates Cable & Panel', model: 'DB-630', capacity: '630 A', attrs: { 'at-p1': '630' } }),
+  stk(312, 'i24', 'Power Cable 4C x 95 mm', 'Trading', 'Cable', 'Length', 'Meter', 62, 47, { subCategory: '4 Core 95 mm', attrs: { 'at-c1': '4', 'at-c2': '100' } }),
+  stk(313, 'i25', 'Power Cable 4C x 300 mm', 'Rental', 'Cable', 'Length', 'Meter', 24, 17.3, { subCategory: '4 Core 300 mm', attrs: { 'at-c1': '4', 'at-c2': '50' } }),
+  stk(314, 'i26', 'Cable Lug 185 mm Copper (Crimp)', 'Inventory', 'Spare Part', 'Quantity', 'Nos', 28, 19, { minStock: 50, reorderQty: 200, spare: true }),
+  stk(315, 'i27', 'Diesel (Site Delivery)', 'Fuel Trading', 'Fuel', 'Quantity', 'Litre', 3.05, 2.62),
+  stk(316, 'i28', 'Lithium Grease EP2', 'Inventory', 'Consumable', 'Quantity', 'Kg', 18, 12.5, { minStock: 50, reorderQty: 150, spare: true }),
+  stk(317, 'i29', 'Radiator Hose Kit (Perkins 2506)', 'AMC', 'Spare Part', 'Quantity', 'Set', 420, 305, { minStock: 3, reorderQty: 6, spare: true, brand: 'Perkins' }),
+  stk(318, 'i30', 'Turbocharger (Cummins QSX15)', 'Trading', 'Spare Part', 'Quantity', 'Nos', 9800, 7650, { minStock: 1, reorderQty: 2, spare: true, brand: 'Cummins' }),
+  stk(319, 'i31', 'Fire Extinguisher DCP 9 kg', 'Inventory', 'Consumable', 'Quantity', 'Nos', 185, 128, { minStock: 6, reorderQty: 12, spare: true }),
+  stk(320, 'i32', 'Hydraulic Oil ISO 68 (20 L)', 'Inventory', 'Consumable', 'Quantity', 'Drum', 365, 262, { minStock: 4, reorderQty: 8, spare: true }),
+];
 export const itemSeed: ItemRec[] = [...itemMaster.map((m): ItemRec => ({
   ...m,
   stock: stockTotal(m.id, m.stock),
@@ -212,7 +319,7 @@ export const itemSeed: ItemRec[] = [...itemMaster.map((m): ItemRec => ({
   costPrice: Math.round(m.price * 0.72 * 100) / 100,
   ...SERIAL_SEED[m.id],
   ...SERVICE_SEED[m.id],
-})), ...serviceItemSeed];
+})), ...serviceItemSeed, ...extraItemSeed];
 
 /** Next sequential Item Code across the item master and Heavy Equipment records. */
 export function nextItemCode(...codeLists: string[][]): string {
@@ -319,6 +426,64 @@ const SEEDS: Seed[] = [
   { n: 53, name: 'Diesel Generator 200 KVA Perkins 1106A (Unit 3)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1106A', engine: 'PRK-1106A-70499', capacity: '200 KVA', purchase: '2022-03-15', value: 245000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Emirates Infrastructure LLC', date: '2026-09-01T08:00' }, status: 'Yard', moves: [['2026-09-20T15:00', 'Return', 'Client: Emirates Infrastructure LLC', 'Jebel Ali Main Yard', 'CN-26-00124']], assetType: 'Power Equipment', spec: 'Canopied, 415 V, 50 Hz', util: 70 },
   { n: 54, name: 'Diesel Generator 100 KVA Perkins 1104D (Unit 3)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: '1104D', engine: 'PRK-1104D-61877', capacity: '100 KVA', purchase: '2023-01-10', value: 118000, years: 10, loc: 'Jebel Ali Main Yard', dept: 'Operations', out: { site: 'Client: Al Safa Power Utilities', date: '2026-09-24T08:00' }, assetType: 'Power Equipment', spec: 'Canopied, 415 V, 50 Hz', util: 75 },
 ];
+/** 40 more fixed assets (Oct 2026 demo data): ready units in every generator size, units out on hire, cross-hired units, idle and broken units, accessories and own delivery vehicles. */
+const JA = 'Jebel Ali Main Yard', SJ = 'Sharjah Yard', AD = 'Abu Dhabi Mussafah Yard', WS = 'Workshop: Al Masaood Service Centre';
+const EXTRA_SEEDS: Seed[] = [
+  // 100 KVA
+  { n: 44, name: 'Diesel Generator 100 KVA Cummins C100D5 (Unit 3)', category: 'Generator', sub: '100 KVA', brand: 'Cummins', model: 'C100D5', engine: 'CUM-4BT-44231', capacity: '100 KVA', purchase: '2024-05-06', value: 165000, years: 10, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 3 phase, 50 Hz', util: 68 },
+  { n: 45, name: 'Diesel Generator 100 KVA Perkins 1104D (Unit 4)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: '1104D', engine: 'PRK-1104D-61902', capacity: '100 KVA', purchase: '2023-08-14', value: 120000, years: 10, loc: SJ, dept: 'Operations', assetType: 'Power Equipment', spec: 'Canopied, 415 V, 50 Hz', util: 54 },
+  { n: 46, name: 'Diesel Generator 100 KVA Cummins C100D5 (Unit 4)', category: 'Generator', sub: '100 KVA', brand: 'Cummins', model: 'C100D5', engine: 'CUM-4BT-41377', capacity: '100 KVA', purchase: '2022-06-20', value: 158000, years: 10, loc: AD, dept: 'Operations', assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 3 phase, 50 Hz', util: 47 },
+  { n: 47, name: 'Diesel Generator 100 KVA Perkins 1104D (Unit 5)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: '1104D', engine: 'PRK-1104D-48215', capacity: '100 KVA', purchase: '2021-11-02', value: 122000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Al Noor Events Management', date: '2026-08-10T08:30' }, assetType: 'Power Equipment', spec: 'Canopied, 415 V, 50 Hz', util: 88 },
+  // 200 KVA
+  { n: 48, name: 'Diesel Generator 200 KVA Cummins C200D5 (Unit 3)', category: 'Generator', sub: '200 KVA', brand: 'Cummins', model: 'C200D5', engine: 'CUM-6CTA-55420', capacity: '200 KVA', purchase: '2024-09-12', value: 268000, years: 10, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: 'Soundproof canopy, 415 V, 3 phase, 50 Hz', util: 52 },
+  { n: 49, name: 'Diesel Generator 200 KVA Perkins 1106A (Unit 4)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1106A', engine: 'PRK-1106A-70633', capacity: '200 KVA', purchase: '2022-08-01', value: 242000, years: 10, loc: SJ, dept: 'Operations', assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 3 phase, 50 Hz, prime rating', util: 61 },
+  { n: 50, name: 'Diesel Generator 200 KVA Cummins C200D5 (Unit 4)', category: 'Generator', sub: '200 KVA', brand: 'Cummins', model: 'C200D5', engine: 'CUM-6CTA-55388', capacity: '200 KVA', purchase: '2023-10-23', value: 262000, years: 10, loc: AD, dept: 'Operations', assetType: 'Power Equipment', spec: 'Soundproof canopy, 415 V, 3 phase, 50 Hz', util: 44 },
+  { n: 55, name: 'Diesel Generator 200 KVA Perkins 1106A (Unit 5)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1106A', engine: 'PRK-1106A-70704', capacity: '200 KVA', purchase: '2024-01-15', value: 250000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Desert Pearl Hotels', date: '2026-07-22T09:00' }, assetType: 'Power Equipment', spec: 'Canopy type, 415 V, 3 phase, 50 Hz, prime rating', util: 90 },
+  { n: 56, name: 'Diesel Generator 200 KVA Volvo Penta Gulf Genset Cross-Hire', category: 'Generator', sub: '200 KVA', brand: 'Volvo', model: 'CH-TAD734', engine: 'VOL-TAD734-31208', capacity: '200 KVA', purchase: '2026-09-10', value: 0, years: 0, loc: JA, dept: 'Operations', crossHire: { supplier: 'Gulf Genset Rentals' }, status: 'Breakdown', override: { when: '2026-09-29 11:40', reason: 'Coolant pump seal leaking at the pre-delivery test, supplier technician booked' }, assetType: 'Power Equipment', spec: 'Cross-hired unit, canopy type, 415 V, 50 Hz', util: 18 },
+  // 500 KVA
+  { n: 57, name: 'Diesel Generator 500 KVA Cummins C500D5 (Unit 5)', category: 'Generator', sub: '500 KVA', brand: 'Cummins', model: 'C500D5', engine: 'CUM-QSX15-88455', capacity: '500 KVA', purchase: '2024-11-04', value: 528000, years: 10, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: 'Open skid with ATS provision, 415 V, 50 Hz', util: 59 },
+  { n: 58, name: 'Diesel Generator 500 KVA Perkins 2506C (Unit 3)', category: 'Generator', sub: '500 KVA', brand: 'Perkins', model: '2506C', engine: 'PRK-2506C-31301', capacity: '500 KVA', purchase: '2023-02-27', value: 508000, years: 10, loc: SJ, dept: 'Operations', assetType: 'Power Equipment', spec: 'Soundproof canopy, 415 V, 50 Hz', util: 51 },
+  { n: 59, name: 'Diesel Generator 500 KVA Volvo Penta TAD1641GE', category: 'Generator', sub: '500 KVA', brand: 'Volvo', model: 'TAD1641GE', engine: 'VOL-TAD1641-20118', capacity: '500 KVA', purchase: '2022-09-12', value: 498000, years: 10, loc: AD, dept: 'Operations', assetType: 'Power Equipment', spec: 'Soundproof canopy, 415 V, 50 Hz', util: 46 },
+  { n: 60, name: 'Diesel Generator 500 KVA Cummins C500D5 (Unit 6)', category: 'Generator', sub: '500 KVA', brand: 'Cummins', model: 'C500D5', engine: 'CUM-QSX15-88519', capacity: '500 KVA', purchase: '2025-04-22', value: 535000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Sharjah Cement Company', date: '2026-03-10T08:00' }, assetType: 'Power Equipment', spec: 'Open skid with ATS provision, 415 V, 50 Hz', util: 96 },
+  { n: 61, name: 'Diesel Generator 500 KVA Falcon Cross-Hire (Unit 2)', category: 'Generator', sub: '500 KVA', brand: 'Cummins', model: 'CH-500', engine: 'CUM-QSX15-70488', capacity: '500 KVA', purchase: '2026-07-18', value: 0, years: 0, loc: JA, dept: 'Operations', crossHire: { supplier: 'Falcon Equipment Hire LLC' }, out: { site: 'Client: Dubai Metro Works JV', date: '2026-07-20T09:00' }, assetType: 'Power Equipment', spec: 'Cross-hired unit, open skid, 415 V, 50 Hz', util: 85 },
+  // 1000 KVA
+  { n: 62, name: 'Diesel Generator 1000 KVA Cummins C1000D5 (Unit 3)', category: 'Generator', sub: '1000 KVA', brand: 'Cummins', model: 'C1000D5', engine: 'CUM-KTA50-92233', capacity: '1000 KVA', purchase: '2025-07-14', value: 995000, years: 10, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: '40 ft container mounted, 415 V, 50 Hz', util: 40 },
+  { n: 63, name: 'Diesel Generator 1000 KVA Mercedes MTU 12V2000', category: 'Generator', sub: '1000 KVA', brand: 'Mercedes', model: 'MTU 12V2000 G85', engine: 'MTU-12V2000-40621', capacity: '1000 KVA', purchase: '2025-11-03', value: 1120000, years: 12, loc: AD, dept: 'Operations', moves: [['2025-11-12T11:00', 'Internal Transfer', JA, AD, 'IT-25-00063']], assetType: 'Power Equipment', spec: '40 ft container mounted, 415 V, 50 Hz, sound attenuated', util: 33 },
+  { n: 64, name: 'Diesel Generator 1000 KVA Perkins 4008-30TAG3', category: 'Generator', sub: '1000 KVA', brand: 'Perkins', model: '4008-30TAG3', engine: 'PRK-4008-17803', capacity: '1000 KVA', purchase: '2024-04-09', value: 950000, years: 10, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: '40 ft container mounted, 415 V, 50 Hz', util: 55 },
+  { n: 65, name: 'Diesel Generator 1000 KVA Cummins C1000D5 (Unit 4)', category: 'Generator', sub: '1000 KVA', brand: 'Cummins', model: 'C1000D5', engine: 'CUM-KTA50-92310', capacity: '1000 KVA', purchase: '2025-05-19', value: 995000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Al Safa Power Utilities', date: '2026-06-15T08:00' }, assetType: 'Power Equipment', spec: '40 ft container mounted, 415 V, 50 Hz', util: 95 },
+  // 1500 KVA
+  { n: 66, name: 'Diesel Generator 1500 KVA Cummins C1500D5 (Unit 2)', category: 'Generator', sub: '1500 KVA', brand: 'Cummins', model: 'C1500D5', engine: 'CUM-QSK60-10519', capacity: '1500 KVA', purchase: '2026-03-10', value: 1400000, years: 12, loc: JA, dept: 'Operations', assetType: 'Power Equipment', spec: '40 ft container mounted, 11 kV ready, 50 Hz', util: 20 },
+  // spare engines
+  { n: 67, name: 'Cummins Spare Engine QSX15-E500', category: 'Spare Engine', sub: 'Cummins Spare Engine', brand: 'Cummins', model: 'QSX15-E500', engine: 'CUM-QSX15-E0412', capacity: '500 kW', purchase: '2023-10-02', value: 135000, years: 10, loc: JA, dept: 'Workshop', ownership: 'Spare-Standby', assetType: 'Plant & Machinery', spec: 'Complete long engine assembly held as standby for 500 KVA sets', util: 3 },
+  { n: 68, name: 'Cummins Spare Engine KTA50-E1000', category: 'Spare Engine', sub: 'Cummins Spare Engine', brand: 'Cummins', model: 'KTA50-E1000', engine: 'CUM-KTA50-E0277', capacity: '1000 kW', purchase: '2024-06-18', value: 210000, years: 10, loc: JA, dept: 'Workshop', ownership: 'Spare-Standby', status: 'Under Maintenance', moves: [['2026-09-21T11:00', 'Sent for Repair', JA, WS, 'JC-26-00247']], assetType: 'Plant & Machinery', spec: 'Standby engine for 1000 KVA sets, in the workshop for a top overhaul', util: 12 },
+  // PODs
+  { n: 69, name: 'POD 20 ft Power Container (Unit 2)', category: 'POD', sub: '20 ft POD', brand: 'Emirates Cable & Panel', model: 'POD-20', engine: 'N/A', capacity: '20 ft', purchase: '2023-05-22', value: 72000, years: 10, loc: JA, dept: 'Operations', assetType: 'Containers & Shelters', spec: 'Insulated 20 ft container with cable entry glands', util: 60 },
+  { n: 70, name: 'POD 40 ft Power Container', category: 'POD', sub: '40 ft POD', brand: 'Emirates Cable & Panel', model: 'POD-40', engine: 'N/A', capacity: '40 ft', purchase: '2024-02-19', value: 118000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Palm Marina Development', date: '2026-05-30T10:00' }, assetType: 'Containers & Shelters', spec: 'Insulated 40 ft container with cable entry glands and internal lighting', util: 83 },
+  { n: 71, name: 'POD 40 ft Power Container (Unit 2)', category: 'POD', sub: '40 ft POD', brand: 'Emirates Cable & Panel', model: 'POD-40', engine: 'N/A', capacity: '40 ft', purchase: '2023-11-08', value: 112000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Desert Pearl Hotels', date: '2026-03-01T09:30' }, status: 'Off Hire', moves: [['2026-09-18T14:00', 'Return', 'Client: Desert Pearl Hotels', JA, 'CN-26-00131']], assetType: 'Containers & Shelters', spec: 'Insulated 40 ft container with cable entry glands and internal lighting', util: 62 },
+  // cables
+  { n: 72, name: 'Power Cable Drum 4C x 95 mm (100 m)', category: 'Cable', sub: '4 Core 95 mm', brand: 'Emirates Cable & Panel', model: 'ECP-4C95', engine: 'N/A', capacity: '100 m', purchase: '2024-03-04', value: 18000, years: 6, loc: JA, dept: 'Operations', out: { site: 'Client: Gulf Build Contracting', date: '2026-08-03T09:00' }, assetType: 'Power Equipment', spec: 'XLPE insulated copper armoured cable on a steel drum', util: 77 },
+  { n: 73, name: 'Power Cable Drum 4C x 185 mm (100 m)', category: 'Cable', sub: '4 Core 185 mm', brand: 'Emirates Cable & Panel', model: 'ECP-4C185', engine: 'N/A', capacity: '100 m', purchase: '2023-01-30', value: 32000, years: 8, loc: JA, dept: 'Operations', out: { site: 'Client: Emirates Infrastructure LLC', date: '2026-04-03T09:00' }, status: 'Off Hire', moves: [['2026-09-09T11:00', 'Return', 'Client: Emirates Infrastructure LLC', JA, 'CN-26-00118']], assetType: 'Power Equipment', spec: 'XLPE insulated copper armoured cable on a steel drum', util: 71 },
+  { n: 74, name: 'Power Cable Drum 4C x 300 mm (50 m)', category: 'Cable', sub: '4 Core 300 mm', brand: 'Emirates Cable & Panel', model: 'ECP-4C300', engine: 'N/A', capacity: '50 m', purchase: '2025-06-17', value: 41500, years: 8, loc: JA, dept: 'Operations', out: { site: 'Client: Dubai Metro Works JV', date: '2026-08-18T08:30' }, assetType: 'Power Equipment', spec: 'XLPE insulated copper armoured cable on a steel drum', util: 77 },
+  // panels
+  { n: 75, name: 'ATS Panel 800A (Unit 2)', category: 'Panel', sub: 'ATS Panel', brand: 'Emirates Cable & Panel', model: 'ATS-800', engine: 'N/A', capacity: '800 A', purchase: '2024-10-08', value: 52000, years: 10, loc: JA, dept: 'Operations', out: { site: 'Client: Emirates Infrastructure LLC', date: '2026-09-05T08:00' }, assetType: 'Power Equipment', spec: 'Floor standing automatic transfer panel, 4 pole, 800 A', util: 70 },
+  { n: 76, name: 'Synchronizing Panel 1250A (Unit 2)', category: 'Panel', sub: 'Synchronizing Panel', brand: 'Emirates Cable & Panel', model: 'SYN-1250', engine: 'N/A', capacity: '1250 A', purchase: '2022-04-12', value: 95000, years: 10, loc: JA, dept: 'Operations', status: 'Yard', override: { when: '2026-09-02 10:15', reason: 'Returned from the Al Safa site, parked until a project needs it; not offered for hire until refurbished' }, assetType: 'Power Equipment', spec: 'Paralleling panel for up to four generators, 1250 A', util: 3 },
+  { n: 77, name: 'Distribution Panel 630A', category: 'Panel', sub: 'Distribution Panel', brand: 'Emirates Cable & Panel', model: 'DB-630', engine: 'N/A', capacity: '630 A', purchase: '2023-07-24', value: 24500, years: 10, loc: JA, dept: 'Operations', status: 'Under Maintenance', moves: [['2026-09-23T09:30', 'Sent for Repair', JA, WS, 'JC-26-00251']], assetType: 'Power Equipment', spec: 'Outdoor distribution board with 12 outgoing ways', util: 38 },
+  // accessories
+  { n: 78, name: 'Generator Trolley GT-3', category: 'Trolley', sub: 'Generator Trolley', brand: 'Local', model: 'GT-3', engine: 'N/A', capacity: '3 Ton', purchase: '2024-08-26', value: 19500, years: 6, loc: JA, dept: 'Operations', out: { site: 'Client: Sharjah Cement Company', date: '2026-03-10T08:00' }, assetType: 'Tools & Accessories', spec: 'Twin axle trolley with towing eye and jacks', util: 82 },
+  { n: 79, name: 'Cable Tray Set Galvanised (60 m)', category: 'Tray', sub: 'Cable Tray', brand: 'Local', model: 'CT-60', engine: 'N/A', capacity: '60 m', purchase: '2022-02-15', value: 21500, years: 6, loc: JA, dept: 'Operations', status: 'Yard', override: { when: '2026-08-20 09:45', reason: 'Returned complete from the Sharjah site and stored, no demand' }, assetType: 'Tools & Accessories', spec: 'Hot dip galvanised perforated trays with couplers and covers', util: 4 },
+  { n: 80, name: 'Day Tank 500 L', category: 'Day Tank', sub: '500 L Day Tank', brand: 'Emirates Cable & Panel', model: 'DT-500', engine: 'N/A', capacity: '500 L', purchase: '2023-09-11', value: 18500, years: 8, loc: JA, dept: 'Operations', out: { site: 'Client: Al Noor Events Management', date: '2026-08-10T08:30' }, assetType: 'Plant & Machinery', spec: 'Double wall steel tank with level gauge and transfer pump', util: 79 },
+  { n: 81, name: 'Day Tank 1000 L (Unit 2)', category: 'Day Tank', sub: '1000 L Day Tank', brand: 'Emirates Cable & Panel', model: 'DT-1000', engine: 'N/A', capacity: '1000 L', purchase: '2024-12-02', value: 26500, years: 8, loc: JA, dept: 'Operations', out: { site: 'Client: Desert Pearl Hotels', date: '2026-09-28T09:00' }, status: 'Hold', assetType: 'Plant & Machinery', spec: 'Double wall steel tank with level gauge and transfer pump', util: 25 },
+  // retired
+  { n: 82, name: 'Diesel Generator 200 KVA Perkins 1006TAG (Old Fleet 2)', category: 'Generator', sub: '200 KVA', brand: 'Perkins', model: '1006TAG', engine: 'PRK-1006-05520', capacity: '200 KVA', purchase: '2016-03-14', value: 215000, years: 10, loc: JA, dept: 'Operations', retired: true, assetType: 'Power Equipment', spec: 'Open skid, 415 V, 50 Hz', util: 0 },
+  { n: 83, name: 'Diesel Generator 100 KVA Perkins 1103A (Scrapped 2)', category: 'Generator', sub: '100 KVA', brand: 'Perkins', model: '1103A', engine: 'PRK-1103A-00417', capacity: '100 KVA', purchase: '2013-09-09', value: 125000, years: 10, loc: JA, dept: 'Operations', retired: true, assetType: 'Power Equipment', spec: 'Open skid, 415 V, 50 Hz', util: 0 },
+  // own delivery vehicles
+  { n: 84, name: 'Pickup Toyota Hilux 2.8 GD-6 Double Cab', category: 'Vehicle', sub: 'Pickup', brand: 'Toyota', model: 'Hilux 2.8 GD-6', engine: 'TOY-1GD-52914', capacity: '1 Ton', purchase: '2024-06-03', value: 118000, years: 6, loc: JA, dept: 'Logistics', status: 'In Service', fleet: { plate: 'Dubai T 92318', driver: 'Joseph Mathew' }, assetType: 'Vehicles', spec: 'Double cab 4x4 pickup for site visits and light deliveries', util: 74 },
+  { n: 85, name: 'Crane Truck Mercedes Arocs 3345 with Palfinger PK 29002', category: 'Vehicle', sub: 'Crane Truck', brand: 'Mercedes', model: 'Arocs 3345', engine: 'MB-OM471-61902', capacity: '29 Ton.m', purchase: '2025-01-20', value: 640000, years: 8, loc: JA, dept: 'Logistics', status: 'In Service', fleet: { plate: 'Dubai N 51806', driver: 'Arun Das' }, assetType: 'Vehicles', spec: '6x4 rigid truck with a rear-mounted hydraulic loader crane', util: 62 },
+  { n: 86, name: 'Flatbed Truck Isuzu NPR 85', category: 'Vehicle', sub: 'Flatbed Truck', brand: 'Isuzu', model: 'NPR 85', engine: 'ISZ-4JJ1-33076', capacity: '4 Ton', purchase: '2022-12-05', value: 168000, years: 8, loc: SJ, dept: 'Logistics', status: 'Under Maintenance', moves: [['2026-09-25T10:00', 'Sent for Repair', SJ, WS, 'JC-26-00258']], fleet: { plate: 'Sharjah 1 67390', driver: 'Imran Shah' }, assetType: 'Vehicles', spec: 'Flatbed body with tie-down rails for trolleys, cable drums and panels', util: 66 },
+  { n: 87, name: 'Flatbed Truck Isuzu NPR 66 (Old Fleet)', category: 'Vehicle', sub: 'Flatbed Truck', brand: 'Isuzu', model: 'NPR 66', engine: 'ISZ-4HK1-18820', capacity: '3 Ton', purchase: '2016-01-18', value: 190000, years: 8, loc: JA, dept: 'Logistics', retired: true, fleet: { plate: 'Dubai F 20871' }, assetType: 'Vehicles', spec: 'Flatbed body, retired from the delivery fleet', util: 0 },
+];
+/** A unit bought later than the fixed 2025 yard transfer in fromSeed would show a transfer before it existed: keep only entries from the purchase date on. */
+const fromExtra = (s: Seed): HeavyRec => { const h = fromSeed(s); return { ...h, movements: h.movements.filter((m) => m.date.slice(0, 10) >= h.purchaseDate) }; };
 
 function fromSeed(s: Seed): HeavyRec {
   const ch = s.crossHire;
@@ -363,7 +528,7 @@ function fromSeed(s: Seed): HeavyRec {
     ...(s.fleet ? { deliveryFleet: true, plateNumber: s.fleet.plate, defaultDriver: s.fleet.driver } : {}),
   };
 }
-export const heavySeed: HeavyRec[] = SEEDS.map(fromSeed);
+export const heavySeed: HeavyRec[] = [...SEEDS.map(fromSeed), ...EXTRA_SEEDS.map(fromExtra)];
 
 /* ------------------------------------------------------------------ cross-hire records (POC stand-in for the Procurement cross-hire transaction) */
 /** Stages a cross-hired unit goes through. The asset's status follows the stage; it is not typed in. */
@@ -418,6 +583,62 @@ export const certSeed: CertRec[] = [
   cert(4, 'AST-1021', 'Registration', 'DXB-TRK-44120', '2026-11-14', 45), cert(5, 'AST-1021', 'Inspection', 'RTA-INS-2026-771', '2026-10-08', 21), cert(6, 'AST-1022', 'Registration', 'SHJ-TRK-30982', '2026-09-18', 45),
   cert(7, 'AST-1023', 'Registration', 'DXB-TRK-39977', '2027-01-22', 45), cert(8, 'AST-1019', 'Warranty', 'WR-CUM-10452', '2027-10-12', 60), cert(9, 'AST-1013', 'Inspection', 'CIV-INS-66120', '2026-10-30', 30), cert(10, 'AST-1024', 'Insurance', 'POL-POD-21877', '2026-12-31', 30),
 ];
+/** A certificate with later history entries (renewal reminders, replaced documents). */
+const certH = (n: number, assetId: string, type: string, reference: string, expiry: string, leadDays: number, ...more: AuditEntry[]): CertRec => {
+  const c = cert(n, assetId, type, reference, expiry, leadDays);
+  return { ...c, history: [...c.history, ...more] };
+};
+const remind = (when: string, detail: string): AuditEntry => ({ when, title: 'Expiry reminder sent', detail, by: 'System' });
+certSeed.push(
+  // expired
+  certH(11, 'AST-1047', 'Insurance', 'POL-GEN-61102', '2026-09-12', 30, remind('2026-08-13 07:00', 'Expires in 30 days'), remind('2026-09-12 07:00', 'Expired today, renewal not yet uploaded')),
+  certH(12, 'AST-1086', 'Registration', 'SHJ-TRK-51420', '2026-09-25', 45, remind('2026-08-11 07:00', 'Expires in 45 days'), { when: '2026-09-25 07:00', title: 'Certificate expired', detail: 'Truck is in the workshop, renewal waits for the repair', by: 'System' }),
+  certH(13, 'AST-1084', 'Insurance', 'POL-VEH-30977', '2026-08-31', 30, remind('2026-08-01 07:00', 'Expires in 30 days')),
+  certH(14, 'AST-1056', 'Inspection', 'CIV-INS-71208', '2026-09-28', 14),
+  certH(53, 'AST-1041', 'Inspection', 'RTA-INS-2026-612', '2026-09-22', 21, remind('2026-09-01 07:00', 'Expires in 21 days')),
+  // due within 7 / 14 / 30 days
+  certH(15, 'AST-1085', 'Registration', 'DXB-TRK-52610', '2026-10-05', 45, remind('2026-08-21 07:00', 'Expires in 45 days'), remind('2026-09-28 07:00', 'Expires in 7 days')),
+  certH(16, 'AST-1060', 'Inspection', 'CIV-INS-70331', '2026-10-07', 21, remind('2026-09-16 07:00', 'Expires in 21 days')),
+  certH(50, 'AST-1023', 'Insurance', 'POL-VEH-30519', '2026-10-09', 30, remind('2026-09-09 07:00', 'Expires in 30 days')),
+  certH(17, 'AST-1065', 'Insurance', 'POL-GEN-61544', '2026-10-12', 30, remind('2026-09-12 07:00', 'Expires in 30 days')),
+  certH(19, 'AST-1021', 'Insurance', 'POL-VEH-30442', '2026-10-13', 30),
+  certH(18, 'AST-1070', 'Inspection', 'CIV-INS-70955', '2026-10-14', 21),
+  certH(51, 'AST-1043', 'Registration', 'DXB-TRK-47716', '2026-10-17', 45, remind('2026-09-02 07:00', 'Expires in 45 days')),
+  certH(23, 'AST-1055', 'Insurance', 'POL-GEN-61307', '2026-10-20', 30),
+  certH(20, 'AST-1057', 'Warranty', 'WR-CUM-88455', '2026-10-24', 30),
+  certH(21, 'AST-1044', 'Inspection', 'CIV-INS-70488', '2026-10-28', 30),
+  certH(52, 'AST-1042', 'Registration', 'AUH-TRK-45118', '2026-11-09', 45),
+  // valid
+  cert(22, 'AST-1062', 'Insurance', 'POL-GEN-61890', '2026-10-29', 14),
+  cert(24, 'AST-1013', 'Other', 'LOAD-TEST-2026-044', '2026-11-12', 30),
+  cert(25, 'AST-1044', 'Insurance', 'POL-GEN-61201', '2026-12-31', 30),
+  cert(26, 'AST-1045', 'Insurance', 'POL-GEN-61202', '2026-12-31', 30),
+  cert(27, 'AST-1046', 'Warranty', 'WR-CUM-41377', '2027-06-19', 60),
+  certH(28, 'AST-1048', 'Warranty', 'WR-CUM-55420', '2027-09-11', 60, { when: '2026-03-04 14:10', title: 'Document replaced', detail: 'Warranty certificate re-issued with the corrected engine number', by: 'Sanjay Kumar' }),
+  cert(29, 'AST-1049', 'Insurance', 'POL-GEN-61203', '2026-12-31', 30),
+  cert(30, 'AST-1050', 'Inspection', 'CIV-INS-70512', '2027-03-18', 30),
+  cert(31, 'AST-1057', 'Insurance', 'POL-GEN-61204', '2026-12-31', 30),
+  cert(32, 'AST-1058', 'Insurance', 'POL-GEN-61205', '2026-12-31', 30),
+  cert(33, 'AST-1059', 'Insurance', 'POL-GEN-61206', '2026-12-31', 30),
+  cert(34, 'AST-1060', 'Insurance', 'POL-GEN-61207', '2026-12-31', 30),
+  cert(35, 'AST-1060', 'Warranty', 'WR-CUM-88519', '2027-04-21', 60),
+  cert(36, 'AST-1062', 'Warranty', 'WR-CUM-92233', '2027-07-13', 60),
+  cert(37, 'AST-1063', 'Warranty', 'WR-MTU-40621', '2028-11-02', 90),
+  cert(38, 'AST-1063', 'Insurance', 'POL-GEN-61208', '2026-12-31', 30),
+  cert(39, 'AST-1064', 'Insurance', 'POL-GEN-61209', '2026-12-31', 30),
+  cert(40, 'AST-1066', 'Warranty', 'WR-CUM-10519', '2028-03-09', 90),
+  cert(41, 'AST-1066', 'Insurance', 'POL-GEN-61210', '2027-03-09', 30),
+  cert(42, 'AST-1069', 'Insurance', 'POL-POD-23010', '2026-12-31', 30),
+  cert(43, 'AST-1070', 'Insurance', 'POL-POD-23011', '2026-12-31', 30),
+  cert(44, 'AST-1075', 'Warranty', 'WR-ECP-ATS800', '2027-10-07', 45),
+  cert(45, 'AST-1084', 'Registration', 'DXB-PKP-61822', '2027-03-14', 45),
+  certH(46, 'AST-1085', 'Insurance', 'POL-VEH-31388', '2027-01-20', 45, { when: '2026-01-21 10:30', title: 'Certificate renewed', detail: 'Previous policy POL-VEH-30388 replaced', by: 'Sanjay Kumar' }),
+  cert(47, 'AST-1085', 'Inspection', 'RTA-INS-2026-904', '2026-11-30', 30),
+  cert(48, 'AST-1086', 'Insurance', 'POL-VEH-30911', '2026-11-18', 30),
+  cert(49, 'AST-1022', 'Insurance', 'POL-VEH-30788', '2027-01-14', 45),
+  cert(54, 'AST-1019', 'Insurance', 'POL-GEN-55102', '2026-12-31', 30),
+  cert(55, 'AST-1027', 'Other', 'HA-FAL-0412', '2026-12-05', 30),
+);
 export interface ReadingRec { id: string; assetId: string; date: string; hmr: number; by: string; method: string; fuel?: number; notes: string }
 export const READING_METHODS = ['Direct System Entry (on-site)', 'Paper, Entered Later'];
 export const READING_FREQUENCY_DAYS = 30;
@@ -428,6 +649,61 @@ export const readingSeed: ReadingRec[] = [
   rd(5, 'AST-1013', '2026-08-02T10:10', 11890, 'Sanjay Kumar', READING_METHODS[0], 44, 'Oil top-up recommended'), rd(6, 'AST-1017', '2026-09-20T11:00', 7420, 'Grace Fernandez'), rd(7, 'AST-1014', '2026-07-10T09:30', 12640, 'Sanjay Kumar', READING_METHODS[0], 30, 'After repair, test run'),
   rd(8, 'AST-1019', '2026-09-25T14:00', 820, 'Grace Fernandez', READING_METHODS[0], 90), rd(9, 'AST-1024', '2026-09-05T12:00', 0, 'Sanjay Kumar'),
 ];
+/**
+ * Monthly reading histories added in the Oct 2026 data set. Dates, hour meter values (running totals built from the monthly increments), fuel levels and notes are given per asset.
+ * An asset whose last reading is older than 30 days shows in the overdue report; assets with no reading at all show as missing.
+ */
+const monthlyDates = (firstMonth: string, count: number, days: number[]) =>
+  Array.from({ length: count }, (_, i) => `${dayjs(`${firstMonth}-01`).add(i, 'month').format('YYYY-MM')}-${String(days[i % days.length]).padStart(2, '0')}`);
+const hoursFrom = (start: number, increments: number[]) => increments.reduce<number[]>((acc, inc) => [...acc, acc[acc.length - 1] + inc], [start]);
+const TIMES = ['08:15', '09:00', '07:50', '10:30', '08:40', '14:00'];
+let nextReading = 10;
+const series = (assetId: string, dates: string[], hmr: number[], o: { by?: string[]; fuel?: (number | undefined)[]; notes?: Record<number, string>; paper?: number[] } = {}): ReadingRec[] =>
+  dates.map((d, i) => rd(nextReading++, assetId, `${d}T${TIMES[i % TIMES.length]}`, hmr[i], o.by ? o.by[i % o.by.length] : 'Grace Fernandez', o.paper?.includes(i) ? READING_METHODS[1] : READING_METHODS[0], o.fuel?.[i], o.notes?.[i] ?? ''));
+const GF = 'Grace Fernandez', SK = 'Sanjay Kumar', RP = 'Rajesh Pillai';
+readingSeed.push(
+  // AST-1060, 500 KVA on hire at Sharjah Cement since March 2026: near continuous running, monthly
+  ...series('AST-1060', monthlyDates('2025-10', 12, [24, 23, 25, 22, 24, 24, 23, 25, 22, 24, 24, 23]), hoursFrom(180, [310, 420, 590, 610, 640, 650, 660, 690, 700, 680, 710]),
+    { by: [GF, SK], fuel: [88, 84, 80, 75, 70, 66, 78, 72, 69, 64, 74, 70], notes: { 5: 'Handed over to client at Sharjah Cement site', 8: 'Oil and filters changed at 4,750 h', 11: 'Running normally on 82% load' } }),
+  // AST-1065, 1000 KVA: test runs while waiting, then continuous running after the June 2026 delivery
+  ...series('AST-1065', monthlyDates('2025-10', 12, [26, 25, 24, 27, 26, 24, 25, 26, 24, 25, 26, 24]), hoursFrom(12, [18, 22, 20, 16, 24, 18, 20, 230, 700, 705, 690]),
+    { by: [SK], fuel: [95, 95, 94, 94, 95, 93, 92, 85, 78, 72, 80, 76], notes: { 6: 'Pre-delivery load test', 8: 'Delivered to Al Safa Power Utilities on 15 Jun', 9: 'Fuel topped up by client' }, paper: [10] }),
+  // AST-1047, 100 KVA: light use until the August 2026 hire
+  ...series('AST-1047', monthlyDates('2026-01', 9, [20, 19, 24, 21, 20, 22, 20, 21, 22]), hoursFrom(2150, [60, 85, 40, 110, 95, 120, 230, 520]),
+    { by: [GF], fuel: [90, 88, 91, 85, 80, 82, 70, 66, 61], notes: { 7: 'Delivered to Al Noor Events on 10 Aug' } }),
+  // AST-1055, 200 KVA on hire at Desert Pearl Hotels since 22 Jul 2026
+  ...series('AST-1055', monthlyDates('2026-04', 6, [23, 22, 21, 23, 24, 21]), hoursFrom(1980, [90, 130, 80, 650, 680]),
+    { by: [SK, GF], fuel: [92, 90, 86, 78, 71, 68], notes: { 3: 'Delivered, hour meter checked with the client', 5: 'Running normally' } }),
+  // AST-1018 and AST-1015 (older units): history before the readings entered earlier
+  ...series('AST-1018', monthlyDates('2026-03', 6, [14, 15, 16, 14, 15, 17]), hoursFrom(2080, [180, 150, 160, 190, 180]),
+    { by: [SK], fuel: [60, 55, 62, 58, 54, 57], paper: [2, 4], notes: { 2: 'Paper log, entered later', 4: 'Paper log, entered later' } }),
+  ...series('AST-1015', monthlyDates('2026-04', 4, [22, 24, 24, 23]), hoursFrom(5120, [280, 290, 260]),
+    { by: [GF], fuel: [74, 70, 76, 68], notes: { 3: 'Belt tension checked' } }),
+  // AST-1021, low-bed truck: engine hours, monthly
+  ...series('AST-1021', monthlyDates('2026-03', 6, [5, 4, 5, 6, 5, 4]), hoursFrom(9820, [96, 104, 88, 112, 92]),
+    { by: [SK], fuel: [60, 45, 70, 52, 66, 48], notes: { 2: 'Tyre pressure low, corrected', 5: 'Hydraulic ramp serviced' } }),
+  // AST-1062, 1000 KVA: irregular gaps and now overdue (last reading 47 days ago)
+  ...series('AST-1062', ['2025-11-04', '2026-01-20', '2026-02-02', '2026-06-11', '2026-08-14'], [14, 66, 71, 312, 498],
+    { by: [GF, SK], fuel: [96, 92, 90, 81, 79], notes: { 1: 'First reading after a long gap', 3: 'Returned from a 3 month hire with Gulf Build', 4: 'Reading taken late, unit was on site' }, paper: [3] }),
+  // AST-1057, 500 KVA: last reading end of July, overdue
+  ...series('AST-1057', monthlyDates('2026-02', 6, [12, 11, 14, 13, 12, 29]), hoursFrom(1440, [150, 170, 160, 110, 140]),
+    { by: [GF], fuel: [72, 68, 74, 70, 66, 64], notes: { 5: 'Reading taken before the unit was moved to the front row' } }),
+  // AST-1049, 200 KVA: irregular, overdue
+  ...series('AST-1049', ['2026-02-17', '2026-03-03', '2026-05-26', '2026-07-27'], [3640, 3702, 3891, 4020],
+    { by: [SK], fuel: [58, 60, 51, 49], notes: { 2: 'No reading in April, unit on hire without a site reading' }, paper: [2] }),
+  // AST-1064, 1000 KVA Perkins: monthly, up to date
+  ...series('AST-1064', monthlyDates('2026-01', 9, [18, 17, 19, 18, 18, 17, 20, 18, 18]), hoursFrom(1620, [70, 85, 60, 95, 130, 110, 140, 120]),
+    { by: [GF, SK], fuel: [96, 94, 95, 90, 88, 90, 84, 86, 82], notes: { 4: 'Oil sample sent to the lab', 8: 'Ready for hire' } }),
+  // AST-1058, 500 KVA Perkins: monthly, up to date
+  ...series('AST-1058', monthlyDates('2026-04', 6, [10, 9, 10, 10, 11, 10]).slice(0, 5).concat(['2026-09-14']), hoursFrom(2210, [120, 95, 140, 110, 105]),
+    { by: [SK], fuel: [80, 78, 82, 76, 79, 74], notes: { 5: 'Idle between hires, started weekly on no load' } }),
+  // AST-1032, 500 KVA Cummins
+  ...series('AST-1032', monthlyDates('2026-05', 5, [8, 9, 10, 8, 9]), hoursFrom(4010, [230, 260, 240, 250]),
+    { by: [GF], fuel: [70, 66, 72, 69, 65], notes: { 3: 'Coolant level topped up' } }),
+  // AST-1067, long idle standby engine: only occasional checks (shows how little it runs)
+  ...series('AST-1067', ['2026-02-02', '2026-09-08'], [0, 4],
+    { by: [SK], notes: { 0: 'Stored with preservation oil', 1: 'Turned over for 4 hours, no faults' } }),
+);
 export interface CountLine { itemId: string; code: string; name: string; unit: string; systemQty: number; countedQty: number | null }
 /** Count Type is not defined in the requirement document (rule to be confirmed with client). Sessions without a type are Stock Items counts. */
 export const COUNT_TYPES = ['Stock Items', 'Fixed Assets'] as const;
@@ -476,6 +752,41 @@ export const countSeed: CountSession[] = [
       al(37, 'Diesel Generator 100 KVA Perkins 1104D', 'Generator', 'Owned', 'Ready for Hire', 'Not Found', 'Taken to the Perkins dealer for a load test; transfer not recorded on the count day'),
     ] },
 ];
+countSeed.push(
+  { id: 'cs8', number: 'SCS-26-00008', date: '2026-09-26', location: 'Sharjah Yard', countedBy: 'Grace Fernandez', status: 'Completed', confirmedBy: 'Sanjay Kumar', adjustmentNo: 'ADJ-26-00025', adjustmentStatus: 'Approved',
+    reason: 'One fuel filter used on a visit without a stock issue, one battery received but not posted, 10 m of cable cut off and written off on site, four crimp lugs spoiled, two kg of grease miscounted',
+    log: [{ when: '2026-09-26 16:50', title: 'Stock Adjustment raised', detail: 'ADJ-26-00025 sent for approval', by: 'Grace Fernandez' }, { when: '2026-09-27 09:20', title: 'Approved', detail: 'System quantities corrected', by: 'Sanjay Kumar' }], lines: [
+    ln('i13', 'ITM-0301', 'Oil Filter (Perkins 1106)', 'Nos', 10, 10), ln('i14', 'ITM-0302', 'Air Filter (Cummins QSX15)', 'Nos', 3, 3), ln('i15', 'ITM-0303', 'Fuel Filter (Cummins C-Series)', 'Nos', 14, 13), ln('i16', 'ITM-0304', 'Coolant Extended Life 50/50 (20 L)', 'Drum', 4, 4),
+    ln('i17', 'ITM-0305', 'Engine Oil 15W-40 (208 L Drum)', 'Drum', 2, 2), ln('i18', 'ITM-0306', 'Fan Belt (Perkins 1106)', 'Nos', 5, 5), ln('i20', 'ITM-0308', 'Battery 12V 100Ah', 'Nos', 6, 7), ln('i24', 'ITM-0312', 'Power Cable 4C x 95 mm', 'Meter', 350, 340),
+    ln('i26', 'ITM-0314', 'Cable Lug 185 mm Copper (Crimp)', 'Nos', 40, 36), ln('i28', 'ITM-0316', 'Lithium Grease EP2', 'Kg', 40, 42)] },
+  { id: 'cs9', number: 'SCS-26-00009', date: '2026-09-30', location: 'Abu Dhabi Mussafah Yard', countedBy: 'Sanjay Kumar', status: 'In Progress', type: 'Fixed Assets', lines: [],
+    assetLines: [
+      al(46, 'Diesel Generator 100 KVA Cummins C100D5 (Unit 4)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(50, 'Diesel Generator 200 KVA Cummins C200D5 (Unit 4)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(59, 'Diesel Generator 500 KVA Volvo Penta TAD1641GE', 'Generator', 'Owned', 'Ready for Hire', null),
+      al(63, 'Diesel Generator 1000 KVA Mercedes MTU 12V2000', 'Generator', 'Owned', 'Ready for Hire', null),
+      al(20, 'Diesel Generator 100 KVA Perkins P100 (Standby)', 'Generator', 'Spare-Standby', 'Yard', null),
+    ] },
+  { id: 'cs10', number: 'SCS-26-00010', date: '2026-09-27', location: 'Jebel Ali Main Yard', countedBy: 'Grace Fernandez', status: 'Completed', confirmedBy: 'Sanjay Kumar', type: 'Fixed Assets', lines: [], adjustmentNo: 'ADJ-26-00026', adjustmentStatus: 'Approved',
+    log: [{ when: '2026-09-27 17:30', title: 'Stock Adjustment raised', detail: 'ADJ-26-00026 sent for approval', by: 'Grace Fernandez' }, { when: '2026-09-28 10:15', title: 'Approved', detail: 'Missing standby engine logged for follow-up with the workshop', by: 'Hamdan Al Suwaidi' }],
+    assetLines: [
+      al(44, 'Diesel Generator 100 KVA Cummins C100D5 (Unit 3)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(48, 'Diesel Generator 200 KVA Cummins C200D5 (Unit 3)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(57, 'Diesel Generator 500 KVA Cummins C500D5 (Unit 5)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(62, 'Diesel Generator 1000 KVA Cummins C1000D5 (Unit 3)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(66, 'Diesel Generator 1500 KVA Cummins C1500D5 (Unit 2)', 'Generator', 'Owned', 'Ready for Hire', 'Found'),
+      al(69, 'POD 20 ft Power Container (Unit 2)', 'POD', 'Owned', 'Ready for Hire', 'Found'),
+      al(76, 'Synchronizing Panel 1250A (Unit 2)', 'Panel', 'Owned', 'Yard', 'Found'),
+      al(79, 'Cable Tray Set Galvanised (60 m)', 'Tray', 'Owned', 'Yard', 'Found'),
+      al(67, 'Cummins Spare Engine QSX15-E500', 'Spare Engine', 'Spare-Standby', 'Yard', 'Not Found', 'Workshop collected it for a trial fit on a 500 KVA set; no movement entered'),
+    ] },
+  { id: 'cs11', number: 'SCS-26-00011', date: '2026-09-30', location: 'Jebel Ali Main Yard', countedBy: 'Sanjay Kumar', status: 'Completed', confirmedBy: 'Grace Fernandez', adjustmentNo: 'ADJ-26-00027', adjustmentStatus: 'Pending Approval',
+    reason: 'Two Perkins oil filters found damaged, one fan belt returned from a van not posted, a 20 m cable cut length written off, ten kg of grease used in the workshop without an issue',
+    log: [{ when: '2026-09-30 15:45', title: 'Stock Adjustment raised', detail: 'ADJ-26-00027 sent for approval', by: 'Sanjay Kumar' }], lines: [
+    ln('i13', 'ITM-0301', 'Oil Filter (Perkins 1106)', 'Nos', 24, 22), ln('i14', 'ITM-0302', 'Air Filter (Cummins QSX15)', 'Nos', 5, 5), ln('i15', 'ITM-0303', 'Fuel Filter (Cummins C-Series)', 'Nos', 30, 30), ln('i16', 'ITM-0304', 'Coolant Extended Life 50/50 (20 L)', 'Drum', 10, 10),
+    ln('i18', 'ITM-0306', 'Fan Belt (Perkins 1106)', 'Nos', 12, 13), ln('i20', 'ITM-0308', 'Battery 12V 100Ah', 'Nos', 14, 14), ln('i24', 'ITM-0312', 'Power Cable 4C x 95 mm', 'Meter', 900, 880), ln('i28', 'ITM-0316', 'Lithium Grease EP2', 'Kg', 120, 110),
+    ln('i31', 'ITM-0319', 'Fire Extinguisher DCP 9 kg', 'Nos', 8, 8), ln('i32', 'ITM-0320', 'Hydraulic Oil ISO 68 (20 L)', 'Drum', 3, 3)] },
+);
 /** Rows for the Physical Stock Variance Report, built from the live count sessions (the seed sessions until the app has loaded them). */
 export function countVarianceRows(): Record<string, any>[] {
   const live = getCollection<CountSession>('inventory.counts');
@@ -504,3 +815,23 @@ export const disposalSeed: DisposalRec[] = [
     { when: '2026-09-21 10:15', title: 'Request raised', by: 'Grace Fernandez' }, { when: '2026-09-21 10:20', title: 'Submitted for approval', by: 'Grace Fernandez' }, { when: '2026-09-25 12:30', title: 'Approved', detail: 'Asset marked Disposed. Sold as is for parts', by: 'Ahmed Al Khouri' }] },
   { id: 'dp6', number: 'DSP-26-00008', assetId: 'AST-1038', reason: 'End of Useful Life', method: 'Sale', value: 30000, docs: [], status: 'Draft', date: '2026-09-29', log: [{ when: '2026-09-29 14:00', title: 'Request raised', by: 'Sanjay Kumar' }] },
 ];
+disposalSeed.push(
+  { id: 'dp7', number: 'DSP-26-00009', assetId: 'AST-1082', reason: 'End of Useful Life', method: 'Sale', value: 41000, docs: ['valuation-AST-1082.pdf', 'sale-offer-AST-1082.pdf'], status: 'Approved', date: '2026-08-18',
+    outcome: { date: '2026-09-02', buyer: 'Al Noor Events Management', buyerSource: 'Customer list', saleValue: 41000, invoiceRef: 'INV-26-00452', journalRef: 'JV-26-00361', nbvAtDisposal: 0, by: 'Priya Menon' }, log: [
+    { when: '2026-08-18 10:00', title: 'Request raised', by: 'Sanjay Kumar' }, { when: '2026-08-18 10:20', title: 'Submitted for approval', by: 'Sanjay Kumar' }, { when: '2026-08-21 11:15', title: 'Approved', detail: 'Asset marked Disposed', by: 'Ahmed Al Khouri' },
+    { when: '2026-09-02 14:40', title: 'Sale completed', detail: 'Sold to Al Noor Events Management for AED 41,000; Sales Invoice INV-26-00452; journal JV-26-00361', by: 'Priya Menon' }] },
+  { id: 'dp8', number: 'DSP-26-00010', assetId: 'AST-1083', reason: 'End of Useful Life', method: 'Scrap', value: 5200, docs: ['scrap-quote-AST-1083.pdf'], status: 'Approved', date: '2026-09-02',
+    outcome: { date: '2026-09-17', buyer: 'Emirates Metal Recycling LLC', buyerSource: 'Entered manually', saleValue: 5200, invoiceRef: 'INV-26-00455', scrapRef: 'SCR-26-00014', journalRef: 'JV-26-00363', nbvAtDisposal: 0, by: 'Priya Menon' }, log: [
+    { when: '2026-09-02 09:45', title: 'Request raised', by: 'Sanjay Kumar' }, { when: '2026-09-02 09:55', title: 'Submitted for approval', by: 'Sanjay Kumar' }, { when: '2026-09-04 10:30', title: 'Approved', detail: 'Asset marked Disposed', by: 'Ahmed Al Khouri' },
+    { when: '2026-09-17 15:25', title: 'Scrap invoiced', detail: 'Invoice INV-26-00455 to Emirates Metal Recycling LLC for AED 5,200; scrap note SCR-26-00014; journal JV-26-00363', by: 'Priya Menon' }] },
+  { id: 'dp9', number: 'DSP-26-00011', assetId: 'AST-1087', reason: 'End of Useful Life', method: 'Sale', value: 36000, docs: ['valuation-AST-1087.pdf', 'mulkiya-AST-1087.pdf'], status: 'Approved', date: '2026-09-08',
+    outcome: { date: '2026-09-26', buyer: 'Al Jazeera Used Trucks Trading', buyerSource: 'Entered manually', saleValue: 36000, invoiceRef: 'INV-26-00458', journalRef: 'JV-26-00365', nbvAtDisposal: 0, by: 'Priya Menon' }, log: [
+    { when: '2026-09-08 11:00', title: 'Request raised', by: 'Grace Fernandez' }, { when: '2026-09-08 11:10', title: 'Submitted for approval', by: 'Grace Fernandez' }, { when: '2026-09-10 09:50', title: 'Approved', detail: 'Asset marked Disposed. Vehicle registration to be cancelled with the RTA', by: 'Ahmed Al Khouri' },
+    { when: '2026-09-26 13:30', title: 'Sale completed', detail: 'Sold to Al Jazeera Used Trucks Trading for AED 36,000; Sales Invoice INV-26-00458; journal JV-26-00365', by: 'Priya Menon' }] },
+  { id: 'dp10', number: 'DSP-26-00012', assetId: 'AST-1076', reason: 'Other', method: 'Sale', value: 30000, docs: ['valuation-AST-1076.pdf'], status: 'Pending Approval', date: '2026-09-29',
+    log: [{ when: '2026-09-29 10:10', title: 'Request raised', detail: 'Analogue paralleling panel, replaced by a digital synchronizing panel in the fleet', by: 'Sanjay Kumar' }, { when: '2026-09-29 10:25', title: 'Submitted for approval', by: 'Sanjay Kumar' }] },
+  { id: 'dp11', number: 'DSP-26-00013', assetId: 'AST-1079', reason: 'Damaged Beyond Repair', method: 'Scrap', value: 1800, docs: [], status: 'Draft', date: '2026-09-30',
+    log: [{ when: '2026-09-30 11:05', title: 'Request raised', detail: 'Trays corroded after storage near the coast, scrap value to be confirmed', by: 'Grace Fernandez' }] },
+  { id: 'dp12', number: 'DSP-26-00014', assetId: 'AST-1068', reason: 'Damaged Beyond Repair', method: 'Scrap', value: 12000, docs: ['workshop-report-AST-1068.pdf'], status: 'Rejected', date: '2026-09-22',
+    log: [{ when: '2026-09-22 15:00', title: 'Request raised', by: 'Sanjay Kumar' }, { when: '2026-09-22 15:10', title: 'Submitted for approval', by: 'Sanjay Kumar' }, { when: '2026-09-24 10:40', title: 'Rejected', detail: 'Overhaul quote is well below the replacement cost, the engine will be repaired', by: 'Ahmed Al Khouri' }] },
+);

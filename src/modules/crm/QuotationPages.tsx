@@ -70,7 +70,7 @@ export function QuotationForm() {
     if (Object.keys(e).length || le.length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const { oppNo, title, ...rest } = f;
     void oppNo; void title;
-    const rec = { ...(ex ?? { version: 1, status: 'Draft', log: [log('Quotation created')] }), ...rest, id: ex?.id ?? `qt${Date.now()}`, number: ex?.number ?? nextNumber('QT', 90), date: ex?.date ?? TODAY, customerId: opp!.customerId, discountPct: Number(f.discountPct) || 0 } as Quotation;
+    const rec = { ...(ex ?? { version: 1, status: 'Draft', log: [log('Quotation created')] }), ...rest, id: ex?.id ?? `qt${Date.now()}`, number: ex?.number ?? nextNumber('QT', 108), date: ex?.date ?? TODAY, customerId: opp!.customerId, discountPct: Number(f.discountPct) || 0 } as Quotation;
     if (ex) quotes.update(rec.id, { ...rec, log: [log('Quotation edited', 'Field changes recorded in the audit trail'), ...ex.log] }); else { quotes.add(rec); opps.update(opp!.id, { quotationId: rec.id, stage: ['Enquiry', 'Qualified'].includes(opp!.stage) ? 'Quoted' : opp!.stage }); }
     if (f.pushToOpp) opps.update(opp!.id, { estimated: Math.round(docTotals(f.lines, f.discountPct, f.vatType).total) });
     toast(ex ? 'Quotation updated' : 'Quotation created');

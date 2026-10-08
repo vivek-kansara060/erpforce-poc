@@ -72,17 +72,20 @@ export const COLA = {
   debitNotes: 'accounting.debitNotes', journals: 'accounting.journals', rentalRuns: 'accounting.rentalRuns', schedFail: 'accounting.scheduleFailures',
 } as const;
 /**
- * One call site per series. The seed raises these to its highest number before the first runtime document, so new numbers always follow the seeded ones.
- * INV starts after 415, the highest invoice number already referenced by the CRM and Inventory seeds.
+ * One call site per series. The seed raises these to its highest number (its own, and the ones other seeds already reference: invoice refs on Sales Order lines,
+ * job cards and disposals, journal refs on disposals) before the first runtime document, so new numbers always follow the seeded ones. The values here are a fallback.
+ * Numbers are drawn at call time: seedRunner (set by seed.ts) makes sure the seed has run, and so has raised SEED_MAX, before a number is drawn.
  */
-export const SEED_MAX: Record<string, number> = { INV: 415, BILL: 23, PAY: 30, CRN: 8, DBN: 3, JV: 199, RUN: 12 };
-export const nextInvoiceNo = () => nextNumber('INV', SEED_MAX.INV);
-export const nextBillNo = () => nextNumber('BILL', SEED_MAX.BILL);
-export const nextPaymentNo = () => nextNumber('PAY', SEED_MAX.PAY);
-export const nextCreditNo = () => nextNumber('CRN', SEED_MAX.CRN);
-export const nextDebitNo = () => nextNumber('DBN', SEED_MAX.DBN);
-export const nextJournalNo = () => nextNumber('JV', SEED_MAX.JV);
-export const nextRunNo = () => nextNumber('RUN', SEED_MAX.RUN);
+export const SEED_MAX: Record<string, number> = { INV: 458, BILL: 40, PAY: 120, CRN: 8, DBN: 6, JV: 400, RUN: 14 };
+export const seedRunner: { run?: () => void } = {};
+const drawNo = (prefix: string) => { seedRunner.run?.(); return nextNumber(prefix, SEED_MAX[prefix]); };
+export const nextInvoiceNo = () => drawNo('INV');
+export const nextBillNo = () => drawNo('BILL');
+export const nextPaymentNo = () => drawNo('PAY');
+export const nextCreditNo = () => drawNo('CRN');
+export const nextDebitNo = () => drawNo('DBN');
+export const nextJournalNo = () => drawNo('JV');
+export const nextRunNo = () => drawNo('RUN');
 export const seriesNo = (prefix: string, n: number) => `${prefix}-26-${String(n).padStart(5, '0')}`;
 export const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 

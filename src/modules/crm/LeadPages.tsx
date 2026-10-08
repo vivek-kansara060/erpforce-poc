@@ -100,7 +100,7 @@ export function LeadForm() {
     setErr(e);
     if (!draft && Object.keys(e).length) { toast('Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const company = f.leadType === 'Individual' ? `${f.firstName} ${f.lastName}`.trim() : f.company;
-    const rec = { ...(ex ?? { comms: [] }), ...f, id: ex?.id ?? `ld${Date.now()}`, number: ex?.number ?? nextNumber('LD', 36), date: ex?.date ?? TODAY, company, contact: f.contact || f.responsible, probability: LEAD_PROBABILITY[f.status] ?? 0,
+    const rec = { ...(ex ?? { comms: [] }), ...f, id: ex?.id ?? `ld${Date.now()}`, number: ex?.number ?? nextNumber('LD', 50), date: ex?.date ?? TODAY, company, contact: f.contact || f.responsible, probability: LEAD_PROBABILITY[f.status] ?? 0,
       lostReason: needsLost(f.status) ? f.lostReason : undefined, recordStatus: draft ? 'Draft' : f.recordStatus === 'Draft' ? 'Active' : f.recordStatus, annualRevenue: Number(f.annualRevenue) || undefined } as Lead;
     if (ex) leads.update(rec.id, rec); else leads.add(rec);
     toast(draft ? 'Lead saved as draft' : ex ? 'Lead updated' : 'Lead created');

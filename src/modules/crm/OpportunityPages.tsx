@@ -112,7 +112,7 @@ export function OpportunityForm() {
   });
   const zero = (f.lines as Line[]).filter(isRentalLine).filter((l) => l.group && l.category && (() => { const a = availability(l.group, l.category, fleet.rows); return a.owned.length + a.cross.length === 0; })());
   const write = () => {
-    const rec = { ...(ex ?? {}), ...f, id: ex?.id ?? `op${Date.now()}`, number: ex?.number ?? nextNumber('OP', 30), date: ex?.date ?? TODAY, estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 } as Opportunity;
+    const rec = { ...(ex ?? {}), ...f, id: ex?.id ?? `op${Date.now()}`, number: ex?.number ?? nextNumber('OP', 48), date: ex?.date ?? TODAY, estimated: Number(f.estimated) || 0, probability: Number(f.probability) || 0 } as Opportunity;
     if (ex) opps.update(rec.id, rec); else opps.add(rec);
     toast(ex ? 'Opportunity updated' : 'Opportunity created');
     nav(`/crm/opportunities/${rec.id}`);
