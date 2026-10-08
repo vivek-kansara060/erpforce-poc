@@ -22,7 +22,7 @@ import { RowMenu, type RowMenuItem } from './shared';
 import { AvailabilityBadge, R, TO_CONFIRM, aed, useServiceCharges } from './shared';
 
 type Mode = 'opp' | 'quote' | 'order';
-const kindLabel = (a: string) => (a === 'Rental' ? 'Equipment' : a === 'Fixed Asset Trading' ? 'Asset' : a === 'Service' ? 'Service charge' : a);
+export const kindLabel = (a: string) => (a === 'Rental' ? 'Equipment' : a === 'Fixed Asset Trading' ? 'Asset' : a === 'Service' ? 'Service charge' : a);
 const stock = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 
 interface Col { id: string; label: string; change?: 'new' | 'changed'; vis: boolean; right?: boolean; only?: Mode[]; render: (l: Line, i: number, c: Ctx) => ReactNode }
@@ -136,7 +136,7 @@ export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pr
  * Item dialog. Existing fields kept (Item, UOM, Description, Quantity, Rate, Discount, Tax, Location, dates). Field order follows the 5 Oct call: what the user types
  * comes first (Category, Subcategory, Pricing, Description, UOM, Quantity, FOC); frequency and dates are derived and sit below. Service lines come from the Inventory service items.
  */
-function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, docFrequency, onClose, onSave }: { line: Line; isNew: boolean; header: string; mode: Mode; vat: string; pricing: PricingRec[]; fleet?: HeavyRec[]; contract?: { start?: string; end?: string }; docFrequency?: string; onClose: () => void; onSave: (l: Line, again: boolean) => void }) {
+export function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, docFrequency, onClose, onSave }: { line: Line; isNew: boolean; header: string; mode: Mode; vat: string; pricing: PricingRec[]; fleet?: HeavyRec[]; contract?: { start?: string; end?: string }; docFrequency?: string; onClose: () => void; onSave: (l: Line, again: boolean) => void }) {
   const services = useServiceCharges().rows;
   const [l, setL] = useState<Line>(line);
   const [err, setErr] = useState<Record<string, string>>({});

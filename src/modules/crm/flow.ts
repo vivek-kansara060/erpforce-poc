@@ -220,7 +220,7 @@ export interface DeliveryInput {
 /** Free-of-charge extras added while delivering (a barricade, 500 m of cable...). They become zero-priced lines on the Sales Order so they stay traceable. */
 export function addFocLines(soId: string, lines: Line[]) {
   if (!lines.length) return;
-  saveOrder(soId, (x) => ({ ...x, lines: [...x.lines, ...lines], log: [log(`${lines.length} FOC item(s) added at delivery`, lines.map((l) => `${l.item} x ${l.qty}`).join(', '), 'blue'), ...x.log] }));
+  saveOrder(soId, (x) => ({ ...x, lines: [...x.lines, ...lines], log: [log(`${lines.length} extra item(s) added at delivery`, lines.map((l) => `${l.item} x ${l.qty}`).join(', '), 'blue'), ...x.log] }));
 }
 export function createDelivery(i: DeliveryInput): Delivery {
   // The vehicle is re-checked here, before anything is saved, so a stale screen can never double-book it.

@@ -1,14 +1,14 @@
 import { PrintDialog } from './ActionDialogs';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Alert, Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Checkbox, Chip, FormControlLabel, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material';
 import dayjs from 'dayjs';
 import { employees, suppliers } from '@/mock-data/masters';
 import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { DataTable } from '@/components/DataTable';
-import { AppDialog, useToast } from '@/components/Dialogs';
-import { MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
+import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
+import { SelectInput, TextInput } from '@/components/Form';
 import { SignaturePad } from '@/components/Flow';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
@@ -18,7 +18,8 @@ import { neutral } from '@/theme/color';
 import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
 import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, useTrips } from './shared';
+import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, usePricing, useTrips } from './shared';
+import { ItemModal, kindLabel } from './Items';
 import { ArrangeTransportDialog, TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
@@ -99,7 +100,8 @@ export function DeliveryForm() {
   const [tp, setTp] = useState(blankTransport);
   const [trace, setTrace] = useState<string | null>(null);
   const [focLines, setFocLines] = useState<Line[]>([]);
-  const [focOpen, setFocOpen] = useState(false);
+  const [extraLine, setExtraLine] = useState<Line | null>(null);
+  const pricing = usePricing();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(f.soId);
   const pending = [...pendingOf(so), ...focLines];
@@ -152,7 +154,7 @@ export function DeliveryForm() {
               <Section title="Items" hint="Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.">
                 <ItemsGrid pending={pending} items={items} fleetRows={fleet.rows} onTrace={setTrace} onQty={(id, q) => set('items', { ...items, [id]: { ...(items[id] ?? { lineId: id, assetIds: [] }), qty: q } })} />
                 {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
-                {so && <Box sx={{ mt: 1 }}><Button size="small" variant="outlined" onClick={() => setFocOpen(true)}>+ Add FOC item</Button></Box>}
+                {so && <Box sx={{ mt: 1 }}><MenuButton label="+ Add Extra Item" variant="outlined" items={(so.activity === 'Fixed Asset Trading' ? ['Fixed Asset Trading', 'Trading'] : ['Rental', 'Trading']).map((k) => ({ label: kindLabel(k), onClick: () => setExtraLine(k === 'Rental' || k === 'Fixed Asset Trading' ? mkLine({ activity: k as Line['activity'], item: '', group: 'Generator', frequency: k === 'Rental' ? 'Monthly' : undefined, start: k === 'Rental' ? so.contractStart : undefined, end: k === 'Rental' ? so.contractEnd : undefined }) : mkLine({ activity: k as Line['activity'], item: '', unit: 'Nos' })) }))} /></Box>}
                 {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
               </Section>
               <Section title="Transportation" change="changed" req={R.fleet} hint="Own Fleet creates a trip for the chosen vehicle and driver. An external transporter's cost is recorded on the trip and posted to the order once.">
@@ -193,7 +195,8 @@ export function DeliveryForm() {
           { label: 'Promotion', content: <Text type="s4">No promotion applies to a Delivery Order.</Text> },
         ]} />
       </Page>
-      {focOpen && so && <FocDialog so={so} onClose={() => setFocOpen(false)} onAdd={(l) => { setFocLines((x) => [...x, l]); set('items', { ...items, [l.id]: { lineId: l.id, qty: serial(l) ? 0 : l.qty, assetIds: [] } }); setFocOpen(false); }} />}
+      {extraLine && so && <ItemModal line={extraLine} isNew header={so.activity} mode="order" vat={so.vatType} pricing={pricing.rows} fleet={fleet.rows} contract={{ start: so.contractStart, end: so.contractEnd }} docFrequency={so.lines.find((x) => x.activity === 'Rental' && x.frequency)?.frequency} onClose={() => setExtraLine(null)}
+        onSave={(l) => { setFocLines((x) => [...x, l]); set('items', { ...items, [l.id]: { lineId: l.id, qty: serial(l) ? 0 : l.qty, assetIds: [] } }); setExtraLine(null); }} />}
       {traceLine && <TraceDialog line={traceLine} current={items[traceLine.id]} fleetRows={fleet.rows} onClose={() => setTrace(null)} onSave={(it) => { set('items', { ...items, [traceLine.id]: it }); setTrace(null); }} />}
     </>
   );
@@ -239,6 +242,7 @@ function TraceDialog({ line, current, fleetRows, onClose, onSave }: { line: Line
   const choices = [...av.owned, ...av.cross];
   const max = remainingOf(line);
   const differs = sub !== line.category;
+  const full = ids.length >= max;
   return (
     <AppDialog open title={`Trace Details: ${line.item}`} onClose={onClose} maxWidth="md" confirmLabel="Save" confirmDisabled={ids.length > max} onConfirm={() => onSave({ lineId: line.id, qty: ids.length, assetIds: ids, deliveredSub: sub })}>
       <Box sx={{ display: 'grid', gridTemplateColumns: { md: '1fr 1fr' }, gap: 2 }}>
@@ -246,11 +250,23 @@ function TraceDialog({ line, current, fleetRows, onClose, onSave }: { line: Line
         <SelectInput label="Subcategory" required change="new" req={R.meet} value={sub} options={categoryOptions(line.group)} onChange={(v) => { setSub(v); setIds([]); }} hint={`Requested ${line.category}; change it to substitute`} />
       </Box>
       {differs && <Alert severity="warning" sx={{ mt: 2 }}>Delivering {line.group} {sub} against a request for {line.category}. {reqAv.owned.length + reqAv.cross.length > 0 ? `${reqAv.owned.length + reqAv.cross.length} unit(s) of the requested ${line.category} are Ready for Hire. ` : ''}This is logged as an allocation change; client documents keep the requested spec.</Alert>}
-      <Box sx={{ mt: 2 }}>
-        <MultiSelectInput label={`Assigned Asset(s), up to ${max}`} required value={ids} options={choices.map((a) => ({ value: a.id, label: `${a.assetId} - ${a.name}${a.ownership === 'Cross-Hired' ? ' (Cross-Hired)' : ''}` }))} onChange={setIds} error={ids.length > max ? `Only ${max} unit(s) remain` : undefined}
-          hint="Only Ready for Hire units of this Category and Subcategory are listed" />
+      <Box sx={{ mt: 1.5 }}>
+        <Autocomplete multiple disableCloseOnSelect size="small" limitTags={3} options={choices} value={choices.filter((a) => ids.includes(a.id))} noOptionsText={choices.length ? 'No unit matches the search' : `No unit of ${line.group} ${sub} is Ready for Hire`}
+          getOptionLabel={(a) => `${a.assetId} - ${a.name}`} isOptionEqualToValue={(a, b) => a.id === b.id} getOptionDisabled={(a) => full && !ids.includes(a.id)}
+          filterOptions={(opts, st) => { const n = st.inputValue.trim().toLowerCase(); return n ? opts.filter((a) => [a.assetId, a.name, a.brand, a.model, a.engineNo, a.ownership].some((x) => String(x ?? '').toLowerCase().includes(n))) : opts; }}
+          onChange={(_, v) => setIds(v.slice(0, max).map((a) => a.id))}
+          renderTags={(v, getTagProps) => v.map((a, i) => <Chip {...getTagProps({ index: i })} key={a.id} size="small" label={a.assetId} />)}
+          renderOption={(props, a, { selected }) => (
+            <li {...props} key={a.id} style={{ paddingTop: 2, paddingBottom: 2, paddingLeft: 6, paddingRight: 8 }}>
+              <Checkbox size="small" checked={selected} sx={{ p: 0.5, mr: 0.5 }} />
+              <Text type="s4">{a.assetId} - {a.name}</Text>
+              {a.ownership === 'Cross-Hired' && <Chip size="small" color="warning" label="Cross-Hired" sx={{ ml: 0.75, height: 18, fontSize: 11 }} />}
+            </li>
+          )}
+          renderInput={(params) => <TextField {...params} label={`Assigned Asset(s), ${ids.length} of ${max} selected`} placeholder={ids.length ? '' : 'Search by asset ID, name, brand, model or serial'} />}
+          ListboxProps={{ style: { maxHeight: 240, paddingTop: 2, paddingBottom: 2 } }} />
+        <Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>Only Ready for Hire units of this Category and Subcategory are listed.{full ? ` All ${max} unit(s) to deliver are selected.` : ''}</Text>
       </Box>
-      {choices.length === 0 && <Alert severity="warning" sx={{ mt: 2 }}>No unit of {line.group} {sub} is Ready for Hire. Raise a Cross-Hire from the Sales Order.</Alert>}
     </AppDialog>
   );
 }
@@ -337,38 +353,3 @@ export function DeliveryView() {
   );
 }
 
-/**
- * FOC extras added at delivery (5 Oct call): a normal inventory item or a fixed asset, zero price, still traced.
- * A fixed asset given free with a rental is lent, not sold: it becomes a zero-priced Rental line, goes On Hire and comes back on return.
- * Only on a Fixed Asset Trading order is it a sale.
- */
-function FocDialog({ so, onClose, onAdd }: { so: SalesOrder; onClose: () => void; onAdd: (l: Line) => void }) {
-  const lent = so.activity !== 'Fixed Asset Trading';
-  const [kind, setKind] = useState<'Inventory item' | 'Fixed asset'>('Inventory item');
-  const [item, setItem] = useState('');
-  const [group, setGroup] = useState('Generator');
-  const [sub, setSub] = useState('');
-  const [qty, setQty] = useState('1');
-  const stock = liveItems().filter((i) => i.type !== 'Service' && i.tracking !== 'Serialized' && i.classification !== 'Rental');
-  const ok = Number(qty) > 0 && (kind === 'Inventory item' ? !!item : !!group && !!sub);
-  return (
-    <AppDialog open title="Add FOC item" onClose={onClose} confirmLabel="Add" confirmDisabled={!ok}
-      onConfirm={() => {
-        const m = stock.find((i) => i.name === item);
-        onAdd(kind === 'Inventory item'
-          ? mkLine({ activity: 'Trading', item, desc: item, unit: m?.unit ?? 'Nos', qty: Number(qty), price: 0, foc: true })
-          : lent
-            ? mkLine({ activity: 'Rental', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true, start: so.contractStart, end: so.contractEnd })
-            : mkLine({ activity: 'Fixed Asset Trading', item: `${group} ${sub} (FOC)`, desc: `${group} ${sub}, free of charge`, group, category: sub, qty: Number(qty), price: 0, foc: true }));
-      }}>
-      <Alert severity="info" sx={{ mb: 2 }}>Free of charge, no price. It is added to the Sales Order as a zero-priced line so what was asked and what was delivered stay traceable.</Alert>
-      <Box sx={{ display: 'grid', gap: 2 }}>
-        <SelectInput label="Type" value={kind} options={['Inventory item', 'Fixed asset']} onChange={(v) => setKind(v as 'Inventory item' | 'Fixed asset')} />
-        {kind === 'Inventory item'
-          ? <SelectInput label="Item" required value={item} options={stock.map((i) => i.name)} onChange={setItem} />
-          : <><SelectInput label="Category" required value={group} options={lent ? rentalGroupOptions() : groupOptions()} onChange={(v) => { setGroup(v); setSub(''); }} /><SelectInput label="Subcategory" required value={sub} options={categoryOptions(group)} onChange={setSub} hint="Choose the exact asset with Trace after adding" /></>}
-        <TextInput label="Quantity" required type="number" value={qty} onChange={setQty} />
-      </Box>
-    </AppDialog>
-  );
-}

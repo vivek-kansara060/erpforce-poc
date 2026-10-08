@@ -205,7 +205,7 @@ export const RMA_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Pending Re
 export interface ReturnItem { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string }
 /** One asset on a Goods Receipt: where it arrived, its serial confirmed (Track Details) and the yard inspection (Operations Return Checklist). */
 export interface ReturnGrnItem {
-  itemId: string; assetId: string; yard: string; reachedYard: string; tracked: boolean; inspection: 'Pending Inspection' | 'Passed' | 'Damage Found'; yardChecklist: string[];
+  itemId: string; assetId: string; yard: string; reachedYard: string; /** the serial number was confirmed against the nameplate in the yard inspection */ tracked: boolean; inspection: 'Pending Inspection' | 'Passed' | 'Damage Found'; yardChecklist: string[];
   damageCharge?: number; damageNote?: string; waiverApplied?: boolean; outcome?: string;
 }
 export interface ReturnGrn { id: string; number: string; date: string; status: 'Pending' | 'Validated'; items: ReturnGrnItem[] }

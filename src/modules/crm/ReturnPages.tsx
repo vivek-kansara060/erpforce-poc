@@ -396,9 +396,8 @@ export function ReturnGrnForm() {
             { key: 'item', label: 'Item', render: (i) => label(assetById(i.assetId)) }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'qty', label: 'Quantity', align: 'right', render: () => 1 }, { key: 'rem', label: 'Remaining', align: 'right', render: () => 0 },
             { key: 'yard', label: 'Yard', change: 'new', req: R.rreturn, render: (i) => <Box sx={{ width: 220 }}><SelectInput label="" value={val(i).yard} options={yards()} onChange={(v) => setYard({ ...yard, [i.id]: { ...val(i), yard: v } })} /></Box> },
             { key: 'reached', label: 'Reached Yard', change: 'new', req: R.rreturn, render: (i) => <TextField size="small" type="datetime-local" value={val(i).reached} onChange={(e) => setYard({ ...yard, [i.id]: { ...val(i), reached: e.target.value } })} InputLabelProps={{ shrink: true }} /> },
-            { key: 'trace', label: 'Track Details', render: () => <Text type="s5">Added on the Goods Receipt after saving</Text> },
           ]} />
-          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Off-Hire assets go to the Yard first, never straight to Ready for Hire. Validate the receipt after tracking and inspecting each asset.</Text>
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Off-Hire assets go to the Yard first, never straight to Ready for Hire. Validate the receipt after inspecting each asset in the yard.</Text>
         </Section>
       </Page>
     </>
@@ -412,8 +411,7 @@ export function ReturnGrnView() {
   const r = useReturns().get(id);
   const g = r?.grns.find((x) => x.id === gid);
   const YARD_CHECKLIST = useMaster('yardChecklist').values;
-  const [trk, setTrk] = useState<string | null>(null);
-  const [insp, setInsp] = useState<{ itemId: string; res: string; checks: string[]; amount: string; note: string } | null>(null);
+  const [insp, setInsp] = useState<{ itemId: string; res: string; checks: string[]; amount: string; note: string; serial: boolean } | null>(null);
   const [del, setDel] = useState(false);
   const orders = useOrders();
   const waiver = useMemo(() => hasWaiver(orders.get(r?.soId)?.lines ?? []), [orders.rows, r?.soId]);
@@ -421,13 +419,11 @@ export function ReturnGrnView() {
   const done = g.status === 'Validated';
   const upd = (itemId: string, p: Partial<ReturnGrnItem>) => saveReturnGrn(r.id, g.id, (x) => ({ ...x, items: x.items.map((i) => (i.itemId === itemId ? { ...i, ...p } : i)) }));
   const validate = () => {
-    if (g.items.some((i) => !i.tracked)) { toast('Please add the tracking details to validate', 'error'); return; }
-    if (g.items.some((i) => i.inspection === 'Pending Inspection')) { toast('Record the yard inspection of every asset to validate', 'error'); return; }
+    if (g.items.some((i) => i.inspection === 'Pending Inspection' || !i.tracked)) { toast('Record the yard inspection of every asset, with its serial number confirmed, to validate', 'error'); return; }
     validateReturnGrn(r.id, g.id); toast('Validated. The assets are in the yard and their status follows the inspection');
   };
-  const trkItem = g.items.find((i) => i.itemId === trk);
-  const a = trkItem ? assetById(trkItem.assetId) : undefined;
-  const okInspect = insp && (insp.res === 'Passed' ? insp.checks.length === YARD_CHECKLIST.length : (waiver || Number(insp.amount) > 0) && insp.note.trim());
+  const inspAsset = insp ? assetById(g.items.find((i) => i.itemId === insp.itemId)?.assetId ?? '') : undefined;
+  const okInspect = insp && insp.serial && (insp.res === 'Passed' ? insp.checks.length === YARD_CHECKLIST.length : (waiver || Number(insp.amount) > 0) && insp.note.trim());
   return (
     <>
       <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g.number }]} status={<StatusChip status={g.status} tone={tone(g.status)} />}
@@ -442,25 +438,16 @@ export function ReturnGrnView() {
           <DataTable hideToolbar rows={g.items.map((i) => ({ ...i, id: i.itemId }))} columns={[
             { key: 'asset', label: 'Item', render: (i) => label(assetById(i.assetId)) }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'qty', label: 'Quantity', align: 'right', render: () => 1 },
             { key: 'yard', label: 'Yard', change: 'new', req: R.rreturn }, { key: 'reached', label: 'Reached Yard', change: 'new', req: R.rreturn },
-            { key: 'track', label: 'Track Details', render: (i) => <IconButton size="small" disabled={done} onClick={() => setTrk(i.itemId)}>{i.tracked ? <CheckCircleOutlineIcon sx={{ color: '#2EB273' }} /> : <AddCircleOutlineIcon />}</IconButton> },
-            { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, render: (i) => (done ? <StatusChip status={i.inspection} tone={tone(i.inspection)} /> : <Button size="small" variant="outlined" onClick={() => setInsp({ itemId: i.itemId, res: i.inspection === 'Damage Found' ? 'Damage Found' : 'Passed', checks: i.yardChecklist, amount: i.damageCharge ? String(i.damageCharge) : '', note: i.damageNote ?? '' })}>{i.inspection === 'Pending Inspection' ? 'Inspect' : i.inspection}</Button>) },
+            { key: 'serial', label: 'Serial Number', render: (i) => assetById(i.assetId)?.engineNo ?? '-' },
+            { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, render: (i) => (done ? <StatusChip status={i.inspection} tone={tone(i.inspection)} /> : <Button size="small" variant="outlined" onClick={() => setInsp({ serial: i.tracked, itemId: i.itemId, res: i.inspection === 'Damage Found' ? 'Damage Found' : 'Passed', checks: i.yardChecklist, amount: i.damageCharge ? String(i.damageCharge) : '', note: i.damageNote ?? '' })}>{i.inspection === 'Pending Inspection' ? 'Inspect' : i.inspection}</Button>) },
             { key: 'out', label: 'Outcome', render: (i) => i.outcome ?? '-' }, { key: 'dmg', label: 'Damage Charge', render: (i) => (i.waiverApplied ? 'Covered by damage waiver' : i.damageCharge ? aed(i.damageCharge) : '-') },
           ]} />
         </Section>
       </Page>
-      <AppDialog open={!!trk} title="Track Details" onClose={() => setTrk(null)} maxWidth="md" confirmLabel="Save" onConfirm={() => { if (trk) upd(trk, { tracked: true }); setTrk(null); toast('Traceability is Completed.'); }}>
-        {a && <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 2fr' }, gap: 3 }}>
-          <ValueGrid cols={1}><ValueField label="Item" value={`${a.category} ${a.subCategory}`} /><ValueField label="Location" value={trkItem?.yard} /><ValueField label="Quantity" value="1" /><ValueField label="Unit of Measurement" value="Nos" /></ValueGrid>
-          <Box>
-            <Text type="s3" weight="medium" sx={{ mb: 1 }}>Lot/Serial Number Entries</Text>
-            <DataTable hideToolbar rows={[{ id: 's', sr: 1, serial: a.engineNo, bin: '-', qty: 1 }]} columns={[{ key: 'sr', label: 'Sr No.' }, { key: 'serial', label: 'Lot/Serial Number' }, { key: 'bin', label: 'Bin Number' }, { key: 'qty', label: 'Quantity', align: 'right' }]} />
-            <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>A rental asset is serialized: its own serial number, quantity 1. Save confirms it is the unit that came back.</Text>
-          </Box>
-        </Box>}
-      </AppDialog>
       <AppDialog open={!!insp} title="Yard inspection" onClose={() => setInsp(null)} maxWidth="md" confirmLabel="Save inspection" confirmDisabled={!okInspect}
-        onConfirm={() => { if (!insp) return; upd(insp.itemId, { inspection: insp.res as 'Passed' | 'Damage Found', yardChecklist: insp.checks, damageCharge: insp.res === 'Damage Found' && !waiver ? Number(insp.amount) : undefined, damageNote: insp.res === 'Damage Found' ? insp.note : undefined }); setInsp(null); }}>
+        onConfirm={() => { if (!insp) return; upd(insp.itemId, { tracked: true, inspection: insp.res as 'Passed' | 'Damage Found', yardChecklist: insp.checks, damageCharge: insp.res === 'Damage Found' && !waiver ? Number(insp.amount) : undefined, damageNote: insp.res === 'Damage Found' ? insp.note : undefined }); setInsp(null); }}>
         {insp && <FormGrid cols={1}>
+          <FormControlLabel sx={{ display: 'flex', bgcolor: '#F6F8F7', borderRadius: '8px', px: 1, mr: 0 }} control={<Checkbox size="small" checked={insp.serial} onChange={(e) => setInsp({ ...insp, serial: e.target.checked })} />} label={<Text type="s3">Serial number <b>{inspAsset?.engineNo ?? '-'}</b> ({inspAsset?.assetId}) matches the nameplate of the unit received</Text>} />
           <SelectInput label="Inspection Status" required value={insp.res} options={['Passed', 'Damage Found']} onChange={(v) => setInsp({ ...insp, res: v })} />
           <Box>{YARD_CHECKLIST.map((c) => <FormControlLabel key={c} sx={{ display: 'flex' }} control={<Checkbox size="small" checked={insp.checks.includes(c)} onChange={(e) => setInsp({ ...insp, checks: e.target.checked ? [...insp.checks, c] : insp.checks.filter((x) => x !== c) })} />} label={<Text type="s3">{c}</Text>} />)}
             <Text type="s5" color="theme.secondary.700">Operations Return Checklist, admin-configurable. {insp.res === 'Passed' ? 'Every item must be complete before the asset can become Ready for Hire.' : ''}</Text></Box>

@@ -112,7 +112,7 @@ export function ChRequestView() {
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
           <ValueField label="Entity" value={r.company} /><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Rental Order ID" value={r.soNumber} />
-          <ValueField label="Raised By" change="new" req={R_CH} value={r.raisedBy} /><ValueField label="Decision Right" change="new" req={R_CH} value={r.raisedRole ? `${r.raisedRole} (permission to initiate a cross-hire)` : undefined} /><ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
+          <ValueField label="Raised By" change="new" req={R_CH} value={r.raisedBy} /><ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
         </ValueGrid>
         <Panel title="Items" sx={{ mt: 3 }}>
           <DataTable hideToolbar rows={reqItems(r).map((i) => ({ ...i, id: i.lineId }))} columns={[
@@ -208,7 +208,7 @@ export function ChOrderView() {
   const all = useCrossHire();
   useBills();
   const c = all.get(id);
-  const [dlg, setDlg] = useState<'return' | 'supplier' | 'expense' | 'reissue' | null>(null);
+  const [dlg, setDlg] = useState<'return' | 'supplier' | 'reissue' | null>(null);
   const [tgt, setTgt] = useState('');
   const [ask, setAsk] = useState<'accept' | 'reject' | 'cancel' | 'close' | 'delete' | null>(null);
   const yardChecklist = useMaster('yardChecklist').values;
@@ -241,7 +241,6 @@ export function ChOrderView() {
           {st === 'Pending' && <MenuButton label="Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
           {st === 'Pending Approval' && <MenuButton label="Accept" variant="contained" items={[{ label: 'Accept', onClick: () => setAsk('accept') }, { label: 'Reject', onClick: () => setAsk('reject') }]} />}
           {st === 'Rejected' && <MenuButton label="Re-Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
-          {live && c.stage < 4 && <Button variant="outlined" onClick={() => setDlg('expense')}>Add Expense</Button>}
           {live && !myBills.length && <Button variant="outlined" onClick={() => nav(`/accounting/bills/add?crossHire=${c.id}`)}>Bill</Button>}
           {['Approved', 'Received', 'Billed'].includes(st) && !dropship && units.length < nUnits && <Button variant="contained" onClick={() => nav(`${base}/grns/add`)}>Receive</Button>}
           {st === 'Approved' && c.stage === 0 && dropship && <Button variant="contained" onClick={() => { markChShipped(c); toast('Marked shipped to the client site'); }}>Mark Shipped</Button>}
@@ -289,7 +288,6 @@ export function ChOrderView() {
                   ]} />
                 <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The order is by Category and Subcategory. Each asset received is one unit and moves through the lifecycle on its own; it is bound to a Sales Order at the Delivery Order.</Text>
               </>) },
-            { label: 'Expenses', content: <DataTable hideToolbar rows={(c.expenses ?? []).map((e, i) => ({ id: String(i), ...e }))} emptyText="No expenses" columns={[{ key: 'account', label: 'Account' }, { key: 'note', label: 'Narration' }, { key: 'amount', label: 'Total Amount', align: 'right', render: (x) => aed(x.amount) }]} /> },
             { label: 'Bills', change: 'new', req: R.cross, content: <DataTable hideToolbar rows={myBills} emptyText={dropship ? 'No bill yet. Create, Bill when the supplier invoice arrives' : 'The bill is created when the unit is received'} onRowClick={(b) => nav(`/accounting/bills/${b.id}`)} columns={[{ key: 'number', label: 'Bill' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice' }, { key: 'date', label: 'Date' }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (b) => aed(billTotal(b)) }, { key: 'a', label: 'Status', render: (b) => <StatusChip status={b.approval} /> }, { key: 'p', label: 'Payment', render: (b) => (b.approval === 'Approved' ? <StatusChip status={b.payStatus} /> : '-') }]} /> },
             { label: 'Stage history', content: <Timeline items={[...c.history].reverse()} /> },
           ]} />
@@ -311,9 +309,6 @@ export function ChOrderView() {
       </AppDialog>
       <AppDialog open={dlg === 'supplier'} title="Return to Supplier" onClose={() => setDlg(null)} confirmLabel="Close the loop" onConfirm={() => { returnToSupplier(c, Number(v.dispute) || 0, undefined, tgt || undefined); toast('Returned to supplier'); setDlg(null); }}>
         <FormGrid cols={1}><NumberInput label="Supplier dispute / additional charge (AED, if any)" value={v.dispute} onChange={(x) => setV({ ...v, dispute: x })} hint="Traced back to the client project so its true profitability is visible" /></FormGrid>
-      </AppDialog>
-      <AppDialog open={dlg === 'expense'} title="Expense Entry" onClose={() => setDlg(null)} confirmLabel="Add" confirmDisabled={!v.account || !Number(v.amount)} onConfirm={() => { addChExpense(c.id, { account: v.account, amount: Number(v.amount), note: v.note }); toast('Expense added'); setV({ ...v, account: '', amount: '', note: '' }); setDlg(null); }}>
-        <FormGrid cols={1}><SelectInput label="Account" required value={v.account} options={['Transportation Expense', 'Loading and Unloading', 'Fuel Expense', 'Insurance Expense', 'Other Direct Expense']} onChange={(x) => setV({ ...v, account: x })} /><NumberInput label="Total Amount (AED)" required value={v.amount} onChange={(x) => setV({ ...v, amount: x })} /><TextInput label="Narration" value={v.note} onChange={(x) => setV({ ...v, note: x })} /></FormGrid>
       </AppDialog>
     </>
   );
