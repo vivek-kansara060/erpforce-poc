@@ -2,10 +2,10 @@ import dayjs from 'dayjs';
 import { getCollection, nextNumber, seedCollection, setCollection } from '@/store/store';
 import { customers } from '@/mock-data/masters';
 import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
-import { billDisputeCharge, billFromCrossHire, billTripCharge, postTripExpense, reverseJournal, voidTripBill, invoiceFromDamage, invoiceAccumulated, invoiceFromJobCard, invoiceFromOrderLines, invoiceRentalPeriod } from '@/modules/accounting/engine';
+import { billDisputeCharge, billFromCrossHire, billTripCharge, postDeliveryExpense, postTripExpense, reverseJournal, voidTripBill, invoiceFromDamage, invoiceAccumulated, invoiceFromJobCard, invoiceFromOrderLines, invoiceRentalPeriod } from '@/modules/accounting/engine';
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
-  amcLine, docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, vehicleFreeOn, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
+  AMC_LIKE, amcLine, docTotals, expenseGross, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, vehicleFreeOn, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
   type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
@@ -89,11 +89,11 @@ export function quoteFromOpportunity(o: Opportunity): string {
   const end = yearEnd();
   const lines = o.lines.length
     ? o.lines.map((l) => ({ ...l, id: uid('ln'), assigned: [], crossHire: [], ...(l.activity === 'Rental' ? { frequency: 'Monthly', start: TODAY, end, item: `Rental ${l.group} ${l.category} Monthly`, desc: l.desc || l.item } : {}) }))
-    : [act === 'Rental' ? mkLine({ activity: 'Rental', item: '', group: 'Generator', frequency: 'Monthly', start: TODAY, end }) : act === 'AMC' ? amcLine(o.estimated || 0) : mkLine({ activity: act, item: '' })];
+    : [act === 'Rental' ? mkLine({ activity: 'Rental', item: '', group: 'Generator', frequency: 'Monthly', start: TODAY, end }) : act === 'AMC' ? amcLine(o.estimated || 0) : act === 'Service' ? mkLine({ activity: 'AMC', item: '', unit: 'Visit' }) : mkLine({ activity: act, item: '' })];
   const quote: Quotation = {
     id, number: nextNumber('QT', 108), date: TODAY, oppId: o.id, customerId: o.customerId, activity: act, entity: masterValues('entity')[0], paymentTerms: '30 days', currency: 'AED',
     contractType: act === 'Rental' ? 'Open PO' : undefined, contractStart: act === 'Rental' ? TODAY : undefined, contractEnd: act === 'Rental' ? end : undefined,
-    amcStart: act === 'AMC' ? TODAY : undefined, amcEnd: act === 'AMC' ? plusYear(TODAY) : undefined, visits: act === 'AMC' ? 4 : undefined, amcValue: act === 'AMC' ? o.estimated || 0 : undefined,
+    amcStart: AMC_LIKE.includes(act) ? TODAY : undefined, amcEnd: AMC_LIKE.includes(act) ? plusYear(TODAY) : undefined, visits: act === 'AMC' ? 4 : undefined, amcValue: AMC_LIKE.includes(act) ? o.estimated || 0 : undefined,
     description: o.title, validUntil: dayjs(TODAY).add(30, 'day').format('YYYY-MM-DD'), status: 'Draft', version: 1,
     preparedBy: o.owner, designation: 'Sales Representative', mobile: '+971 50 400 1101', email: 'sales@gulfpowerrentals.ae', template: '',
     terms: 'Payment: as per the payment terms from invoice date. Fuel is not included in the rental rate and is billed separately.', vatType: 'Standard (With VAT)', discountPct: 0, lines, pushToOpp: false,
@@ -118,7 +118,8 @@ export function orderFromQuotation(q: Quotation): string {
   const order: SalesOrder = {
     id, number: nextNumber('SO', 87), date: TODAY, quoteId: q.id, oppId: q.oppId, customerId: q.customerId, owner: opp?.owner ?? q.preparedBy, title: opp?.title ?? q.description, reference: opp?.lpo ?? '', status: 'Confirmed',
     activity: q.activity, entity: q.entity, paymentTerms: q.paymentTerms, currency: q.currency, contractType: q.contractType, contractStart: q.contractStart, contractEnd: q.contractEnd, billingStructure: q.billingStructure,
-    amcStart: q.amcStart, amcEnd: q.amcEnd, visits: q.visits, visitPlan: q.activity === 'AMC' ? planVisits(q.amcStart, q.amcEnd, q.visits, docTotals(q.lines, q.discountPct, q.vatType).sub) : undefined,
+    amcStart: q.amcStart, amcEnd: q.amcEnd, visits: q.activity === 'Service' ? 1 : q.visits, amcScope: q.amcScope, amcValue: AMC_LIKE.includes(q.activity) ? docTotals(q.lines, q.discountPct, q.vatType).sub : undefined,
+    visitPlan: AMC_LIKE.includes(q.activity) ? planVisits(q.amcStart, q.amcEnd, q.activity === 'Service' ? 1 : q.visits, docTotals(q.lines, q.discountPct, q.vatType).sub) : undefined,
     lpo: '', lpoDate: '', lpoExpiry: q.contractEnd ?? q.amcEnd ?? '', site: opp?.site ?? '', costCentre: q.costCentre ?? '', deliveryMethod: 'Own Fleet', vatType: q.vatType, discountPct: q.discountPct, terms: q.terms,
     lines: q.lines.map((l) => ({ ...l, id: uid('ln'), assigned: [], crossHire: [], fulfilment: undefined })), docs: [], damageCharges: [], logisticsCost: 0, ...(q.activity === 'Rental' ? { billingCycle: 'Monthly', invoicingType: 'Manual' } : {}),
     log: [log(`Sales Order created from ${q.number}`, 'Commercial terms are frozen; only a formal revision can change them')],
@@ -748,14 +749,36 @@ export function addTripExpense(t: Trip, e: Omit<TripExpense, 'date'> & { date?: 
   if (cur.status === 'Cancelled') return;
   const exp = postExpense(cur, { ...e, date: e.date ?? TODAY });
   saveTrip(t.id, (x) => ({ ...x, expenses: [...x.expenses, exp], log: tlog(x, `Expense added: ${exp.type}`, `AED ${exp.amount}${exp.note ? `, ${exp.note}` : ''}${exp.journalId ? '. Posted to the ledger' : exp.billId ? '. Billed to the transporter' : ''}`) }));
-  bookCost(t.soId, exp.amount, `Trip ${t.number}: ${exp.type} AED ${exp.amount}`, 'Added to the order logistics cost');
+  bookCost(t.soId, expenseGross(exp), `Trip ${t.number}: ${exp.type} AED ${exp.amount}`, 'Added to the order logistics cost');
 }
 export function removeTripExpense(t: Trip, idx: number) {
   const exp = t.expenses[idx];
   if (!exp) return;
   const notes = unpostExpense(exp, `${t.number}: ${exp.type} removed`);
   saveTrip(t.id, (x) => ({ ...x, expenses: x.expenses.filter((_, k) => k !== idx), log: tlog(x, `Expense removed: ${exp.type}`, [`AED ${exp.amount}`, ...notes].join('. '), 'amber') }));
-  bookCost(t.soId, -exp.amount, `Trip ${t.number}: ${exp.type} AED ${exp.amount} removed`, 'Taken off the order logistics cost', 'amber');
+  bookCost(t.soId, -expenseGross(exp), `Trip ${t.number}: ${exp.type} AED ${exp.amount} removed`, 'Taken off the order logistics cost', 'amber');
+}
+/**
+ * A trip-style expense charged directly against a Delivery Order (client review 8 Oct: an "Add Expense" that does not need an active trip, for example a
+ * charge raised before dispatch or after the trip already completed). Posts the same way a trip expense does and adds to the Sales Order logistics cost.
+ */
+export function addDeliveryExpense(deliveryId: string, e: Omit<TripExpense, 'date'> & { date?: string }) {
+  const d = all<Delivery>(COL.deliveries).find((x) => x.id === deliveryId);
+  if (!d) return;
+  const o = getOrder(d.soId);
+  const exp: TripExpense = { ...e, date: e.date ?? TODAY };
+  const posted: TripExpense = { ...exp, journalId: postDeliveryExpense(d, o?.costCentre, exp, o?.activity, o?.entity) };
+  patch<Delivery>(COL.deliveries, d.id, (x) => ({ ...x, expenses: [...(x.expenses ?? []), posted] }));
+  if (o) bookCost(o.id, expenseGross(posted), `${d.number}: ${posted.type} AED ${posted.amount}`, 'Added to the order logistics cost, no active trip required');
+}
+export function removeDeliveryExpense(deliveryId: string, idx: number) {
+  const d = all<Delivery>(COL.deliveries).find((x) => x.id === deliveryId);
+  const exp = d?.expenses?.[idx];
+  if (!d || !exp) return;
+  const notes = unpostExpense(exp, `${d.number}: ${exp.type} removed`);
+  patch<Delivery>(COL.deliveries, d.id, (x) => ({ ...x, expenses: (x.expenses ?? []).filter((_, k) => k !== idx) }));
+  const o = getOrder(d.soId);
+  if (o) bookCost(o.id, -expenseGross(exp), `${d.number}: ${exp.type} AED ${exp.amount} removed`, notes.join('. ') || 'Taken off the order logistics cost', 'amber');
 }
 /**
  * Complete frees the vehicle (it goes back to where it left from) and closes the loop with the document: a Delivery Order becomes Delivered, a Collection puts the asset in the yard.
@@ -764,7 +787,7 @@ export function removeTripExpense(t: Trip, idx: number) {
 export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []) {
   const cur = getTrip(t.id) ?? t;
   const add = expenses.filter((e) => e.type && e.amount > 0).map((e) => postExpense(cur, { ...e, date: TODAY }));
-  const total = add.reduce((s, e) => s + e.amount, 0);
+  const total = add.reduce((s, e) => s + expenseGross(e), 0);
   saveTrip(t.id, (x) => ({ ...x, status: 'Completed', since: stamp(), stuck: undefined, expenses: [...x.expenses, ...add], log: tlog(x, 'Trip completed', add.length ? add.map((e) => `${e.type} AED ${e.amount}`).join(', ') : undefined, 'green') }));
   if (total) bookCost(t.soId, total, `Trip ${t.number} completed`, `${add.map((e) => `${e.type} AED ${e.amount}`).join(', ')} added to the logistics cost`);
   // An external transporter bills us: each Transport Charge becomes a Pending bill to the transporter (a supplier).
@@ -802,13 +825,14 @@ export function reassignTrip(t: Trip, vehicleId: string, driver: string, mobile?
   return undefined;
 }
 /** Own vehicle not available: the job moves to an external transporter (a supplier) and the own vehicle is freed. Returns the reason when the change is not allowed. */
-export function switchToExternal(t: Trip, transporter: string, cost: number): string | undefined {
+export function switchToExternal(t: Trip, transporter: string, cost: number, driverName?: string): string | undefined {
   const cur = getTrip(t.id) ?? t;
   if (cur.status !== 'Assigned' || cur.transport !== 'Own Fleet') return 'Only an Assigned own-fleet trip can move to an external transporter';
   if (!transporter.trim()) return 'Select the supplier who transports';
   if (!(cost > 0)) return 'External Transport Cost is required for an external transporter';
   const expenses = [...cur.expenses, { type: 'Transport Charge', amount: cost, date: TODAY, note: 'Switched from own fleet' }];
-  saveTrip(t.id, (x) => ({ ...x, transport: 'External Transporter', transporter, vehicleId: undefined, plate: undefined, driver: undefined, mobile: undefined, expenses, log: tlog(x, 'Switched to an external transporter', `${transporter}, Transport Charge AED ${cost}. Own vehicle ${x.plate ?? ''} freed`, 'amber') }));
+  const driver = driverName?.trim() || undefined;
+  saveTrip(t.id, (x) => ({ ...x, transport: 'External Transporter', transporter, transporterDriver: driver, vehicleId: undefined, plate: undefined, driver: undefined, mobile: undefined, expenses, log: tlog(x, 'Switched to an external transporter', `${transporter}${driver ? `, driver ${driver}` : ''}, Transport Charge AED ${cost}. Own vehicle ${x.plate ?? ''} freed`, 'amber') }));
   bookCost(t.soId, cost, `Trip ${t.number} moved to ${transporter}`, `Transport Charge AED ${cost}`, 'amber');
   return undefined;
 }
@@ -856,8 +880,10 @@ export function createJobCard(soId: string, visitIdx: number, fields: Partial<Jo
   return id;
 }
 export const saveJobCard = (jc: JobCard) => patch<JobCard>(COL.jobCards, jc.id, () => jc);
-/** FOC lines (Chargeable Override) are not billed. */
-export const jobCardTotal = (jc: JobCard) => (jc.visitFoc ? 0 : jc.visitAmount) + jc.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0) + jc.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0);
+/** VAT on the material lines, each carrying its own rate (FOC lines are zero, both price and VAT). */
+export const jobCardMaterialVat = (jc: JobCard) => jc.materials.reduce((s, m) => s + (m.foc ? 0 : (m.qty * m.price * (m.vat ?? 0)) / 100), 0);
+/** FOC lines (Chargeable Override) are not billed; a FOC material line's price is zero, not just excluded here. */
+export const jobCardTotal = (jc: JobCard) => (jc.visitFoc ? 0 : jc.visitAmount) + jc.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0) + jobCardMaterialVat(jc) + jc.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0);
 /** Value given free of cost on a job card: the visit share (FOC visit) plus FOC materials and services. */
 export const jobCardFoc = (jc: JobCard) => (jc.visitFoc ? jc.visitAmount : 0) + jc.materials.reduce((s, m) => s + (m.foc ? m.qty * m.price : 0), 0) + jc.services.reduce((s, m) => s + (m.foc ? m.amount : 0), 0);
 export const jobCardCost = (jc: JobCard) => jc.materials.reduce((s, m) => s + m.qty * (m.cost ?? Math.round(m.price * 0.7 * 100) / 100), 0);

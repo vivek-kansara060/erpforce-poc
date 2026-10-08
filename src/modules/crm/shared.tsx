@@ -6,10 +6,11 @@ import { StatusChip } from '@/components/StatusChip';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { SelectInput, TextInput } from '@/components/Form';
 import { fmtAED } from '@/mock-data/masters';
-import { useCollection } from '@/store/store';
-import { itemSeed, type ItemRec } from '@/modules/inventory/data';
+import { useCollection, type Collection } from '@/store/store';
+import { heavySeed, itemSeed, type ItemRec } from '@/modules/inventory/data';
+import { ASSET_COL, assetSeed, type AssetRec } from '@/modules/accounting/assets';
 import {
-  COL, availability, toServiceCharge,
+  COL, assetToFleetView, availability, toServiceCharge,
   type CrossHire, type CrossHireRequest, type CrossHireRfq, type Delivery, type ServiceCharge, type JobCard, type Extension, type HeavyRec, type Lead, type MasterRec, type Opportunity, type PricingRec, type Quotation, type Replacement, type ReturnEntry, type SalesOrder, type Trip,
 } from './data';
 
@@ -24,7 +25,16 @@ export const useChRequests = () => useCollection<CrossHireRequest>(COL.chRequest
 export const useChRfqs = () => useCollection<CrossHireRfq>(COL.chRfqs);
 export const useReplacements = () => useCollection<Replacement>(COL.replacements);
 export const useExtensions = () => useCollection<Extension>(COL.extensions);
-export const useFleet = () => useCollection<HeavyRec>(COL.fleet);
+/**
+ * Heavy Equipment Fixed Assets plus the Accounting Fixed Assets ticked Fleet Vehicle (client feedback 8 Oct: delivery/fleet vehicles are
+ * registered in Accounting, not Inventory), carried into the shared HeavyRec view so every existing consumer of useFleet() keeps working.
+ */
+export function useFleet(): Collection<HeavyRec> {
+  const heavy = useCollection<HeavyRec>(COL.fleet, heavySeed);
+  const vehicles = useCollection<AssetRec>(ASSET_COL, assetSeed);
+  const rows = [...heavy.rows, ...vehicles.rows.filter((a) => a.fleetVehicle).map(assetToFleetView)];
+  return { rows, get: (id) => rows.find((r) => r.id === id), add: heavy.add, update: heavy.update, remove: heavy.remove, replace: heavy.replace };
+}
 export const useTrips = () => useCollection<Trip>(COL.trips);
 /** Service lines come from the Inventory service items (Item Type = Service), not from a CRM-owned master. */
 export const useServiceCharges = () => {

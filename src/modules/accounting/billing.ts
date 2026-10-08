@@ -40,7 +40,7 @@ export function linesFromJobCard(jc: JobCard, o?: SalesOrder): InvLine[] {
   const cc = o?.costCentre;
   const out: InvLine[] = [];
   if (!jc.visitFoc && jc.visitAmount) out.push({ id: lid(), item: `AMC visit ${jc.visitIdx + 1}`, desc: `${o?.amcScope ? 'AMC visit' : jc.item}, ${jc.number}, contract value share`, account: '410400', qty: 1, unit: 'Visit', rate: jc.visitAmount, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'visit' });
-  jc.materials.filter((m) => !m.foc && m.item && m.qty > 0).forEach((m) => out.push({ id: lid(), item: m.item, desc: `${m.item}, consumed on ${jc.number}`, account: '410200', qty: m.qty, unit: m.unit, rate: m.price, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'material' }));
+  jc.materials.filter((m) => !m.foc && m.item && m.qty > 0).forEach((m) => out.push({ id: lid(), item: m.item, desc: `${m.item}, consumed on ${jc.number}`, account: '410200', qty: m.qty, unit: m.unit, rate: m.price, discountPct: 0, vatPct: m.vat ?? vat, activity: 'AMC', costCentre: cc, tag: 'material' }));
   jc.services.filter((s) => !s.foc && s.name).forEach((s) => out.push({ id: lid(), item: s.name, desc: `${s.name}, ${jc.number}`, account: '410400', qty: 1, unit: 'Job', rate: s.amount, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'service' }));
   return out;
 }
@@ -239,10 +239,10 @@ export function salesJournal(inv: SalesInvoice): JournalLine[] {
   const t = totalsOf(inv);
   const p = inv.partyName;
   return balance([
-    { account: ACC.ar, party: p, debit: t.total, credit: 0, costCentre: inv.costCentre },
-    ...(t.itemDisc + t.addDisc ? [{ account: ACC.discount, party: p, debit: t.itemDisc + t.addDisc, credit: 0, costCentre: inv.costCentre }] : []),
-    ...inv.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineAmount(l), costCentre: l.costCentre ?? inv.costCentre, memo: l.item })),
-    { account: ACC.outputVat, party: p, debit: 0, credit: t.vat },
+    { account: ACC.ar, party: p, debit: t.total, credit: 0, costCentre: inv.costCentre, activity: inv.activity, entity: inv.entity },
+    ...(t.itemDisc + t.addDisc ? [{ account: ACC.discount, party: p, debit: t.itemDisc + t.addDisc, credit: 0, costCentre: inv.costCentre, activity: inv.activity, entity: inv.entity }] : []),
+    ...inv.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineAmount(l), costCentre: l.costCentre ?? inv.costCentre, activity: l.activity ?? inv.activity, entity: inv.entity, memo: l.item })),
+    { account: ACC.outputVat, party: p, debit: 0, credit: t.vat, activity: inv.activity, entity: inv.entity },
   ]);
 }
 /** Bill: Dr expense per line and expense entry, Dr Input VAT, Cr Payable. */
@@ -250,11 +250,11 @@ export function purchaseJournal(b: Bill): JournalLine[] {
   const t = totalsOf(b);
   const p = b.supplierName;
   return balance([
-    ...b.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? b.costCentre, memo: l.item })),
-    ...b.expenses.map((e) => ({ account: e.account, party: p, debit: e.amount, credit: 0, costCentre: e.costCentre ?? b.costCentre, memo: e.desc })),
-    ...(t.addDisc ? [{ account: ACC.discount, party: p, debit: 0, credit: t.addDisc }] : []),
-    { account: ACC.inputVat, party: p, debit: t.vat, credit: 0 },
-    { account: ACC.ap, party: p, debit: 0, credit: t.total, costCentre: b.costCentre },
+    ...b.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? b.costCentre, activity: l.activity ?? b.activity, entity: b.entity, memo: l.item })),
+    ...b.expenses.map((e) => ({ account: e.account, party: p, debit: e.amount, credit: 0, costCentre: e.costCentre ?? b.costCentre, activity: b.activity, entity: b.entity, memo: e.desc })),
+    ...(t.addDisc ? [{ account: ACC.discount, party: p, debit: 0, credit: t.addDisc, activity: b.activity, entity: b.entity }] : []),
+    { account: ACC.inputVat, party: p, debit: t.vat, credit: 0, activity: b.activity, entity: b.entity },
+    { account: ACC.ap, party: p, debit: 0, credit: t.total, costCentre: b.costCentre, activity: b.activity, entity: b.entity },
   ]);
 }
 /** Collection: Dr bank, Cr Receivable per allocation, Cr Customer Advances for the rest. Payment: Dr Payable, Cr bank. */
@@ -281,7 +281,7 @@ export const advanceJournal = (party: string, amount: number, invNo: string): Jo
 export function noteJournal(n: NoteDoc): JournalLine[] {
   const t = totalsOf({ lines: n.lines });
   const p = n.partyName;
-  if (n.kind === 'Credit') return balance([...n.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? n.costCentre, memo: l.item })), { account: ACC.outputVat, party: p, debit: t.vat, credit: 0 }, { account: ACC.ar, party: p, debit: 0, credit: t.total }]);
-  return balance([{ account: ACC.ap, party: p, debit: t.total, credit: 0 }, ...n.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineGross(l), costCentre: l.costCentre ?? n.costCentre, memo: l.item })), { account: ACC.inputVat, party: p, debit: 0, credit: t.vat }]);
+  if (n.kind === 'Credit') return balance([...n.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? n.costCentre, activity: l.activity, memo: l.item })), { account: ACC.outputVat, party: p, debit: t.vat, credit: 0 }, { account: ACC.ar, party: p, debit: 0, credit: t.total }]);
+  return balance([{ account: ACC.ap, party: p, debit: t.total, credit: 0 }, ...n.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineGross(l), costCentre: l.costCentre ?? n.costCentre, activity: l.activity, memo: l.item })), { account: ACC.inputVat, party: p, debit: 0, credit: t.vat }]);
 }
 export { lineDisc, lineVat };

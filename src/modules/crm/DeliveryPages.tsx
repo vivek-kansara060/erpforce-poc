@@ -15,11 +15,12 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
-import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
+import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, isOpenTrip, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
+import { addFocLines, completeTrip, createDelivery, deliveredQty, getOrder, removeDeliveryExpense, startTrip } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, useTrips } from './shared';
-import { ArrangeTransportDialog, TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
+import { accLabel } from '@/modules/accounting/data';
+import { ArrangeTransportDialog, DeliveryExpenseDialog, TransportSection, TripsTable, blankTransport, driverAppOf, toTransportInput, useFleetSettings, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
@@ -277,16 +278,30 @@ export function DeliveryView() {
   const nav = useNavigate();
   const toast = useToast();
   const [printOpen, setPrintOpen] = useState(false);
+  const [addExpense, setAddExpense] = useState(false);
   const dels = useDeliveries();
   const orders = useOrders();
+  const trips = useTrips();
+  const driverApp = driverAppOf(useFleetSettings());
   const d = dels.get(id);
   const [sign, setSign] = useState<{ open: boolean; ok: boolean }>({ open: false, ok: false });
   if (!d) return <Page><PageTitle title="Delivery Order not found" right={<Button variant="outlined" onClick={() => nav('/crm/delivery-orders')}>Back</Button>} /></Page>;
   const so = getOrder(d.soId) ?? orders.get(d.soId);
-  const next = d.status === 'Dispatched' ? 'Delivered' : d.status === 'Delivered' ? 'Acknowledged' : undefined;
+  // Driver app off (Fleet Management settings): Dispatched / Delivered is driven from here instead of from the detailed trip workflow.
+  const openTrip = trips.rows.find((t) => t.docId === d.id && isOpenTrip(t));
+  const next = d.status === 'Dispatched' ? 'Delivered' : d.status === 'Delivered' ? 'Acknowledged'
+    : !driverApp && ['Picked', 'Packed'].includes(d.status) && openTrip ? 'Dispatched' : undefined;
   const advance = () => {
-    if (next && !d.signature) { setSign({ open: true, ok: false }); return; }
-    if (next) { dels.update(d.id, { status: next }); toast(`Delivery marked ${next}`); }
+    if (!next) return;
+    if (next === 'Dispatched') {
+      if (openTrip) startTrip(openTrip); else dels.update(d.id, { status: 'Dispatched' });
+      toast(`${d.number} marked Dispatched`);
+      return;
+    }
+    if (!d.signature) { setSign({ open: true, ok: false }); return; }
+    if (next === 'Delivered' && !driverApp && openTrip) { completeTrip(openTrip, []); toast(`${d.number} marked Delivered, trip completed`); return; }
+    dels.update(d.id, { status: next });
+    toast(`Delivery marked ${next}`);
   };
   const items = d.items ?? [{ lineId: d.lineId, qty: d.assetIds.length || 1, assetIds: d.assetIds, deliveredSub: d.deliveredSub }];
   const f = { ...d, customerName: custName(d.customerId), operationType: 'Delivery', salesperson: d.salesperson ?? so?.owner, entity: so?.entity, location: d.location ?? 'Jebel Ali Main Yard', soId: so?.number };
@@ -314,6 +329,13 @@ export function DeliveryView() {
                 ]} />
               </Section>
               <Section title="Transportation" change="changed" req={R.fleet} hint="The trip carries the transport cost to the Sales Order. Open it to start, complete or add expenses such as Salik and fuel."><DeliveryTransport d={d} f={f} /></Section>
+              <Section title="Additional Expenses" change="new" req="Fleet review 8 Oct: an expense can be charged to the Delivery Order even with no active trip" hint="Charge a cost (Salik, fuel, a waiting charge...) to this delivery directly, whether or not a trip is currently open.">
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setAddExpense(true)}>Add Expense</Button></Box>
+                <DataTable hideToolbar rows={(d.expenses ?? []).map((e, i) => ({ id: String(i), i, ...e }))} emptyText="No additional expenses"
+                  actions={[{ label: 'Remove', danger: true, onClick: (r) => removeDeliveryExpense(d.id, r.i) }]}
+                  columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'vatPct', label: 'VAT %', align: 'right', render: (r) => (r.vatPct ? `${r.vatPct}%` : '-') },
+                    { key: 'account', label: 'Expense Head', render: (r) => (r.account ? accLabel(r.account) : '-') }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' }]} />
+              </Section>
               <Section title="Rental Start" change="new" req={R.meet}>
                 <SpecView f={{ rentalStart: start, later: d.startReason ? `${d.startReason} (${d.startBy})${d.waitingCharge ? `, waiting charge ${aed(d.waitingCharge)}` : ''}` : '-', billing: `Starts ${start}`, closure: d.closed ? 'Closed automatically on return' : 'Open' }}
                   specs={[{ key: 'rentalStart', label: 'Rental Start Date' }, { key: 'later', label: 'Later start' }, { key: 'billing', label: 'Billing' }, { key: 'closure', label: 'Delivery Order closure' }]} />
@@ -329,10 +351,16 @@ export function DeliveryView() {
         ]} />
       </Page>
       <AppDialog open={sign.open} title="Customer signature required" onClose={() => setSign({ open: false, ok: false })} confirmLabel="Save signature and continue" confirmDisabled={!sign.ok}
-        onConfirm={() => { dels.update(d.id, { signature: 'E-signature', status: next! }); toast(`Signature captured, delivery marked ${next} (${nowStamp()})`); setSign({ open: false, ok: false }); }}>
+        onConfirm={() => {
+          dels.update(d.id, { signature: 'E-signature' });
+          if (next === 'Delivered' && !driverApp && openTrip) { completeTrip(openTrip, []); toast(`Signature captured, trip completed, delivery marked ${next} (${nowStamp()})`); }
+          else { dels.update(d.id, { status: next! }); toast(`Signature captured, delivery marked ${next} (${nowStamp()})`); }
+          setSign({ open: false, ok: false });
+        }}>
         <Text type="s4" sx={{ mb: 1 }}>A Delivery Order cannot be completed without a customer e-signature or a manual confirmation record.</Text>
         <SignaturePad onChange={(ok) => setSign({ open: true, ok })} />
       </AppDialog>
+      {addExpense && <DeliveryExpenseDialog delivery={d} onClose={() => setAddExpense(false)} />}
     </>
   );
 }

@@ -53,7 +53,7 @@ export interface NoteDoc {
   id: string; number: string; kind: 'Credit' | 'Debit'; date: string; partyId?: string; partyName: string; reason: string;
   againstId: string; againstNumber: string; lines: InvLine[]; approval: ApprovalStatus; journalId?: string; costCentre?: string; log: LogItem[];
 }
-export interface JournalLine { account: string; party?: string; debit: number; credit: number; costCentre?: string; memo?: string }
+export interface JournalLine { account: string; party?: string; debit: number; credit: number; costCentre?: string; activity?: string; entity?: string; memo?: string }
 export type JournalType = 'Sales' | 'Purchases' | 'Cash Receipt Voucher' | 'Payment' | 'Credit Note' | 'Debit Note' | 'Trip Expense';
 export interface Journal {
   id: string; number: string; postingDate: string; journalType: JournalType;

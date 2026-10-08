@@ -57,11 +57,13 @@ export function InvoiceList() {
   );
 }
 
+/** Entity, Activity Type and Customer moved to the front per client feedback (8 Oct); Posting Time removed (not needed). Every other field keeps its place. */
 const viewSpecs: Spec[] = [
-  { key: 'number', label: 'ID' }, { key: 'date', label: 'Date' }, { key: 'postingTime', label: 'Posting Time' }, { key: 'partyName', label: 'Customer' },
-  { key: 'entity', label: 'Company' }, { key: 'paymentTerms', label: 'Payment Term' }, { key: 'dueDate', label: 'Due Date' }, { key: 'transactionType', label: 'Transaction Type' },
+  { key: 'entity', label: 'Company' }, { key: 'activity', label: 'Activity Type', change: 'new', req: R_ACC.inv }, { key: 'partyName', label: 'Customer' },
+  { key: 'number', label: 'ID' }, { key: 'date', label: 'Date' },
+  { key: 'paymentTerms', label: 'Payment Term' }, { key: 'dueDate', label: 'Due Date' }, { key: 'transactionType', label: 'Transaction Type' },
   { key: 'currency', label: 'Currency' }, { key: 'exchangeRate', label: 'Exchange Rate' }, { key: 'salesperson', label: 'Salesperson' }, { key: 'lpo', label: 'LPO / PO Number' },
-  { key: 'vatType', label: 'VAT Type' }, { key: 'activity', label: 'Activity Type', change: 'new', req: R_ACC.inv }, { key: 'costCentre', label: 'Cost Centre / Project', change: 'new', req: R_ACC.gl },
+  { key: 'vatType', label: 'VAT Type' }, { key: 'costCentre', label: 'Cost Centre / Project', change: 'new', req: R_ACC.gl },
   { key: 'sourceText', label: 'Source Document', change: 'new', req: R_ACC.inv }, { key: 'period', label: 'Rental Period', change: 'new', req: R_ACC.rental, show: (f) => !!f.isRental }, { key: 'narration', label: 'Narration' },
 ];
 
@@ -156,18 +158,21 @@ function PayDialogLazy({ invoice, onClose }: { invoice: SalesInvoice; onClose: (
 const accOpts = incomeAccounts.map((a) => `${a.code} ${a.name}`);
 type Row = { item: string; desc: string; qty: any; unit: string; rate: any; discountPct: any; vatPct: string; account: string };
 const toRow = (l: InvLine): Row => ({ item: l.item, desc: l.desc, qty: l.qty, unit: l.unit, rate: l.rate, discountPct: l.discountPct, vatPct: String(l.vatPct), account: `${l.account} ${incomeAccounts.find((a) => a.code === l.account)?.name ?? ''}`.trim() });
+/** Invoice header: Entity, Activity Type and Customer moved to the front per client feedback (8 Oct), Posting Time removed. Bill keeps its existing field order unchanged. */
 export const headerSpecs = (kind: 'invoice' | 'bill'): Spec[] => [
   { key: 'entity', label: 'Company', type: 'master', master: 'entity', required: true },
   ...(kind === 'invoice'
-    ? [{ key: 'customerId', label: 'Customer', type: 'select', options: [{ value: '', label: 'Not in the customer list' }, ...customers.map((c) => ({ value: c.id, label: c.name }))] } as Spec,
+    ? [{ key: 'activity', label: 'Activity Type', type: 'select', options: ['', ...ACTIVITY_TYPES], change: 'new', req: R_ACC.inv, hint: 'Inherited from the source document; drives reporting only, not posting' } as Spec,
+       { key: 'customerId', label: 'Customer', type: 'select', options: [{ value: '', label: 'Not in the customer list' }, ...customers.map((c) => ({ value: c.id, label: c.name }))] } as Spec,
        { key: 'partyName', label: 'Party Name', required: true, show: (f) => !f.customerId, hint: 'For a buyer who is not a customer (for example a scrap buyer)' } as Spec]
     : []),
-  { key: 'date', label: kind === 'invoice' ? 'Date' : 'Bill Date', type: 'date', required: true }, { key: 'postingTime', label: 'Posting Time', required: true },
+  { key: 'date', label: kind === 'invoice' ? 'Date' : 'Bill Date', type: 'date', required: true },
+  ...(kind === 'bill' ? [{ key: 'postingTime', label: 'Posting Time', required: true } as Spec] : []),
   { key: 'paymentTerms', label: 'Payment Term', type: 'master', master: 'paymentTerms', required: true }, { key: 'dueDate', label: 'Due Date', type: 'readonly', value: (f) => dueDateFor(f.date || TODAY, f.paymentTerms) },
   ...(kind === 'invoice' ? [{ key: 'transactionType', label: 'Transaction Type', type: 'select', options: ['Credit', 'Cash'], required: true, hint: 'Cash: a collection is created automatically when the invoice is approved' } as Spec] : []),
   { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true }, { key: 'exchangeRate', label: 'Exchange Rate', type: 'number', disabled: (f) => f.currency === 'AED' },
   ...(kind === 'invoice' ? [{ key: 'salesperson', label: 'Salesperson' } as Spec, { key: 'lpo', label: 'LPO / PO Number' } as Spec, { key: 'vatType', label: 'VAT Type', type: 'select', options: VAT_TYPES, required: true } as Spec] : []),
-  { key: 'activity', label: 'Activity Type', type: 'select', options: ['', ...ACTIVITY_TYPES], change: 'new', req: R_ACC.inv, hint: 'Inherited from the source document; drives reporting only, not posting' },
+  ...(kind === 'bill' ? [{ key: 'activity', label: 'Activity Type', type: 'select', options: ['', ...ACTIVITY_TYPES], change: 'new', req: R_ACC.inv, hint: 'Inherited from the source document; drives reporting only, not posting' } as Spec] : []),
   { key: 'costCentre', label: 'Cost Centre / Project', type: 'select', options: ['', ...COST_CENTRES], change: 'new', req: R_ACC.gl, hint: 'Optional at header level; a line can carry its own' },
   { key: 'narration', label: 'Narration', type: 'textarea', full: true },
 ];

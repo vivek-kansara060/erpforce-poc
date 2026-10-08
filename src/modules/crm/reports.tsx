@@ -4,16 +4,23 @@ import { ASSET_STATUSES } from '@/mock-data/masters';
 import { chItems, ACTIVITY_TYPES, categoryOptions, groupOptions, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, assetById, availability, custName, docTotals, isLive, lineTotal, ownedEquivalent, type HeavyRec } from './data';
 import { CrmReportPage, type CrmReportDef } from './CrmReport';
 import { days, deliveredQty, outstanding } from './flow';
-import { aed, useCrossHire, useDeliveries, useExtensions, useFleet, useLeads, useOpps, useOrders, useQuotes, useReplacements } from './shared';
+import { aed, useCrossHire, useDeliveries, useExtensions, useFleet, useJobCards, useLeads, useOpps, useOrders, useQuotes, useReplacements } from './shared';
+import type { JobCard, SalesOrder } from './data';
 
 const RC = 'CRM > Reports and Dashboards';
 const RR = 'Rental > Reports and Dashboards';
 const GROUP_COLORS = ['#2EB273', '#3E8193', '#A6914D', '#9C4F9C', '#C64D4D', '#7B7F85'];
 
 function useData() {
-  return { leads: useLeads().rows, opps: useOpps().rows, quotes: useQuotes().rows, orders: useOrders().rows, dels: useDeliveries().rows, ch: useCrossHire().rows, rep: useReplacements().rows, ext: useExtensions().rows, fleet: useFleet().rows };
+  return { leads: useLeads().rows, opps: useOpps().rows, quotes: useQuotes().rows, orders: useOrders().rows, dels: useDeliveries().rows, ch: useCrossHire().rows, rep: useReplacements().rows, ext: useExtensions().rows, fleet: useFleet().rows, jobCards: useJobCards().rows };
 }
 type D = ReturnType<typeof useData>;
+/** The next planned visit without a job card yet (an AMC order's visit plan), for the consolidated AMC report. */
+function nextAmcVisit(o: SalesOrder, jobCards: JobCard[]): string {
+  const plan = o.visitPlan ?? [];
+  const idx = plan.findIndex((_, i) => !jobCards.some((j) => j.soId === o.id && j.visitIdx === i));
+  return idx >= 0 ? plan[idx].date : plan.length ? 'All visits have a job card' : '-';
+}
 
 /**
  * Rental orders still out, with the header contract end (decision 2). `line` is a summary of the order's rental lines (items joined, all outstanding
@@ -57,6 +64,9 @@ function crmDefs(d: D): CrmReportDef[] {
     { slug: 'contract-lpo-expiry', title: 'Contract and LPO Expiry Report', purpose: 'Orders whose contract or LPO ends soon, for renewal or return follow-up.', group: 'Sales', change: 'new', req: RC,
       columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer', filter: true }, { key: 'activity', label: 'Activity Type', filter: true }, { key: 'lpo', label: 'LPO' }, { key: 'end', label: 'Contract End' }, { key: 'lpoEnd', label: 'LPO Expiry' }, { key: 'left', label: 'Days left', align: 'right' }, { key: 'state', label: 'State', status: true, filter: true }],
       rows: d.orders.filter((o) => !['Closed', 'Cancelled'].includes(o.status)).map((o) => { const end = o.contractEnd ?? o.amcEnd ?? o.lpoExpiry; const left = end ? -days(end) : 9999; return { so: o.number, customer: custName(o.customerId), activity: o.activity, lpo: o.lpo, end: o.contractEnd ?? o.amcEnd ?? '-', lpoEnd: o.lpoExpiry || '-', left: end ? left : '-', state: left < 0 ? 'Overdue' : left <= EXPIRY_NOTICE_DAYS ? 'Expiring' : 'Active', _link: soLink(o.id) }; }).sort((a, b) => Number(a.left) - Number(b.left)) },
+    { slug: 'amc-consolidated', title: 'AMC Consolidated Report', purpose: 'Every AMC order across all customers: contract period, next planned visit and status, with a link to open the order.', group: 'AMC', change: 'new', req: RC,
+      columns: [{ key: 'customer', label: 'Customer', filter: true }, { key: 'period', label: 'AMC Period' }, { key: 'next', label: 'Next planned visit date' }, { key: 'status', label: 'Status', status: true, filter: true }],
+      rows: d.orders.filter((o) => o.activity === 'AMC').map((o) => ({ customer: custName(o.customerId), period: `${o.amcStart ?? '-'} to ${o.amcEnd ?? '-'}`, next: nextAmcVisit(o, d.jobCards), status: o.status, _link: `/crm/amc-orders/${o.id}` })) },
   ];
 }
 

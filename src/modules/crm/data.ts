@@ -1,13 +1,16 @@
 import dayjs from 'dayjs';
 import { costCentres, customers, systemUsers } from '@/mock-data/masters';
-import { FREQUENCIES, categorySeed, heavySeed, isTopCategory, itemSeed, locationSeed, pricingSeed, TODAY, type CategoryRec, type HeavyRec, type ItemRec, type LocationRec, type PricingRec } from '@/modules/inventory/data';
+import { COMPANY, FREQUENCIES, categorySeed, heavySeed, isTopCategory, itemSeed, locationSeed, pricingSeed, TODAY, type CategoryRec, type HeavyRec, type ItemRec, type LocationRec, type PricingRec } from '@/modules/inventory/data';
+import { ASSET_COL, assetSeed, type AssetRec } from '@/modules/accounting/assets';
 import { getCollection, seedCollection, setCollection } from '@/store/store';
 
 export { FREQUENCIES, TODAY };
 export type { HeavyRec, PricingRec };
-/** Fixed Asset Trading (sell a serialized asset) is added; Fuel Trading and Trading are separate, as agreed on 5 Oct. */
-export const ACTIVITY_TYPES = ['Rental', 'Fixed Asset Trading', 'Trading', 'Fuel Trading', 'AMC', 'Other'] as const;
+/** Fixed Asset Trading (sell a serialized asset) is added; Fuel Trading and Trading are separate, as agreed on 5 Oct. Service (new) is a one-time, non-recurring AMC: same contract line pattern and job-card flow, no visit plan beyond the single visit. */
+export const ACTIVITY_TYPES = ['Rental', 'Fixed Asset Trading', 'Trading', 'Fuel Trading', 'AMC', 'Service', 'Other'] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
+/** AMC and Service share the same contract header fields (start/end, scope, itemized service lines) and the same Order/Job Card flow; Service just has no Number of Visits and produces exactly one job card. */
+export const AMC_LIKE: ActivityType[] = ['AMC', 'Service'];
 /** A line is an Activity Type, or a Service charge. A service is a charge from the Inventory service master (delivery charge, labor, installation, waiver), never an Activity Type. */
 export type LineKind = ActivityType | 'Service';
 
@@ -86,8 +89,11 @@ export const RETURN_METHODS = ['Self-Return', 'Company Collection'];
 export const FAULT_ATTRIBUTION = ['Company', 'Client'];
 export const CROSS_STAGES = ['Request', 'Received', 'Allocated', 'Returned to Us', 'Returned to Supplier'];
 export const SALESPEOPLE = ['Leena Thomas', 'Yousef Karim', 'Omar Farouk'];
-/** Activity Types that a header Activity Type allows on its lines (decision 1: Rental may also carry Service and Fuel Trading lines). */
-export const LINE_ACTIVITIES: Record<string, string[]> = { Rental: ['Rental', 'Service'], 'Fixed Asset Trading': ['Fixed Asset Trading', 'Service'] };
+/**
+ * Activity Types that a header Activity Type allows on its lines (decision 1: Rental may also carry Service and Fuel Trading lines).
+ * A Service header (one-time AMC-style contract) reuses the AMC line kind for its service lines, so it shares the AMC item picker, totals and job-card billing flow.
+ */
+export const LINE_ACTIVITIES: Record<string, string[]> = { Rental: ['Rental', 'Service'], 'Fixed Asset Trading': ['Fixed Asset Trading', 'Service'], Service: ['AMC'] };
 export const lineActivitiesFor = (header: string) => LINE_ACTIVITIES[header] ?? [header];
 /** Admin-configurable in the real system. */
 export const EXPIRY_NOTICE_DAYS = 14;
@@ -135,7 +141,7 @@ export interface Commercial {
   contractType?: string; contractStart?: string; contractEnd?: string; billingStructure?: string;
   costCentre?: string;
   amcStart?: string; amcEnd?: string; visits?: number;
-  /** AMC: the contract value (before VAT) and its scope. An AMC has no item lines; the value is split across the planned visits. */
+  /** AMC and Service: amcValue is the computed total of the itemized service lines (before VAT), kept for display/reference; amcScope is the overall narration, separate from the lines. For AMC the value is split across the planned visits; a Service contract has exactly one visit. */
   amcValue?: number; amcScope?: string;
   vatType: string; discountPct: number; terms: string; lines: Line[];
   /** existing ERP header fields kept */
@@ -171,7 +177,7 @@ export interface ServiceCharge { id: string; name: string; type: string; billing
 export interface JobCard {
   id: string; number: string; soId: string; soNumber: string; customerId: string; visitIdx: number; plannedDate: string; doneOn?: string; technician: string; location: string; item: string;
   /** foc: Chargeable Override (Free of Cost), set by the Project Team per line. The line is not billed, but materials still leave the van stock. */
-  materials: { item: string; qty: number; unit: string; price: number; cost?: number; foc?: boolean }[]; services: { name: string; amount: number; foc?: boolean }[]; notes: string; visitAmount: number;
+  materials: { item: string; qty: number; unit: string; price: number; cost?: number; foc?: boolean; vat?: number }[]; services: { name: string; amount: number; foc?: boolean }[]; notes: string; visitAmount: number;
   /** FOC visit: this visit's share of the Contract Value is not invoiced (the other visits keep their share). */
   visitFoc?: boolean;
   status: 'Open' | 'Completed' | 'Invoiced'; invoiceRef?: string; log: LogItem[];
@@ -199,6 +205,8 @@ export interface Delivery {
   /** existing Delivery Order form fields; items = one row per Sales Order line delivered */
   /** kept for older records */
   siteReady?: boolean; holdReason?: string; holdBy?: string;
+  /** A trip-style cost charged to this Delivery Order directly (Add Expense on the Delivery Order), independent of there being an active trip. */
+  expenses?: TripExpense[];
 }
 /** Customer Return (RMA) of the existing ERP: header, items, approval, then a Goods Receipt (GRN) that is validated. Rental additions are marked NEW on the screens. */
 export const RMA_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Pending Receipt', 'Pending Credit', 'Return Completed', 'Rejected'];
@@ -309,8 +317,14 @@ export const OPEN_TRIP: TripStatus[] = ['Assigned', 'En Route', 'Stuck-Delayed']
 export type TripKind = 'Delivery' | 'Collection' | 'Replacement';
 export type FleetStatus = 'Free' | 'Assigned' | 'En Route' | 'Stuck-Delayed' | 'Unavailable';
 export const FLEET_STATUSES: FleetStatus[] = ['Free', 'Assigned', 'En Route', 'Stuck-Delayed', 'Unavailable'];
-/** journalId: an own-fleet cost posted to the ledger when it was added. billId: an external transporter's Transport Charge billed to the transporter. */
-export interface TripExpense { type: string; amount: number; note?: string; date: string; journalId?: string; billId?: string }
+/**
+ * journalId: an own-fleet cost posted to the ledger when it was added. billId: an external transporter's Transport Charge billed to the transporter.
+ * vatPct: VAT on the expense (client review: trip expenses need an explicit VAT %). account: the GL account it posts to (Expense Head), shown and overridable
+ * instead of being derived silently; defaults to tripExpenseAccount(type) when left blank.
+ */
+export interface TripExpense { type: string; amount: number; vatPct?: number; account?: string; note?: string; date: string; journalId?: string; billId?: string }
+/** The expense inclusive of its VAT: what actually lands on the Sales Order logistics cost and the ledger. */
+export const expenseGross = (e: Pick<TripExpense, 'amount' | 'vatPct'>) => e.amount + (e.amount * (e.vatPct ?? 0)) / 100;
 /** One movement of a vehicle (or of an external transporter) for a Delivery Order, a Collection or a Replacement. Always created from its document, so it is always tied to a project. */
 export interface Trip {
   id: string; number: string;
@@ -324,6 +338,8 @@ export interface Trip {
   vehicleId?: string; plate?: string;
   driver?: string; mobile?: string;
   transporter?: string;
+  /** The external transporter's driver (client review: Switch to External Transporter has no driver name today). */
+  transporterDriver?: string;
   status: TripStatus;
   /** When the trip last changed status, so the board can show how long a vehicle has been in its state. */
   since: string;
@@ -331,8 +347,12 @@ export interface Trip {
   expenses: TripExpense[];
   log: LogItem[];
 }
-export const tripTotal = (t: Pick<Trip, 'expenses'>) => t.expenses.reduce((s, e) => s + e.amount, 0);
+export const tripTotal = (t: Pick<Trip, 'expenses'>) => t.expenses.reduce((s, e) => s + expenseGross(e), 0);
 export const isOpenTrip = (t: Pick<Trip, 'status'>) => OPEN_TRIP.includes(t.status);
+/** Fleet Management settings (client review 8 Oct): whether the detailed driver trip workflow (Assigned, En Route, Stuck-Delayed, Completed) runs at all.
+ * Off: the Delivery Order's own Dispatched / Delivered actions drive the trip instead (Delivery drives status, not the trip). On (default): unchanged behaviour. */
+export interface FleetSettings { id: 'settings'; driverAppEnabled: boolean }
+export const fleetSettingsSeed: FleetSettings[] = [{ id: 'settings', driverAppEnabled: true }];
 
 /* ------------------------------------------------------------------ helpers */
 export const cust = (id: string) => customers.find((c) => c.id === id);
@@ -386,9 +406,32 @@ export function planVisits(start?: string, end?: string, visits?: number, total 
 }
 
 /* ------------------------------------------------------------------ fleet (Fixed Asset Register) access */
+/**
+ * A delivery/fleet vehicle (client feedback 8 Oct) is an Accounting > Fixed Asset Management record with Fleet Vehicle ticked, not a Heavy
+ * Equipment item. It is carried into the shared HeavyRec shape so the rest of this Fleet / Trip subsystem (written against Heavy Equipment
+ * fixed assets before the move) keeps working unchanged; `deliveryFleet`/`plateNumber`/`defaultDriver` are the only fields it populates.
+ */
+export function assetToFleetView(a: AssetRec): HeavyRec {
+  return {
+    id: a.id, code: a.assetId, assetId: a.assetId, name: a.name, classification: 'Fixed Asset', tracking: 'Serialized',
+    category: 'Vehicle', subCategory: a.assetType, brand: '', model: '', engineNo: '', capacity: '',
+    specification: a.specification, assetType: a.assetType,
+    purchaseDate: a.acquisitionDate, putToUseDate: a.putToUseDate, assetValue: a.assetValue, notDepreciable: a.notDepreciable, nbv: a.nbv,
+    deprPct: a.assetValue ? Math.round(((a.assetValue - a.nbv) / a.assetValue) * 10000) / 100 : 0, deprAmount: Math.max(0, a.assetValue - a.nbv), capex: a.assetValue,
+    department: a.department, company: COMPANY, status: a.status, assetStatus: 'In Service', statusOverride: undefined,
+    method: a.method, decliningFactor: a.decliningFactor, computation: a.computation, usefulLifeYears: a.usefulLifeYears,
+    accFixedAsset: a.accFixedAsset, accDepreciation: a.accDepreciation, accExpense: a.accExpense, journal: '',
+    ownership: 'Owned', supplier: '', crossHireIdle: false, insurance: [],
+    // One movement so Current Location (derived from the last movement) shows the asset's Location from the Fixed Asset record.
+    movements: [{ id: `fa-mv-${a.id}`, entryNo: '-', date: a.acquisitionDate || TODAY, type: 'Internal Transfer', from: '-', to: a.location, reference: '-', by: '-' }],
+    audit: [], utilization: 0, idleDays: 0, profitability: 0, attrs: {}, attachments: a.attachments,
+    deliveryFleet: a.fleetVehicle, plateNumber: a.plateNumber, defaultDriver: a.defaultDriver,
+  };
+}
+const fleetVehicleRows = (): HeavyRec[] => { seedCollection(ASSET_COL, assetSeed); return getCollection<AssetRec>(ASSET_COL).filter((a) => a.fleetVehicle).map(assetToFleetView); };
 export function fleetRows(): HeavyRec[] {
   seedCollection(COL.billingCycles, cycleSeed); seedCollection(COL.fleet, heavySeed);
-  return getCollection<HeavyRec>(COL.fleet);
+  return [...getCollection<HeavyRec>(COL.fleet), ...fleetVehicleRows()];
 }
 export const assetById = (id: string) => fleetRows().find((a) => a.id === id);
 export const assetByAssetId = (assetId: string) => fleetRows().find((a) => a.assetId === assetId);
@@ -408,7 +451,7 @@ export const rentalGroupOptions = () => {
 
 /* ------------------------------------------------------------------ fleet management: vehicles and trips */
 export function tripRows(): Trip[] { seedCollection(COL.trips, tripSeed); return getCollection<Trip>(COL.trips); }
-/** The Heavy Equipment Fixed Assets ticked as Delivery fleet vehicle. */
+/** The Accounting Fixed Assets ticked as Fleet Vehicle. */
 export const deliveryVehicles = (rows: HeavyRec[] = fleetRows()) => rows.filter((a) => a.deliveryFleet && a.assetStatus !== 'Disposed');
 const tripDay = (t: Pick<Trip, 'date'>) => t.date.slice(0, 10);
 /** A trip that already occupies its vehicle: started (En Route, Stuck-Delayed) or Assigned for today or an earlier day that has not started yet. */
@@ -436,7 +479,9 @@ export function fleetStatus(a: HeavyRec, trips: Trip[] = tripRows()): FleetStatu
   return (openTripOf(a.id, trips)?.status as FleetStatus | undefined) ?? 'Free';
 }
 export function patchAsset(id: string, patch: Partial<HeavyRec>, audit?: { title: string; detail?: string }, movement?: { type: string; from: string; to: string; reference: string; customer?: string; project?: string }) {
-  const rows = fleetRows();
+  const rows = getCollection<HeavyRec>(COL.fleet);
+  // A fleet vehicle lives in Accounting Fixed Asset Management, not Heavy Equipment; it has no movement/audit trail here (patch is empty for the trip start/complete calls that reach it).
+  if (!rows.some((a) => a.id === id)) return;
   setCollection(COL.fleet, rows.map((a) => {
     if (a.id !== id) return a;
     const when = `${TODAY} ${dayjs().format('HH:mm')}`;

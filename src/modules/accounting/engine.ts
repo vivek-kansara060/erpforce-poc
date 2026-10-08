@@ -366,19 +366,29 @@ export function billDisputeCharge(ch: CrossHireLike, amount: number): Bill {
     expenses: [], narration: `Supplementary bill for ${ch.number}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } });
 }
 /** An external transporter's Transport Charge is billed to the transporter (a supplier): one Pending bill per charge, so a charge added after completion gets its own bill. */
-export function billTripCharge(t: Trip, e: Pick<TripExpense, 'amount' | 'note'>): Bill {
+export function billTripCharge(t: Trip, e: Pick<TripExpense, 'amount' | 'note' | 'vatPct' | 'account'>): Bill {
   const sup = suppliers.find((s) => s.name === t.transporter);
   return createBill({ supplierId: sup?.id, supplierName: t.transporter ?? 'External transporter', supplierInvoiceNo: '', supplierInvoiceDate: TODAY, date: TODAY, orderRef: t.number, costCentre: t.costCentre,
-    lines: [{ id: lid(), item: `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: tripExpenseAccount('Transport Charge'), qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: 5, costCentre: t.costCentre, tag: 'transport' as const }],
+    lines: [{ id: lid(), item: `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: e.account || tripExpenseAccount('Transport Charge'), qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: e.vatPct ?? 5, costCentre: t.costCentre, tag: 'transport' as const }],
     expenses: [], narration: `Trip ${t.number}`, source: { type: 'Trip', id: t.id, number: t.number, soId: t.soId } });
 }
-/** Own-fleet cost (Salik, fuel, parking...) posted to the ledger when it is added: Dr the expense account, Cr Accrued Trip Expenses, both on the order's cost centre. */
-export function postTripExpense(t: Trip, e: Pick<TripExpense, 'type' | 'amount' | 'note'>): string {
-  const memo = `${t.number}: ${e.type}${e.note ? `, ${e.note}` : ''}`;
-  return postJournal('Trip Expense', 'Trip', t.id, t.number, `Trip expense ${t.number} for ${t.docNumber}, ${e.type}`, [
-    { account: tripExpenseAccount(e.type), debit: e.amount, credit: 0, costCentre: t.costCentre, memo },
-    { account: ACC.tripAccrual, debit: 0, credit: e.amount, costCentre: t.costCentre, memo },
-  ]);
+/** Own-fleet cost (Salik, fuel, parking...) posted to the ledger when it is added: Dr the expense account (an explicit Expense Head, defaulting to the Trip Expense
+ * Type's account), Dr Input VAT Recoverable for its VAT %, Cr Accrued Trip Expenses for the full (gross) amount, all on the order's cost centre. */
+function postExpenseJournal(ref: { id: string; number: string; docNumber: string; costCentre?: string; activity?: string; entity?: string }, e: Pick<TripExpense, 'type' | 'amount' | 'vatPct' | 'note' | 'account'>): string {
+  const memo = `${ref.number}: ${e.type}${e.note ? `, ${e.note}` : ''}`;
+  const vat = round2((e.amount * (e.vatPct ?? 0)) / 100);
+  const lines: JournalLine[] = [{ account: e.account || tripExpenseAccount(e.type), debit: e.amount, credit: 0, costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo }];
+  if (vat) lines.push({ account: ACC.inputVat, debit: vat, credit: 0, costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo: `${memo} (VAT)` });
+  lines.push({ account: ACC.tripAccrual, debit: 0, credit: round2(e.amount + vat), costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo });
+  return postJournal('Trip Expense', 'Trip', ref.id, ref.number, `Trip expense ${ref.number} for ${ref.docNumber}, ${e.type}`, lines);
+}
+export function postTripExpense(t: Trip, e: Pick<TripExpense, 'type' | 'amount' | 'vatPct' | 'note' | 'account'>): string {
+  const o = orderOf(t.soId);
+  return postExpenseJournal({ id: t.id, number: t.number, docNumber: t.docNumber, costCentre: t.costCentre, activity: o?.activity, entity: o?.entity }, e);
+}
+/** Same posting as a trip expense, for a cost charged directly on a Delivery Order with no active trip (Add Expense on the Delivery Order). */
+export function postDeliveryExpense(d: Pick<Delivery, 'id' | 'number'>, costCentre: string | undefined, e: Pick<TripExpense, 'type' | 'amount' | 'vatPct' | 'note' | 'account'>, activity?: string, entity?: string): string {
+  return postExpenseJournal({ id: d.id, number: d.number, docNumber: d.number, costCentre, activity, entity }, e);
 }
 /** A posted journal is never edited: removing or cancelling an expense posts the opposite journal. */
 export function reverseJournal(journalId: string, why: string): string | undefined {

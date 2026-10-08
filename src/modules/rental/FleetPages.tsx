@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Alert, Box, Button, MenuItem, Select } from '@mui/material';
+import { Alert, Box, Button, FormControlLabel, MenuItem, Select, Switch } from '@mui/material';
 import dayjs from 'dayjs';
 import { employees, suppliers } from '@/mock-data/masters';
+import { useCollection } from '@/store/store';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
@@ -11,12 +12,15 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
-import { FLEET_STATUSES, TODAY, TRIP_STATUSES, assetById, custName, deliveryVehicles, fleetStatus, isOpenTrip, nextBookingOf, openTripOf, tripTotal, vehicleFreeOn, type FleetStatus, type HeavyRec, type Trip } from '@/modules/crm/data';
-import { addTripExpense, arrangeDeliveryTransport, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
+import { FLEET_STATUSES, TODAY, TRIP_STATUSES, assetById, custName, deliveryVehicles, fleetSettingsSeed, fleetStatus, isOpenTrip, nextBookingOf, openTripOf, tripTotal, vehicleFreeOn, type Delivery, type FleetSettings, type FleetStatus, type HeavyRec, type Trip } from '@/modules/crm/data';
+import { addDeliveryExpense, addTripExpense, arrangeDeliveryTransport, cancelTrip, completeTrip, getTrip, markStuck, reassignTrip, removeTripExpense, resumeTrip, startTrip, switchToExternal, vehicleIsFree } from '@/modules/crm/flow';
 import { MasterSelect, R, RowMenu, aed, useFleet, useTrips, type RowMenuItem } from '@/modules/crm/shared';
 import { currentLocation } from '@/modules/inventory/data';
+import { accLabel, expenseAccounts, tripExpenseAccount } from '@/modules/accounting/data';
 import { billsOfSource } from '@/modules/accounting/engine';
 import { useBills } from '@/modules/accounting/shared';
+
+const FLEET_SETTINGS_COL = 'rental.fleetSettings';
 
 const HEAVY = '/inventory/items/heavy';
 
@@ -41,23 +45,35 @@ const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as cons
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */
 type DlgKind = 'stuck' | 'complete' | 'expense' | 'reassign' | 'external' | 'cancel';
-type ExpenseLine = { type: string; amount: string; note: string };
+type ExpenseLine = { type: string; amount: string; vatPct: string; account: string; note: string };
+const blankExpenseLine = (): ExpenseLine => ({ type: '', amount: '', vatPct: '5', account: '', note: '' });
+/** Expense Head options for a trip expense line, as on BillPages / Cash Expense: an explicit GL account the user sees and can override. */
+const expenseAccOptions = expenseAccounts.map((a) => `${a.code} ${a.name}`);
+const accText = (code: string) => expenseAccOptions.find((a) => a.startsWith(code)) ?? code;
+const accCode = (label: string) => label.slice(0, 6);
 
-/** The status-driven actions of a trip, and the dialogs they open. */
+/** Fleet Management settings (client review 8 Oct): is the detailed driver trip workflow on? Off: the Delivery Order's own Dispatched / Delivered actions drive the trip instead. */
+export const useFleetSettings = () => useCollection<FleetSettings>(FLEET_SETTINGS_COL, fleetSettingsSeed);
+export const driverAppOf = (s: ReturnType<typeof useFleetSettings>) => s.get('settings')?.driverAppEnabled ?? true;
+/** The status-driven actions of a trip, and the dialogs they open. With the driver app off, the Assigned -> En Route -> Stuck-Delayed -> Completed actions are
+ * skipped (the Delivery Order drives those transitions instead); Add Expense and Cancel Trip stay available either way. */
 export function useTripMenu() {
   const [dlg, setDlg] = useState<{ kind: DlgKind; id: string } | null>(null);
   const toast = useToast();
+  const driverApp = driverAppOf(useFleetSettings());
   const open = (kind: DlgKind, t: Trip) => setDlg({ kind, id: t.id });
   const items = (t: Trip): RowMenuItem[] => {
     const own = t.transport === 'Own Fleet';
     const m: RowMenuItem[] = [];
-    if (t.status === 'Assigned') {
-      m.push({ label: 'Start Trip', onClick: () => { startTrip(t); toast(`${t.number} started, the vehicle is En Route`); } });
-      if (own) m.push({ label: 'Reassign Vehicle / Driver', onClick: () => open('reassign', t) }, { label: 'Switch to External Transporter', onClick: () => open('external', t) });
+    if (driverApp) {
+      if (t.status === 'Assigned') {
+        m.push({ label: 'Start Trip', onClick: () => { startTrip(t); toast(`${t.number} started, the vehicle is En Route`); } });
+        if (own) m.push({ label: 'Reassign Vehicle / Driver', onClick: () => open('reassign', t) }, { label: 'Switch to External Transporter', onClick: () => open('external', t) });
+      }
+      if (t.status === 'En Route') m.push({ label: 'Mark Stuck-Delayed', onClick: () => open('stuck', t) });
+      if (t.status === 'Stuck-Delayed') m.push({ label: 'Resume (En Route)', onClick: () => { resumeTrip(t); toast(`${t.number} resumed`); } });
+      if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Complete Trip', onClick: () => open('complete', t) });
     }
-    if (t.status === 'En Route') m.push({ label: 'Mark Stuck-Delayed', onClick: () => open('stuck', t) });
-    if (t.status === 'Stuck-Delayed') m.push({ label: 'Resume (En Route)', onClick: () => { resumeTrip(t); toast(`${t.number} resumed`); } });
-    if (t.status === 'En Route' || t.status === 'Stuck-Delayed') m.push({ label: 'Complete Trip', onClick: () => open('complete', t) });
     if (t.status === 'En Route' || t.status === 'Stuck-Delayed' || t.status === 'Completed') m.push({ label: 'Add Expense', onClick: () => open('expense', t) });
     if (isOpenTrip(t)) m.push({ label: 'Cancel Trip', danger: true, onClick: () => open('cancel', t) });
     return m;
@@ -101,24 +117,28 @@ function StuckDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
 }
 function ExpenseLines({ lines, onChange }: { lines: ExpenseLine[]; onChange: (l: ExpenseLine[]) => void }) {
   const set = (i: number, p: Partial<ExpenseLine>) => onChange(lines.map((l, n) => (n === i ? { ...l, ...p } : l)));
+  // Picking a type suggests the GL account it normally posts to; the dispatcher can still override it per line.
+  const pickType = (i: number, v: string) => set(i, { type: v, account: lines[i].account || accText(tripExpenseAccount(v)) });
   return (
     <Box sx={{ display: 'grid', gap: 1.5 }}>
       {lines.map((l, i) => (
-        <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1.4fr auto', gap: 1.5, alignItems: 'end' }}>
-          <MasterSelect master="tripExpenseTypes" label="Expense Type" required change="new" req={R.trip} value={l.type} onChange={(v) => set(i, { type: v })} />
+        <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1.1fr 0.75fr 0.55fr 1.5fr 1.1fr auto', gap: 1.5, alignItems: 'end' }}>
+          <MasterSelect master="tripExpenseTypes" label="Expense Type" required change="new" req={R.trip} value={l.type} onChange={(v) => pickType(i, v)} />
           <NumberInput label="Amount (AED)" required value={l.amount} onChange={(v) => set(i, { amount: v })} />
+          <SelectInput label="VAT %" change="new" req={R.trip} value={l.vatPct} options={['5', '0']} onChange={(v) => set(i, { vatPct: v })} />
+          <SelectInput label="Expense Head" change="new" req={R.trip} value={l.account} options={expenseAccOptions} onChange={(v) => set(i, { account: v })} hint="Defaults from the Expense Type; override to post elsewhere" />
           <TextInput label="Note" value={l.note} onChange={(v) => set(i, { note: v })} />
           <Button size="small" color="error" disabled={lines.length === 1} onClick={() => onChange(lines.filter((_, n) => n !== i))} sx={{ mb: 0.5 }}>Remove</Button>
         </Box>
       ))}
-      <Box><Button size="small" variant="outlined" onClick={() => onChange([...lines, { type: '', amount: '', note: '' }])}>Add expense line</Button></Box>
+      <Box><Button size="small" variant="outlined" onClick={() => onChange([...lines, blankExpenseLine()])}>Add expense line</Button></Box>
     </Box>
   );
 }
-const toExpenses = (lines: ExpenseLine[]) => lines.filter((l) => l.type && Number(l.amount) > 0).map((l) => ({ type: l.type, amount: Number(l.amount), note: l.note.trim() || undefined }));
+const toExpenses = (lines: ExpenseLine[]) => lines.filter((l) => l.type && Number(l.amount) > 0).map((l) => ({ type: l.type, amount: Number(l.amount), vatPct: Number(l.vatPct) || 0, account: accCode(l.account) || tripExpenseAccount(l.type), note: l.note.trim() || undefined }));
 function CompleteTripDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const toast = useToast();
-  const [lines, setLines] = useState<ExpenseLine[]>([{ type: '', amount: '', note: '' }]);
+  const [lines, setLines] = useState<ExpenseLine[]>([blankExpenseLine()]);
   const bad = lines.some((l) => (l.type || l.amount) && !(l.type && Number(l.amount) > 0));
   return (
     <AppDialog open title="Complete Trip" onClose={onClose} maxWidth="md" confirmLabel="Complete Trip" confirmDisabled={bad} onConfirm={() => { const e = toExpenses(lines); completeTrip(trip, e); toast(`${trip.number} completed, the vehicle is Free${e.length ? `. AED ${e.reduce((s, x) => s + x.amount, 0)} added to ${trip.soNumber}` : ''}`); onClose(); }}>
@@ -131,11 +151,27 @@ function CompleteTripDialog({ trip, onClose }: { trip: Trip; onClose: () => void
 }
 function ExpenseDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const toast = useToast();
-  const [lines, setLines] = useState<ExpenseLine[]>([{ type: '', amount: '', note: '' }]);
+  const [lines, setLines] = useState<ExpenseLine[]>([blankExpenseLine()]);
   const ok = toExpenses(lines);
   return (
     <AppDialog open title="Add Expense" onClose={onClose} maxWidth="md" confirmLabel="Add" confirmDisabled={!ok.length || ok.length !== lines.length} onConfirm={() => { ok.forEach((e) => addTripExpense(getTrip(trip.id) ?? trip, e)); toast(`AED ${ok.reduce((s, x) => s + x.amount, 0)} added to ${trip.soNumber}`); onClose(); }}>
       <TripSummary trip={trip} />
+      <ExpenseLines lines={lines} onChange={setLines} />
+    </AppDialog>
+  );
+}
+/** Add a trip-style expense straight on a Delivery Order, no active trip required (client review 8 Oct). Same fields and posting as a trip expense. */
+export function DeliveryExpenseDialog({ delivery, onClose }: { delivery: Delivery; onClose: () => void }) {
+  const toast = useToast();
+  const [lines, setLines] = useState<ExpenseLine[]>([blankExpenseLine()]);
+  const ok = toExpenses(lines);
+  return (
+    <AppDialog open title="Add Expense" onClose={onClose} maxWidth="md" confirmLabel="Add" confirmDisabled={!ok.length || ok.length !== lines.length} onConfirm={() => { ok.forEach((e) => addDeliveryExpense(delivery.id, e)); toast(`AED ${ok.reduce((s, x) => s + x.amount, 0)} added to ${delivery.soNumber}`); onClose(); }}>
+      <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F4F5F7', borderRadius: '6px' }}>
+        <Text type="s4" weight="medium">{delivery.number}</Text>
+        <Text type="s5" color="theme.secondary.700">{delivery.soNumber}, {custName(delivery.customerId)}</Text>
+      </Box>
+      <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Charge a cost to this delivery even when there is no active trip, for example before dispatch or after the trip already completed.</Text>
       <ExpenseLines lines={lines} onChange={setLines} />
     </AppDialog>
   );
@@ -163,11 +199,13 @@ function ExternalDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) 
   const toast = useToast();
   const [by, setBy] = useState('');
   const [cost, setCost] = useState('');
+  const [driverName, setDriverName] = useState('');
   return (
-    <AppDialog open title="Switch to External Transporter" onClose={onClose} confirmLabel="Switch" confirmDisabled={!by || !(Number(cost) > 0)} onConfirm={() => { const err = switchToExternal(trip, by, Number(cost)); if (err) { toast(err, 'error'); return; } toast(`${trip.number} moved to ${by}, the own vehicle is Free`); onClose(); }}>
+    <AppDialog open title="Switch to External Transporter" onClose={onClose} confirmLabel="Switch" confirmDisabled={!by || !(Number(cost) > 0)} onConfirm={() => { const err = switchToExternal(trip, by, Number(cost), driverName); if (err) { toast(err, 'error'); return; } toast(`${trip.number} moved to ${by}, the own vehicle is Free`); onClose(); }}>
       <TripSummary trip={trip} />
       <FormGrid cols={1}>
         <SelectInput label="Transported By" required value={by} options={transporterOptions()} onChange={setBy} hint="The supplier who transports, so the cost is paid back to them against the project" />
+        <TextInput label="Driver Name" value={driverName} onChange={setDriverName} hint="The external transporter's driver, for the trip record" />
         <NumberInput label="Transport Charge (AED)" required value={cost} onChange={setCost} hint="Posts to the Sales Order logistics cost" />
       </FormGrid>
     </AppDialog>
@@ -220,8 +258,11 @@ function FleetFilters({ types, type, setType, status, setStatus, hideStatus }: {
 /** The dispatcher's view of the own delivery fleet. In picker mode (opened from a Delivery Order, Return or Replacement) it lists only Free vehicles. */
 export function FleetBoard() {
   const nav = useNavigate();
+  const toast = useToast();
   const rows = useBoardRows();
   const menu = useTripMenu();
+  const settings = useFleetSettings();
+  const driverApp = driverAppOf(settings);
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
   const types = useMemo(() => Array.from(new Set(rows.map((r) => r.type))).sort(), [rows]);
@@ -229,14 +270,17 @@ export function FleetBoard() {
   const count = (s: FleetStatus) => rows.filter((r) => (!type || r.type === type) && r.status === s).length;
   return (
     <Page>
-      <PageTitle title="Fleet Availability" subtitle="Own delivery vehicles and what they are doing now. Pick a Free vehicle for a delivery, collection or replacement" change="new" req={R.fleet} />
+      {/* client review 8 Oct: Driver app enabled bypasses the detailed trip workflow (Assigned, En Route, Stuck-Delayed, Completed) */}
+      <PageTitle title="Fleet Availability" subtitle="Own delivery vehicles and what they are doing now. Pick a Free vehicle for a delivery, collection or replacement" change="new" req={R.fleet}
+        right={<FormControlLabel control={<Switch size="small" checked={driverApp} onChange={(e) => { settings.update('settings', { driverAppEnabled: e.target.checked }); toast(e.target.checked ? 'Driver app switched on: trips follow Assigned, En Route, Stuck-Delayed, Completed' : "Driver app switched off: the Delivery Order's own Dispatched / Delivered actions drive the trip"); }} />}
+          label={<Text type="s5" color="theme.secondary.800">Driver app enabled</Text>} />} />
       <KpiRow>
         {FLEET_STATUSES.map((s) => (
           <KpiCard key={s} title={s} value={count(s)} tint={status === s ? '#B6E9D6' : undefined} sub={status === s ? 'Filtered, click to clear' : 'Click to filter'} onClick={() => setStatus(status === s ? '' : s)} />
         ))}
       </KpiRow>
       <DataTable<BoardRow> rows={view} searchPlaceholder="Search plate, vehicle or driver..." toolbarRight={<FleetFilters types={types} type={type} setType={setType} status={status} setStatus={setStatus} />}
-        emptyText={rows.length ? 'No vehicle matches the filters' : 'No delivery vehicles yet. Tick Delivery fleet vehicle on a Heavy Equipment Fixed Asset'}
+        emptyText={rows.length ? 'No vehicle matches the filters' : 'No delivery vehicles yet. Tick Fleet Vehicle on an asset in Accounting > Fixed Asset Management'}
         columns={[
           { key: 'plate', label: 'Plate Number', change: 'new', req: R.fleet },
           { key: 'name', label: 'Vehicle', render: (r) => <Link to={`${HEAVY}/${r.id}`} style={RL}>{r.name}</Link> },
@@ -434,14 +478,17 @@ export function TripView() {
                 <ValueField label="Vehicle" value={vehicle ? <Link to={`${HEAVY}/${vehicle.id}`} style={RL}>{vehicleLabel(vehicle)}</Link> : t.plate ?? '-'} />
                 <ValueField label="Driver" value={t.driver || '-'} /><ValueField label="Mobile" value={t.mobile || '-'} />
               </>
-            ) : <><ValueField label="Transported By" value={t.transporter || '-'} /><ValueField label="Transporter Bill" change="new" req="Instruction 6 Oct (accounting POC): each external transporter charge becomes a Pending bill to the transporter" value={(() => { const bs = billsOfSource('Trip', t.id); return bs.length ? <>{bs.map((b, n) => <span key={b.id}>{n > 0 && ', '}<Link to={`/accounting/bills/${b.id}`} style={RL}>{b.number} ({b.approval})</Link></span>)}</> : t.status === 'Completed' ? 'No transport charge' : 'Raised when the trip is completed'; })()} /></>}
+            ) : <><ValueField label="Transported By" value={t.transporter || '-'} /><ValueField label="Driver Name" change="new" req="Fleet review 8 Oct: the external transporter's driver was not captured" value={t.transporterDriver || '-'} /><ValueField label="Transporter Bill" change="new" req="Instruction 6 Oct (accounting POC): each external transporter charge becomes a Pending bill to the transporter" value={(() => { const bs = billsOfSource('Trip', t.id); return bs.length ? <>{bs.map((b, n) => <span key={b.id}>{n > 0 && ', '}<Link to={`/accounting/bills/${b.id}`} style={RL}>{b.number} ({b.approval})</Link></span>)}</> : t.status === 'Completed' ? 'No transport charge' : 'Raised when the trip is completed'; })()} /></>}
             <ValueField label="In Status Since" value={sinceLabel(t.since)} /><ValueField label="Total Expenses" value={aed(tripTotal(t))} />
           </ValueGrid>
         </Panel>
         <Panel title="Expenses" change="new" req={R.trip} sx={{ mt: 2 }} right={items.some((i) => i.label === 'Add Expense') && <Button size="small" variant="outlined" onClick={() => items.find((i) => i.label === 'Add Expense')?.onClick()}>Add Expense</Button>}>
           <DataTable hideToolbar rows={t.expenses.map((e, i) => ({ id: String(i), i, ...e }))} emptyText="No expenses yet. Add Salik, fuel or the transporter's charge; each one is added to the Sales Order logistics cost"
             actions={t.status === 'Cancelled' ? undefined : [{ label: 'Remove', danger: true, onClick: (r) => removeTripExpense(t, r.i) }]}
-            columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' },
+            columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) },
+              { key: 'vatPct', label: 'VAT %', change: 'new', req: R.trip, align: 'right', render: (r) => (r.vatPct ? `${r.vatPct}%` : '-') },
+              { key: 'account', label: 'Expense Head', change: 'new', req: R.trip, render: (r) => (r.account ? accLabel(r.account) : '-') },
+              { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' },
               { key: 'acc', label: 'Accounting', change: 'new', req: 'Fleet review 7 Oct: trip costs reach the ledger. Own-fleet costs post a journal, an external Transport Charge becomes a bill', sortable: false, render: (r) => (r.billId ? <Link to={`/accounting/bills/${r.billId}`} style={RL}>Bill to transporter</Link> : r.journalId ? <Link to={`/accounting/journals/${r.journalId}`} style={RL}>Posted to ledger</Link> : <Text type="s5" color="theme.secondary.700">{t.transport === 'External Transporter' && r.type === 'Transport Charge' ? 'Billed when the trip is completed' : '-'}</Text>) }]} />
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Total {aed(tripTotal(t))}. Every expense is part of the logistics cost of {t.soNumber}. Own-fleet costs post to the ledger (Dr expense, Cr Accrued Trip Expenses) on the order's cost centre; an external Transport Charge is billed to the transporter. Neither is invoiced to the customer; the customer pays only the Delivery and Return Charge lines quoted on the order.</Text>
         </Panel>

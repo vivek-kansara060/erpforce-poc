@@ -116,6 +116,7 @@ export function LedgerTable({ journalId }: { journalId?: string }) {
       <Text type="s4" sx={{ mb: 1 }}>Journal {j.number}, {j.journalType}, posted {j.postingDate}</Text>
       <DataTable hideToolbar pageSize={50} rows={j.lines.map((l, i) => ({ id: String(i), ...l }))} columns={[
         { key: 'account', label: 'Account', render: (l) => accLabel(l.account) }, { key: 'party', label: 'Party', render: (l) => l.party ?? '-' }, { key: 'costCentre', label: 'Cost Centre', change: 'new', req: R_ACC.gl, render: (l) => l.costCentre ?? '-' },
+        { key: 'activity', label: 'Activity Type', change: 'new', req: R_ACC.gl, render: (l) => l.activity ?? '-' }, { key: 'entity', label: 'Entity', change: 'new', req: R_ACC.gl, render: (l) => l.entity ?? '-' },
         { key: 'memo', label: 'Memo', render: (l) => l.memo ?? '-' }, { key: 'debit', label: 'Debit', align: 'right', render: (l) => (l.debit ? money(l.debit) : '-') }, { key: 'credit', label: 'Credit', align: 'right', render: (l) => (l.credit ? money(l.credit) : '-') },
       ]} />
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 4, mt: 1 }}><Text type="s4" weight="medium">Total Debit {money(dr)}</Text><Text type="s4" weight="medium">Total Credit {money(cr)}</Text></Box>

@@ -3,7 +3,7 @@ import { Box } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
-import { ACTIVITY_TYPES, COL, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
+import { ACTIVITY_TYPES, AMC_LIKE, COL, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
 import { customerAddressSpecs, useAddressAutofill, type AddressCfg } from './addressKit';
@@ -57,11 +57,11 @@ export const contractSpecs: Spec[] = [
   { key: 'contractStart', label: 'Contract Start Date', type: 'date', required: true, show: (f) => f.activity === 'Rental' },
   { key: 'contractEnd', label: 'Contract End Date', type: 'date', required: true, show: (f) => f.activity === 'Rental', hint: 'Open PO still has an end date, defaults to 31 December' },
   { key: 'billingStructure', label: 'Billing Structure', type: 'select', options: BILLING_STRUCTURES, required: true, show: (f) => f.activity === 'Rental' && f.contractType === 'Project', hint: 'Feature that drives this to be confirmed with client' },
-  { key: 'amcStart', label: 'AMC Start Date', type: 'date', required: true, show: (f) => f.activity === 'AMC' },
-  { key: 'amcEnd', label: 'AMC End Date', type: 'date', required: true, show: (f) => f.activity === 'AMC', hint: 'Start + 1 year by default, editable' },
-  { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order' },
-  { key: 'amcValue', label: 'Contract Value (AED, before VAT)', type: 'number', required: true, change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', hint: 'The whole AMC value. It is split evenly across the planned visits' },
-  { key: 'amcScope', label: 'Scope of the AMC', type: 'textarea', change: 'new', req: R.meet, show: (f) => f.activity === 'AMC', full: true, hint: 'What the contract covers, printed on the quotation' },
+  { key: 'amcStart', label: 'Start Date', type: 'date', required: true, show: (f) => AMC_LIKE.includes(f.activity) },
+  { key: 'amcEnd', label: 'End Date', type: 'date', required: true, show: (f) => AMC_LIKE.includes(f.activity), hint: 'Start + 1 year by default, editable' },
+  { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order. A Service contract is one-time and always has exactly one visit' },
+  { key: 'amcValue', label: 'Contract Value (AED, before VAT)', type: 'readonly', change: 'new', req: R.meet, show: (f) => AMC_LIKE.includes(f.activity), value: (f) => aed(docTotals((f.lines as Line[]) ?? [], 0, f.vatType || VAT_TYPES[0]).sub), hint: 'Computed from the service lines below, not typed directly. For AMC it is split evenly across the planned visits' },
+  { key: 'amcScope', label: 'Scope of Work', type: 'textarea', change: 'new', req: R.meet, show: (f) => AMC_LIKE.includes(f.activity), full: true, hint: 'Overall narration of what the contract covers, printed on the quotation; kept separate from the service lines below' },
 ];
 /**
  * Billing section of the existing Rental Order (Billing Cycle, Last / Next Invoice Date, Invoicing Type). In the POC it lives on the CRM Sales Order and is shown
@@ -96,8 +96,6 @@ export function withHeaderCascade(x: F, k: string, v: any): F {
   if (k === 'activity' && x.activity !== v) n.lines = [];
   if (k === 'billingCycle') n.invoicingType = cycleOf(v).invoicingType;
   if (k === 'amcStart' && v) n.amcEnd = plusYear(v);
-  // An AMC has no item lines: its single contract line follows the Contract Value and scope.
-  if (n.activity === 'AMC' && ['activity', 'amcValue', 'amcScope'].includes(k)) n.lines = [amcLine(Number(n.amcValue) || 0, n.amcScope, (x.lines as Line[])[0]?.id)];
   if (k === 'contractStart' || k === 'contractEnd') {
     const lk = k === 'contractStart' ? 'start' : 'end';
     n.lines = (x.lines as Line[]).map((l) => (l.activity === 'Rental' || (l.activity === 'Service' && l.billing === 'Recurring') ? { ...l, [lk]: v } : l));
@@ -121,11 +119,10 @@ export function commercialErrors(f: F): Record<string, string> {
     else if (f.contractStart && f.contractEnd < f.contractStart) e.contractEnd = 'End Date must be after Start Date';
     if (f.contractType === 'Project' && !f.billingStructure) e.billingStructure = 'Billing Structure is required for Project';
   }
-  if (f.activity === 'AMC') {
-    if (!f.amcStart) e.amcStart = 'AMC Start Date is required';
-    if (!f.amcEnd) e.amcEnd = 'AMC End Date is required';
-    if (!Number(f.visits)) e.visits = 'Number of Visits is required';
-    if (!(Number(f.amcValue) > 0)) e.amcValue = 'Contract Value is required';
+  if (AMC_LIKE.includes(f.activity)) {
+    if (!f.amcStart) e.amcStart = 'Start Date is required';
+    if (!f.amcEnd) e.amcEnd = 'End Date is required';
+    if (f.activity === 'AMC' && !Number(f.visits)) e.visits = 'Number of Visits is required';
   }
   return e;
 }
@@ -151,9 +148,7 @@ export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral,
           {kind === 'quote' && <Section title="Prepared By" change="new" req={R.quote}>{g(preparedSpecs, 4)}</Section>}
           {belowGeneral}
           <Section title="Classification">{g(classification)}</Section>
-          {f.activity === 'AMC'
-            ? <Section title="Contract Value" change="new" req={R.meet} hint="An AMC has no item lines. The Contract Value is split across the planned visits; materials used on a visit are recorded on its job card and billed separately."><Totals lines={f.lines ?? []} discountPct={Number(f.discountPct) || 0} vatType={f.vatType} currency={f.currency} /></Section>
-            : <Section title="Items" change="changed" req={R.meet}>{items}</Section>}
+          <Section title="Items" change="changed" req={R.meet} hint={AMC_LIKE.includes(f.activity) ? 'Itemized service lines for the contract; their total is the Contract Value shown above. Materials used on a visit are recorded on its job card and billed separately.' : undefined}>{items}</Section>
           <Section title="Discounts">{g(discounts, 3)}</Section>
           {!locked && <Section title="Attachment"><SpecForm specs={[{ key: 'attachments', label: 'Attachment', type: 'file' }]} f={f} set={set} /></Section>}
         </>) },

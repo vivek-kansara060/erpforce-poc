@@ -4,7 +4,7 @@ import { DataTable } from '@/components/DataTable';
 import { ValueField, ValueGrid } from '@/components/Form';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
-import { COA, round2, type Journal } from './data';
+import { COA, round2, type Journal, type JournalLine } from './data';
 import { journalByRef } from './engine';
 import { LedgerTable, R_ACC, money, useJournals } from './shared';
 
@@ -20,6 +20,11 @@ const refPath = (j: Journal) => {
   }
 };
 const amountOf = (j: Journal) => round2(j.lines.reduce((s, l) => s + l.debit, 0));
+/** The journal's own entity/activity when every line agrees on one; '-' when lines are mixed or carry none. */
+const uniqueOf = (j: Journal, key: 'activity' | 'entity') => {
+  const vals = [...new Set(j.lines.map((l: JournalLine) => l[key]).filter(Boolean))];
+  return vals.length === 1 ? vals[0]! : '-';
+};
 
 export function JournalList() {
   const nav = useNavigate();
@@ -30,6 +35,7 @@ export function JournalList() {
       <DataTable<Journal> rows={j.rows} searchPlaceholder="Search journals..." filter={{ key: 'journalType', options: ['Sales', 'Purchases', 'Cash Receipt Voucher', 'Payment', 'Credit Note', 'Debit Note', 'Trip Expense'], label: 'Journal Type' }} onRowClick={(r) => nav(`/accounting/journals/${r.id}`)}
         columns={[
           { key: 'postingDate', label: 'Posting Date' }, { key: 'number', label: 'Series Number' }, { key: 'refType', label: 'Reference Type' }, { key: 'refNumber', label: 'Reference' },
+          { key: 'entity', label: 'Entity', change: 'new', req: R_ACC.gl, render: (r) => uniqueOf(r, 'entity') }, { key: 'activity', label: 'Activity Type', change: 'new', req: R_ACC.gl, render: (r) => uniqueOf(r, 'activity') },
           { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} tone="green" /> }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => money(amountOf(r)) },
           { key: 'createdBy', label: 'Created By' }, { key: 'journalType', label: 'Journal Type' }, { key: 'currency', label: 'Currency' }, { key: 'narration', label: 'Narration' },
         ]} />
@@ -51,6 +57,7 @@ export function JournalView() {
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
           <ValueField label="Series Number" value={j.number} /><ValueField label="Posting Date" value={j.postingDate} /><ValueField label="Journal Type" value={j.journalType} /><ValueField label="Reference" value={`${j.refType} ${j.refNumber}`} />
+          <ValueField label="Entity" change="new" req={R_ACC.gl} value={uniqueOf(j, 'entity')} /><ValueField label="Activity Type" change="new" req={R_ACC.gl} value={uniqueOf(j, 'activity')} />
           <ValueField label="Currency" value={j.currency} /><ValueField label="Created By" value={j.createdBy} /><ValueField label="Narration" value={j.narration} />
         </ValueGrid>
         <Box sx={{ mt: 3 }}><LedgerTable journalId={j.id} /></Box>

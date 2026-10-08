@@ -12,7 +12,7 @@ import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
-import { CROSS_STAGES, costForSo, reqItems, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
+import { AMC_LIKE, CROSS_STAGES, costForSo, reqItems, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
 import { NEXT_STEP, crossHireGap, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
 import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
@@ -52,6 +52,7 @@ export function SalesOrderList() {
           { key: 'status', label: 'Sales Order Status', change: 'changed', req: R.so, render: (r) => <StatusChip status={r.status} /> },
           { key: 'delivery', label: 'Delivery Status', render: (r) => (deliveryStatus(r) === '-' ? '-' : <StatusChip status={deliveryStatus(r)} />) },
           { key: 'owner', label: 'Salesperson' }, { key: 'entity', label: 'Entity' },
+          { key: 'costCentre', label: 'Cost Centre / Project', change: 'new', req: R.meet, render: (r) => r.costCentre || '-' },
           { key: 'end', label: 'Contract / LPO End', change: 'new', req: R.meet, render: (r) => r.contractEnd ?? r.amcEnd ?? r.lpoExpiry ?? '-' },
           { key: 'total', label: 'Total Amount', align: 'right', render: (r) => aed(docTotals(r.lines, r.discountPct, r.vatType).total) },
         ]}
@@ -297,7 +298,7 @@ export function SalesOrderView() {
           {so.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(so); toast('Sales Order confirmed'); }}>Confirm</Button>}
           {so.activity === 'Rental' && rentalOut > 0 && <Button variant="outlined" onClick={() => setDlg({ kind: 'expiry' })}>Extend / Terminate</Button>}
           <MenuButton label="Create" variant="outlined" items={[
-            { label: 'Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
+            { label: 'Delivery', disabled: AMC_LIKE.includes(so.activity), onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
             { label: 'Advance', onClick: () => setDlg({ kind: 'advance' }) },
             { label: 'Invoice', disabled: !invoiceableLines(so.lines).length, onClick: () => nav(`/accounting/invoices/add?so=${so.id}`) },
             { label: 'Return (Customer Returns)', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}`), disabled: rentalOut === 0 },
@@ -328,7 +329,7 @@ export function SalesOrderView() {
             { label: 'Traceability', change: 'new', req: R.meet, hidden: so.activity !== 'Rental', content: <Traceability so={so} quoteNo={quotes.get(so.quoteId)?.number} /> },
             { label: 'Scheduled Invoices', change: 'new', req: R.ledger, hidden: so.activity !== 'Rental', content: <OrderSchedules so={so} /> },
             { label: 'Asset Ledger', change: 'changed', req: R.ledger, hidden: so.activity !== 'Rental', content: <Ledger so={so} /> },
-            { label: 'AMC Visits', change: 'new', req: R.meet, hidden: so.activity !== 'AMC', content: (
+            { label: 'AMC Visits', change: 'new', req: R.meet, hidden: !AMC_LIKE.includes(so.activity), content: (
               <DataTable hideToolbar rows={(so.visitPlan ?? []).map((v, i) => ({ id: String(i), i, ...v }))} columns={[
                 { key: 'n', label: 'Visit', render: (r) => r.i + 1 }, { key: 'date', label: 'Planned Date' }, { key: 'amount', label: 'Visit value', align: 'right', render: (r) => (jobCardsOf(so.id).find((j) => j.visitIdx === r.i)?.visitFoc ? `${aed(r.amount)} (FOC)` : aed(r.amount)) }, { key: 'done', label: 'Done On', render: (r) => r.done ?? '-' }, { key: 'ref', label: 'Reference', render: (r) => r.ref ?? '-' },
                 { key: 'act', label: '', render: (r) => <Button size="small" variant="outlined" onClick={() => nav(`/crm/amc-orders/${so.id}`)}>Job Card</Button> },
