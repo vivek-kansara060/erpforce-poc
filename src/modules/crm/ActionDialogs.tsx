@@ -45,29 +45,6 @@ export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: 
   );
 }
 
-export function CrossHireDialog({ open, onClose, soId, lineId, lineIds }: { open: boolean; onClose: () => void; soId?: string; lineId?: string; lineIds?: string[] }) {
-  const nav = useNavigate();
-  const toast = useToast();
-  const [sup, setSup] = useState('');
-  const [rate, setRate] = useState('');
-  const so = getOrder(soId);
-  const ids = lineIds?.length ? lineIds : lineId ? [lineId] : [];
-  const lines = ids.map((i) => getLine(so, i)).filter(Boolean) as NonNullable<ReturnType<typeof getLine>>[];
-  if (!so || !lines.length) return null;
-  const list = suppliers.filter((s) => s.type === 'Cross-Hire Company');
-  const bulk = lines.length > 1;
-  return (
-    <AppDialog open={open} title={bulk ? `Cross-Hire requests for ${lines.length} lines` : `Cross-Hire request: ${lines[0].group} ${lines[0].category}`} onClose={onClose} confirmLabel={bulk ? `Raise ${lines.length} Requests` : 'Raise Request'}
-      onConfirm={() => { const s = list.find((x) => x.id === sup); lines.forEach((l) => raiseCrossHire(so.id, l.id, s?.id, s?.name, Number(rate) || 0)); toast(bulk ? `${lines.length} Cross-Hire requests raised. Submit them, then create an RFQ or an Order (Process Cross Hire handles several at once)` : 'Cross-Hire request raised. Submit it, then create an RFQ or an Order'); onClose(); nav('/rental/cross-hire'); }}>
-      <Alert severity="warning" sx={{ mb: 2 }}>No owned unit is Ready for Hire for: {lines.map((l) => `${l.group} ${l.category} x ${l.qty}`).join(', ')}. {bulk ? 'One request is raised per line, all with the same preferred supplier and rate.' : 'This demand is sourced from a third-party supplier.'}</Alert>
-      <FormGrid cols={1}>
-        <SelectInput label="Preferred Supplier (optional)" value={sup} options={list.map((s) => ({ value: s.id, label: s.name }))} onChange={setSup} hint="Suppliers of type Cross-Hire Company" />
-        <NumberInput label="Expected Rate (per month, AED, optional)" value={rate} onChange={setRate} hint="The RFQ award or the order fixes the agreed rate" />
-      </FormGrid>
-    </AppDialog>
-  );
-}
-
 export function NextStepDialog({ open, onClose, soId, lineId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
   const toast = useToast();
   const so = getOrder(soId);
@@ -124,33 +101,6 @@ export function PrintDialog({ open, onClose, doc }: { open: boolean; onClose: ()
 
 /** Lines of a Sales Order that can be invoiced now: not Rental (billed by the rental run), not AMC (billed from job cards), not invoiced yet. */
 export const invoiceableLines = (lines: Line[]) => lines.filter((l) => !['Rental', 'AMC'].includes(l.activity) && !(l.activity === 'Service' && l.billing === 'Recurring') && !l.fulfilmentRef && (!l.fulfilment || l.fulfilment === 'Delivered'));
-/** Create, Invoice on the Sales Order: one sales invoice for the selected lines, created Pending (decision D4). */
-export function InvoiceLinesDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string }) {
-  const toast = useToast();
-  const nav = useNavigate();
-  const so = getOrder(soId);
-  const lines = so ? invoiceableLines(so.lines) : [];
-  const [sel, setSel] = useState<string[]>([]);
-  if (!so) return null;
-  const chosen = sel.filter((x) => lines.some((l) => l.id === x));
-  return (
-    <AppDialog open={open} title={`Invoice from ${so.number}`} onClose={onClose} maxWidth="md" confirmLabel="Create Invoice" confirmDisabled={!chosen.length}
-      onConfirm={() => { const n = invoiceOrderLines(so.id, chosen); toast(n ? `Invoice ${n} raised, pending approval in Accounting` : 'Nothing to invoice', n ? 'success' : 'error'); setSel([]); onClose(); }}>
-      {!lines.length ? <Text type="s4">Every line that can be invoiced here already has an invoice. Rental lines are invoiced by the rental run (Rental, Invoicing Rental Order) and AMC visits from their job cards.</Text> : (
-        <Box>
-          {lines.map((l) => (
-            <Box key={l.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, borderBottom: '1px solid #EEE' }}>
-              <Checkbox size="small" checked={chosen.includes(l.id)} onChange={(e) => setSel(e.target.checked ? [...chosen, l.id] : chosen.filter((x) => x !== l.id))} />
-              <Box sx={{ flex: 1 }}><Text type="s4">{l.item}</Text><Text type="s5" color="theme.secondary.700">{l.activity}, {l.qty} {l.unit} at {aed(l.price)}{l.foc ? ' (FOC)' : ''}</Text></Box>
-              <Text type="s4">{aed(l.foc ? 0 : l.qty * l.price * (1 - (l.discount ?? 0) / 100))}</Text>
-            </Box>
-          ))}
-          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>One invoice is created for the selected lines at the Sales Order price, Pending until it is approved in Accounting. <Box component="span" sx={{ textDecoration: 'underline', cursor: 'pointer' }} onClick={() => { onClose(); nav(`/accounting/invoices?so=${so.id}`); }}>See the invoices of this order</Box></Text>
-        </Box>
-      )}
-    </AppDialog>
-  );
-}
 
 /** Create, Advance on the Sales Order: an advance Collection, Pending until approved in Accounting (decision D5); applied later from the invoice. */
 export function AdvanceDialog({ open, onClose, soId, onDone }: { open: boolean; onClose: () => void; soId?: string; onDone?: (l: LogItem) => void }) {

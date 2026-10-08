@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
@@ -8,11 +8,13 @@ import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
-import { TODAY } from '@/modules/crm/data';
+import { COL, TODAY, chItems, type CrossHire, type SalesOrder } from '@/modules/crm/data';
+import { linkCrossHireBill } from '@/modules/crm/flow';
+import { getCollection } from '@/store/store';
 import { PrintDialog } from '@/modules/crm/ActionDialogs';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from '@/modules/crm/FormKit';
 import { lid } from './billing';
-import { APPROVAL_STATUSES, EDITABLE, expenseAccounts, totalsOf, type Bill, type ExpenseLine, type InvLine } from './data';
+import { APPROVAL_STATUSES, EDITABLE, expenseAccountFor, expenseAccounts, totalsOf, type Bill, type ExpenseLine, type InvLine } from './data';
 import { approveBill, billByRef, billDue, billTotal, createBill, deleteBill, isOverdue, rejectBill, submitBill, updateBill } from './engine';
 import { ApprovalButtons, DocChips, ExpensesTable, LedgerDialog, LedgerTable, LinesTable, PaymentDialog, R_ACC, SourceLink, TotalsBox, money, sourcePath, useBills, useDebitNotes, useJournals, usePayments } from './shared';
 import { discSpecs, headerSpecs } from './SalesInvoicePages';
@@ -115,10 +117,14 @@ export function BillForm() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
+  const [sp] = useSearchParams();
   const existing = billByRef(id);
-  const [f, setF] = useState<Record<string, any>>(() => existing ? { ...existing } : { entity: 'Gulf Power Rentals LLC', date: TODAY, postingTime: '09:00', paymentTerms: '30 days', currency: 'AED', exchangeRate: 1, discountOn: 'None', discountPct: 0, roundOff: false, supplierInvoiceDate: TODAY });
-  const [rows, setRows] = useState<Row[]>(() => (existing?.lines ?? []).map((l) => ({ item: l.item, desc: l.desc, qty: l.qty, unit: l.unit, rate: l.rate, discountPct: l.discountPct, vatPct: String(l.vatPct), account: accText(l.account) })));
-  const [ex, setEx] = useState<ExRow[]>(() => (existing?.expenses ?? []).map((e) => ({ account: accText(e.account), desc: e.desc, amount: e.amount, vatPct: String(e.vatPct) })));
+  // From a Cross Hire Order (Bill): supplier, rate and expenses come from the order; saving records the supplier invoice on the order.
+  const ch = !existing ? getCollection<CrossHire>(COL.crossHire).find((x) => x.id === sp.get('crossHire')) : undefined;
+  const chSo = ch ? getCollection<SalesOrder>(COL.orders).find((x) => x.id === ch.soId) : undefined;
+  const [f, setF] = useState<Record<string, any>>(() => existing ? { ...existing } : { entity: 'Gulf Power Rentals LLC', date: TODAY, postingTime: '09:00', paymentTerms: '30 days', currency: 'AED', exchangeRate: 1, discountOn: 'None', discountPct: 0, roundOff: false, supplierInvoiceDate: TODAY, ...(ch ? { supplierId: ch.supplierId, supplierName: ch.supplier, paymentTerms: ch.paymentTerms ?? '30 days', orderRef: ch.number, activity: 'Rental', costCentre: chSo?.costCentre } : {}) });
+  const [rows, setRows] = useState<Row[]>(() => (ch ? chItems(ch).map((it) => ({ item: `Cross-hire ${it.group} ${it.category}`, desc: `${ch.number}${ch.soNumber ? ` for ${ch.soNumber}` : ''}`, qty: it.qty, unit: 'Nos', rate: it.rate, discountPct: 0, vatPct: '5', account: accText('510100') })) : (existing?.lines ?? []).map((l) => ({ item: l.item, desc: l.desc, qty: l.qty, unit: l.unit, rate: l.rate, discountPct: l.discountPct, vatPct: String(l.vatPct), account: accText(l.account) }))));
+  const [ex, setEx] = useState<ExRow[]>(() => (ch ? (ch.expenses ?? []).map((e) => ({ account: accText(expenseAccountFor(e.account)), desc: e.note || e.account, amount: e.amount, vatPct: '5' })) : (existing?.expenses ?? []).map((e) => ({ account: accText(e.account), desc: e.desc, amount: e.amount, vatPct: String(e.vatPct) }))));
   const [err, setErr] = useState<Record<string, string>>({});
   if (id && !existing) return <Page><PageTitle title="Bill not found" /></Page>;
   if (existing && !EDITABLE.includes(existing.approval)) return <Page><PageTitle title={`${existing.number} is approved and cannot be edited`} subtitle="Raise a Debit Note to correct an approved bill." right={<Button variant="outlined" onClick={() => nav(`/accounting/bills/${existing.id}`)}>Back</Button>} /></Page>;
@@ -139,7 +145,8 @@ export function BillForm() {
     if (!lines.length && !expenses.length) { toast('Add at least one item or expense', 'error'); return; }
     const data = { ...f, lines, expenses, discountPct: Number(f.discountPct) || 0, exchangeRate: Number(f.exchangeRate) || 1, activity: f.activity || undefined, costCentre: f.costCentre || undefined };
     if (existing) { const x = updateBill(existing.id, data); toast(x.message, x.ok ? 'success' : 'error'); nav(`/accounting/bills/${existing.id}`); return; }
-    const b = createBill({ ...data, source: { type: 'Manual', id: '', number: '' } } as any, { draft });
+    const b = createBill({ ...data, source: ch ? { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } : { type: 'Manual', id: '', number: '' } } as any, { draft });
+    if (ch && !draft) linkCrossHireBill(ch.id, b);
     toast(`${b.number} ${draft ? 'saved as draft' : 'created, pending approval'}`);
     nav(`/accounting/bills/${b.id}`);
   };
@@ -148,6 +155,7 @@ export function BillForm() {
       <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? `Edit ${existing.number}` : 'New Bill' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
+        {ch && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from cross-hire order {ch.number} ({ch.qty ?? 1} unit(s) in {chItems(ch).length} item(s) at the agreed rate per unit, and its expenses). Enter the supplier's invoice number and date; saving records the supplier invoice on the order.</Alert>}
         <SpecForm specs={specs} f={f} set={set} err={err} />
         <Section title="Items">
           <RowsEditor<Row> cols={[{ key: 'item', label: 'Item', width: 200 }, { key: 'desc', label: 'Description', width: 200 }, { key: 'qty', label: 'Quantity', width: 80 }, { key: 'unit', label: 'UOM', width: 80 }, { key: 'rate', label: 'Rate', width: 100 }, { key: 'discountPct', label: 'Discount %', width: 80 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }, { key: 'account', label: 'Expense Account', type: 'select', options: itemAcc, width: 240 }]}

@@ -13,7 +13,7 @@ import { useCollection } from '@/store/store';
 import { CROSS_STAGES, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, FAULT_ATTRIBUTION, masterValues, assetById, availability, custName, docTotals, type CrossHire, type Replacement, type SalesOrder } from '@/modules/crm/data';
 import { deliveredQty, getOrder, outstanding, receiveCrossHire, replaceAsset, returnToSupplier, returnToUs } from '@/modules/crm/flow';
 import { R, aed, useCrossHire, useExtensions, useFleet, useOrders, useReplacements } from '@/modules/crm/shared';
-import { CrossHireDialog, ExpiryDialog } from '@/modules/crm/ActionDialogs';
+import { ExpiryDialog } from '@/modules/crm/ActionDialogs';
 import { expiryRows } from '@/modules/crm/reports';
 import { TransportSection, blankTransport, toTransportInput, validateTransport } from './FleetPages';
 
@@ -42,7 +42,6 @@ export function ReplacementForm() {
   const orders = useOrders();
   const fleet = useFleet();
   const [f, setF] = useState<Record<string, any>>({ soId: sp.get('so') ?? '', key: '', reason: '', newId: '', priceAdjust: '', notified: false });
-  const [dlg, setDlg] = useState(false);
   const [err, setErr] = useState<Record<string, string>>({});
   const [tp, setTp] = useState(blankTransport);
   const set = (k: string) => (v: any) => setF((x) => ({ ...x, [k]: v }));
@@ -77,7 +76,7 @@ export function ReplacementForm() {
         {pick && (
           <FormSection title={`Same-category check: ${pick.l.group} ${pick.l.category}`} change="new" req={R.repl}>
             {choices.length === 0 ? (
-              <Alert severity="warning" action={<Button size="small" color="inherit" onClick={() => setDlg(true)}>Raise Cross-Hire</Button>}>No owned {pick.l.group} {pick.l.category} unit is Ready for Hire. Source the replacement through Cross-Hire.</Alert>
+              <Alert severity="warning" action={<Button size="small" color="inherit" onClick={() => nav(`/rental/cross-hire/add?so=${so?.id}&lines=${pick?.l.id}`)}>Raise Cross-Hire</Button>}>No owned {pick.l.group} {pick.l.category} unit is Ready for Hire. Source the replacement through Cross-Hire.</Alert>
             ) : (
               <SelectInput label="Replacement Asset (Ready for Hire)" required value={f.newId} options={choices.map((a) => ({ value: a.id, label: `${a.assetId} - ${a.name}${a.ownership === 'Cross-Hired' ? ' (Cross-Hired)' : ''}` }))} onChange={set('newId')} error={err.newId} hint={`${av.owned.length} owned and ${av.cross.length} cross-hired unit(s) available`} />
             )}
@@ -94,7 +93,6 @@ export function ReplacementForm() {
           <TransportSection value={tp} onChange={setTp} errors={err} />
         </FormSection>
       </Page>
-      <CrossHireDialog open={dlg} onClose={() => setDlg(false)} soId={so?.id} lineId={pick?.l.id} />
     </>
   );
 }

@@ -12,7 +12,7 @@ import { Text } from '@/components/Text';
 import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
-import { CROSS_STAGES, costForSo, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
+import { CROSS_STAGES, costForSo, reqItems, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type Line, type SalesOrder } from './data';
 import { NEXT_STEP, crossHireGap, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
 import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
@@ -25,7 +25,7 @@ import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
 import { Section, SpecForm, SpecView } from './FormKit';
-import { AdvanceDialog, CrossHireDialog, EmailDialog, ExpiryDialog, InvoiceLinesDialog, NextStepDialog, PrintDialog, invoiceableLines } from './ActionDialogs';
+import { AdvanceDialog, EmailDialog, ExpiryDialog, NextStepDialog, PrintDialog, invoiceableLines } from './ActionDialogs';
 
 const deliveryStatus = (so: SalesOrder) => {
   const rl = so.lines.filter((l) => l.activity === 'Rental' || l.activity === 'Trading' || l.activity === 'Fuel Trading');
@@ -213,7 +213,7 @@ function OrderCrossHire({ so }: { so: SalesOrder }) {
     <Box>
       <Text type="s4" weight="medium" sx={{ mb: 1 }}>Requests</Text>
       <DataTable hideToolbar rows={reqs} emptyText="No cross-hire request. Use Cross Hire on a line when no owned unit is Ready for Hire" onRowClick={(r) => nav(`/rental/cross-hire/${r.id}`)}
-        columns={[{ key: 'number', label: 'Request' }, { key: 'date', label: 'Date' }, { key: 'cat', label: 'Category', render: (r) => `${r.group} ${r.category}` }, { key: 'qty', label: 'Qty', align: 'right' }, { key: 'by', label: 'Raised By', render: (r) => r.raisedBy ?? '-' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }]} />
+        columns={[{ key: 'number', label: 'Request' }, { key: 'date', label: 'Date' }, { key: 'cat', label: 'Category', render: (r) => [...new Set(reqItems(r).map((i) => `${i.group} ${i.category}`))].join(', ') }, { key: 'qty', label: 'Qty', align: 'right' }, { key: 'by', label: 'Raised By', render: (r) => r.raisedBy ?? '-' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }]} />
       <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Orders</Text>
       <DataTable hideToolbar rows={hires} emptyText="No cross-hire order yet" onRowClick={(c) => nav(`/rental/cross-hire-orders/${c.id}`)}
         columns={[{ key: 'number', label: 'Hire Order' }, { key: 'supplier', label: 'Supplier' }, { key: 'stage', label: 'Lifecycle Stage', render: (c) => CROSS_STAGES[c.stage] }, { key: 'rate', label: 'Agreed Rate', align: 'right', render: (c) => aed(c.rate) }, { key: 'units', label: 'Units delivered here', align: 'right', render: (c) => unitsOf(c).filter((u) => u.soId === so.id).length }, { key: 'mine', label: 'Cost for this order', align: 'right', render: (c) => aed(costForSo(c, so.id)) }]} />
@@ -238,7 +238,7 @@ export function SalesOrderView() {
   const chReqAll = useChRequests();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
-  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'cross' | 'step' | 'invoice' | 'advance'; lineId?: string; lineIds?: string[] } | null>(null);
+  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'step' | 'advance'; lineId?: string } | null>(null);
   useInvoices();
   const [sel, setSel] = useState<string[]>([]);
   const [mail, setMail] = useState(false);
@@ -271,14 +271,14 @@ export function SalesOrderView() {
       const out = outstanding(l);
       return [
         ...(remaining > 0 ? [{ label: 'Deliver', disabled: av.owned.length + av.cross.length === 0, onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}&line=${l.id}`) }] : []),
-        ...(remaining > 0 && isRental ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => setDlg({ kind: 'cross', lineIds: [l.id] }) }] : []),
+        ...(remaining > 0 && isRental ? [{ label: 'Cross Hire', disabled: !canCrossHire(l), onClick: () => nav(`/rental/cross-hire/add?so=${so.id}&lines=${l.id}`) }] : []),
         ...(out.some((a) => a.state === 'Hold') ? [{ label: 'Release Hold (site ready early)', onClick: () => out.filter((a) => a.state === 'Hold').forEach((a) => { releaseHold(so.id, l.id, a.assetId); toast('Hold released, invoicing starts today'); }) }] : []),
         ...(out.length > 0 ? [{ label: 'Replace asset', onClick: () => nav(`/rental/replacements/add?so=${so.id}&line=${l.id}`) }, { label: 'Return asset', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}&line=${l.id}`) }] : []),
       ];
     }
     if (l.activity === 'AMC') return [{ label: 'Open AMC Order', onClick: () => nav(`/crm/amc-orders/${so.id}`) }];
     if (l.activity === 'Service' && l.billing === 'Recurring') return [];
-    if (l.fulfilment === 'Delivered') return [{ label: 'Invoice', onClick: () => setDlg({ kind: 'step', lineId: l.id }) }];
+    if (l.fulfilment === 'Delivered') return [{ label: 'Invoice', onClick: () => nav(`/accounting/invoices/add?so=${so.id}&lines=${l.id}`) }];
     if (l.fulfilment) return [];
     return [{ label: (NEXT_STEP[l.activity] ?? NEXT_STEP.Service).label, onClick: () => setDlg({ kind: 'step', lineId: l.id }) }];
   };
@@ -287,7 +287,7 @@ export function SalesOrderView() {
     if (!chosen.length) { toast('Select the equipment lines first', 'error'); return; }
     const bad = chosen.filter((l) => !canCrossHire(l));
     if (bad.length) { toast(`Cross Hire is not available for: ${bad.map((l) => l.item).join(', ')} (only rental lines with units not covered by a Ready for Hire unit or an open request, RFQ or order)`, 'error'); return; }
-    setDlg({ kind: 'cross', lineIds: chosen.map((l) => l.id) });
+    nav(`/rental/cross-hire/add?so=${so.id}&lines=${chosen.map((l) => l.id).join(',')}`); setSel([]);
   };
   return (
     <>
@@ -299,7 +299,7 @@ export function SalesOrderView() {
           <MenuButton label="Create" variant="outlined" items={[
             { label: 'Delivery', disabled: so.activity === 'AMC', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
             { label: 'Advance', onClick: () => setDlg({ kind: 'advance' }) },
-            { label: 'Invoice', disabled: !invoiceableLines(so.lines).length, onClick: () => setDlg({ kind: 'invoice' }) },
+            { label: 'Invoice', disabled: !invoiceableLines(so.lines).length, onClick: () => nav(`/accounting/invoices/add?so=${so.id}`) },
             { label: 'Return (Customer Returns)', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}`), disabled: rentalOut === 0 },
             { label: 'Replacement', onClick: () => nav(`/rental/replacements/add?so=${so.id}`), disabled: rentalOut === 0 },
           ]} />
@@ -363,9 +363,7 @@ export function SalesOrderView() {
       </Page>
       <ConfirmDialog open={closeAsk} title="Close Sales Order" description="An order cannot be closed while any delivered asset is unreturned." confirmLabel="Close order" onClose={() => setCloseAsk(false)} onConfirm={() => { const r = closeOrder(so); toast(r.message, r.ok ? 'success' : 'error'); setCloseAsk(false); }} />
       <ExpiryDialog open={dlg?.kind === 'expiry'} onClose={() => setDlg(null)} soId={so.id} />
-      {isRental && <CrossHireDialog open={dlg?.kind === 'cross'} onClose={() => { setDlg(null); setSel([]); }} soId={so.id} lineIds={dlg?.lineIds} />}
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
-      <InvoiceLinesDialog open={dlg?.kind === 'invoice'} onClose={() => setDlg(null)} soId={so.id} />
       <AdvanceDialog open={dlg?.kind === 'advance'} onClose={() => setDlg(null)} soId={so.id} onDone={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
       <EmailDialog open={mail} onClose={() => setMail(false)} docNo={so.number} customerId={so.customerId} onSent={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
     </>

@@ -61,7 +61,7 @@ const mod: ModuleDef = {
     { path: 'renewals', element: <RenewalsPage /> },
     // Fleet Management moved to CRM (6 Oct); old links keep working.
     { path: 'fleet', element: <Navigate to="/crm/fleet" replace /> }, { path: 'trips', element: <Navigate to="/crm/trips" replace /> }, { path: 'trips/:id', element: <TripRedirect /> },
-    { path: 'agreements', element: ex('Agreements', ['ID', 'Date', 'Name', 'Type', 'Vendor', 'Valid Up To', 'Company', 'Currency', 'Status']) },
+    { path: 'agreements', element: ex('Agreements', ['ID', 'Date', 'Name', 'Type', 'Vendor', 'Valid Up To', 'Entity', 'Currency', 'Status']) },
     { path: 'purchase-rfq', element: ex('Request for Quote', ['ID', 'Date', 'Vendor', 'Status']) },
     { path: 'purchase-orders', element: ex('Orders', ['ID', 'Date', 'Vendor', 'Receiving Status', 'Billing Status', 'Status']) },
     { path: 'cross-hire', element: <ChRequestList /> }, { path: 'cross-hire/add', element: <ChRequestForm /> }, { path: 'cross-hire/:id', element: <ChRequestView /> },

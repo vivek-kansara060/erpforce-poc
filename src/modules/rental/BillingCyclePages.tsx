@@ -17,10 +17,10 @@ const REQ = 'Existing ERP Rental > Settings > Billing Cycle; Rental > Rental Inv
 const useCycles = () => useCollection<CycleRec>(COL.billingCycles, cycleSeed);
 
 const specs: Spec[] = [
+  { key: 'company', label: 'Entity', type: 'master', master: 'entity', hint: 'Optional: limits the cycle to one entity' },
   { key: 'name', label: 'Name', required: true },
   { key: 'count', label: 'Count', type: 'number', required: true, hint: 'How many Durations make one invoice period (2 and Month: invoiced every 2 months)' },
   { key: 'duration', label: 'Duration', type: 'select', options: [...CYCLE_DURATIONS], required: true },
-  { key: 'company', label: 'Company', type: 'master', master: 'entity', hint: 'Optional: limits the cycle to one company' },
   { key: 'invoicingType', label: 'Invoicing Type', type: 'select', options: ['Manual', 'Automatic'], required: true, hint: 'Copied to a Sales Order that picks the cycle, and can be changed there. Automatic: the system raises the invoice on its date. Manual: someone submits it in Invoicing Rental Order' },
   { key: 'startOption', label: 'Invoice Start Date', type: 'radio', options: START_OPTIONS, required: true, hint: 'Where the schedule starts: the first delivery, the date the order was created, or a fixed date' },
   { key: 'customStart', label: 'Custom Invoice Start Date', type: 'date', required: true, show: (f) => f.startOption === 'custom' },
@@ -41,7 +41,7 @@ export function BillingCycleList() {
       <DataTable<CycleRec> rows={cycles.rows} searchPlaceholder="Search billing cycles..." onAdd={() => nav(`${BASE}/add`)} addLabel="Add New" onRowClick={(r) => nav(`${BASE}/${r.id}`)}
         actions={[{ label: 'Edit', onClick: (r) => nav(`${BASE}/${r.id}/edit`) }]}
         columns={[
-          { key: 'name', label: 'Name' }, { key: 'count', label: 'Count', align: 'right' }, { key: 'duration', label: 'Duration' }, { key: 'company', label: 'Company', render: (r) => r.company ?? 'All' },
+          { key: 'name', label: 'Name' }, { key: 'count', label: 'Count', align: 'right' }, { key: 'duration', label: 'Duration' }, { key: 'company', label: 'Entity', render: (r) => r.company ?? 'All' },
           { key: 'invoicingType', label: 'Invoicing Type', render: (r) => <StatusChip status={r.invoicingType} tone={r.invoicingType === 'Automatic' ? 'blue' : 'grey'} /> },
           { key: 'start', label: 'Invoice Start Date', change: 'new', req: REQ, render: (r) => START_OPTIONS.find((o) => o.value === r.startOption)?.label },
           { key: 'max', label: 'Max Schedule Count', align: 'right', render: (r) => r.maxSchedule ?? '-' },

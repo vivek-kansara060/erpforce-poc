@@ -1,6 +1,6 @@
 # Fleet Management: Implementation Plan (POC)
 
-Status: **built on 6 Oct 2026** (branch `feat/anurag`). Differences from the plan: the seed has two trips on CN-26-00123 (the stuck collection and the Assigned crane truck, because it is the only open company collection), and section notes are "?" hints. Written 6 Oct 2026 for the ERPForce Heavy Equipment Rental POC (`erpforce-poc`, branch `feat/anurag`).
+Status: **built on 6 Oct 2026** (branch `feat/anurag`). Differences from the plan: the seed has two trips on RMA-26-00123 (the stuck collection and the Assigned crane truck, because it is the only open company collection), and section notes are "?" hints. Written 6 Oct 2026 for the ERPForce Heavy Equipment Rental POC (`erpforce-poc`, branch `feat/anurag`).
 
 This document is meant to be implemented as is. Every requirement below is traced to its source. Anything that is our own design choice (not stated by Ajin or the requirement document) is marked **[Design choice]**.
 
@@ -244,7 +244,7 @@ All dates are written as if today were 2026-09-30 (`store.ts` shifts them to the
 **Trips (rental.trips):** at least one per status so the board and list are full:
 - Completed, own fleet, Delivery on an existing delivered rental DO, with expenses Salik 20 and Fuel 180 (sum already reflected in that order's logisticsCost).
 - En Route, own fleet (AST-1022), Delivery for the Hold order DO-26-00125 (or another open DO).
-- Assigned, own fleet (Crane Truck), Collection for return CN-26-00123 (awaiting yard).
+- Assigned, own fleet (Crane Truck), Collection for return RMA-26-00123 (awaiting yard).
 - Stuck-Delayed, own fleet (AST-1021), Collection, reason "Crane not available on site to load the generator", Responsible Client.
 - Completed, External Transporter, on SO-26-00046 (External Transporter order), Transport Charge equal to its existing logistics cost.
 - One Replacement trip, Completed, on RP-26-00004.
@@ -345,7 +345,7 @@ Things learned while building the POC that are not visible from the plan alone.
 - **Movement origin:** `flow.ts` has `whereIs(assetId, fallback)` (the asset's last movement destination); use it for any new movement entry.
 - **Holds:** `releaseHold` / `releaseDueHolds` in `flow.ts`; a hold bills from the planned Rental Start.
 - **Employee locations (service vans):** Location Type `Employee` with `userIds`. Use `stockLocations()` (excludes vans) for any trip site or dispatch location list; `vanLocationsFor(employeeName)` returns a technician's vans. `systemUsers` (ERP logins) is in `mock-data/masters.ts`.
-- **Demo records cited in section 7** (all created on 6 Oct): DO-26-00125 is the Hold delivery of AST-1019 on SO-26-00052; CN-26-00123 is a return of AST-1036 waiting for "Asset Reached Yard"; RP-26-00004 swaps AST-1028 for AST-1013; SO-26-00046 is an External Transporter order with seeded logistics cost; SO-26-00049 is the fully returned, closable order. Confirm each in `crm/data.ts` before linking trips to it.
+- **Demo records cited in section 7** (all created on 6 Oct): DO-26-00125 is the Hold delivery of AST-1019 on SO-26-00052; RMA-26-00123 is a return of AST-1036 waiting for "Asset Reached Yard"; RP-26-00004 swaps AST-1028 for AST-1013; SO-26-00046 is an External Transporter order with seeded logistics cost; SO-26-00049 is the fully returned, closable order. Confirm each in `crm/data.ts` before linking trips to it.
 - **Existing `logisticsCost`:** several seeded orders already carry a `logisticsCost`. Seeded trips must add up to those values (or the values must be recomputed from the trips) so the Logistics tab and the report agree.
 
 ### 12.4 Where the sources are

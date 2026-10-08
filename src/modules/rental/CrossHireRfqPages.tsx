@@ -13,9 +13,10 @@ import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
-import { CH_RFQ_STATUSES, DEPARTMENTS, RENTAL_DURATIONS, TODAY, categoryOptions, groupOptions, masterValues, stockLocations, type CrossHireRfq, type RfqItem, type RfqResponse } from '@/modules/crm/data';
+import { reqItems, CH_RFQ_STATUSES, DEPARTMENTS, RENTAL_DURATIONS, TODAY, categoryOptions, groupOptions, masterValues, stockLocations, type CrossHireRequest, type CrossHireRfq, type RfqItem, type RfqResponse } from '@/modules/crm/data';
 import { addChResponse, awardChRfq, cancelChRfq, createChRfq, deleteChResponse, deleteChRfq, saveChRfq, sendChRfq } from '@/modules/crm/flow';
 import { Section, SpecForm, SpecView, type Spec } from '@/modules/crm/FormKit';
+import { addressSpecs, useAddressAutofill, type AddressCfg } from '@/modules/crm/addressKit';
 import { aed, useChRequests, useChRfqs, useCrossHire } from '@/modules/crm/shared';
 import { neutral } from '@/theme/color';
 
@@ -25,11 +26,11 @@ const R_CH = 'Existing ERP Cross Hire Request for Quote; Procurement > Cross-Hir
 const BASE = '/rental/cross-hire-rfq';
 
 /** Items of an RFQ: the ones typed in the form, else derived from the requests it was raised from. */
-export function rfqItems(r: CrossHireRfq, reqs: { id: string; group: string; category: string; qty: number; frequency: string; location: string; department: string; narration: string }[] = []): RfqItem[] {
+export function rfqItems(r: CrossHireRfq, reqs: CrossHireRequest[] = []): RfqItem[] {
   if (r.items?.length) return r.items;
-  const own = r.requestIds.map((i) => reqs.find((q) => q.id === i)).filter(Boolean) as typeof reqs;
-  const src = own.length ? own : [{ id: r.id, group: r.group, category: r.category, qty: r.qty, frequency: 'Monthly', location: 'Jebel Ali Main Yard', department: 'Operations', narration: r.narration }];
-  return src.map((q) => ({ id: q.id, group: q.group, category: q.category, uom: 'Nos', description: `${q.group} ${q.category}`, specification: '', duration: q.frequency, qty: q.qty, estYear: q.qty * 2, location: q.location, department: q.department, narration: q.narration }));
+  const own = r.requestIds.map((i) => reqs.find((q) => q.id === i)).filter(Boolean) as CrossHireRequest[];
+  if (!own.length) return [{ id: r.id, group: r.group, category: r.category, uom: 'Nos', description: `${r.group} ${r.category}`, specification: '', duration: 'Monthly', qty: r.qty, estYear: r.qty * 2, location: 'Jebel Ali Main Yard', department: 'Operations', narration: r.narration }];
+  return own.flatMap((q) => reqItems(q).map((it) => ({ id: `${q.id}|${it.lineId}`, group: it.group, category: it.category, uom: 'Nos', description: `${it.group} ${it.category}`, specification: '', duration: it.frequency, qty: it.qty, estYear: it.qty * 2, location: q.location, department: q.department, narration: q.narration })));
 }
 const tenderNo = (r: CrossHireRfq, v: string) => `${r.number}-${r.vendorIds.indexOf(v) + 1}`;
 const respNo = (r: CrossHireRfq, x: RfqResponse) => x.number ?? `RES-${r.number.slice(-5)}-${r.vendorIds.indexOf(x.vendorId) + 1}`;
@@ -62,12 +63,12 @@ export function ChRfqList() {
 
 /* ------------------------------------------------------------------ add / edit / duplicate form */
 const basicSpecs: Spec[] = [
+  { key: 'company', label: 'Entity', type: 'master', master: 'entity', required: true },
   { key: 'number', label: 'ID', type: 'readonly', value: (f) => f.number ?? 'Auto-generated' },
   { key: 'date', label: 'Date', type: 'date', required: true },
   { key: 'orderDeadline', label: 'Order Deadline', type: 'date' }, { key: 'expectedDate', label: 'Expected Required Date', type: 'date' },
   { key: 'currency', label: 'Currency', type: 'master', master: 'currency', required: true },
   { key: 'exchangeRate', label: 'Exchange Rate', type: 'number', required: true, disabled: (f) => f.currency === 'AED', value: (f) => (f.currency === 'AED' ? 1 : f.exchangeRate) },
-  { key: 'company', label: 'Company', type: 'master', master: 'entity', required: true },
   { key: 'location', label: 'Location', type: 'select', options: stockLocations },
   { key: 'representative', label: 'Purchase Representative', type: 'select', options: ['Leena Thomas', 'Yousef Karim', 'Omar Farouk', 'Bilal Ahmed'] },
   { key: 'paymentTerms', label: 'Payment Terms', type: 'master', master: 'paymentTerms' }, { key: 'reference', label: 'Reference No.' },
@@ -77,7 +78,9 @@ const periodSpecs: Spec[] = [
   { key: 'start', label: 'Select Start Date & Time', type: 'date' }, { key: 'end', label: 'Select End Date & Time', type: 'date' },
   { key: 'total', label: 'Total Period', type: 'readonly', value: (f) => (f.start && f.end ? `${Math.max(0, Math.round((new Date(f.end).getTime() - new Date(f.start).getTime()) / 86400000))} day(s)` : '-') },
 ];
-const addressSpecs: Spec[] = [{ key: 'supplierAddress', label: 'Supplier Address' }, { key: 'contactPerson', label: 'Contact Person' }, { key: 'shippingAddress', label: 'Shipping Address (Company)' }, { key: 'billingAddress', label: 'Billing Address (Company)' }, { key: 'placeOfSupply', label: 'Place of Supply' }];
+/** Address & Contact of the existing RFQ: the (first) vendor's addresses and contacts, and the Entity's locations. */
+const rfqAddrCfg: AddressCfg = { party: 'supplier', partyId: (f) => f.vendorFirst, entity: (f) => f.company };
+const rfqAddr = addressSpecs(rfqAddrCfg);
 
 const blankItem = (): RfqItem => ({ id: `it${Date.now()}`, group: 'Generator', category: '', uom: 'Nos', description: '', specification: '', duration: 'Monthly', qty: 1, estYear: 1, location: 'Jebel Ali Main Yard', department: 'Operations', narration: '' });
 function ItemsTable({ items, onEdit, onDelete, awarded }: { items: RfqItem[]; onEdit?: (i: RfqItem) => void; onDelete?: (i: RfqItem) => void; awarded?: boolean }) {
@@ -100,15 +103,21 @@ export function ChRfqForm() {
   const rfqs = useChRfqs();
   const reqs = useChRequests();
   const src = rfqs.get(id ?? sp.get('copy') ?? undefined);
+  // Create > RFQ on a request or on Process Cross Hire opens this form prefilled from the selected requests.
+  const reqIds = !src ? (sp.get('requests') ?? '').split(',').filter(Boolean) : [];
+  const rowSel = sp.get('rows')?.split(',').filter(Boolean);
+  const fromReqs = reqIds.map((x) => reqs.get(x)).filter(Boolean) as NonNullable<ReturnType<typeof reqs.get>>[];
   const editing = !!id && !!src;
   const [f, setF] = useState<Record<string, any>>(() => ({ date: TODAY, company: masterValues('entity')[0], currency: 'AED', paymentTerms: '30 days', representative: 'Bilal Ahmed', location: 'Jebel Ali Main Yard',
     ...(src ? { ...src.form, number: editing ? src.number : undefined, date: editing ? src.date : TODAY, orderDeadline: src.orderDeadline, expectedDate: src.expectedDate, currency: src.currency, paymentTerms: src.paymentTerms, reference: src.reference, narration: src.narration, start: src.start, end: src.end } : {}) }));
-  const [items, setItems] = useState<RfqItem[]>(() => (src ? rfqItems(src, reqs.rows) : []));
+  const [items, setItems] = useState<RfqItem[]>(() => (src ? rfqItems(src, reqs.rows) : fromReqs.flatMap((q) => reqItems(q).filter((it) => !rowSel || rowSel.includes(`${q.id}|${it.lineId}`)).map((it) => ({ id: `${q.id}|${it.lineId}`, group: it.group, category: it.category, uom: 'Nos', description: `${it.group} ${it.category}`, specification: '', duration: it.frequency, qty: it.qty, estYear: it.qty * 2, location: q.location, department: q.department, narration: q.narration })))));
   const [vendors, setVendors] = useState<string[]>(src?.vendorIds ?? []);
   const [item, setItem] = useState<RfqItem | null>(null);
   const [tender, setTender] = useState<string[] | null>(null);
   const [err, setErr] = useState<Record<string, string>>({});
   const set = (k: string, v: any) => setF((x) => ({ ...x, [k]: v }));
+  const addrF = { ...f, vendorFirst: vendors[0] };
+  useAddressAutofill(addrF, set, rfqAddrCfg);
   const save = (draft: boolean) => {
     const e: Record<string, string> = {};
     ['date', 'currency', 'company'].forEach((k) => { if (!f[k]) e[k] = 'This field is required'; });
@@ -121,7 +130,7 @@ export function ChRfqForm() {
       saveChRfq(src.id, { ...common, vendorIds: vendors, date: f.date, currency: f.currency, group: items[0]?.group ?? src.group, category: items[0]?.category ?? src.category, qty: items.reduce((n, x) => n + x.qty, 0), status: draft ? 'Draft' : src.status === 'Draft' ? 'Open' : src.status });
       toast('Request for Quote saved'); nav(`${BASE}/${src.id}`); return;
     }
-    const nid = createChRfq({ ...common, requestIds: [], vendorIds: vendors, status: draft ? 'Draft' : 'Open', group: items[0]?.group, category: items[0]?.category });
+    const nid = createChRfq({ ...common, requestIds: fromReqs.map((q) => q.id), vendorIds: vendors, status: draft ? 'Draft' : 'Open', group: items[0]?.group, category: items[0]?.category });
     toast(draft ? 'Saved as draft' : 'Request for Quote saved'); nav(`${BASE}/${nid}`);
   };
   return (
@@ -129,6 +138,7 @@ export function ChRfqForm() {
       <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? `Edit ${src!.number}` : 'Add New' }]}
         actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button>{(!editing || src!.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
+        {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((q) => q.number).join(', ')}. Add the suppliers in Call For Tender, then Save.</Alert>}
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
@@ -146,7 +156,7 @@ export function ChRfqForm() {
               </Section>
               <Section title="Attachment"><FileInput label="Attach your file here" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>
             </>) },
-          { label: 'Address & Contact', content: <SpecForm specs={addressSpecs} f={f} set={set} /> },
+          { label: 'Address & Contact', content: <SpecForm specs={rfqAddr} f={addrF} set={set} /> },
         ]} />
       </Page>
       <AppDialog open={!!item} title="Add Item" onClose={() => setItem(null)} confirmLabel="Save" confirmDisabled={!item?.category || !(item?.qty > 0)}
@@ -216,7 +226,7 @@ export function ChRfqView() {
                 ]} />
               </Section>
             </>) },
-          { label: 'Address & Contact', content: <SpecView specs={addressSpecs} f={r.form ?? {}} /> },
+          { label: 'Address & Contact', content: <SpecView specs={rfqAddr} f={r.form ?? {}} /> },
           { label: 'Activity', content: <Timeline items={[...r.log].reverse()} /> },
         ]} />
       </Page>
@@ -240,7 +250,7 @@ export function ChResponseList() {
         <DataTable<RfqResponse & { id: string }> rows={r.responses.map((x) => ({ ...x, id: x.vendorId }))} emptyText="No response yet" searchPlaceholder="Search responses..." onAdd={['Open', 'Response Received', 'RFQ Sent'].includes(r.status) ? () => nav(`${BASE}/${r.id}/responses/add`) : undefined} addLabel="Add New" onRowClick={(x) => nav(`${BASE}/${r.id}/responses/${x.vendorId}`)}
           columns={[
             { key: 'n', label: 'ID', render: (x) => respNo(r, x) }, { key: 'date', label: 'Date' }, { key: 'vendor', label: 'Vendor' }, { key: 'rep', label: 'Purchase Representative', render: () => r.form?.representative ?? 'Bilal Ahmed' },
-            { key: 'company', label: 'Company', render: () => r.form?.company ?? masterValues('entity')[0] }, { key: 'dl', label: 'Order Deadline', render: () => r.orderDeadline || '-' }, { key: 'exp', label: 'Expected Required Date', render: () => r.expectedDate || '-' }, { key: 'cur', label: 'Currency', render: () => r.currency },
+            { key: 'company', label: 'Entity', render: () => r.form?.company ?? masterValues('entity')[0] }, { key: 'dl', label: 'Order Deadline', render: () => r.orderDeadline || '-' }, { key: 'exp', label: 'Expected Required Date', render: () => r.expectedDate || '-' }, { key: 'cur', label: 'Currency', render: () => r.currency },
           ]} />
       </Page>
     </>
@@ -248,12 +258,13 @@ export function ChResponseList() {
 }
 
 const responseSpecs = (vendorOpts: { value: string; label: string }[], fixedVendor: boolean): Spec[] => [
+  { key: 'company', label: 'Entity', type: 'readonly' },
   { key: 'number', label: 'ID', type: 'readonly', value: (f) => f.number ?? 'Auto-generated' },
   { key: 'date', label: 'Date', type: 'date', required: true },
   { key: 'vendorId', label: 'Vendor', type: 'select', options: vendorOpts, required: true, disabled: fixedVendor },
   { key: 'orderDeadline', label: 'Order Deadline', type: 'date', disabled: true }, { key: 'expectedDate', label: 'Expected Required Date', type: 'date', disabled: true },
   { key: 'currency', label: 'Currency', type: 'readonly' }, { key: 'exchangeRate', label: 'Exchange Rate', type: 'readonly', value: () => 1 },
-  { key: 'company', label: 'Company', type: 'readonly' }, { key: 'representative', label: 'Purchase Representative', type: 'readonly' },
+  { key: 'representative', label: 'Purchase Representative', type: 'readonly' },
   { key: 'paymentTerms', label: 'Payment Terms', type: 'master', master: 'paymentTerms', required: true },
   { key: 'leadTime', label: 'Lead Time (days)', type: 'number' }, { key: 'reference', label: 'Reference No.' }, { key: 'incoterm', label: 'Incoterms' },
   { key: 'narration', label: 'Narration', type: 'textarea', full: true },
@@ -322,7 +333,7 @@ export function ChResponseView() {
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
           <ValueField label="ID" value={respNo(r, x)} /><ValueField label="Date" value={x.date} /><ValueField label="Vendor" value={x.vendor} /><ValueField label="Order Deadline" value={r.orderDeadline} />
-          <ValueField label="Expected Required Date" value={r.expectedDate} /><ValueField label="Currency" value={r.currency} /><ValueField label="Company" value={r.form?.company ?? masterValues('entity')[0]} /><ValueField label="Payment Terms" value={x.paymentTerms ?? r.paymentTerms} />
+          <ValueField label="Expected Required Date" value={r.expectedDate} /><ValueField label="Currency" value={r.currency} /><ValueField label="Entity" value={r.form?.company ?? masterValues('entity')[0]} /><ValueField label="Payment Terms" value={x.paymentTerms ?? r.paymentTerms} />
           <ValueField label="Lead Time" value={`${x.leadTime} day(s)`} /><ValueField label="Reference No." value={x.reference} /><ValueField label="Incoterms" value={x.incoterm} /><ValueField label="Narration" value={x.narration} />
         </ValueGrid>
         <Section title="Items">
