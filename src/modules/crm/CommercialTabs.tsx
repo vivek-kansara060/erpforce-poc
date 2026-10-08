@@ -6,6 +6,7 @@ import { TabPanels } from '@/components/Widgets';
 import { ACTIVITY_TYPES, COL, BILLING_STRUCTURES, INVOICING_TYPES, CONTRACT_TYPES, COST_CENTRES, DEPARTMENTS, DISCOUNT_ON, INCOTERMS, RECURRING, TRANSACTION_TYPES, VAT_TYPES, yards, amcLine, docTotals, lineGross, plusYear, yearEnd, type Commercial, type Line } from './data';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, aed } from './shared';
+import { customerAddressSpecs, useAddressAutofill, type AddressCfg } from './addressKit';
 import { nextRentalPeriod, rentalInvoicesOf } from '@/modules/accounting/engine';
 import { cycleOf } from '@/modules/accounting/billing';
 import { getCollection } from '@/store/store';
@@ -81,9 +82,9 @@ const discounts: Spec[] = [
   { key: 'roundOffOn', label: 'Round off', type: 'check' },
   { key: 'roundOff', label: 'Round off to', type: 'select', options: ['Nearest 100', 'Nearest 1000', 'Nearest 10,000'], show: (f) => !!f.roundOffOn },
 ];
-const address: Spec[] = [
-  { key: 'contactPerson', label: 'Contact Person', required: true, hint: 'Required for Credit' }, { key: 'shippingAddress', label: 'Shipping Address' }, { key: 'billingAddress', label: 'Billing Address' }, { key: 'placeOfSupply', label: 'Place of Supply' },
-];
+/** Address and Contact follow the customer: its addresses (and the site of the order) and its contact persons are offered and the first is filled in. */
+const addressCfg: AddressCfg = { party: 'customer', partyId: (f) => f.customerId, entity: (f) => f.entity, sites: (f) => (f.site ? [f.site] : []) };
+const address: Spec[] = customerAddressSpecs(addressCfg);
 const shipping: Spec[] = [
   { key: 'shippingRule', label: 'Shipping Rule' }, { key: 'shippingCost', label: 'Shipping Cost', type: 'number' }, { key: 'handlingCost', label: 'Handling Cost', type: 'number' }, { key: 'incoterm', label: 'Incoterm', type: 'select', options: INCOTERMS },
 ];
@@ -134,6 +135,7 @@ export function commercialErrors(f: F): Record<string, string> {
  * placed after Classification, as in the existing form. `locked` switches every section to its read-only view.
  */
 export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral, belowGeneral }: { kind: Kind; f: F; set: (k: string, v: any) => void; err?: Record<string, string>; locked?: boolean; items: ReactNode; aboveGeneral?: ReactNode; belowGeneral?: ReactNode }) {
+  useAddressAutofill(f, set, addressCfg, !locked);
   const Fm = locked ? SpecView : SpecForm;
   const g = (specs: Spec[], cols = 2) => (locked ? <SpecView specs={specs} f={f} cols={cols + 1} /> : <SpecForm specs={specs} f={f} set={set} err={err} cols={cols} />);
   void Fm;

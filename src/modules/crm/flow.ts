@@ -6,7 +6,7 @@ import { billDisputeCharge, billFromCrossHire, billTripCharge, postTripExpense, 
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
   amcLine, docTotals, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, vehicleFreeOn, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
-  type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 /* Small collection helpers (modules share the same in-memory collections through the store). */
@@ -156,6 +156,21 @@ export function invoiceOrderLines(soId: string, lineIds: string[], detail?: stri
   }));
   return inv.number;
 }
+/** An invoice typed on the Accounting invoice form from a Sales Order: its lines are marked invoiced on the order. */
+export function linkOrderLinesToInvoice(soId: string, lineIds: string[], inv: { number: string }) {
+  const o = getOrder(soId);
+  if (!o) return;
+  const ls = o.lines.filter((l) => lineIds.includes(l.id));
+  saveOrder(soId, (x) => ({
+    ...x, lines: x.lines.map((ln) => (lineIds.includes(ln.id) ? { ...ln, fulfilment: (NEXT_STEP[ln.activity] ?? NEXT_STEP.Service).done, fulfilmentRef: inv.number } : ln)),
+    log: [log(`Invoice ${inv.number} raised, pending approval`, ls.map((l) => l.item).join(', '), 'blue'), ...x.log],
+  }));
+}
+/** A bill typed on the Accounting bill form from a Cross Hire Order: the order records the supplier invoice and is Billed. */
+export function linkCrossHireBill(chId: string, bill: { number: string; supplierInvoiceNo: string }) {
+  patch<CrossHire>(COL.crossHire, chId, (c) => ({ ...c, supplierInvoice: bill.supplierInvoiceNo || c.supplierInvoice, billing: 'Fully Billed', status: c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status,
+    history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${bill.supplierInvoiceNo || 'not entered yet'}. Pending approval in Accounting`, 'blue')] }));
+}
 /** Rental run (Rental > Invoicing Rental Order): one invoice for the period; first and final one-time services are marked invoiced on the order. */
 export function runRentalInvoice(soId: string, from: string, to: string): { number?: string; invoiceId?: string; message: string } {
   const r = invoiceRentalPeriod(soId, from, to);
@@ -291,24 +306,35 @@ export function releaseDueHolds(soId?: string) {
 export function crossHireGap(o: SalesOrder, l: Line): number {
   const remaining = l.qty - deliveredQty(l);
   const av = availability(l.group, l.category);
-  const reqs = all<CrossHireRequest>(COL.chRequests).filter((r) => r.lineId === l.id);
+  const mine = all<CrossHireRequest>(COL.chRequests).flatMap((r) => reqItems(r).filter((i) => i.lineId === l.id).map((i) => ({ r, i })));
   const rfqs = all<CrossHireRfq>(COL.chRfqs);
-  const open = reqs.filter((r) => ['Draft', 'Pending', 'In Progress'].includes(r.status)).reduce((n, r) => n + r.qty, 0);
-  const viaRfq = reqs.filter((r) => r.status === 'Completed' && !r.orderId && r.rfqId && rfqs.some((x) => x.id === r.rfqId && !['Cancelled', 'Order'].includes(x.status))).reduce((n, r) => n + r.qty, 0);
-  const ordered = all<CrossHire>(COL.crossHire).filter((c) => c.lineId === l.id && !['Cancelled', 'Rejected', 'Closed'].includes(c.status ?? '')).reduce((n, c) => n + Math.max(0, (c.qty ?? 1) - unitsOf(c).length), 0);
+  const open = mine.filter(({ r, i }) => ['Draft', 'Pending', 'In Progress'].includes(r.status) && !i.orderId && !i.rfqId).reduce((n, { i }) => n + i.qty, 0);
+  const viaRfq = mine.filter(({ i }) => !i.orderId && i.rfqId && rfqs.some((x) => x.id === i.rfqId && !['Cancelled', 'Order'].includes(x.status))).reduce((n, { i }) => n + i.qty, 0);
+  const ordered = all<CrossHire>(COL.crossHire).filter((c) => !['Cancelled', 'Rejected', 'Closed'].includes(c.status ?? '')).reduce((n, c) => n + chItems(c).filter((i) => i.lineId === l.id).reduce((m, i) => m + Math.max(0, i.qty - unitsOf(c).filter((u) => { const a = assetById(u.assetId); return a?.category === i.group && a?.subCategory === i.category; }).length), 0), 0);
   return Math.max(0, remaining - av.owned.length - av.cross.length - open - viaRfq - ordered);
 }
-export function raiseCrossHire(soId: string, lineId: string, supplierId?: string, supplier?: string, rate = 0): string {
+/** One Cross Hire Request for the selected equipment lines of a Sales Order: one item per line (Category, Subcategory and the units not covered yet). */
+export function raiseCrossHire(soId: string, lineIds: string | string[], supplierId?: string, supplier?: string, rate = 0): string {
   const o = getOrder(soId)!;
-  const l = getLine(o, lineId)!;
-  const gap = Math.max(1, crossHireGap(o, l));
+  const ls = (Array.isArray(lineIds) ? lineIds : [lineIds]).map((x) => getLine(o, x)!).filter(Boolean);
+  const items: CrossHireReqItem[] = ls.map((l) => ({ lineId: l.id, group: l.group ?? '', category: l.category ?? '', qty: Math.max(1, crossHireGap(o, l)), frequency: l.frequency ?? 'Monthly', rate }));
+  const first = items[0];
+  const what = items.map((i) => `${i.group} ${i.category} x ${i.qty}`).join(', ');
   const id = uid('chr');
-  const rec: CrossHireRequest = { id, number: nextNumber('CHR', 14), date: TODAY, soId, soNumber: o.number, lineId, group: l.group ?? '', category: l.category ?? '', qty: gap, frequency: l.frequency ?? 'Monthly', rate, vendorId: supplierId, vendor: supplier,
-    company: o.entity, representative: o.owner, currency: o.currency, narration: `No owned ${l.group} ${l.category} unit available for ${o.number}`, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Pending', raisedBy: ACTOR, raisedRole: 'General Manager',
-    log: [log(`Request raised from ${o.number}`, `${l.group} ${l.category}, quantity ${gap}`)] };
+  const rec: CrossHireRequest = { id, number: nextNumber('CHR', 8), date: TODAY, soId, soNumber: o.number, lineId: first.lineId, group: first.group, category: first.category, qty: items.reduce((n, i) => n + i.qty, 0), frequency: first.frequency, rate, vendorId: supplierId, vendor: supplier, items,
+    company: o.entity, representative: o.owner, currency: o.currency, narration: `No owned unit available for ${o.number}: ${what}`, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Pending', raisedBy: ACTOR, raisedRole: 'General Manager',
+    log: [log(`Request raised from ${o.number}`, what)] };
   put(COL.chRequests, rec);
-  saveOrder(soId, (x) => ({ ...mapLine(x, lineId, (ln) => ({ ...ln, crossHire: [...ln.crossHire, id] })), log: [log(`Cross-Hire request ${rec.number} raised`, `${l.group} ${l.category}`, 'blue'), ...x.log] }));
+  saveOrder(soId, (x) => ({ ...x, lines: x.lines.map((ln) => (items.some((i) => i.lineId === ln.id) ? { ...ln, crossHire: [...ln.crossHire, id] } : ln)), log: [log(`Cross-Hire request ${rec.number} raised`, what, 'blue'), ...x.log] }));
   return id;
+}
+/** An order or an RFQ covers the items of its Category and Subcategory; the request is Completed once every item is covered. */
+function coverRequestItems(requestIds: string[], covers: (i: CrossHireReqItem) => boolean, mark: Partial<CrossHireReqItem>, entry: LogItem) {
+  requestIds.forEach((rid) => patch<CrossHireRequest>(COL.chRequests, rid, (r) => {
+    const items = reqItems(r).map((i) => (covers(i) ? { ...i, ...mark } : i));
+    const done = items.every((i) => i.orderId || i.rfqId);
+    return { ...r, items, status: done ? 'Completed' : r.status, orderId: mark.orderId ?? r.orderId, rfqId: mark.rfqId ?? r.rfqId, log: [...r.log, entry] };
+  }));
 }
 export function saveChRequest(r: CrossHireRequest) { patch<CrossHireRequest>(COL.chRequests, r.id, () => r); }
 export function submitChRequest(id: string) { patch<CrossHireRequest>(COL.chRequests, id, (r) => ({ ...r, status: 'In Progress', log: [...r.log, log('Submitted and approved', undefined, 'green')] })); }
@@ -319,10 +345,11 @@ export function createChRfq(i: { requestIds: string[]; vendorIds: string[]; orde
   const rs = chReqs(i.requestIds);
   const first = rs[0];
   const id = uid('rfq');
-  const rec: CrossHireRfq = { id, number: nextNumber('RFQ', 18), date: TODAY, requestIds: i.requestIds, soNumbers: [...new Set(rs.map((r) => r.soNumber))], group: first?.group ?? i.items?.[0]?.group ?? i.group ?? '', category: first?.category ?? i.items?.[0]?.category ?? i.category ?? '', qty: rs.reduce((t, r) => t + r.qty, 0) || (i.items ?? []).reduce((t, x) => t + x.qty, 0), vendorIds: i.vendorIds,
+  const rec: CrossHireRfq = { id, number: nextNumber('RFQ', 13), date: TODAY, requestIds: i.requestIds, soNumbers: [...new Set(rs.map((r) => r.soNumber))], group: first?.group ?? i.items?.[0]?.group ?? i.group ?? '', category: first?.category ?? i.items?.[0]?.category ?? i.category ?? '', qty: (i.items ?? []).reduce((t, x) => t + x.qty, 0) || rs.reduce((t, r) => t + r.qty, 0), vendorIds: i.vendorIds,
     orderDeadline: i.orderDeadline, expectedDate: i.expectedDate, currency: first?.currency ?? 'AED', paymentTerms: i.paymentTerms ?? 'Net 30', narration: i.narration ?? '', start: i.start, end: i.end, items: i.items, form: i.form, reference: i.reference, status: i.status ?? 'Open', responses: [], log: [log('RFQ created', `From ${rs.map((r) => r.number).join(', ') || 'a manual entry'}`)] };
   put(COL.chRfqs, rec);
-  rs.forEach((r) => patch<CrossHireRequest>(COL.chRequests, r.id, (x) => ({ ...x, status: 'Completed', rfqId: id, log: [...x.log, log(`RFQ ${rec.number} created`)] })));
+  const cats = i.items?.map((x) => `${x.group}|${x.category}`);
+  coverRequestItems(i.requestIds, (it) => !cats || cats.includes(`${it.group}|${it.category}`), { rfqId: id }, log(`RFQ ${rec.number} created`));
   return id;
 }
 export function saveChRfq(id: string, p: Partial<CrossHireRfq>) { patch<CrossHireRfq>(COL.chRfqs, id, (r) => ({ ...r, ...p, log: [...r.log, log('RFQ edited')] })); }
@@ -368,17 +395,21 @@ export function setChOrderStatus(id: string, status: 'Cancelled' | 'Closed') { p
 export function deleteChOrder(id: string) { setCollection(COL.crossHire, all<CrossHire>(COL.crossHire).filter((c) => c.id !== id)); }
 export function saveChOrder(id: string, p: Partial<CrossHire>) { patch<CrossHire>(COL.crossHire, id, (c) => ({ ...c, ...p, history: [...c.history, log('Order edited')] })); }
 /** A Cross Hire Order typed in the order form (not from a request): Category, Subcategory and a number of units. The Rental Order it serves is optional; units are bound to a Sales Order at delivery. */
-export function createChOrderFromForm(i: { supplierId: string; supplier: string; soId?: string; group: string; category: string; type: 'Inventory' | 'Dropship'; qty: number; rate: number; draft: boolean; rfqId?: string; requestIds?: string[]; form: Record<string, any> }): string {
+export function createChOrderFromForm(i: { supplierId: string; supplier: string; soId?: string; items: { group: string; category: string; qty: number; rate: number; lineId?: string }[]; type: 'Inventory' | 'Dropship'; draft: boolean; rfqId?: string; requestIds?: string[]; form: Record<string, any> }): string {
   const o = i.soId ? getOrder(i.soId) : undefined;
-  const l = o?.lines.find((x) => x.activity === 'Rental' && x.group === i.group && x.category === i.category);
+  const items = i.items.map((x, k) => ({ id: uid(`chi${k}`), group: x.group, category: x.category, qty: x.qty, rate: x.rate, lineId: x.lineId ?? o?.lines.find((l) => l.activity === 'Rental' && l.group === x.group && l.category === x.category)?.id }));
+  const first = items[0];
+  const qty = items.reduce((n, x) => n + x.qty, 0);
+  const revenue = items.reduce((n, x) => n + (o?.lines.find((l) => l.id === x.lineId)?.price ?? 0) * x.qty, 0);
   const id = uid('ch');
-  const number = nextNumber('CH', 20);
-  const rec: CrossHire = { id, number, soId: o?.id ?? '', soNumber: o?.number ?? '', lineId: l?.id ?? '', group: i.group, category: i.category, supplierId: i.supplierId, supplier: i.supplier, rate: i.rate * i.qty, stage: 0, revenue: l ? l.price * i.qty : 0, date: i.form.date ?? TODAY,
-    type: i.type, requestIds: i.requestIds ?? [], rfqId: i.rfqId, status: i.draft ? 'Draft' : 'Pending', grns: [], units: [], receiving: 'Pending Receiving', billing: 'Pending Billing', expenses: [], qty: i.qty, confirmationDate: i.form.confirmationDate, expectedReceipt: i.form.expectedReceipt,
+  const number = nextNumber('CH', 10);
+  const what = items.map((x) => `${x.qty} x ${x.group} ${x.category} at AED ${x.rate}`).join(', ');
+  const rec: CrossHire = { id, number, soId: o?.id ?? '', soNumber: o?.number ?? '', lineId: first.lineId ?? '', group: first.group, category: first.category, supplierId: i.supplierId, supplier: i.supplier, rate: items.reduce((n, x) => n + x.qty * x.rate, 0), stage: 0, revenue, date: i.form.date ?? TODAY,
+    type: i.type, requestIds: i.requestIds ?? [], rfqId: i.rfqId, status: i.draft ? 'Draft' : 'Pending', grns: [], units: [], items, receiving: 'Pending Receiving', billing: 'Pending Billing', expenses: [], qty, confirmationDate: i.form.confirmationDate, expectedReceipt: i.form.expectedReceipt,
     paymentTerms: i.form.paymentTerms, startDate: i.form.startDate, endDate: i.form.endDate, form: i.form,
-    history: [log('Order created', `${number}: ${i.qty} unit(s) of ${i.group} ${i.category} with ${i.supplier} at AED ${i.rate} per unit; ${i.draft ? 'saved as draft' : 'saved'}`, 'blue')] };
+    history: [log('Order created', `${number} with ${i.supplier}: ${what}; ${i.draft ? 'saved as draft' : 'saved'}`, 'blue')] };
   put(COL.crossHire, rec);
-  (i.requestIds ?? []).forEach((r) => patch<CrossHireRequest>(COL.chRequests, r, (x) => ({ ...x, status: 'Completed', orderId: id, log: [...x.log, log(`Order ${number} created`, i.supplier)] })));
+  coverRequestItems(i.requestIds ?? [], (it) => items.some((x) => x.group === it.group && x.category === it.category), { orderId: id }, log(`Order ${number} created`, i.supplier));
   if (i.rfqId) patch<CrossHireRfq>(COL.chRfqs, i.rfqId, (r) => ({ ...r, status: 'Order', orderId: id, log: [...r.log, log(`Order ${number} created`)] }));
   if (o) addLog(o.id, log(`Cross-hire order ${number}`, `${i.supplier}, ${i.type}`, 'blue'));
   return id;
@@ -409,7 +440,7 @@ export function validateGrn(ch: CrossHire, grnId: string) {
     return { ...tpl, id: uid('he'), code: `ITM-${String(100 + n).padStart(4, '0')}`, assetId, name: `Diesel ${t.group} ${t.category} ${ch.supplier.split(' ')[0]} Cross-Hire`, category: t.group, subCategory: t.category, capacity: t.category, supplier: ch.supplier, ownership: 'Cross-Hired',
       assetStatus: t.condition === 'Damaged' ? 'Under Maintenance' : 'Ready for Hire', crossHireIdle: false, assetValue: 0, nbv: 0, deprPct: 0, deprAmount: 0, capex: 0, utilization: 0, idleDays: 0, profitability: 0, purchaseDate: TODAY, putToUseDate: TODAY, usefulLifeYears: 0, engineNo: t.serial, image: undefined, attachments: [],
       movements: [{ id: uid('m'), entryNo: `MV-26-${9100 + n}`, date: `${TODAY}T${dayjs().format('HH:mm')}`, type: 'Cross-Hire Stage Change', from: `Supplier: ${ch.supplier}`, to: g.location || 'Jebel Ali Main Yard', reference: g.number, by: ACTOR }],
-      audit: [{ when: nowStamp(), title: 'Cross-hired asset received', detail: `${ch.number}, ${g.number} from ${ch.supplier}. No depreciation is posted. Condition ${t.condition ?? 'OK'}${t.hours ? `, reading ${t.hours} h` : ''}${t.remarks ? `. ${t.remarks}` : ''}`, by: ACTOR }], insurance: [] };
+      audit: [{ when: nowStamp(), title: 'Cross-hired asset received', detail: `${ch.number}, ${g.number} from ${ch.supplier}. No depreciation is posted. Condition ${t.condition ?? 'OK'}${t.remarks ? `. ${t.remarks}` : ''}`, by: ACTOR }], insurance: [] };
   });
   setCollection(COL.fleet, [...made, ...fleetRows()]);
   patch<CrossHire>(COL.crossHire, ch.id, (c) => syncUnits({ ...c, grns: (c.grns ?? []).map((x) => (x.id === grnId ? { ...x, validated: true } : x)),
@@ -506,64 +537,106 @@ export function applyExtension(i: { soId: string; lineId?: string; kind: 'Extens
 
 /** AMC visit against the planned schedule: the scheduled visit is never billed, consumables and additional tasks are. */
 
-/* ------------------------------------------------------------------ Rental: return and inspection */
-export function raiseReturn(i: { soId: string; lineId: string; assetId: string; method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: TransportInput }): ReturnEntry {
-  if (i.method === 'Company Collection' && i.transport) assertTransport(i.transport, i.timestamp);
+/* ------------------------------------------------------------------ Customer Returns (RMA): entry, approval, Goods Receipt, validation */
+const rmaNo = () => nextNumber('RMA', 132);
+const getReturn = (id?: string) => all<ReturnEntry>(COL.returns).find((r) => r.id === id);
+export interface ReturnInput {
+  soId: string; deliveryId?: string; date: string; shippingAddress?: string; salesperson?: string; entity?: string; reference?: string; currency?: string; exchangeRate?: number; narration?: string; location: string; department?: string; attachments?: string[];
+  items: { lineId: string; assetId: string; narration?: string }[]; method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: TransportInput; draft: boolean;
+}
+export function createReturn(i: ReturnInput): ReturnEntry {
   const o = getOrder(i.soId)!;
-  const l = getLine(o, i.lineId)!;
-  const as = l.assigned.find((a) => a.assetId === i.assetId && (a.state === 'On Hire' || a.state === 'Hold'))!;
-  const d = all<Delivery>(COL.deliveries).find((x) => x.id === as.deliveryId);
-  const base = (d?.number ?? 'DO-26-00000').replace('DO', 'CN');
-  const number = all<ReturnEntry>(COL.returns).some((r) => r.number === base) ? `${base}-${all<ReturnEntry>(COL.returns).filter((r) => r.number.startsWith(base)).length + 1}` : base;
-  const rec: ReturnEntry = { id: uid('rt'), number, soId: o.id, soNumber: o.number, customerId: o.customerId, lineId: i.lineId, deliveryId: as.deliveryId, assetId: i.assetId, method: i.method, timestamp: i.timestamp, siteChecklist: i.siteChecklist,
-    photos: i.photos, fuelNote: i.fuelNote, stage: 2, yardChecklist: [], inspection: 'Pending Inspection', log: [log('Return entry raised', `Off-Hire. Billing stops at ${i.timestamp.replace('T', ' ')}`, 'amber'), log('Site check completed', `${i.siteChecklist.length} of 4 checks`), log(i.method === 'Company Collection' ? 'Collection arranged' : 'Client self-return', undefined)] };
+  const items: ReturnItem[] = i.items.map((it, k) => {
+    const l = getLine(o, it.lineId)!;
+    const as = l.assigned.find((a) => a.assetId === it.assetId && (a.state === 'On Hire' || a.state === 'Hold'))!;
+    return { id: uid(`ri${k}`), lineId: it.lineId, deliveryId: as.deliveryId, assetId: it.assetId, narration: it.narration };
+  });
+  const rec: ReturnEntry = { id: uid('rt'), number: rmaNo(), date: i.date, customerId: o.customerId, soId: o.id, soNumber: o.number, source: i.deliveryId ? 'delivery' : 'sales order', deliveryId: i.deliveryId, shippingAddress: i.shippingAddress ?? o.site, operationType: 'Return',
+    salesperson: i.salesperson ?? o.owner, entity: i.entity ?? o.entity, reference: i.reference, currency: i.currency ?? o.currency, exchangeRate: i.exchangeRate ?? 1, narration: i.narration, location: i.location, department: i.department, attachments: i.attachments ?? [],
+    status: i.draft ? 'Draft' : 'Pending', items, grns: [], method: i.method, timestamp: i.timestamp, siteChecklist: i.siteChecklist, photos: i.photos, fuelNote: i.fuelNote,
+    transport: i.method === 'Company Collection' ? i.transport : undefined, log: [log(i.draft ? 'Customer return saved as draft' : 'Customer return saved', `${items.length} asset(s) of ${o.number}`)] };
   put(COL.returns, rec);
-  patchAsset(i.assetId, { assetStatus: 'Off Hire' }, { title: 'Asset Status changed', detail: `On Hire to Off Hire (${number}). Rental invoicing stopped` });
-  saveOrder(o.id, (x) => ({
-    ...mapLine(x, i.lineId, (ln) => ({ ...ln, assigned: ln.assigned.map((a) => (a === as ? { ...a, state: 'Returned' as const, stop: i.timestamp.slice(0, 10) } : a)) })),
-    log: [log(`Return ${number}: ${assetById(i.assetId)?.assetId} off hire`, `Billing stopped at ${i.timestamp.replace('T', ' ')}`, 'amber'), ...x.log],
-  }));
-  // The originating Delivery Order closes automatically once none of its assets is still out.
-  const after = getOrder(o.id)!;
-  const stillOut = after.lines.some((ln) => ln.assigned.some((a) => a.deliveryId === as.deliveryId && (a.state === 'On Hire' || a.state === 'Hold')));
-  if (!stillOut) patch<Delivery>(COL.deliveries, as.deliveryId, (x) => ({ ...x, closed: true }));
-  // Recording the customer return IS the Return to Us of a cross-hired unit: its Cross Hire Order moves the unit on to Re-Issue or Return to Supplier; the yard inspection fills in its condition check.
-  const ch = all<CrossHire>(COL.crossHire).find((x) => unitsOf(x).some((u) => u.assetId === i.assetId && u.stage === 2));
-  if (ch) patchUnit(ch.id, i.assetId, (u) => ({ ...u, stage: 3, condition: { notes: `Customer return ${number}: yard inspection pending`, files: [], checks: [] } }), log(`${assetById(i.assetId)?.assetId} returned to us`, `Customer return ${number} (${i.method}), billing stopped. Yard inspection pending`, 'amber'));
-  // A Company Collection is a trip: our own vehicle or an external transporter.
-  if (i.method === 'Company Collection' && i.transport) createTrip({ kind: 'Collection', doc: { id: rec.id, number: rec.number }, soId: o.id, date: i.timestamp, ...i.transport });
-  return rec;
+  if (!i.draft) applyOffHire(rec.id);
+  return getReturn(rec.id)!;
 }
-export function reachYard(r: ReturnEntry, yard: string) {
-  patchAsset(r.assetId, { assetStatus: 'Yard' }, { title: 'Reached the yard', detail: `${r.number}: awaiting inspection` }, { type: 'Return', from: `Client: ${custName(r.customerId)}`, to: yard, reference: r.number, customer: custName(r.customerId), project: getOrder(r.soId)?.costCentre });
-  patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, stage: 3, reachedYard: `${TODAY} ${dayjs().format('HH:mm')}`, log: [...x.log, log('Asset reached the yard', yard)] }));
-  // The cross-hired unit is idle at our yard until it goes back to the supplier or is re-issued.
-  if (assetById(r.assetId)?.ownership === 'Cross-Hired') patchAsset(r.assetId, { crossHireIdle: true });
+/** Saving a return (not as a draft) is the Return Entry: the assets go Off Hire and rental billing stops at the Return Entry Timestamp; a Company Collection creates its trip. */
+export function applyOffHire(id: string) {
+  const r = getReturn(id);
+  if (!r) return;
+  const o = getOrder(r.soId)!;
+  r.items.forEach((it) => {
+    patchAsset(it.assetId, { assetStatus: 'Off Hire' }, { title: 'Asset Status changed', detail: `On Hire to Off Hire (${r.number}). Rental invoicing stopped` });
+    saveOrder(o.id, (x) => ({
+      ...mapLine(x, it.lineId, (ln) => ({ ...ln, assigned: ln.assigned.map((a) => (a.assetId === it.assetId && (a.state === 'On Hire' || a.state === 'Hold') ? { ...a, state: 'Returned' as const, stop: r.timestamp.slice(0, 10) } : a)) })),
+      log: [log(`Return ${r.number}: ${assetById(it.assetId)?.assetId} off hire`, `Billing stopped at ${r.timestamp.replace('T', ' ')}`, 'amber'), ...x.log],
+    }));
+    // The originating Delivery Order closes automatically once none of its assets is still out.
+    const after = getOrder(o.id)!;
+    if (!after.lines.some((ln) => ln.assigned.some((a) => a.deliveryId === it.deliveryId && (a.state === 'On Hire' || a.state === 'Hold')))) patch<Delivery>(COL.deliveries, it.deliveryId, (x) => ({ ...x, closed: true }));
+    // Recording the customer return IS the Return to Us of a cross-hired unit.
+    const ch = all<CrossHire>(COL.crossHire).find((x) => unitsOf(x).some((u) => u.assetId === it.assetId && u.stage === 2));
+    if (ch) patchUnit(ch.id, it.assetId, (u) => ({ ...u, stage: 3, condition: { notes: `Customer return ${r.number}: yard inspection pending`, files: [], checks: [] } }), log(`${assetById(it.assetId)?.assetId} returned to us`, `Customer return ${r.number} (${r.method}), billing stopped. Yard inspection pending`, 'amber'));
+  });
+  if (r.method === 'Company Collection' && r.transport) createTrip({ kind: 'Collection', doc: { id: r.id, number: r.number }, soId: o.id, date: r.timestamp, ...r.transport });
+  patch<ReturnEntry>(COL.returns, id, (x) => ({ ...x, log: [...x.log, log('Return entry raised', `Off-Hire. Billing stops at ${x.timestamp.replace('T', ' ')}`, 'amber')] }));
 }
-export function inspect(r: ReturnEntry, result: 'Passed' | 'Damage Found', checklist: string[], damage?: { amount: number; note: string }) {
-  const a = assetById(r.assetId)!;
-  const chOf = all<CrossHire>(COL.crossHire).find((c) => unitsOf(c).some((u) => u.assetId === r.assetId && u.stage === 3));
-  if (chOf) patchUnit(chOf.id, r.assetId, (u) => ({ ...u, condition: { notes: `${r.number}: ${result === 'Passed' ? 'inspection passed' : `damage found, ${damage?.note ?? ''}`}`, files: [], checks: checklist } }));
-  if (result === 'Passed') {
-    patchAsset(r.assetId, { assetStatus: 'Ready for Hire', crossHireIdle: a.ownership === 'Cross-Hired' }, { title: 'Inspection passed', detail: `${r.number}: Yard to Ready for Hire` });
-    patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, stage: 5, inspection: 'Passed', yardChecklist: checklist, outcome: 'Ready for Hire', log: [...x.log, log('Inspection passed', 'Operations Return Checklist complete. Asset is Ready for Hire', 'green')] }));
-    return;
-  }
+export function saveReturn(id: string, p: Partial<ReturnEntry>) { patch<ReturnEntry>(COL.returns, id, (r) => ({ ...r, ...p, log: [...r.log, log('Customer return edited')] })); }
+export function deleteReturn(id: string) { setCollection(COL.returns, all<ReturnEntry>(COL.returns).filter((r) => r.id !== id)); }
+/** Approval of the existing ERP: Submit for Approval or Quick Approval, then the approver accepts or rejects; a rejected return is re-submitted. */
+export function submitReturn(id: string, quick: boolean) {
+  patch<ReturnEntry>(COL.returns, id, (r) => ({ ...r, status: quick ? 'Pending Receipt' : 'Pending Approval', approver: quick ? ACTOR : undefined, log: [...r.log, quick ? log('Quick approval', `Approved by ${ACTOR}. Ready to Receive`, 'green') : log('Submitted for approval', 'Waiting for the approver', 'amber')] }));
+}
+export function decideReturn(id: string, approve: boolean) {
+  patch<ReturnEntry>(COL.returns, id, (r) => ({ ...r, status: approve ? 'Pending Receipt' : 'Rejected', approver: approve ? ACTOR : undefined, log: [...r.log, approve ? log('Approved', `By ${ACTOR}. Ready to Receive`, 'green') : log('Rejected', `By ${ACTOR}`, 'red')] }));
+}
+/** Receive: a Goods Receipt for the assets of the return that are not on one yet. */
+export function createReturnGrn(id: string, items: { itemId: string; yard: string; reachedYard: string }[]): string {
+  const gid = uid('rg');
+  patch<ReturnEntry>(COL.returns, id, (r) => {
+    const g: ReturnGrn = { id: gid, number: nextNumber('GRN', 20), date: TODAY, status: 'Pending', items: items.map((x) => ({ itemId: x.itemId, assetId: r.items.find((i) => i.id === x.itemId)?.assetId ?? '', yard: x.yard, reachedYard: x.reachedYard, tracked: false, inspection: 'Pending Inspection', yardChecklist: [] })) };
+    return { ...r, grns: [...r.grns, g], log: [...r.log, log(`Goods Receipt ${g.number} created`, `${g.items.length} asset(s) received`, 'blue')] };
+  });
+  return gid;
+}
+export function saveReturnGrn(id: string, gid: string, fn: (g: ReturnGrn) => ReturnGrn) { patch<ReturnEntry>(COL.returns, id, (r) => ({ ...r, grns: r.grns.map((g) => (g.id === gid ? fn(g) : g)) })); }
+export function deleteReturnGrn(id: string, gid: string) { patch<ReturnEntry>(COL.returns, id, (r) => ({ ...r, grns: r.grns.filter((g) => g.id !== gid) })); }
+/** Validate the Goods Receipt: each asset reaches the yard and is inspected (Ready for Hire, or Under Maintenance with a damage charge unless a damage waiver was paid); when every asset is received the return is Completed. */
+export function validateReturnGrn(id: string, gid: string) {
+  const r = getReturn(id);
+  const g = r?.grns.find((x) => x.id === gid);
+  if (!r || !g) return;
   const waiver = hasWaiver(getOrder(r.soId)?.lines ?? []);
-  patchAsset(r.assetId, { assetStatus: 'Under Maintenance' }, { title: 'Damage found at inspection', detail: `${r.number}: Yard to Under Maintenance` }, { type: 'Sent for Repair', from: whereIs(r.assetId), to: 'Workshop: Al Masaood Service Centre', reference: r.number });
-  patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, stage: 5, inspection: 'Damage Found', yardChecklist: checklist, damageCharge: waiver ? 0 : damage?.amount, damageNote: damage?.note, waiverApplied: waiver, outcome: 'Repair / Maintenance',
-    log: [...x.log, log('Damage found', waiver ? `Covered by the damage waiver paid on ${r.soNumber}: no damage invoice to the client, repair cost borne by the company. ${damage?.note ?? ''}` : `Charge AED ${damage?.amount}: ${damage?.note}`, 'red')] }));
-  saveOrder(r.soId, (o) => ({
-    ...o,
-    damageCharges: waiver ? o.damageCharges : [...o.damageCharges, { assetId: r.assetId, amount: damage?.amount ?? 0, note: damage?.note ?? '', date: TODAY }],
-    log: [log(waiver ? 'Damage covered by damage waiver' : `Damage charge AED ${damage?.amount}`, `${a.assetId}: ${damage?.note}${waiver ? '. Damage invoice blocked because a waiver was paid' : '. Linked permanently to this order'}`, 'red'), ...o.log],
-  }));
+  const done: ReturnGrnItem[] = g.items.map((it) => {
+    const a = assetById(it.assetId)!;
+    patchAsset(it.assetId, { assetStatus: 'Yard' }, { title: 'Reached the yard', detail: `${r.number}, ${g.number}: awaiting inspection` }, { type: 'Return', from: `Client: ${custName(r.customerId)}`, to: it.yard, reference: r.number, customer: custName(r.customerId), project: getOrder(r.soId)?.costCentre });
+    const chOf = all<CrossHire>(COL.crossHire).find((c) => unitsOf(c).some((u) => u.assetId === it.assetId && u.stage === 3));
+    if (chOf) patchUnit(chOf.id, it.assetId, (u) => ({ ...u, condition: { notes: `${r.number}: ${it.inspection === 'Passed' ? 'inspection passed' : `damage found, ${it.damageNote ?? ''}`}`, files: [], checks: it.yardChecklist } }));
+    if (a.ownership === 'Cross-Hired') patchAsset(it.assetId, { crossHireIdle: true });
+    if (it.inspection === 'Passed') {
+      patchAsset(it.assetId, { assetStatus: 'Ready for Hire', crossHireIdle: a.ownership === 'Cross-Hired' }, { title: 'Inspection passed', detail: `${r.number}: Yard to Ready for Hire` });
+      return { ...it, outcome: 'Ready for Hire' };
+    }
+    patchAsset(it.assetId, { assetStatus: 'Under Maintenance' }, { title: 'Damage found at inspection', detail: `${r.number}: Yard to Under Maintenance` }, { type: 'Sent for Repair', from: it.yard, to: 'Workshop: Al Masaood Service Centre', reference: r.number });
+    saveOrder(r.soId, (o) => ({
+      ...o,
+      damageCharges: waiver ? o.damageCharges : [...o.damageCharges, { assetId: it.assetId, amount: it.damageCharge ?? 0, note: it.damageNote ?? '', date: TODAY }],
+      log: [log(waiver ? 'Damage covered by damage waiver' : `Damage charge AED ${it.damageCharge}`, `${a.assetId}: ${it.damageNote}${waiver ? '. Damage invoice blocked because a waiver was paid' : '. Linked permanently to this order'}`, 'red'), ...o.log],
+    }));
+    return { ...it, waiverApplied: waiver, damageCharge: waiver ? 0 : it.damageCharge, outcome: 'Repair / Maintenance' };
+  });
+  patch<ReturnEntry>(COL.returns, id, (x) => {
+    const grns = x.grns.map((y) => (y.id === gid ? { ...y, status: 'Validated' as const, items: done } : y));
+    const received = new Set(grns.filter((y) => y.status === 'Validated').flatMap((y) => y.items.map((i) => i.itemId)));
+    const complete = x.items.every((i) => received.has(i.id));
+    return { ...x, grns, status: complete ? 'Return Completed' : x.status, log: [...x.log, log(`${g.number} validated`, done.map((d) => `${assetById(d.assetId)?.assetId}: ${d.outcome}`).join(', '), 'green'), ...(complete ? [log('Return completed', 'Every asset is received and inspected', 'green')] : [])] };
+  });
 }
 
 /** Collection failed: charge the client or book it as a company loss. */
 export function failedCollection(r: ReturnEntry, by: string, amount: number, note: string) {
+  const assetId = r.items[0]?.assetId ?? '';
   patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, collection: { by, amount, note }, log: [...x.log, log('Collection failed', `${by === 'Client' ? `Charged to client AED ${amount}` : 'Company loss'}: ${note}`, 'red')] }));
-  saveOrder(r.soId, (o) => ({ ...o, damageCharges: by === 'Client' && amount ? [...o.damageCharges, { assetId: r.assetId, amount, note: `Failed collection: ${note}`, date: TODAY }] : o.damageCharges, log: [log('Collection failed', `${by === 'Client' ? `Client charged AED ${amount}` : 'Booked as company loss'}. ${note}`, 'red'), ...o.log] }));
+  saveOrder(r.soId, (o) => ({ ...o, damageCharges: by === 'Client' && amount ? [...o.damageCharges, { assetId, amount, note: `Failed collection: ${note}`, date: TODAY }] : o.damageCharges, log: [log('Collection failed', `${by === 'Client' ? `Client charged AED ${amount}` : 'Booked as company loss'}. ${note}`, 'red'), ...o.log] }));
   // The collection trip shows on the Fleet Availability board as Stuck-Delayed with the same note and Responsible.
   all<Trip>(COL.trips).filter((t) => t.docId === r.id && isOpenTrip(t) && t.status !== 'Stuck-Delayed').forEach((t) => markStuck(t, note, by as 'Company' | 'Client'));
 }
@@ -701,7 +774,7 @@ export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []
   if (cur.kind === 'Delivery') syncDelivery(cur, 'Delivered', `Trip ${cur.number} completed`, true);
   if (cur.kind === 'Collection') {
     const r = all<ReturnEntry>(COL.returns).find((x) => x.id === cur.docId);
-    if (r && r.stage === 2 && !r.collection) reachYard(r, 'Jebel Ali Main Yard');
+    if (r && !r.collection && !r.collected) patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, collected: `${TODAY} ${dayjs().format('HH:mm')}`, log: [...x.log, log('Collection completed', `Trip ${cur.number}: the assets are on their way to the yard. Receive them with a Goods Receipt`, 'green')] }));
   }
 }
 /** Cancel frees the vehicle and takes everything the trip cost back out: the order's logistics cost, the ledger entries, and the transporter bill. */

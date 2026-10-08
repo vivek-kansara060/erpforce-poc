@@ -297,6 +297,7 @@ export function DeliveryView() {
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${d.soId}`)}>View Sales Order</Button>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Delivery Order" /><Button variant="outlined" onClick={() => setPrintOpen(true)}>Print</Button>
+          {so && so.lines.some((ln) => ln.assigned.some((x) => x.deliveryId === d.id && (x.state === 'On Hire' || x.state === 'Hold'))) && <Button variant="outlined" onClick={() => nav(`/crm/customer-returns/add?so=${d.soId}&delivery=${d.id}`)}>Return Delivery</Button>}
           {next && <Button variant="contained" onClick={advance}>Mark {next}</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>

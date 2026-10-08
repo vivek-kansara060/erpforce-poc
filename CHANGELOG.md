@@ -12,6 +12,76 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 8 Oct, around 11:30 AM: Goods Receipt: assets traced on the view page, in a Track Details dialog
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* The Goods Receipt form is back to the header, the items table (ordered, received, remaining) and the other sections; the assets are not entered there. On the Goods Receipt view page the items table has On this receipt and a Track Details icon per item. Track Details opens a dialog with that item's assets (Serial Number, Category received, Condition, Photo, Remarks, check), + Add asset and a paste-a-list box; Save keeps them on the receipt. An asset received as a Category not on the order has its own "Not on the order" row. Validate on the view page puts the assets on the register.
+*Be aware.* Saving the form no longer carries serial numbers; they are added with Track Details.
+*Design (same day).* Track Details is a scan-first dialog: Ordered, Received so far, On this receipt and Still to come at the top with a progress bar; one box to scan or type a serial number (Enter adds it) or Paste several; each asset is one compact line with its serial, the Category received (click to change it, an off-order Category turns amber), Condition as an OK, Needs check or Damaged switch, a photo button, a note button and a check; a damaged line has a red edge. The box stops accepting serials once the units still to come are on the receipt.
+
+### 8 Oct, around 10:30 AM: Goods Receipt: one items table with the assets under each item; Hours reading removed
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* The Goods Receipt has one Items table instead of an items table plus an assets grid. Each order item is a header row (Item, Ordered, Received, Remaining, how many are on this receipt) with + Add asset; its assets are rows under it with the Category received, Serial Number, Condition, Photo and Remarks, a check and a delete. An asset received of a Category not on the order shows under "Not on the order". The Hours reading field is removed.
+*Be aware.* The paste-a-list box fills the asset rows from the top.
+
+### 8 Oct, around 9:30 AM: Cross Hire Goods Receipt: receiving inside Basic Details, Items
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* The separate Receiving tab is gone. The assets received are entered in the Items section of Basic Details, under the items table (ordered, received, remaining and on this receipt per item), on the Goods Receipt form as well as on its view. Saving the form keeps the serials entered; Validate on the Goods Receipt puts the assets on the register.
+
+### 8 Oct, around 8:30 AM: One Cross Hire Order for several Categories, partial orders by deleting rows
+**Where:** Rental > Cross Hire > Orders
+**Where:** Rental > Cross Hire > Process Cross Hire
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Accounting & Finance > Invoice > Bills
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* An order was for one Category and Subcategory, so several items of a request needed several orders.
+*What we did.* An order now has an Items table (Category, Subcategory, Units, Rate per unit, Amount) like the existing ERP. Process Cross Hire with several rows, or Create > Order on a request, opens one Order form with all the items; delete the rows you do not want to order now, and add or change rows. The request items covered by the order are marked, the request stays In Progress for the rest and completes when every item has an order or an RFQ. The RFQ already worked this way. The Goods Receipt shows units ordered, received and remaining per item, and a new asset row takes the first item that still has units to come; an asset of another Category is flagged as differing from the order. The order view, the Bill form (one line per item at its own rate), the cost of a Sales Order (each unit at the rate of its own item) and the cross-hire reports follow the items.
+*Be aware.* The rental period, location and rental duration are one set for the whole order. The supplier and the type (Inventory or Dropship) are one per order, so rows with different suppliers are ordered separately.
+
+### 8 Oct, around 7:00 AM: One Cross Hire Request for all the lines selected
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Process Cross Hire
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Selecting several equipment lines (several Categories and Subcategories) on a Sales Order raised one request for each line.
+*What we did.* Cross Hire on several lines, or several lines picked on the Request form, now makes one request with one item per line (Category, Subcategory, units not covered yet). The request list shows all its Categories and the total quantity; the request view lists every item with what covers it. Process Cross Hire shows a row per item, so an order is made for one Category at a time (select the rows of one item; the request stays In Progress until every item has an order or an RFQ), and an RFQ can take several rows and so several Categories.
+*Be aware.* An order is still for one Category and Subcategory. Create > Order on a request with several Categories sends you to Process Cross Hire to pick the item.
+
+### 8 Oct, around 6:00 AM: Entity first on the rental forms; Address & Contact fills in like the existing ERP
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Orders
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Rental > Settings > Billing Cycle
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* The rental forms called our own company "Company" and put it in the middle of the form, and the Address & Contact tabs were free-text boxes.
+*What we did.* (1) Company is now **Entity** and the first field on the Cross Hire Request, Order, Request for Quote, Response, Goods Receipt and Billing Cycle forms, and on Customer Returns; the lists and views use the same label. (2) Address & Contact works like the existing ERP: Supplier Address and Contact Person list the addresses and contacts of the chosen supplier (for the RFQ, its first vendor in Call For Tender) and the first one is filled in when the supplier is chosen; Shipping Address, Billing Address and Place of Supply list the locations of the chosen Entity with the default shipping and billing address pre-selected, and Place of Supply follows the shipping address. Changing the supplier or the Entity refills them. The Goods Receipt takes the supplier and Entity of its order. The Quotation and Sales Order address tab and the Customer Return's Shipping Address follow the customer in the same way: its head office and the site of the order are offered and the site is pre-selected, Contact Person lists its contacts, Place of Supply is the emirate.
+*Be aware.* The address and contact lists are POC sample data derived from the supplier, customer and entity records (a registered office and a yard per cross-hire supplier, two contacts each, the yards and head office of each Entity); the real lists come from the party masters. Addresses are stored as text, so invoices and bills that copy them are unchanged.
+
+### 8 Oct, around 4:00 AM: Customer Returns rebuilt on the existing screens; Cross Hire creates open forms instead of dialogs
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Orders
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Accounting & Finance > Invoice > Invoices
+**Where:** Accounting & Finance > Invoice > Bills
+**Type:** EXISTING WITH CHANGE
+
+*The problem.* Customer Returns looked like a new screen, not the existing ERP's Customer Return (RMA). Cross Hire, the Sales Order and the Cross Hire order used dialogs to create RFQs, orders, requests, invoices and bills, where the existing ERP opens the form page.
+*What we did.* (1) Customer Returns follows the existing ERP: list (ID, Date, Customer, Salesperson, Sales Order, Company, RMA Status) with Edit, Duplicate and Delete; one-page form (Customer Returns, Classification, Items, Attachment) with a Summary panel and Save as Draft; statuses Draft, Pending, Pending Approval, Pending Receipt, Return Completed, Rejected; Submit for Approval or Quick Approval, Accept and Reject; Receive creates a Goods Receipt (GRN) whose items have Track Details and which is Validated. The requirement is added on top and marked NEW: a Rental Return section (Return Method, Return Entry Timestamp that stops billing, Pre-Return Site Checklist, mandatory photos, fuel note, Collection Transport with its trip), Asset ID and Delivery Order on the items, Yard and Reached Yard and the yard Inspection (Operations Return Checklist, damage charge, damage waiver) on the Goods Receipt, Collection Failed, Print Collection Note, and Return Delivery on the Delivery Order. One return can carry several assets, each is one unit. (2) Create > Order and Create > RFQ on a request or on Process Cross Hire open the Order form or the RFQ form prefilled from the requests; Cross Hire on the Sales Order and in Replacement opens the Request form with the lines chosen; Bill on a Cross Hire Order opens the Accounting bill form prefilled from the order; Create > Invoice on a Sales Order (and a line's Invoice step) opens the Accounting invoice form prefilled with the invoiceable lines. Saving those forms links the documents back (order billed, lines invoiced).
+*Layout.* Items on the return form are edited in the table itself (an asset picker and a narration on each row, + Add adds a row, the bin deletes it), with no dialog. The Summary panel sits on the right only on screens 1536 px wide or more; on narrower screens the summary is a section above the form, so the page does not scroll sideways, and wide tables scroll inside their own section.
+*Be aware.* Return numbers are RMA-26-... (they were CN-26-...). The rental assets are off hire and billing stops when the return is saved (not a draft); editing then only changes the header. Delete is possible only for a Draft return. A return rejected at approval does not put the assets back on hire. The credit note and Pending Credit step of the existing RMA are not used for rental, because billing simply stops.
+
 ### 8 Oct, around 2:00 AM: A customer return of a cross-hired unit is its Return to Us
 **Where:** CRM / Sales > Orders > Customer Returns
 **Where:** Rental > Cross Hire > Orders
@@ -214,7 +284,7 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 *The problem.* Ajin asked for a way to see which own vehicle is free before a delivery, collection or replacement, to assign one, and to charge every trip's cost (Salik, fuel, transporter) to the project. The POC only had a free-text driver and vehicle number on the Delivery Order, and the three trucks sat in the hire pool, so a truck could even be quoted for rent.
 *What we did.* Own delivery vehicles are the same Heavy Equipment Fixed Asset record, marked with a new **Delivery fleet vehicle** checkbox (Owned assets only) with a Plate Number and Default Driver. They are In Service, never rented out, never offered on a quote and never counted in the rental fleet (the Vehicle category no longer appears on a rental line and the low-bed truck rental price is removed). A new **Fleet Availability** board shows each vehicle as Free, Assigned, En Route, Stuck-Delayed (reason and Responsible required) or Unavailable, with counts and filters by Vehicle Type and status. A new **Trips** list and view hold one trip per delivery, collection or replacement, with expenses and a log. The Delivery Order, Customer Return (Company Collection) and Replacement Order get a transport section: Select from fleet opens the board as a picker of Free vehicles, which fills vehicle, driver and mobile; no free vehicle offers an external transporter; an Assigned trip can be switched to an external transporter. Every trip expense is added to the Sales Order logistics cost (new Logistics tab), and an external transporter's cost is posted once. Collection Failed marks the collection trip Stuck-Delayed; the Collection Note prints driver and vehicle. Trip Expense Types is a new CRM master. Section hints in the touched forms are now "?" tooltips.
-*Be aware.* The Trips list is our own design choice (not named in the requirement document). Vehicle status is derived from the trips, never typed. The Iqama field is kept for now (open question for Ajin). Data is in memory, a refresh restores the demo trips. CN-26-00123 shows two trips on purpose: a stuck first attempt and a second crane-truck trip.
+*Be aware.* The Trips list is our own design choice (not named in the requirement document). Vehicle status is derived from the trips, never typed. The Iqama field is kept for now (open question for Ajin). Data is in memory, a refresh restores the demo trips. RMA-26-00123 shows two trips on purpose: a stuck first attempt and a second crane-truck trip.
 
 ### 7 Oct, around 12:30 AM: Format checks removed from fields; business checks kept
 **Where:** CRM / Sales > Orders > Lead
@@ -255,7 +325,7 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 **Type:** EXISTING WITH CHANGE
 
 *The problem.* Several flows could not be shown from the sample data. A new AMC quotation had no item to pick. No cross-hire order was waiting to be received or linked to an asset, the RFQ had no request behind it, and its dates were in the future. Nothing was on Hold, no return was waiting at any step, no order could be closed, no LPO was close to expiry, there was no Service order and no AMC order with invoiced and paid job cards. Pricing had no 1500 KVA, Quarterly or Yearly rows, few units were Ready for Hire, and there were no Off Hire, Breakdown or end-of-life units, no Fixed Assets count in progress and no scrap or draft disposal. A Lost lead still offered Convert.
-*What we did.* The AMC item list now shows the Inventory AMC items. New sample records, all dated relative to the demo day: cross-hire orders CH-26-00008 (to receive), CH-26-00009 (for the asset form picker) and CH-26-00010 (received, unit AST-1031 ready to deliver on SO-26-00052); request CHR-26-00006 (Pending) and CHR-26-00007 (behind RFQ-26-00012, so the order created from the award is linked to SO-26-00041); AST-1019 on Hold on SO-26-00052 until its Rental Start Date; SO-26-00049 fully returned and ready to close, with returns at every step (CN-26-00123 off hire, CN-26-00122 in the yard awaiting inspection, CN-26-00121 damage charged) and CN-26-00132 damage covered by the waiver on SO-26-00046; LPO on SO-26-00041 expiring within the notice period and on SO-26-00048 expired; a Service opportunity, approved quotation QT-26-00080 and confirmed order SO-26-00051; AMC order SO-26-00050 with job cards Invoiced and Paid, Invoiced and Unpaid, Completed and Open; 1500 KVA, Quarterly, Yearly and a 500 KVA Fixed Asset Trading price; more Ready for Hire units; Off Hire, Breakdown and an end-of-life unit; count sessions SCS-26-00006 (in progress) and SCS-26-00007 (approved); disposals DSP-26-00006 (scrap invoiced), DSP-26-00007 (invoice to create) and DSP-26-00008 (draft); leads in every status; a Lost and a Negotiation opportunity; a One-time damage waiver item. CH-26-00006 is now linked to SO-26-00046 as the cover for the broken-down AST-1014. Palm Marina Development is active again. Convert is hidden on Lost, Unqualified and Not qualified leads.
+*What we did.* The AMC item list now shows the Inventory AMC items. New sample records, all dated relative to the demo day: cross-hire orders CH-26-00008 (to receive), CH-26-00009 (for the asset form picker) and CH-26-00010 (received, unit AST-1031 ready to deliver on SO-26-00052); request CHR-26-00006 (Pending) and CHR-26-00007 (behind RFQ-26-00012, so the order created from the award is linked to SO-26-00041); AST-1019 on Hold on SO-26-00052 until its Rental Start Date; SO-26-00049 fully returned and ready to close, with returns at every step (RMA-26-00123 off hire, RMA-26-00122 in the yard awaiting inspection, RMA-26-00121 damage charged) and RMA-26-00132 damage covered by the waiver on SO-26-00046; LPO on SO-26-00041 expiring within the notice period and on SO-26-00048 expired; a Service opportunity, approved quotation QT-26-00080 and confirmed order SO-26-00051; AMC order SO-26-00050 with job cards Invoiced and Paid, Invoiced and Unpaid, Completed and Open; 1500 KVA, Quarterly, Yearly and a 500 KVA Fixed Asset Trading price; more Ready for Hire units; Off Hire, Breakdown and an end-of-life unit; count sessions SCS-26-00006 (in progress) and SCS-26-00007 (approved); disposals DSP-26-00006 (scrap invoiced), DSP-26-00007 (invoice to create) and DSP-26-00008 (draft); leads in every status; a Lost and a Negotiation opportunity; a One-time damage waiver item. CH-26-00006 is now linked to SO-26-00046 as the cover for the broken-down AST-1014. Palm Marina Development is active again. Convert is hidden on Lost, Unqualified and Not qualified leads.
 *Be aware.* Sample data only; refreshing the browser restores it. New cross-hire orders and requests now start numbering after CH-26-00010 and CHR-26-00007. SO-26-00052 now asks for two 100 KVA units, one per cross-hire order.
 
 ### 6 Oct, around 9:00 PM: Six fixes: FOC assets on rentals, one cross-hire record, real movement origins, hold release, live locations, real date

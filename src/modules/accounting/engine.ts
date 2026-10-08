@@ -351,11 +351,11 @@ export function advanceCollection(i: { soId: string; amount: number; method: Pay
   if (!o) return undefined;
   return createPayment({ direction: 'Receive', partyType: 'Customer', partyId: o.customerId, partyName: custName(o.customerId), method: i.method, bankAccount: i.bankAccount, reference: i.reference, amount: i.amount, isAdvance: true, soId: o.id, soNumber: o.number, allocations: [], date: i.date, narration: `Advance against ${o.number}` });
 }
-interface CrossHireLike { id: string; number: string; soId: string; soNumber: string; group: string; category: string; supplierId: string; supplier: string; rate: number; qty?: number; startDate?: string; endDate?: string; paymentTerms?: string; expenses?: { account: string; amount: number; note: string }[] }
+interface CrossHireLike { id: string; number: string; soId: string; soNumber: string; group: string; category: string; supplierId: string; supplier: string; rate: number; qty?: number; items?: { group: string; category: string; qty: number; rate: number }[]; startDate?: string; endDate?: string; paymentTerms?: string; expenses?: { account: string; amount: number; note: string }[] }
 export function billFromCrossHire(ch: CrossHireLike, supplierInvoiceNo: string, supplierInvoiceDate: string): Bill {
   const o = orderOf(ch.soId);
   return createBill({ supplierId: ch.supplierId, supplierName: ch.supplier, supplierInvoiceNo, supplierInvoiceDate, date: TODAY, orderRef: ch.number, activity: 'Rental', costCentre: o?.costCentre, paymentTerms: ch.paymentTerms,
-    lines: [{ id: lid(), item: `Cross-hire ${ch.group} ${ch.category}`, desc: `${ch.number} for ${ch.soNumber}`, account: '510100', qty: ch.qty ?? 1, unit: 'Nos', rate: ch.rate, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre, tag: 'cross-hire' }],
+    lines: (ch.items ?? [{ group: ch.group, category: ch.category, qty: ch.qty ?? 1, rate: ch.rate / (ch.qty ?? 1) }]).map((it) => ({ id: lid(), item: `Cross-hire ${it.group} ${it.category}`, desc: `${ch.number} for ${ch.soNumber}`, account: '510100', qty: it.qty, unit: 'Nos', rate: it.rate, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre, tag: 'cross-hire' as const })),
     expenses: (ch.expenses ?? []).map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || e.account, amount: e.amount, vatPct: 5, costCentre: o?.costCentre })),
     narration: `Cross-hire order ${ch.number}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } });
 }

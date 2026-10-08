@@ -20,6 +20,9 @@ import {
 import { ApprovalButtons, DocChips, LedgerDialog, LedgerTable, LinesTable, PaymentDialog, R_ACC, SourceLink, TotalsBox, money, sourcePath, useCreditNotes, useInvoices, useJournals, usePayments } from './shared';
 import { getCollection } from '@/store/store';
 import { COL, type SalesOrder } from '@/modules/crm/data';
+import { linkOrderLinesToInvoice } from '@/modules/crm/flow';
+import { invoiceableLines } from '@/modules/crm/ActionDialogs';
+import { linesFromOrder } from './billing';
 
 export function InvoiceList() {
   const nav = useNavigate();
@@ -187,7 +190,11 @@ export function InvoiceForm() {
     const o = getCollection<SalesOrder>(COL.orders).find((x) => x.id === sp.get('so'));
     return { entity: 'Gulf Power Rentals LLC', date: TODAY, postingTime: '09:00', paymentTerms: '30 days', transactionType: 'Credit', currency: 'AED', exchangeRate: 1, vatType: VAT_TYPES[0], discountOn: 'None', discountPct: 0, roundOff: false, customerId: '', partyName: '', ...(o ? headerFromOrder(o) : {}) };
   });
-  const [rows, setRows] = useState<Row[]>(() => (existing ? existing.lines.map(toRow) : []));
+  // From a Sales Order (Create > Invoice, or the line's Invoice step): the invoiceable lines come in as rows and are marked invoiced when the invoice is saved.
+  const fromSo = !existing ? getCollection<SalesOrder>(COL.orders).find((x) => x.id === sp.get('so')) : undefined;
+  const wanted = sp.get('lines')?.split(',').filter(Boolean);
+  const soLines = fromSo ? invoiceableLines(fromSo.lines).filter((l) => !wanted || wanted.includes(l.id)) : [];
+  const [rows, setRows] = useState<Row[]>(() => (existing ? existing.lines.map(toRow) : fromSo ? linesFromOrder(fromSo, soLines).map(toRow) : []));
   const [err, setErr] = useState<Record<string, string>>({});
   if (id && !existing) return <Page><PageTitle title="Invoice not found" /></Page>;
   if (existing && !EDITABLE.includes(existing.approval)) return <Page><PageTitle title={`${existing.number} is approved and cannot be edited`} subtitle="Raise a Credit Note to correct an approved invoice." right={<Button variant="outlined" onClick={() => nav(`/accounting/invoices/${existing.id}`)}>Back</Button>} /></Page>;
@@ -210,7 +217,8 @@ export function InvoiceForm() {
     if (!lines.length || lines.some((l) => l.qty <= 0)) { toast('Add at least one item with a quantity above zero', 'error'); return; }
     const data = { ...f, partyName: party, customerId: f.customerId || undefined, discountPct: Number(f.discountPct) || 0, exchangeRate: Number(f.exchangeRate) || 1, lines, activity: f.activity || undefined, costCentre: f.costCentre || undefined };
     if (existing) { const x = updateInvoice(existing.id, data); toast(x.message, x.ok ? 'success' : 'error'); nav(`/accounting/invoices/${existing.id}`); return; }
-    const created = createInvoice({ ...data, source: { type: 'Manual', id: '', number: '' } } as any, { draft });
+    const created = createInvoice({ ...data, source: fromSo ? { type: 'Sales Order', id: fromSo.id, number: fromSo.number, soId: fromSo.id, lineIds: soLines.map((l) => l.id) } : { type: 'Manual', id: '', number: '' } } as any, { draft });
+    if (fromSo && !draft) linkOrderLinesToInvoice(fromSo.id, soLines.map((l) => l.id), created);
     toast(`${created.number} ${draft ? 'saved as draft' : 'created, pending approval'}`);
     nav(`/accounting/invoices/${created.id}`);
   };
@@ -219,6 +227,7 @@ export function InvoiceForm() {
       <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? `Edit ${existing.number}` : 'New Invoice' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/invoices/${existing.id}` : '/accounting/invoices')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
+        {fromSo && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromSo.number}: {soLines.length} line(s) at the Sales Order price. Remove a row to leave it out; saving marks the lines invoiced on the order.</Alert>}
         {warn && <Alert severity="warning" sx={{ mb: 2 }}>{warn}. Warning only (rule to be confirmed with client).</Alert>}
         <TabPanels tabs={[
           { label: 'Basic Details', content: (

@@ -200,10 +200,22 @@ export interface Delivery {
   /** kept for older records */
   siteReady?: boolean; holdReason?: string; holdBy?: string;
 }
+/** Customer Return (RMA) of the existing ERP: header, items, approval, then a Goods Receipt (GRN) that is validated. Rental additions are marked NEW on the screens. */
+export const RMA_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Pending Receipt', 'Pending Credit', 'Return Completed', 'Rejected'];
+export interface ReturnItem { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string }
+/** One asset on a Goods Receipt: where it arrived, its serial confirmed (Track Details) and the yard inspection (Operations Return Checklist). */
+export interface ReturnGrnItem {
+  itemId: string; assetId: string; yard: string; reachedYard: string; tracked: boolean; inspection: 'Pending Inspection' | 'Passed' | 'Damage Found'; yardChecklist: string[];
+  damageCharge?: number; damageNote?: string; waiverApplied?: boolean; outcome?: string;
+}
+export interface ReturnGrn { id: string; number: string; date: string; status: 'Pending' | 'Validated'; items: ReturnGrnItem[] }
+export interface ReturnTransport { transport: 'Own Fleet' | 'External Transporter'; vehicleId?: string; driver?: string; mobile?: string; transporter?: string; charge?: number }
 export interface ReturnEntry {
-  id: string; number: string; soId: string; soNumber: string; customerId: string; lineId: string; deliveryId: string; assetId: string; method: string; timestamp: string;
-  siteChecklist: string[]; photos: string[]; fuelNote: string; stage: number; reachedYard?: string; yardChecklist: string[]; inspection: 'Pending Inspection' | 'Passed' | 'Damage Found';
-  damageCharge?: number; damageNote?: string; waiverApplied?: boolean; outcome?: string; collection?: { by: string; amount: number; note: string }; log: LogItem[];
+  id: string; number: string; date: string; customerId: string; soId: string; soNumber: string; source: 'sales order' | 'delivery'; deliveryId?: string; shippingAddress?: string; operationType: string;
+  salesperson: string; entity: string; reference?: string; currency: string; exchangeRate: number; narration?: string; location: string; department?: string; attachments: string[];
+  status: string; items: ReturnItem[]; approver?: string; grns: ReturnGrn[]; log: LogItem[];
+  /** rental: how it comes back, when billing stops, the site check and photos, the collection transport and a failed collection */
+  method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: ReturnTransport; collected?: string; collection?: { by: string; amount: number; note: string };
 }
 export interface Replacement {
   id: string; number: string; soId: string; lineId: string; oldAssetId: string; newAssetId: string; reason: string; priceAdjust: number; notified: boolean; date: string; crossHireId?: string; by: string;
@@ -219,8 +231,18 @@ export interface CrossHire {
   grns?: CrossHireGrn[]; form?: Record<string, any>; approvedBy?: string;
   /** One entry per received asset (1 fixed asset = 1 unit). The order is Category and Subcategory with a number of units; the assets are defined on the Goods Receipt. */
   units?: CrossUnit[];
+  /** Items of the order, one per Category and Subcategory with its units and rate per unit. Group, Category, quantity and rate above are the first item and the totals. */
+  items?: CrossHireItem[];
 }
+/** One Category and Subcategory of a Cross Hire Order: the units ordered and the agreed rate per unit. */
+export interface CrossHireItem { id: string; group: string; category: string; qty: number; rate: number; lineId?: string }
 export interface CrossUnit { assetId: string; stage: number; soId?: string; soNumber?: string; lineId?: string; grnId?: string; condition?: { notes: string; files: string[]; checks?: string[] }; reissueRef?: string; dispute?: number }
+/** Items of an order; an order without items is one item of its own Category. */
+export const chItems = (c: CrossHire): CrossHireItem[] => c.items ?? [{ id: c.id, group: c.group, category: c.category, qty: c.qty ?? 1, rate: c.rate / (c.qty ?? 1), lineId: c.lineId }];
+/** Agreed rate per unit for a Category and Subcategory of the order (the order average when the asset is not one of its items). */
+export const chItemRate = (c: CrossHire, group?: string, category?: string) => chItems(c).find((i) => i.group === group && i.category === category)?.rate ?? c.rate / (c.qty ?? 1);
+/** Units of the item received so far (assets of its Category and Subcategory), at most the units ordered. */
+export const itemReceived = (c: CrossHire, i: { group: string; category: string; qty: number }) => Math.min(i.qty, unitsOf(c).filter((u) => { const a = assetById(u.assetId); return a?.category === i.group && a?.subCategory === i.category; }).length);
 /** Units of an order. Older records without units carry their single asset on the order itself. */
 export const unitsOf = (c: CrossHire): CrossUnit[] => c.units ?? (c.assetId ? [{ assetId: c.assetId, stage: c.stage, soId: c.stage >= 2 ? c.soId : undefined, soNumber: c.stage >= 2 ? c.soNumber : undefined, lineId: c.lineId, condition: c.condition, reissueRef: c.reissueRef, dispute: c.dispute }] : []);
 /** Cost of an order that belongs to one Sales Order: the units delivered to it (rate share, expenses share, own dispute); an order with no unit delivered yet counts against the order it was raised for. */
@@ -229,20 +251,24 @@ export function costForSo(c: CrossHire, soId: string): number {
   const us = unitsOf(c);
   const exp = (c.expenses ?? []).reduce((t, e) => t + e.amount, 0);
   const mine = us.filter((u) => u.soId === soId);
-  if (mine.length) return mine.reduce((t, u) => t + (c.rate + exp) / n + (u.dispute ?? 0), 0);
+  if (mine.length) return mine.reduce((t, u) => { const a = assetById(u.assetId); return t + chItemRate(c, a?.category, a?.subCategory) + exp / n + (u.dispute ?? 0); }, 0);
   return !us.some((u) => u.soId) && c.soId === soId ? c.rate + exp + (c.dispute ?? 0) : 0;
 }
 /** Goods Receipt Note of a Cross Hire Order. The unit is traced on it (serial number), and Validate puts the unit on the Fixed Asset Register. */
 export interface CrossHireGrn {
   id: string; number: string; date: string; receivedBy: string; narration: string; transportedBy: string; driver: string; driverId: string; vehicle: string; location: string; department: string;
-  attachments: string[]; qty: number; traces: { serial: string; group: string; category: string; condition?: 'OK' | 'Damaged' | 'Needs check'; photo?: string; hours?: string; remarks?: string }[]; validated: boolean; address?: Record<string, string>;
+  attachments: string[]; qty: number; traces: { serial: string; group: string; category: string; condition?: 'OK' | 'Damaged' | 'Needs check'; photo?: string; remarks?: string }[]; validated: boolean; address?: Record<string, string>;
 }
 export interface RfqItem { id: string; group: string; category: string; uom: string; description: string; specification: string; duration: string; qty: number; estYear: number; location: string; department: string; narration: string; orderNumber?: string }
+/** One Category and Subcategory of a Cross Hire Request (a request holds one item per equipment line selected on the Sales Order). */
+export interface CrossHireReqItem { lineId: string; group: string; category: string; qty: number; frequency: string; rate?: number; orderId?: string; rfqId?: string }
 export interface CrossHireRequest {
   id: string; number: string; date: string; soId: string; soNumber: string; lineId: string; group: string; category: string; qty: number; frequency: string; rate: number;
   vendorId?: string; vendor?: string; company: string; representative: string; currency: string; narration: string; location: string; department: string; attachments: string[];
   /** Cross-Hire Decision Right: who raised it and in which role (the permission is gated, not tied to one fixed role). */
   raisedBy?: string; raisedRole?: string;
+  /** Items of the request. The Category, Subcategory, quantity and line above are those of the first item (the total quantity); a request without items has just that one. */
+  items?: CrossHireReqItem[];
   status: 'Draft' | 'Pending' | 'In Progress' | 'Completed' | 'Rejected'; rfqId?: string; orderId?: string; log: LogItem[];
 }
 export interface RfqResponse { vendorId: string; vendor: string; rate: number; leadTime: number; moq: number; date: string; note?: string; number?: string; paymentTerms?: string; incoterm?: string; reference?: string; narration?: string; condition?: string; specification?: string; vendorUom?: string; vendorDuration?: string; estYear?: number }
@@ -251,6 +277,7 @@ export interface CrossHireRfq {
   currency: string; paymentTerms: string; start?: string; end?: string; narration: string; status: 'Draft' | 'Open' | 'RFQ Sent' | 'Response Received' | 'Pending Order' | 'Order' | 'Cancelled';
   items?: RfqItem[]; reference?: string; location?: string; representative?: string; company?: string; form?: Record<string, any>; responses: RfqResponse[]; awardedVendorId?: string; awardComment?: string; orderId?: string; log: LogItem[];
 }
+export const reqItems = (r: CrossHireRequest): CrossHireReqItem[] => r.items ?? [{ lineId: r.lineId, group: r.group, category: r.category, qty: r.qty, frequency: r.frequency, rate: r.rate, orderId: r.orderId, rfqId: r.rfqId }];
 export const CH_REQUEST_STATUSES = ['Draft', 'Pending', 'In Progress', 'Completed', 'Rejected'];
 export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Pending Order', 'Order', 'Cancelled'];
 export const CH_ORDER_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Approved', 'Received', 'Billed', 'Rejected', 'Cancelled', 'Closed'];
@@ -262,10 +289,13 @@ export const CROSS_HIRE_ROLES = ['Operational Desk', 'Dispatcher / Service Desk'
  * Buy-vs-hire view (decision support): what the same hire would have cost if the business owned an equivalent unit, estimated as the average purchase value of
  * the owned units of the Category + Subcategory spread over their useful life, for the months of the hire. Returns undefined when there is no owned unit to compare.
  */
-export function ownedEquivalent(c: Pick<CrossHire, 'group' | 'category' | 'startDate' | 'endDate' | 'revenue' | 'date'>) {
-  const owned = fleetRows().filter((a) => isLive(a) && !a.deliveryFleet && a.category === c.group && a.subCategory === c.category && a.ownership !== 'Cross-Hired' && a.assetValue > 0);
-  if (!owned.length) return undefined;
-  const monthly = owned.reduce((n, a) => n + a.assetValue / Math.max(1, a.usefulLifeYears * 12), 0) / owned.length;
+export function ownedEquivalent(c: CrossHire) {
+  const rows = chItems(c).map((i) => {
+    const owned = fleetRows().filter((a) => isLive(a) && !a.deliveryFleet && a.category === i.group && a.subCategory === i.category && a.ownership !== 'Cross-Hired' && a.assetValue > 0);
+    return owned.length ? { qty: i.qty, monthly: owned.reduce((n, a) => n + a.assetValue / Math.max(1, a.usefulLifeYears * 12), 0) / owned.length } : undefined;
+  }).filter(Boolean) as { qty: number; monthly: number }[];
+  if (!rows.length) return undefined;
+  const monthly = rows.reduce((n, r) => n + r.monthly * r.qty, 0);
   const from = c.startDate ?? c.date;
   const months = c.endDate ? Math.max(1, Math.round((new Date(c.endDate).getTime() - new Date(from).getTime()) / (30.4375 * 86400000))) : 1;
   const cost = Math.round(monthly * months);
@@ -521,7 +551,7 @@ export const orderSeed: SalesOrder[] = [
     lines: withAsg(so2Lines, { so2a: [asg('he14', 'dl3', '2026-06-01', { state: 'Replaced', stop: '2026-06-12' }), asg('he28', 'dl3', '2026-06-12', { state: 'Replaced', stop: '2026-07-04' }), asg('he13', 'dl3', '2026-07-04')], so2b: [asg('he24', 'dl4', '2026-07-06', { state: 'Returned', stop: '2026-09-26' })] },
       { so2a: { crossHire: ['ch2', 'chr3'] }, so2c: { fulfilment: 'Charged and invoiced', fulfilmentRef: 'INV-26-00415' } }),
     log: [lg('2026-09-29 14:20', 'Cross-Hire request CHR-26-00006 raised', 'Yousef Karim', 'Generator 200 KVA', 'blue'), lg('2026-09-27 10:00', 'Damage covered by damage waiver', 'Sanjay Kumar', 'AST-1024: dent on the container door and a broken cable gland. Damage invoice blocked because a waiver was paid', 'red'),
-      lg('2026-09-26 10:00', 'Return CN-26-00132: AST-1024 off hire', 'Yousef Karim', 'Client no longer needs the POD', 'amber'), lg('2026-09-01 09:30', 'Sales Order created from QT-26-00082', 'Yousef Karim')] }),
+      lg('2026-09-26 10:00', 'Return RMA-26-00132: AST-1024 off hire', 'Yousef Karim', 'Client no longer needs the POD', 'amber'), lg('2026-09-01 09:30', 'Sales Order created from QT-26-00082', 'Yousef Karim')] }),
   so({ id: 'so3', number: 'SO-26-00044', date: '2026-09-12', quoteId: 'qt3', oppId: 'op3', customerId: 'c3', owner: 'Omar Farouk', title: 'Rent 500 KVA for Expo winter festival', reference: 'LPO-ANE-0912', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-05-06', contractEnd: '2026-10-25',
     lpo: 'LPO-ANE-0912', lpoDate: '2026-09-11', lpoExpiry: '2026-10-25', site: 'Expo City, Dubai', costCentre: 'Dubai Branch',
     lines: withAsg(so3Lines, { so3a: [asg('he27', 'dl5', '2026-05-06')] }, { so3a: { crossHire: ['ch1'] } }),
@@ -545,8 +575,8 @@ export const orderSeed: SalesOrder[] = [
     damageCharges: [{ assetId: 'he29', amount: 4500, note: 'Control panel display cracked and canopy door hinge broken', date: '2026-09-16' }],
     lines: withAsg(so9Lines, { so9a: [asg('he29', 'dl8', '2026-06-01', { state: 'Returned', stop: '2026-09-15' })], so9b: [asg('he30', 'dl9', '2026-06-01', { state: 'Returned', stop: '2026-09-29' })], so9c: [asg('he36', 'dl10', '2026-06-01', { state: 'Returned', stop: '2026-09-30' })] },
       { so9d: { fulfilment: 'Charged and invoiced', fulfilmentRef: 'INV-26-00344' } }),
-    log: [lg('2026-09-30 10:00', 'Return CN-26-00123: AST-1036 off hire', 'Omar Farouk', 'Company collection arranged', 'amber'), lg('2026-09-29 11:00', 'Return CN-26-00122: AST-1030 off hire', 'Omar Farouk', 'Client self-return', 'amber'),
-      lg('2026-09-16 10:30', 'Damage charge AED 4500', 'Sanjay Kumar', 'AST-1029: control panel display cracked and canopy door hinge broken. Linked permanently to this order', 'red'), lg('2026-09-15 14:00', 'Return CN-26-00121: AST-1029 off hire', 'Omar Farouk', undefined, 'amber'), lg('2026-05-28 09:00', 'Sales Order created', 'Omar Farouk')] }),
+    log: [lg('2026-09-30 10:00', 'Return RMA-26-00123: AST-1036 off hire', 'Omar Farouk', 'Company collection arranged', 'amber'), lg('2026-09-29 11:00', 'Return RMA-26-00122: AST-1030 off hire', 'Omar Farouk', 'Client self-return', 'amber'),
+      lg('2026-09-16 10:30', 'Damage charge AED 4500', 'Sanjay Kumar', 'AST-1029: control panel display cracked and canopy door hinge broken. Linked permanently to this order', 'red'), lg('2026-09-15 14:00', 'Return RMA-26-00121: AST-1029 off hire', 'Omar Farouk', undefined, 'amber'), lg('2026-05-28 09:00', 'Sales Order created', 'Omar Farouk')] }),
   so({ id: 'so10', number: 'SO-26-00050', date: '2025-11-28', customerId: 'c1', owner: 'Leena Thomas', title: 'AMC for the Al Maktoum site office standby generator', reference: 'LPO-EIL-3920', status: 'Confirmed', activity: 'AMC', contractType: 'Closed', amcStart: '2025-12-01', amcEnd: '2026-11-30', visits: 4, amcValue: 18000, amcScope: S10,
     lpo: 'LPO-EIL-3920', lpoDate: '2025-11-25', lpoExpiry: '2026-11-30', site: 'Al Maktoum Airport Expansion', costCentre: 'Dubai Branch', lines: withAsg(so10Lines, {}),
     visitPlan: so10Plan.map((v, i) => (i < 3 ? { ...v, done: v.date, ref: `JC-26-${String(104 + i).padStart(5, '0')}`, type: 'Job card', jobCardId: `jc${i + 2}` } : { ...v, jobCardId: 'jc5' })),
@@ -560,7 +590,7 @@ export const orderSeed: SalesOrder[] = [
   so({ id: 'so13', number: 'SO-26-00056', date: '2026-08-29', customerId: 'c1', owner: 'Omar Farouk', title: 'Rent 2 x 500 KVA and 200 KVA for the Al Maktoum terminal extension', reference: 'LPO-EIL-1180', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-09-01', contractEnd: '2027-02-28',
     lpo: 'LPO-EIL-1180', lpoDate: '2026-08-28', lpoExpiry: '2027-03-15', site: 'Al Maktoum Airport Expansion', costCentre: 'Dubai Branch', docs: ['LPO-EIL-1180.pdf'],
     lines: withAsg(so13Lines, { so13a: [asg('he51', 'dl11', '2026-09-01'), asg('he52', 'dl12', '2026-09-12')], so13b: [asg('he53', 'dl13', '2026-09-01', { state: 'Returned', stop: '2026-09-20' })] }),
-    log: [lg('2026-09-20 15:00', 'Return CN-26-00124: AST-1053 off hire', 'Omar Farouk', 'Billing stops on the off-hire day', 'amber'), lg('2026-09-12 08:00', 'Delivery DO-26-00127: AST-1052', 'Bilal Ahmed'), lg('2026-09-01 08:00', 'Delivery DO-26-00126, DO-26-00128: AST-1051, AST-1053', 'Bilal Ahmed'), lg('2026-08-29 09:00', 'Sales Order created', 'Omar Farouk')] }),
+    log: [lg('2026-09-20 15:00', 'Return RMA-26-00124: AST-1053 off hire', 'Omar Farouk', 'Billing stops on the off-hire day', 'amber'), lg('2026-09-12 08:00', 'Delivery DO-26-00127: AST-1052', 'Bilal Ahmed'), lg('2026-09-01 08:00', 'Delivery DO-26-00126, DO-26-00128: AST-1051, AST-1053', 'Bilal Ahmed'), lg('2026-08-29 09:00', 'Sales Order created', 'Omar Farouk')] }),
   so({ id: 'so14', number: 'SO-26-00057', date: '2026-09-22', customerId: 'c7', owner: 'Yousef Karim', title: 'Rent 100 KVA, billed weekly, for the Al Safa substation test', reference: 'LPO-ASU-2201', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-09-24', contractEnd: '2026-12-31',
     lpo: 'LPO-ASU-2201', lpoDate: '2026-09-21', lpoExpiry: '2027-01-15', site: 'Mussafah Substation, Abu Dhabi', costCentre: 'Dubai Branch', billingCycle: 'Weekly', invoicingType: 'Automatic', lines: withAsg(so14Lines, { so14a: [asg('he54', 'dl14', '2026-09-24')] }),
     log: [lg('2026-09-24 08:00', 'Delivery DO-26-00129: AST-1054', 'Bilal Ahmed'), lg('2026-09-22 09:00', 'Sales Order created', 'Yousef Karim')] }),
@@ -608,16 +638,18 @@ export const deliverySeed: Delivery[] = [
   dl('dl13', 'DO-26-00128', sx('so13'), 'so13b', 'he53', '2026-09-01', { closed: true, driver: 'Tariq Hussain', vehicleNumber: 'Dubai P 48213' }),
 ];
 
-/** One return per stage: off hire waiting for the yard, in the yard waiting for inspection, damage charged, damage covered by a waiver. */
+/** One return per stage: collection pending, in the yard waiting for inspection, damage charged, damage covered by a waiver. */
 const rt = (id: string, number: string, s: SalesOrder, lineId: string, deliveryId: string, assetId: string, method: string, timestamp: string, over: Partial<ReturnEntry> = {}): ReturnEntry => ({
-  id, number, soId: s.id, soNumber: s.number, customerId: s.customerId, lineId, deliveryId, assetId, method, timestamp, siteChecklist: MASTER_SEED.siteChecklist, photos: [`site-${number}.jpg`], fuelNote: 'Tank at about one quarter', stage: 2, yardChecklist: [], inspection: 'Pending Inspection',
-  log: [lg(`${timestamp.replace('T', ' ')}`, 'Return entry raised', 'Bilal Ahmed', 'Off-Hire. Billing stopped', 'amber'), lg(`${timestamp.replace('T', ' ')}`, 'Site check completed', 'Bilal Ahmed', '4 of 4 checks'), lg(`${timestamp.replace('T', ' ')}`, method === 'Company Collection' ? 'Collection arranged' : 'Client self-return', 'Bilal Ahmed')], ...over,
+  id, number, date: timestamp.slice(0, 10), customerId: s.customerId, soId: s.id, soNumber: s.number, source: 'sales order', shippingAddress: s.site, operationType: 'Return', salesperson: s.owner, entity: ENT, currency: 'AED', exchangeRate: 1, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [],
+  status: 'Pending Receipt', items: [{ id: `${id}-i1`, lineId, deliveryId, assetId }], approver: 'Ahmed Al Khouri', grns: [], method, timestamp, siteChecklist: MASTER_SEED.siteChecklist, photos: [`site-${number}.jpg`], fuelNote: 'Tank at about one quarter',
+  log: [lg(`${timestamp.replace('T', ' ')}`, 'Return entry raised', 'Bilal Ahmed', 'Off-Hire. Billing stopped', 'amber'), lg(`${timestamp.replace('T', ' ')}`, 'Site check completed', 'Bilal Ahmed', '4 of 4 checks'), lg(`${timestamp.replace('T', ' ')}`, method === 'Company Collection' ? 'Collection arranged' : 'Client self-return', 'Bilal Ahmed'), lg(`${timestamp.replace('T', ' ')}`, 'Approved (Quick Approval)', 'Ahmed Al Khouri', undefined, 'green')], ...over,
 });
+const rgrn = (id: string, number: string, date: string, status: 'Pending' | 'Validated', it: Partial<ReturnGrnItem> & Pick<ReturnGrnItem, 'itemId' | 'assetId' | 'reachedYard'>): ReturnGrn => ({ id, number, date, status, items: [{ yard: 'Jebel Ali Main Yard', tracked: true, inspection: 'Pending Inspection', yardChecklist: [], ...it }] });
 export const returnSeed: ReturnEntry[] = [
-  rt('rt1', 'CN-26-00123', sx('so9'), 'so9c', 'dl10', 'he36', 'Company Collection', '2026-09-30T10:00'),
-  rt('rt2', 'CN-26-00122', sx('so9'), 'so9b', 'dl9', 'he30', 'Self-Return', '2026-09-29T11:00', { stage: 3, reachedYard: '2026-09-29 15:00' }),
-  rt('rt3', 'CN-26-00121', sx('so9'), 'so9a', 'dl8', 'he29', 'Company Collection', '2026-09-15T14:00', { stage: 5, reachedYard: '2026-09-15 16:00', yardChecklist: MASTER_SEED.yardChecklist, inspection: 'Damage Found', damageCharge: 4500, damageNote: 'Control panel display cracked and canopy door hinge broken', waiverApplied: false, outcome: 'Repair / Maintenance' }),
-  rt('rt4', 'CN-26-00132', sx('so2'), 'so2b', 'dl4', 'he24', 'Company Collection', '2026-09-26T10:00', { stage: 5, reachedYard: '2026-09-26 15:30', yardChecklist: MASTER_SEED.yardChecklist, inspection: 'Damage Found', damageCharge: 0, damageNote: 'Dent on the container door and a broken cable gland', waiverApplied: true, outcome: 'Repair / Maintenance' }),
+  rt('rt1', 'RMA-26-00123', sx('so9'), 'so9c', 'dl10', 'he36', 'Company Collection', '2026-09-30T10:00'),
+  rt('rt2', 'RMA-26-00122', sx('so9'), 'so9b', 'dl9', 'he30', 'Self-Return', '2026-09-29T11:00', { grns: [rgrn('rg2', 'GRN-26-00102', '2026-09-29', 'Pending', { itemId: 'rt2-i1', assetId: 'he30', reachedYard: '2026-09-29 15:00' })] }),
+  rt('rt3', 'RMA-26-00121', sx('so9'), 'so9a', 'dl8', 'he29', 'Company Collection', '2026-09-15T14:00', { status: 'Return Completed', grns: [rgrn('rg3', 'GRN-26-00101', '2026-09-15', 'Validated', { itemId: 'rt3-i1', assetId: 'he29', reachedYard: '2026-09-15 16:00', yardChecklist: MASTER_SEED.yardChecklist, inspection: 'Damage Found', damageCharge: 4500, damageNote: 'Control panel display cracked and canopy door hinge broken', waiverApplied: false, outcome: 'Repair / Maintenance' })] }),
+  rt('rt4', 'RMA-26-00132', sx('so2'), 'so2b', 'dl4', 'he24', 'Company Collection', '2026-09-26T10:00', { status: 'Return Completed', grns: [rgrn('rg4', 'GRN-26-00103', '2026-09-26', 'Validated', { itemId: 'rt4-i1', assetId: 'he24', reachedYard: '2026-09-26 15:30', yardChecklist: MASTER_SEED.yardChecklist, inspection: 'Damage Found', damageCharge: 0, damageNote: 'Dent on the container door and a broken cable gland', waiverApplied: true, outcome: 'Repair / Maintenance' })] }),
 ];
 export const replacementSeed: Replacement[] = [
   { id: 'rp0', number: 'RP-26-00003', soId: 'so2', lineId: 'so2a', oldAssetId: 'he14', newAssetId: 'he28', reason: 'Breakdown', priceAdjust: 0, notified: true, date: '2026-06-12', crossHireId: 'ch2', by: 'Bilal Ahmed' },
@@ -626,7 +658,7 @@ export const replacementSeed: Replacement[] = [
 /**
  * One trip per status so the Fleet Availability board and the Trips list are full. Every trip belongs to a document (DO, return or replacement), and an order's
  * logisticsCost is the sum of its trips' expenses (recomputed below), so the Logistics tab and the Logistics Cost report agree.
- * The collection of CN-26-00123 shows a first attempt that is stuck and a second trip with the crane truck.
+ * The collection of RMA-26-00123 shows a first attempt that is stuck and a second trip with the crane truck.
  */
 export const TRIP_SEED_N = 32;
 const tx = (type: string, amount: number, date: string, note?: string): TripExpense => ({ type, amount, date, note });
@@ -640,10 +672,10 @@ export const tripSeed: Trip[] = [
     log: [lg('2026-04-12 07:30', 'Trip created', 'Bilal Ahmed', 'Dubai P 48213, Tariq Hussain'), lg('2026-04-12 07:45', 'Trip started', 'Bilal Ahmed', undefined, 'blue'), lg('2026-04-12 13:10', 'Trip completed', 'Bilal Ahmed', 'Salik AED 20, Fuel AED 180', 'green')] }),
   tr('tr2', 2, sx('so4'), 'Delivery', { id: 'dl7', number: 'DO-26-00125' }, { date: '2026-09-30T08:30', status: 'En Route', since: '2026-09-30T09:05', vehicleId: 'he22', plate: 'Sharjah 3 22871', ...DRV.imran,
     log: [lg('2026-09-30 08:30', 'Trip created', 'Bilal Ahmed', 'Sharjah 3 22871, Imran Shah'), lg('2026-09-30 09:05', 'Trip started', 'Bilal Ahmed', undefined, 'blue')] }),
-  tr('tr3', 3, sx('so9'), 'Collection', { id: 'rt1', number: 'CN-26-00123' }, { date: '2026-09-30T10:30', status: 'Stuck-Delayed', since: '2026-09-30T13:20', vehicleId: 'he21', plate: 'Dubai P 48213', ...DRV.tariq,
+  tr('tr3', 3, sx('so9'), 'Collection', { id: 'rt1', number: 'RMA-26-00123' }, { date: '2026-09-30T10:30', status: 'Stuck-Delayed', since: '2026-09-30T13:20', vehicleId: 'he21', plate: 'Dubai P 48213', ...DRV.tariq,
     stuck: { reason: 'Crane not available on site to load the generator', responsible: 'Client', since: '2026-09-30T13:20' },
     log: [lg('2026-09-30 10:30', 'Trip created', 'Bilal Ahmed', 'Dubai P 48213, Tariq Hussain'), lg('2026-09-30 11:00', 'Trip started', 'Bilal Ahmed', undefined, 'blue'), lg('2026-09-30 13:20', 'Marked Stuck-Delayed', 'Bilal Ahmed', 'Crane not available on site to load the generator. Responsible: Client', 'red')] }),
-  tr('tr4', 4, sx('so9'), 'Collection', { id: 'rt1', number: 'CN-26-00123' }, { date: '2026-09-30T15:00', status: 'Assigned', since: '2026-09-30T15:00', vehicleId: 'he41', plate: 'Dubai L 30517', ...DRV.ravi,
+  tr('tr4', 4, sx('so9'), 'Collection', { id: 'rt1', number: 'RMA-26-00123' }, { date: '2026-09-30T15:00', status: 'Assigned', since: '2026-09-30T15:00', vehicleId: 'he41', plate: 'Dubai L 30517', ...DRV.ravi,
     log: [lg('2026-09-30 15:00', 'Trip created', 'Bilal Ahmed', 'Second vehicle for the stuck collection: crane truck Dubai L 30517, Ravi Kumar')] }),
   tr('tr5', 5, sx('so2'), 'Delivery', { id: 'dl3', number: 'DO-26-00131' }, { date: '2026-07-04T08:00', status: 'Completed', since: '2026-07-04T12:40', transport: 'External Transporter', transporter: 'Gulf Haulage and Transport LLC', expenses: [tx('Transport Charge', 1400, '2026-07-04')],
     log: [lg('2026-07-04 08:00', 'Trip created', 'Bilal Ahmed', 'External transporter Gulf Haulage and Transport LLC'), lg('2026-07-04 12:40', 'Trip completed', 'Bilal Ahmed', 'Transport Charge AED 1400', 'green')] }),
