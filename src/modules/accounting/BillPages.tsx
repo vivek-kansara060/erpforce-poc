@@ -153,7 +153,7 @@ export function BillForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? `Edit ${existing.number}` : 'New Bill' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {ch && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from cross-hire order {ch.number} ({ch.qty ?? 1} unit(s) in {chItems(ch).length} item(s) at the agreed rate per unit, and its expenses). Enter the supplier's invoice number and date; saving records the supplier invoice on the order.</Alert>}
         <SpecForm specs={specs} f={f} set={set} err={err} />

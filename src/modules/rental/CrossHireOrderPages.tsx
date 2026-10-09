@@ -135,7 +135,7 @@ export function ChOrderForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: existing ? `Edit ${existing.number}` : 'Add New' }]}
-        actions={<><Button variant="text" onClick={() => nav(existing ? `/rental/cross-hire-orders/${existing.id}` : '/rental/cross-hire-orders')}>Discard</Button>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Save' : 'Submit'}</Button></>} />
+        actions={<><Button variant="text" onClick={() => nav(existing ? `/rental/cross-hire-orders/${existing.id}` : '/rental/cross-hire-orders')}>Discard</Button>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Submit'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((r) => r.number).join(', ')}: the items of the request, with their units. Delete the rows you do not want to order now (the request stays In Progress for them), then enter the supplier and the rate per unit.</Alert>}
         {rfq && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {rfq.number}: supplier, rate and rental period come from the awarded response. Delete the rows you do not want to order now.</Alert>}
@@ -246,7 +246,7 @@ export function ChGrnForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: `ID: ${c.number}`, to: `/rental/cross-hire-orders/${c.id}` }, { label: 'Goods Receipt', to: `/rental/cross-hire-orders/${c.id}/grns` }, { label: g0 ? `Edit ${g0.number}` : 'Add New' }]}
-        actions={<><Button variant="text" onClick={() => nav(`/rental/cross-hire-orders/${c.id}/grns`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="text" onClick={() => nav(`/rental/cross-hire-orders/${c.id}/grns`)}>Discard</Button><Button variant="contained" onClick={save}>{g0 ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[
           { label: 'Basic Details', content: (

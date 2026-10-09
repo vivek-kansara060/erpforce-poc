@@ -114,7 +114,7 @@ export function PricingForm() {
     <>
       <FormHeader
         crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: existing ? 'Edit Price' : from ? 'Add Frequency' : 'Add Price' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
+        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>

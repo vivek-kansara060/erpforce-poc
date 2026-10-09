@@ -96,7 +96,7 @@ export function AssetTypeForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Asset Type', to: BASE }, { label: existing ? `Edit ${existing.name}` : 'Add Asset Type' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 900 }}>
           <FormGrid>

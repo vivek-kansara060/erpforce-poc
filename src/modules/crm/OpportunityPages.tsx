@@ -128,7 +128,7 @@ export function OpportunityForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: ex ? `Edit ${ex.number}` : 'Add Opportunity' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/opportunities')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: ex ? `Edit ${ex.number}` : 'Add Opportunity' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/opportunities')}>Discard</Button><Button variant="contained" onClick={save}>{ex ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {zero.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>No unit of {zero.map((l) => `${l.group} ${l.category}`).join(', ')} is available across the fleet. This is flagged for pipeline and procurement planning but does not block the Opportunity.</Alert>}
         <TabPanels tabs={[

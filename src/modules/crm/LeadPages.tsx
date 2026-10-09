@@ -108,7 +108,7 @@ export function LeadForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: ex ? `Edit ${ex.number}` : 'Add Lead' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/leads')}>Discard</Button><Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: ex ? `Edit ${ex.number}` : 'Add Lead' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/leads')}>Discard</Button><Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button><Button variant="contained" onClick={() => save(false)}>{ex ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[
           { label: 'Basic Details', content: (

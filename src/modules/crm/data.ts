@@ -96,7 +96,8 @@ export const SALESPEOPLE = ['Leena Thomas', 'Yousef Karim', 'Omar Farouk'];
 export const LINE_ACTIVITIES: Record<string, string[]> = { Rental: ['Rental', 'Service'], 'Fixed Asset Trading': ['Fixed Asset Trading', 'Service'], Service: ['Service'] };
 export const lineActivitiesFor = (header: string) => LINE_ACTIVITIES[header] ?? [header];
 /** Admin-configurable in the real system. */
-export const EXPIRY_NOTICE_DAYS = 14;
+/** 9 Oct call: contracts show for the follow-up call one week before they end (was 14 days). */
+export const EXPIRY_NOTICE_DAYS = 7;
 export const LPO_NOTICE_DAYS = 7;
 export const ESCALATION_DAYS = 5;
 
@@ -238,12 +239,18 @@ export interface ReturnEntry {
   /** rental: how it comes back, when billing stops, the site check and photos, the collection transport and a failed collection */
   /** Invoice End Date (Off-Hire, 8 Oct call) and the lump sum invoiced for the days between it and the return date. */
   offHireDate?: string; additional?: AdditionalCharge; additionalInvoiceId?: string;
+  /** 9 Oct call: the collection leg of a replacement. Billing is not stopped by it, the line keeps billing through the new unit. */
+  replacementId?: string; keepBilling?: boolean;
   method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: ReturnTransport; collected?: string; collection?: { by: string; amount: number; note: string };
 }
+export const REPLACEMENT_OUTCOMES = ['Under Maintenance - Routine', 'Under Maintenance - Critical', 'Ready for Hire'] as const;
+export type ReplacementOutcome = (typeof REPLACEMENT_OUTCOMES)[number];
 export interface Replacement {
   id: string; number: string; soId: string; lineId: string; oldAssetId: string; newAssetId: string; reason: string; priceAdjust: number; notified: boolean; date: string; crossHireId?: string; by: string;
   /** 8 Oct call: the Delivery Order created for the new unit, and the Category and Subcategory it was chosen from. */
   deliveryId?: string; group?: string; category?: string;
+  /** 9 Oct call: the faulty unit comes back through its own collection (a Customer Return that does not stop billing), by the same vehicle or a separate trip, and ends in the status chosen here. */
+  returnId?: string; collectionMode?: 'Same vehicle' | 'Separate trip'; outcome?: ReplacementOutcome; priceListRate?: number;
 }
 export interface Extension { id: string; number: string; soId: string; lineId?: string; kind: 'Extension'; oldEnd: string; newEnd: string; date: string; note: string; status: string; clientConfirmedBy: string; revision?: number; changes?: string }
 export interface CrossHire {
@@ -365,6 +372,8 @@ export interface Trip {
   /** When the trip last changed status, so the board can show how long a vehicle has been in its state. */
   since: string;
   stuck?: { reason: string; responsible: 'Company' | 'Client'; since: string };
+  /** 9 Oct call: a replacement trip that also collects the faulty unit (same vehicle) carries the collection document here. */
+  alsoDoc?: { id: string; number: string };
   expenses: TripExpense[];
   log: LogItem[];
 }

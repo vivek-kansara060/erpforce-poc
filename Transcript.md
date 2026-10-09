@@ -5182,3 +5182,363 @@
     @1:05:11 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
     
     Yeah, Okay. Yeah, thank you. Bye. Thank you, everyone. Thank you. Bye.
+
+## Heavy rental module discussion - October 09
+
+VIEW RECORDING - 33 mins (No highlights): https://fathom.video/share/AbKQ5e9c_MjEhf4uhz3QsszynR3s1E8A
+
+Decisions turned into `docs/9oct-feedback-spec.md` (G1 to G8).
+
+@0:00 - **Ajin**
+Good Ajin. Good afternoon, good afternoon. Yeah, the team is joining. Let's wait for a few minutes. No problem. We will be joining later. Okay, okay.
+
+@0:15 - **Anurag Jain (TRooInbound)**
+Okay, let's wait for Darshit by Nishit.
+
+@0:18 - **Ajin**
+Yes, Darshit. Hello, hi, Ajin.
+
+@0:38 - **Darshit Maniar (TRooTech Business Solutions)**
+How are you? afternoon. Good, good. Good afternoon.
+
+@0:42 - **Ajin**
+Have you found that certificate, salary certificate format? me be frank, I was stuck in one contract.
+
+@0:53 - **Darshit Maniar (TRooTech Business Solutions)**
+Okay, same as me. Okay, not about that contract.
+
+@1:00 - **Ajin**
+I just prepare one later to him, whatever the necessary service required, that we will do it later. Okay, no problem. I will prepare this salary set later. I can download some of the things.
+
+@1:17 - **Darshit Maniar (TRooTech Business Solutions)**
+Yeah, that's right. I'll share with you. Yeah, okay. I didn't get the time. Yeah, I missed it. All right, so shall I start? Yeah, yeah, can.
+
+@1:27 - **Ajin**
+Yes, proceed.
+
+@1:28 - **Anurag Jain (TRooInbound)**
+Yeah, Ajin, as discussed yesterday, there were two things remaining to show you, that is replacement orders and renewals and expiry. As per discussion, we have moved to CRM and sales, and like, we have not kept them under rental. Which one?
+
+@1:54 - **Ajin**
+Replacement orders and renewals and expiry. Oops. Yes.
+
+@2:01 - **Anurag Jain (TRooInbound)**
+So I'll show you renewals and expiry first, so this is the renewals and expiry, shows you all the details about the current contracts, right, as well as the extension request here, right, now one can attribute fault here, right, so one can attribute fault of client, they can also overdo billing treatment here, as in CM rate, penalty rate, or they want to hold the billing.
+
+@2:39 - **Ajin**
+It will not affect, for example, if it is something like, even though LPO is closed or something, our rental cycle will be still, one can leave, the material is written, right. Ajin, I think your voice is a little bit breaking. All right. All okay can you hear me yeah it's audible but it is coming far from you so maybe it's okay yeah okay so what i was trying to tell you know in our scenario the rental will be stopped once we return the material right so you know the only thing that has happened because it's our flying duty to either extend or apologize to interrupt it is like the voice is very muddy like I don't know what happened. Hello. It's still not clear.
+
+@4:15 - **Anurag Jain (TRooInbound)**
+Let me return.
+
+@4:19 - **Ajin**
+Okay. Let's. Yeah. Hello. How do you think about it?
+
+@4:39 - **Anurag Jain (TRooInbound)**
+It is a muddy, but let us try to, you know, work around it. mean, if it is not feasible for you to, you know, it is like you are audible, but the voice is so muffled. that we cannot understand what are you trying to say.
+
+@5:00 - **Ajin**
+Let me try to move this approach. Is it to everyone? Press it? Is it everyone? My voice is not clear? Yes.
+
+@5:10 - **Darshit Maniar (TRooTech Business Solutions)**
+Yes. Yeah.
+
+@5:17 - **Ajin**
+Any change or still the same? Yeah. It sounds better. No, I guess.
+
+@5:45 - **Anurag Jain (TRooInbound)**
+Okay.
+
+@5:46 - **Ajin**
+So what I was meant is, we don't need to give the renewal expiry, something like this, because now you are, you are mentioning that one, I need to change, so how would you believe? Okay. As per all of that. And the scenario, our angle will be stopped once the material is written, why we have this variable expiry things is our due, our team's duty is to mention that if the variable expiry near expiry, they need to give the call and they need to mention that. That's it. Okay. Yes, yes.
+
+@6:22 - **Vivek Kansara (TRooTech Business Solutions)**
+And what if, even after call, they don't return or The rental will be, rental will be continued.
+
+@6:31 - **Ajin**
+Okay. Rental will be continued because our invoice cycle is continuously, it's a recurring, until the material is returned.
+
+@6:40 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay. Okay. So it will not be a problem, but this is operational stuff rather than the financial.
+
+@6:51 - **Ajin**
+Okay. Okay. So we can avoid this. Sure, sure. Just, just, just only we can give the information that. I need to have a provision that to see, which is near to expire, and I need to have it in, and I don't want to see, for example, here, I can see that on 182 days, not which one, right, why I need to see this piece here, if he was after 182 days, so we can make a condition, something like, okay, one week before, whatever the renewable, it will show, yep, understood, let's make a filter like that, by default, give for one, one week, or it is, okay, yep, okay, all right, and, here is the notify, and client confirmation, extend or return, okay, yeah, but if it is extend or return, what is the condition,
+
+@8:02 - **Anurag Jain (TRooInbound)**
+Like, you can extend the existing cells order by going to it, like, opening, extend. You don't need to click like that on, just give a, give a redirection to that one.
+
+@8:13 - **Ajin**
+Okay, directly, yeah, directly redirecting without any model. This is noted, for you to make from that. Yes, noted. Noted.
+
+@8:29 - **Anurag Jain (TRooInbound)**
+Okay. Yeah. Now, here, you can check the new data. But, give the, give the, give the provision at the top. Fathom, the voice is, Tell the problem is there? Yeah, the problem is there. I'm trying to tell that one, not, not on the line.
+
+@9:13 - **Ajin**
+So you are saying that the new extension date will be on the form, main form, it's the main form, but you can give a provision here that is good enough, but why I need to go one by one item, maybe my customer goes for 10 or 20 days, but generator with me, why I need to go each line, okay, if I'm going there, I will see what all the latest activities, and I can do that one, same like here in the billing cycle, have, okay, contract cycle, give another provision, when you extended end date, you can mention that. okay okay okay and we can you know save this revision but it is not revision um you can make it make it as an update okay okay as an update and uh one more one more thing i need to uh execute here as i mentioned here uh can you go any sales order any sales order any sales order sales order quotation of anything just open and click edit button edit button edit first button first button edit button okay now you can see that one this is safe always the edit should be update not safe do you understand the button name if it is edit it should be
+
+@11:01 - **Anurag Jain (TRooInbound)**
+okay okay so everywhere globally we will maintain the update button and like we will because i need to see that one distinction between what is update and what you say okay okay go ahead i will save this yes yes this shows now extended and like you can also see in the revisions can you go just slightly above just need to
+
+@12:00 - **Ajin**
+See the same sort of one today. Okay, one, right, 82,000. Okay, this is first month job or total invoice. Can you give me a confirmation? This is only the first month job. Anjana, apologies, but the voice is not clear.
+
+@12:19 - **Anurag Jain (TRooInbound)**
+I'm asking that one.
+
+@12:23 - **Ajin**
+Yes. Hello, can you hear me?
+
+@12:25 - **Anurag Jain (TRooInbound)**
+Yes, yes, please. Now it's better or? Yes, it's better.
+
+@12:31 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay, I'm asking the question that one.
+
+@12:33 - **Ajin**
+This particular total amount is showing only for one month, right? Which total amount? This is 953,127. This is for the first month, right? I mean, it will be charged as a each month for the extended year for the extended month.
+
+@13:06 - **Vivek Kansara (TRooTech Business Solutions)**
+Yes. Yes. Yes. Yes. Yes. Yes. Yes. Correct. Yeah.
+
+@13:11 - **Ajin**
+It is only for the extended month. I mean, and one more, one more thing. Can you go on the right side to, to us a left side? Sorry, sorry, towards the left side. It's sorted in the, okay. Oh, sorry.
+
+@13:26 - **Anurag Jain (TRooInbound)**
+Yeah. Okay. This, the serial numbers, you can keep the test in the first area.
+
+@13:30 - **Ajin**
+So, so what, what you can do is now you can see the status again, change in the view page. Again, the status change, first the serial number, then the category, then, uh, then the subcategory, then the, uh, then about the descriptions. Now, now this area, you can see that when my items could, um, what the whole scenario change.
+
+@13:52 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay. Can you duplicate the screen and then go to the sales order?
+
+@14:00 - **Ajin**
+Can you go to the sales order? New sales order, new sales order, new sales order, opening new sales order. Okay, totally new. Right. Yes. Yes.
+
+@14:13 - **Anurag Jain (TRooInbound)**
+Okay. Go down. Go down. No.
+
+@14:16 - **Ajin**
+This is all.
+
+@14:19 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay. Click the click a new new sales order. Add a new sales order.
+
+@14:27 - **Ajin**
+Add a new sales order. The data is already here, right? Go ahead.
+
+@14:31 - **Vivek Kansara (TRooTech Business Solutions)**
+Go to the phone.
+
+@14:35 - **Ajin**
+Okay. Fine. Click it. Now go down. No, no, no. Edit that sale order.
+
+@14:46 - **Vivek Kansara (TRooTech Business Solutions)**
+No. Edit. Edit any sales order.
+
+@14:50 - **Ajin**
+But the scenario, the scenario, what I'm trying to tell the list view, it's a shortly changed because my arrangement of the data is something.
+
+@15:01 - **Vivek Kansara (TRooTech Business Solutions)**
+Yes. Now you can see that. Okay. This is AMC. Okay. No worries. We can, we can reorder them. How I can reorder now? Oh, okay. No, I mean to say, uh, we will rearrange the columns. Okay. Okay.
+
+@15:20 - **Ajin**
+I'll just try to tell that, make it identical. Yeah.
+
+@15:25 - **Vivek Kansara (TRooTech Business Solutions)**
+If it is edit also make it as identical, like same, if view page also make it identical. Sure. Okay.
+
+@15:33 - **Anurag Jain (TRooInbound)**
+Don't merge some, some of the sentence in order to, uh, make some business.
+
+@15:37 - **Ajin**
+Okay. Go ahead. So here you can see, uh, everything and then we can create a delivery against the replacement by, why I need to do the delivery. Okay. No, sorry.
+
+@15:58 - **Vivek Kansara (TRooTech Business Solutions)**
+Uh, extension.
+
+@16:00 - **Ajin**
+Yeah, yeah, I'm sorry, I think I was mistaken. Yes, for the extended one, I don't need to deliver, because it is already delivered. Yes, certainly, and the button is also mistaken. Why do need to show that delivery button there? Yeah, yeah, I mean, it did that. Okay, I'm not thinking about these points, but in the time of development, please don't make these things.
+
+@16:28 - **Vivek Kansara (TRooTech Business Solutions)**
+Yes, please. Okay, I will.
+
+@16:30 - **Anurag Jain (TRooInbound)**
+Now I'll show you the replacement orders, and here you can see the replacement orders details. So, for any assets you want to replace, let's say we choose order number 46, right, and we want to replace anything, so we can replace an asset from here. you. It will often open a replacement form, wherein I can type the reference number, can do any price adjustment, which I want, right? And I can choose the transport type. But where is the asset?
+
+@17:20 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay. So I'm replacing, what I'm replacing? I'm replacing the asset, right?
+
+@17:28 - **Anurag Jain (TRooInbound)**
+Yes, I think it was there only earlier when we, you know, had a demo run ourselves. But I think, just a minute, Ajin.
+
+@17:45 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay.
+
+@17:54 - **Ajin**
+Okay, I will give you an idea what exactly I'm expecting. So you can see that one. Same order details should be there, and you need to mention about the project, core center, service order, everything should be here. Okay, and then what I need to change, I need to mention that one, how I need to return this material.
+
+@18:14 - **Vivek Kansara (TRooTech Business Solutions)**
+Yes, and by the way, this is here, I think there was some data corruption, maybe in the wireframe.
+
+@18:22 - **Anurag Jain (TRooInbound)**
+Okay, but the logic, again, missing the logic.
+
+@18:27 - **Ajin**
+Can you drop down? Just need to confirm that one. Okay, now you are doing the asset outside, asset to replace.
+
+@18:36 - **Vivek Kansara (TRooTech Business Solutions)**
+How I will choose the asset? Yeah, from the sales order screen, you can choose replace, and once again, okay, fine, replacement relation.
+
+@18:48 - **Ajin**
+Okay, go ahead, go ahead. This makes sense, okay. Okay, go ahead, select the item.
+
+@19:01 - **Anurag Jain (TRooInbound)**
+yeah okay and you can like put the additional information here and again if there is any price adjustments that you want but my question is related with the item pricing already there will be a pricing list right for this particular generator are we showing like that yes we will show it in the like iteration we will we have noted it will do that okay yeah then I can select the driver as usual and then can save the replacement okay now this the status is as big and I can go to delivery order from here and then from there shows replace
+
+@20:00 - **Vivek Kansara (TRooTech Business Solutions)**
+I assigned, now I can go to lead management, and I can see replacements here, and I can start the trip.
+
+@20:07 - **Ajin**
+The trip has been started, and I'll end the trip as usual, and then the status will be reflected there as delivered.
+
+@20:20 - **Anurag Jain (TRooInbound)**
+I have a layman question to you.
+
+@20:23 - **Ajin**
+Where is the replacement asset now? The one which we are replacing, or the one which is coming?
+
+@20:34 - **Vivek Kansara (TRooTech Business Solutions)**
+In my client side, there is one delivery.
+
+@20:37 - **Ajin**
+Correct. One generator. Now I'm replacing in my system. What you did is, the replacement you did, and you know the...
+
+@20:46 - **Vivek Kansara (TRooTech Business Solutions)**
+How about the return?
+
+@20:48 - **Ajin**
+Yes, exactly.
+
+@20:50 - **Anurag Jain (TRooInbound)**
+The collection note is missing. All right. The same, if you check my document, I'm going to mention that one.
+
+@20:59 - **Ajin**
+Replacement is same.
+
+@21:00 - **Anurag Jain (TRooInbound)**
+It like our return, but the logic is we are not stopping the invoice.
+
+@21:05 - **Vivek Kansara (TRooTech Business Solutions)**
+So there should be something like a delivery return also need to happen on the same time. Oh, all right.
+
+@21:14 - **Ajin**
+Because I need to see the flow of return also because if I'm not mistaken, I already explained that one.
+
+@21:23 - **Vivek Kansara (TRooTech Business Solutions)**
+The same like fleet or external, I need to assign that for my return also.
+
+@21:30 - **Ajin**
+For example, assume that one, I've given a generator to Darshit.
+
+@21:35 - **Vivek Kansara (TRooTech Business Solutions)**
+Darshit told that when my project is finished, that means I need to take back this material. So same like my return, sorry, delivery, I need to allocate my fleet or external fleet to get it back to my yacht.
+
+@21:54 - **Anurag Jain (TRooInbound)**
+Yesterday, we discussed the same thing in the PPT.
+
+@21:57 - **Ajin**
+In the PPT, just mentioned. In return, or in the time of delivery, we have this fleet logistic, it should be connected. Yes, yes, it should be connected, and end-to-end traceability shall be ensured. Exactly. Now I have a doubt that one, how we do normal return, other than replacement. Let me go through it.
+
+@22:25 - **Anurag Jain (TRooInbound)**
+This is the customer returns screen, right? No, from the sales order, can you do the inner return?
+
+@22:33 - **Ajin**
+Because I need to see that one, how the collection is happening, generate, return. Okay, fine, go down, no need to enter anything, just go down, only one thing I require. Okay, here, we are not connecting any type of fleet, we are just directly issuing that one.
+
+@23:03 - **Anurag Jain (TRooInbound)**
+Perhaps, yes, here it is. Okay, fine.
+
+@23:11 - **Ajin**
+Previously it was there, I didn't see that. Yes, it was because one has to choose the return method, as in self-return or company collection. Always it is company collection, no one will return the same rate or something like that. Okay, so we will remove that self-option and show our fleet as usual. No, keep the self-option, but what is the logic of self-self, because self means my collection itself. What is company collection, what is self-collection, both are stream itself, right? As in self, as in the customer itself is returning to you.
+
+@23:50 - **Anurag Jain (TRooInbound)**
+Then we need to make it more clear.
+
+@23:54 - **Vivek Kansara (TRooTech Business Solutions)**
+Now I feel it both are stream meaning itself.
+
+@23:57 - **Ajin**
+But the company itself takes... That means my company itself, I will return the material. This is a logic. Okay. Okay. So same, same, this delivery return, like those things, it should be there. In the replacement also.
+
+@24:16 - **Vivek Kansara (TRooTech Business Solutions)**
+Okay. So delivery is already there. We have to just connect the return. Yes, yes. Okay. Okay. So make it a separate itself.
+
+@24:29 - **Ajin**
+Maybe, maybe there is a scenario that I am, I have a logistic, I will go there and take, take it on the same vehicle itself as return. Okay. We need to think end to end connection. For example, I'm sending one vehicle along with this, this material, right? So once I, once I delivered there, there is a chance that one is the same vehicle that generator will be taken back to my yard. There is another scenario that one. i took some vehicles and returned the material and another one is taken and go back to that so either so collection or delivery it can happen at any point of time so you can you can make it make a provision for that yep is the logic clear or not yes okay okay go ahead so yes Ajin this is a return one do do you need us to do it like fully or since we all i believe we have already we already saw that one but only one condition it should go to the maintenance because yesterday we discussed that one there are certain types of statuses need to be there but i didn't see it so you can yes i i believe somewhere we have implemented that um but yesterday it was it was just directly returned that's it Now this is a replacement, doctor.
+
+@26:19 - **Anurag Jain (TRooInbound)**
+Yeah, so this is what we did. Resulting state of the faulty asset and replacement is under maintenance. Okay, for example, if it is generating noise, then it is not having any problem.
+
+@26:37 - **Ajin**
+Make a drop down. For example, some area it is not ready to occupy, but some people it is okay, they can accept this sound. So you are saying it can go into maintenance and it can also go directly to inventory if it is totally fine. Yeah, that is fine. But the logic is not like this one. You are merging, replacement, that means collection and return on the same area. As I just now mentioned, it should be two weights, right? Yes. Collection should be there, and one another, replacement also should be there. Yeah, noted.
+
+@27:21 - **Anurag Jain (TRooInbound)**
+Then only we can maintain this asset comebacks to the store, and how it is comebacked. For example, if it is external party, there will be an additional expense also, how we can tag that one, such type of things we need to address.
+
+@27:36 - **Ajin**
+Okay. Okay. Okay. Ajin, give me a moment, please. Ajin, so I think I'm good from my side. You can continue the discussion with Darshit Bhai. Okay. Yes, Ajin, I think it's completed everything, what the new things are there.
+
+@28:21 - **Darshit Maniar (TRooTech Business Solutions)**
+So I think we are good to go with the estimation and the timeline.
+
+@28:26 - **Ajin**
+But if you can help me with the design factors with our layout, what I can do is I can just show to our client how it looks like, how the work flows. So are you talking about this wireframe? Maybe I'm just trying to ask you, okay, if I can show this particular wireframe to the client. So we are in this type of stage. What do you think about that?
+
+@29:00 - **Darshit Maniar (TRooTech Business Solutions)**
+So this is just a flow, what we are going to implement it in our top of our system.
+
+@29:06 - **Ajin**
+So this is where we can ask them.
+
+@29:12 - **Darshit Maniar (TRooTech Business Solutions)**
+But there are certain corrections which I was mentioning, which is also done. Yeah, that is also done.
+
+@29:18 - **Ajin**
+But that we will, I think we will share with you what that suggestion you were posting and that is not in our document.
+
+@29:29 - **Darshit Maniar (TRooTech Business Solutions)**
+So that is, we have just pointed out. So this and all the points we are going to share with you.
+
+@29:36 - **Ajin**
+Okay.
+
+@29:38 - **Darshit Maniar (TRooTech Business Solutions)**
+And are we going to do the wireframe changes as per the latest design or not?
+
+@29:45 - **Ajin**
+I don't think so. Yeah, we can, in wireframe, I don't think so.
+
+@29:49 - **Darshit Maniar (TRooTech Business Solutions)**
+We need to update the wireframe. If you want, then I think Anurag can do that.
+
+@29:57 - **Ajin**
+Okay. you.
+
+@29:59 - **Darshit Maniar (TRooTech Business Solutions)**
+Thank you. you. Thank Thank This is your wish, so while I'm focusing on the development prospect, yeah, because there is a very tight deadline, so we need to, okay, you can go ahead, I can show the small, small parts to the, uh, sure, I will share this with you, already said, or we need to share, I will, I will, I will share one email, uh, with notes and estimate, estimated hours and all those things.
+
+@30:30 - **Ajin**
+Okay, great, but, uh, keep the changes also inside the system and then share that email, so I can present one time with the client, okay, this is what I did, this is the progress, because I cannot ghost it, uh, but after getting some confirmation.
+
+@30:47 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+Okay, but, uh, at least, uh, review, uh, you know, once we've done the changes, before, go with client, so if anything, you can just ask us. No problem, but I will, I will, I will, I will have a full round of.
+
+@31:00 - **Ajin**
+Analysis generally I'll go with the classes. Okay. But, there are certain things that you need to think while you are going with the development, because development part fact now you only showed about the design, but once you go with the development there's a lot of connections with inventory, a lot of connections with the packages or service masters or with the finance, call centers with the procurement or sales or other workflows. so please incorporate everything as we plan as we discussed over the meetings even one single thing which I was mentioned over the meeting it is also important yeah okay good to go okay any other questions anyone answering any question
+
+@32:00 - **Darshit Maniar (TRooTech Business Solutions)**
+Not from mine, thank you. Not from me, if anything, we will contact you. Okay, if anything, it won't be available next week, I'm totally unavailable, but at any moment, you can just give me a call or message on WhatsApp. It's the same number before it's changed. Same number, no, no, same number. Okay, you would travel on 17th, right? Yes, 17th, 17th morning, I will. next week, fine, then, I will call you if it is required. Yes, you know my vote number, you pay the number. Yes, yes, yes, I have.
+
+@32:39 - **Ajin**
+Okay, okay, thank you. Okay, thank you, thank you, thank you, thank you, thank you. Bye.

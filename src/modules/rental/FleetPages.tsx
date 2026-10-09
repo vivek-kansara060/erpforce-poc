@@ -40,7 +40,9 @@ export const mobileOf = (name?: string) => employees.find((e) => e.name === name
 export const transporterOptions = () => suppliers.filter((x) => x.type === 'Service Provider' && x.active).map((x) => x.name);
 const vehicleLabel = (a?: HeavyRec) => (a ? `${a.plateNumber ?? a.assetId} - ${a.name}` : '-');
 const fleetTone = (s: FleetStatus) => (s === 'Unavailable' ? ('grey' as const) : undefined);
-const docPath = (t: Trip) => (t.kind === 'Delivery' ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : '/crm/replacements');
+const docPath = (t: Trip) => (t.kind === 'Delivery' || (t.kind === 'Replacement' && t.docNumber.startsWith('DO-')) ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : t.docId.startsWith('rp') ? `/crm/replacements/${t.docId}` : '/crm/replacements');
+/** 9 Oct call: one replacement trip can deliver the new unit and collect the faulty one; both documents are shown. */
+const docText = (t: Trip) => (t.alsoDoc ? `${t.docNumber} and ${t.alsoDoc.number}` : t.docNumber);
 const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as const;
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */
@@ -96,7 +98,7 @@ export function useTripMenu() {
 function TripSummary({ trip }: { trip: Trip }) {
   return (
     <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F4F5F7', borderRadius: '6px' }}>
-      <Text type="s4" weight="medium">{trip.number} ({trip.kind}) for {trip.docNumber}</Text>
+      <Text type="s4" weight="medium">{trip.number} ({trip.kind}) for {docText(trip)}</Text>
       <Text type="s5" color="theme.secondary.700">{trip.soNumber}, {custName(trip.customerId)}, {trip.site || '-'}. {trip.transport === 'Own Fleet' ? `${trip.plate ?? '-'}${trip.driver ? `, ${trip.driver}` : ''}` : trip.transporter}</Text>
     </Box>
   );
@@ -185,7 +187,7 @@ function VehicleDialog({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const [driver, setDriver] = useState(trip.driver ?? '');
   const pick = (id: string) => { setVid(id); const d = assetById(id)?.defaultDriver ?? ''; setDriver(d); };
   return (
-    <AppDialog open title="Reassign Vehicle / Driver" onClose={onClose} confirmLabel="Save" confirmDisabled={!vid} onConfirm={() => { const err = reassignTrip(trip, vid, driver, mobileOf(driver)); if (err) { toast(err, 'error'); return; } toast(`${trip.number} reassigned`); onClose(); }}>
+    <AppDialog open title="Reassign Vehicle / Driver" onClose={onClose} confirmLabel="Update" confirmDisabled={!vid} onConfirm={() => { const err = reassignTrip(trip, vid, driver, mobileOf(driver)); if (err) { toast(err, 'error'); return; } toast(`${trip.number} reassigned`); onClose(); }}>
       <TripSummary trip={trip} />
       <FormGrid cols={1}>
         <SelectInput label={`Vehicle (Free on ${trip.date.slice(0, 10)})`} required value={vid} options={options.map((a) => ({ value: a.id, label: vehicleLabel(a) }))} onChange={pick} error={options.length === 0 ? 'No vehicle is Free' : undefined} />
@@ -437,7 +439,7 @@ export function TripList() {
         </>}
         columns={[
           { key: 'number', label: 'Trip No.' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'kind', label: 'Kind' },
-          { key: 'docNumber', label: 'Document', render: (r) => <Link to={docPath(r)} style={RL} onClick={(e) => e.stopPropagation()}>{r.docNumber}</Link> },
+          { key: 'docNumber', label: 'Document', render: (r) => <><Link to={docPath(r)} style={RL} onClick={(e) => e.stopPropagation()}>{r.docNumber}</Link>{r.alsoDoc && <> and <Link to={`/crm/customer-returns/${r.alsoDoc.id}`} style={RL} onClick={(e) => e.stopPropagation()}>{r.alsoDoc.number}</Link></>}</> },
           { key: 'soNumber', label: 'Sales Order', render: (r) => <Link to={`/crm/sales-orders/${r.soId}`} style={RL} onClick={(e) => e.stopPropagation()}>{r.soNumber}</Link> },
           { key: 'customer', label: 'Customer' }, { key: 'site', label: 'Site' }, { key: 'transport', label: 'Transport' },
           { key: 'vehicleOrTransporter', label: 'Vehicle / Transporter' }, { key: 'driver', label: 'Driver', render: (r) => r.driver ?? '-' },
@@ -470,7 +472,7 @@ export function TripView() {
         <Panel title="Trip Details" change="new" req={R.trip}>
           <ValueGrid cols={4}>
             <ValueField label="Trip No." value={t.number} /><ValueField label="Kind" value={t.kind} /><ValueField label="Date" value={t.date.replace('T', ' ')} /><ValueField label="Status" value={<StatusChip status={t.status} />} />
-            <ValueField label="Document" value={<Link to={docPath(t)} style={RL}>{t.docNumber}</Link>} /><ValueField label="Sales Order" value={<Link to={`/crm/sales-orders/${t.soId}`} style={RL}>{t.soNumber}</Link>} />
+            <ValueField label="Document" value={<><Link to={docPath(t)} style={RL}>{t.docNumber}</Link>{t.alsoDoc && <> and <Link to={`/crm/customer-returns/${t.alsoDoc.id}`} style={RL}>{t.alsoDoc.number}</Link> (collection)</>}</>} /><ValueField label="Sales Order" value={<Link to={`/crm/sales-orders/${t.soId}`} style={RL}>{t.soNumber}</Link>} />
             <ValueField label="Customer" value={custName(t.customerId)} /><ValueField label="Site" value={t.site || '-'} />
             <ValueField label="Project / Cost Centre" value={t.costCentre || '-'} /><ValueField label="Transport" value={t.transport} />
             {own ? (
@@ -506,7 +508,7 @@ export function TripsTable({ rows, empty = 'No trips yet', hideVehicle }: { rows
   return (
     <DataTable hideToolbar rows={data} emptyText={empty} onRowClick={(r) => nav(`/crm/trips/${r.id}`)}
       columns={[
-        { key: 'number', label: 'Trip No.' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'kind', label: 'Kind' }, { key: 'docNumber', label: 'Document' },
+        { key: 'number', label: 'Trip No.' }, { key: 'date', label: 'Date', render: (r) => r.date.replace('T', ' ') }, { key: 'kind', label: 'Kind' }, { key: 'docNumber', label: 'Document', render: (r) => docText(r) },
         { key: 'customer', label: 'Customer' }, { key: 'site', label: 'Site' },
         ...(hideVehicle ? [] : [{ key: 'vehicleOrTransporter', label: 'Vehicle / Transporter' }]),
         { key: 'driver', label: 'Driver', render: (r) => r.driver ?? '-' }, { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }, { key: 'total', label: 'Total Expenses', align: 'right', render: (r) => aed(r.total) },

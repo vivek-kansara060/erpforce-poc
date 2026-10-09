@@ -20,7 +20,7 @@ import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/acco
 import { useBills, useInvoices, usePayments } from '@/modules/accounting/shared';
 import { ReissueDialog, ReturnToSupplierDialog } from '@/modules/rental/CrossHirePages';
 import { ChangeTag } from '@/components/ChangeTag';
-import { ActivityChip, R, R8, TO_CONFIRM, aed, useChRequests, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useReplacements, useTrips } from './shared';
+import { ActivityChip, R, R8, R9, TO_CONFIRM, aed, useChRequests, useCrossHire, useDeliveries, useFleet, useOpps, useOrders, usePricing, useQuotes, useReplacements, useTrips } from './shared';
 import { TripsTable } from '@/modules/rental/FleetPages';
 import { schedulesOf } from '@/modules/accounting/schedule';
 import { cycleOf } from '@/modules/accounting/billing';
@@ -28,10 +28,11 @@ import { ItemsTable } from './Items';
 import { type RowMenuItem } from './shared';
 import { CommercialTabs, Totals, commercialErrors, withHeaderCascade } from './CommercialTabs';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { AdvanceDialog, EmailDialog, ExpiryDialog, NextStepDialog, PrintDialog, invoiceableLines } from './ActionDialogs';
+import { AdvanceDialog, EmailDialog, NextStepDialog, PrintDialog, invoiceableLines } from './ActionDialogs';
 
 const R_SEP = R8('Category and Subcategory shown separately, as on the Sales Order');
 const R_EXT = R8('Extension as a revision of the Sales Order');
+const R_UPD = R9('Extension saved as an update of the Sales Order, one end date for the whole order');
 const R_UNITS = R8('Return to Supplier and Re-Issue from the Sales Order');
 const R_BILL = R8('Cross-Hire Bill from the Sales Order, entered by hand for each period');
 const deliveryStatus = (so: SalesOrder) => {
@@ -107,7 +108,7 @@ export function SalesOrderForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: `Edit ${so.number}` }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: `Edit ${so.number}` }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Update</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>Price, quantity, Activity Type and Contract Type of confirmed items are frozen. Use Extend, Replacement or a formal revision to change them.</Alert>
         <CommercialTabs kind="order" f={f} set={set} err={err}
@@ -276,7 +277,7 @@ export function SalesOrderView() {
   const allReps = useReplacements().rows;
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const so = orders.get(id);
-  const [dlg, setDlg] = useState<{ kind: 'expiry' | 'step' | 'advance'; lineId?: string } | null>(null);
+  const [dlg, setDlg] = useState<{ kind: 'step' | 'advance'; lineId?: string } | null>(null);
   const [revView, setRevView] = useState<OrderRevision | null>(null);
   useInvoices();
   const [sel, setSel] = useState<string[]>([]);
@@ -318,6 +319,7 @@ export function SalesOrderView() {
   };
   /** Cross Hire exists only on a Rental order (7 Oct): no option, action or tab for any other Activity Type. */
   const isRental = so.activity === 'Rental';
+  const toDeliver = so.lines.some((l) => l.activity === 'Rental' && l.qty - deliveredQty(l) > 0);
   const reps = allReps.filter((r) => r.soId === so.id);
   const hasCrossHire = crossHires.some((c) => c.soId === so.id || unitsOf(c).some((u) => u.soId === so.id));
   const canCrossHire = (l: Line) => isRental && l.activity === 'Rental' && l.qty - deliveredQty(l) > 0 && crossHireGap(so, l) > 0;
@@ -348,13 +350,14 @@ export function SalesOrderView() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: (so.revision ?? 0) > 0 ? `${so.number} (Rev ${so.revision})` : so.number }]} status={<StatusChip status={so.status} />}
+      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: (so.revision ?? 0) > 0 ? `${so.number} (Updated)` : so.number }]} status={<StatusChip status={so.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}/edit`)}>Edit</Button>
           {so.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(so); toast('Sales Order confirmed'); }}>Confirm</Button>}
           {so.activity === 'Rental' && rentalOut > 0 && <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}/extend`)}>Extend</Button>}
           <MenuButton label="Create" variant="outlined" items={[
-            { label: 'Delivery', disabled: AMC_LIKE.includes(so.activity) || so.activity === 'Service', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) },
+            // 9 Oct call: no Delivery on a rental order once every unit is delivered (an extended order is already delivered).
+            ...(isRental && !toDeliver ? [] : [{ label: 'Delivery', disabled: AMC_LIKE.includes(so.activity) || so.activity === 'Service', onClick: () => nav(`/crm/delivery-orders/add?so=${so.id}`) }]),
             { label: 'Advance', onClick: () => setDlg({ kind: 'advance' }) },
             { label: 'Invoice', disabled: !invoiceableLines(so.lines).length, onClick: () => nav(`/accounting/invoices/add?so=${so.id}`) },
             { label: 'Return (Customer Returns)', onClick: () => nav(`/crm/customer-returns/add?so=${so.id}`), disabled: rentalOut === 0 },
@@ -396,7 +399,7 @@ export function SalesOrderView() {
             { label: 'Deliveries', hidden: so.activity !== 'Rental', content: <DataTable hideToolbar rows={myDels} emptyText="No deliveries yet" onRowClick={(d) => nav(`/crm/delivery-orders/${d.id}`)} columns={[{ key: 'number', label: 'Delivery Order' }, { key: 'date', label: 'Date' }, { key: 'rentalStart', label: 'Rental Start' }, { key: 'assets', label: 'Assets', render: (d) => d.assetIds.map((h) => assetById(h)?.assetId).join(', ') }, { key: 'status', label: 'Status', render: (d) => <StatusChip status={d.status} /> }, { key: 'closed', label: 'DO Closure', change: 'new', req: R.rreturn, render: (d) => (d.closed ? 'Closed on return' : 'Open') }]} /> },
             { label: 'Replacements', change: 'new', req: R8('Replaced items and their Replacement Orders shown on the Sales Order'), hidden: !reps.length, content: <DataTable hideToolbar rows={reps} onRowClick={(r) => nav(`/crm/replacements/${r.id}`)} columns={[{ key: 'number', label: 'Replacement' }, { key: 'date', label: 'Date' }, { key: 'out', label: 'Asset Out', render: (r) => assetById(r.oldAssetId)?.assetId }, { key: 'in', label: 'Asset In', render: (r) => assetById(r.newAssetId)?.assetId }, { key: 'sub', label: 'Subcategory', render: (r) => r.category ?? so.lines.find((l) => l.id === r.lineId)?.category }, { key: 'reason', label: 'Reason' }, { key: 'do', label: 'Delivery Order', render: (r) => { const d = dels.get(r.deliveryId); return d ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={(e) => { e.stopPropagation(); nav(`/crm/delivery-orders/${d.id}`); }}>{d.number}</Box> : '-'; } }]} /> },
             { label: 'Cross Hire', change: 'new', req: R.cross, hidden: !isRental, content: <OrderCrossHire so={so} /> },
-            { label: 'Revisions', change: 'new', req: R_EXT, hidden: !(so.revisions ?? []).length, content: <DataTable hideToolbar rows={[...(so.revisions ?? [])].reverse().map((v) => ({ ...v, id: String(v.rev) }))} onRowClick={(v) => setRevView(v)} columns={[{ key: 'rev', label: 'Revision', render: (v) => `Revision ${v.rev}` }, { key: 'date', label: 'Date' }, { key: 'by', label: 'By' }, { key: 'contractEnd', label: 'Contract End', render: (v) => v.contractEnd ?? '-' }, { key: 'note', label: 'Note' }]} /> },
+            { label: 'Update History', change: 'changed', req: R_UPD, hidden: !(so.revisions ?? []).length, content: <DataTable hideToolbar rows={[...(so.revisions ?? [])].reverse().map((v) => ({ ...v, id: String(v.rev) }))} onRowClick={(v) => setRevView(v)} columns={[{ key: 'rev', label: 'Update', render: (v) => `Update ${v.rev}` }, { key: 'date', label: 'Date' }, { key: 'by', label: 'By' }, { key: 'contractEnd', label: 'Contract End', render: (v) => v.contractEnd ?? '-' }, { key: 'note', label: 'Note' }]} /> },
             { label: 'Logistics', change: 'new', req: R.trip, hidden: !soTrips.length && so.activity !== 'Rental', content: (
               <>
                 <TripsTable rows={soTrips} empty="No trips yet. A trip is created with each delivery, collection and replacement" />
@@ -422,7 +425,6 @@ export function SalesOrderView() {
         </Box>
       </Page>
       <ConfirmDialog open={closeAsk} title="Close Sales Order" description="An order cannot be closed while any delivered asset is unreturned." confirmLabel="Close order" onClose={() => setCloseAsk(false)} onConfirm={() => { const r = closeOrder(so); toast(r.message, r.ok ? 'success' : 'error'); setCloseAsk(false); }} />
-      <ExpiryDialog open={dlg?.kind === 'expiry'} onClose={() => setDlg(null)} soId={so.id} />
       <RevisionDialog so={so} rev={revView} onClose={() => setRevView(null)} />
       <NextStepDialog open={dlg?.kind === 'step'} onClose={() => setDlg(null)} soId={so.id} lineId={dlg?.lineId} />
       <AdvanceDialog open={dlg?.kind === 'advance'} onClose={() => setDlg(null)} soId={so.id} onDone={(l) => orders.update(so.id, { log: [l, ...so.log] })} />
@@ -550,6 +552,7 @@ export function SalesOrderExtend() {
   const opps = useOpps();
   const so = orders.get(id);
   const [ends, setEnds] = useState<Record<string, string>>({});
+  const [allEnd, setAllEnd] = useState('');
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [f, setF] = useState<Record<string, any>>({ by: '', lpo: '', lpoExpiry: '', note: '' });
   const [err, setErr] = useState<Record<string, string>>({});
@@ -565,6 +568,14 @@ export function SalesOrderExtend() {
   const priceOf = (l: Line) => (prices[l.id] === undefined || prices[l.id] === '' ? l.price : Number(prices[l.id]));
   const rateChanged = rows.some((l) => (l.activity !== 'Rental' || outOf(l) > 0) && priceOf(l) !== l.price);
   const set = (k: string, v: any) => { setErr((e) => ({ ...e, [k]: '' })); setF((x) => ({ ...x, [k]: v })); };
+  const live = rows.filter((l) => l.activity !== 'Rental' || outOf(l) > 0);
+  /** 9 Oct call: one New End Date for the whole order, like the contract period on the main form; a line is changed only when it ends on another date. */
+  const applyAll = (d: string, force: boolean) => { clearGrid(); setEnds((x) => { const n = { ...x }; live.forEach((l) => { if (force || !n[l.id]) n[l.id] = d; }); return n; }); };
+  /** 9 Oct call: what the extension costs, per period and for the whole extension. */
+  const perPeriod = (l: Line) => (l.activity === 'Rental' ? outOf(l) : l.qty) * priceOf(l);
+  const extPeriods = (l: Line) => (endOf(l) && endOf(l) > curEnd(l) ? periods(l.frequency, dayjs(curEnd(l)).add(1, 'day').format('YYYY-MM-DD'), endOf(l)) : 0);
+  const sumPer = live.reduce((n, l) => n + perPeriod(l), 0);
+  const sumExt = live.reduce((n, l) => n + perPeriod(l) * extPeriods(l), 0);
   const save = () => {
     const e: Record<string, string> = {};
     if (!rental.length) e.grid = 'Nothing is on hire on this order, so there is nothing to extend';
@@ -577,7 +588,7 @@ export function SalesOrderExtend() {
     if (Object.keys(e).length) { toast('Please complete the mandatory fields', 'error'); return; }
     const lines = rows.filter((l) => l.activity !== 'Rental' || outOf(l) > 0).map((l) => ({ lineId: l.id, newEnd: endOf(l) && endOf(l) > curEnd(l) ? endOf(l) : undefined, newPrice: priceOf(l) !== l.price ? priceOf(l) : undefined }));
     const x = extendOrder({ soId: so.id, lines, lpo: f.lpo.trim() || undefined, lpoExpiry: f.lpoExpiry || undefined, confirmedBy: f.by.trim(), note: f.note.trim() });
-    toast(`Revision ${x.revision} saved. ${so.number} now ends on ${x.newEnd}`);
+    toast(`${so.number} updated (Update ${x.revision}), now ends on ${x.newEnd}`);
     nav(`/crm/sales-orders/${so.id}`);
   };
   const specs: Spec[] = [
@@ -589,37 +600,47 @@ export function SalesOrderExtend() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number, to: `/crm/sales-orders/${so.id}` }, { label: 'Extend' }]}
-        actions={<><Button variant="text" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save Revision</Button></>} />
+        actions={<><Button variant="text" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Update</Button></>} />
       <Page sx={{ pt: 2 }}>
-        <Alert severity="info" sx={{ mb: 2 }}>Extension revises this Sales Order (Revision {(so.revision ?? 0) + 1}). The current version is kept under Revisions. Only the lines that still have units out are extended; returned units stay returned.</Alert>
+        <Alert severity="info" sx={{ mb: 2 }}>Extending updates this Sales Order (Update {(so.revision ?? 0) + 1}). The previous version is kept under Update History. Only the lines that still have units out are extended; returned units stay returned.</Alert>
         <CommercialTabs kind="order" f={soForm(so, opps.get(so.oppId)?.number, quotes.get(so.quoteId)?.number)} set={() => undefined} locked
           items={<>
+            <Section title="Extend the whole order" change="new" req={R_UPD}>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+                <TextField size="small" type="date" label="New End Date (all lines)" value={allEnd} onChange={(e) => { setAllEnd(e.target.value); if (e.target.value) applyAll(e.target.value, false); }} InputLabelProps={{ shrink: true }} sx={{ minWidth: 220 }} />
+                <Button variant="outlined" disabled={!allEnd} onClick={() => applyAll(allEnd, true)}>Apply to all lines</Button>
+                <Text type="s5" color="theme.secondary.700">Same as the contract period on the main form. Change a line below only when it ends on a different date.</Text>
+              </Box>
+            </Section>
             <Section title="Extension" change="new" req={R_EXT}>
               <FieldError label="Extension" error={err.grid} />
               <TableContainer sx={{ border: '1px solid #EEEFF1', borderRadius: '8px' }}>
                 <Table size="small">
-                  <TableHead><TableRow sx={{ bgcolor: '#FBFBFB' }}>{['Item', 'Category', 'Subcategory', 'Units out', 'Current End', 'New End', 'Current Rate', 'New Rate', 'Frequency'].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}{h === 'New Rate' && <HelpTip hint={`Applies to the extension period only, from the day after the current end. ${TO_CONFIRM}`} />}</TableCell>)}</TableRow></TableHead>
+                  <TableHead><TableRow sx={{ bgcolor: '#FBFBFB' }}>{['S.No', 'Category', 'Subcategory', 'Item', 'Units out', 'Current End', 'New End', 'Current Rate', 'New Rate', 'Frequency', 'Amount per period', 'Extension amount'].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}{h === 'New Rate' && <HelpTip hint={`Applies to the extension period only, from the day after the current end. ${TO_CONFIRM}`} />}</TableCell>)}</TableRow></TableHead>
                   <TableBody>
-                    {rows.length === 0 && <TableRow><TableCell colSpan={9}><Text type="s4" color="theme.secondary.700">This order has no rental or recurring service line.</Text></TableCell></TableRow>}
-                    {rows.map((l) => {
+                    {rows.length === 0 && <TableRow><TableCell colSpan={12}><Text type="s4" color="theme.secondary.700">This order has no rental or recurring service line.</Text></TableCell></TableRow>}
+                    {rows.map((l, idx) => {
                       const out = outOf(l);
-                      const live = l.activity !== 'Rental' || out > 0;
+                      const isLive = l.activity !== 'Rental' || out > 0;
                       return (
                         <TableRow key={l.id}>
-                          <TableCell sx={{ fontSize: 13 }}>{l.item}</TableCell><TableCell sx={{ fontSize: 13 }}>{l.group ?? '-'}</TableCell><TableCell sx={{ fontSize: 13 }}>{l.category ?? '-'}</TableCell>
+                          <TableCell sx={{ fontSize: 13 }}>{idx + 1}</TableCell><TableCell sx={{ fontSize: 13 }}>{l.group ?? '-'}</TableCell><TableCell sx={{ fontSize: 13 }}>{l.category ?? '-'}</TableCell><TableCell sx={{ fontSize: 13 }}>{l.item}</TableCell>
                           <TableCell sx={{ fontSize: 13, whiteSpace: 'nowrap' }}>{l.activity === 'Rental' ? `${out} of ${l.qty} still out` : '-'}</TableCell>
                           <TableCell sx={{ fontSize: 13 }}>{curEnd(l) || '-'}</TableCell>
-                          <TableCell sx={{ py: 0.5, minWidth: 170 }}>{live ? <TextField size="small" type="date" value={endOf(l)} onChange={(e) => { clearGrid(); setEnds({ ...ends, [l.id]: e.target.value }); }} InputLabelProps={{ shrink: true }} /> : <Text type="s5" color="theme.secondary.700">Not extended, nothing on hire</Text>}</TableCell>
+                          <TableCell sx={{ py: 0.5, minWidth: 170 }}>{isLive ? <TextField size="small" type="date" value={endOf(l)} onChange={(e) => { clearGrid(); setEnds({ ...ends, [l.id]: e.target.value }); }} InputLabelProps={{ shrink: true }} /> : <Text type="s5" color="theme.secondary.700">Not extended, nothing on hire</Text>}</TableCell>
                           <TableCell sx={{ fontSize: 13 }} align="right">{aed(l.price)}</TableCell>
-                          <TableCell sx={{ py: 0.5 }} align="right">{live ? <TextField size="small" type="number" value={prices[l.id] ?? l.price} onChange={(e) => { clearGrid(); setPrices({ ...prices, [l.id]: e.target.value }); }} sx={{ width: 120 }} inputProps={{ min: 0, step: 'any' }} /> : '-'}</TableCell>
+                          <TableCell sx={{ py: 0.5 }} align="right">{isLive ? <TextField size="small" type="number" value={prices[l.id] ?? l.price} onChange={(e) => { clearGrid(); setPrices({ ...prices, [l.id]: e.target.value }); }} sx={{ width: 120 }} inputProps={{ min: 0, step: 'any' }} /> : '-'}</TableCell>
                           <TableCell sx={{ fontSize: 13 }}>{l.frequency ?? '-'}</TableCell>
+                          <TableCell sx={{ fontSize: 13 }} align="right">{isLive ? aed(perPeriod(l)) : '-'}</TableCell>
+                          <TableCell sx={{ fontSize: 13, whiteSpace: 'nowrap' }} align="right">{isLive && extPeriods(l) ? `${aed(perPeriod(l) * extPeriods(l))} (${extPeriods(l)} ${FREQ_TEXT(l)})` : '-'}</TableCell>
                         </TableRow>
                       );
                     })}
+                    {live.length > 0 && <TableRow sx={{ bgcolor: '#FBFBFB' }}><TableCell colSpan={10} sx={{ fontSize: 13, fontWeight: 500 }}>Total (excl. VAT)<ChangeTag kind="new" req={R9('Extension amount per period and for the extension')} /></TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumPer)}</TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumExt)}</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>New Rate applies to the extension period only, from the day after the current end; the periods before keep their rate. {TO_CONFIRM}.</Text>
+              <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Amount per period is invoiced every period (units still out x New Rate) until the units are returned; Extension amount covers the new period only. New Rate applies to the extension period only, from the day after the current end; the periods before keep their rate. {TO_CONFIRM}.</Text>
               <Box sx={{ mt: 2 }}><SpecForm specs={specs} f={f} set={set} err={err} cols={2} /></Box>
             </Section>
           </>} />
@@ -634,7 +655,7 @@ function RevisionDialog({ so, rev, onClose }: { so: SalesOrder; rev: OrderRevisi
   const rows = rev.lines.map((l) => ({ id: l.id, then: l, now: so.lines.find((x) => x.id === l.id) }));
   const b = (changed: boolean, v: React.ReactNode) => <Text type="s4" weight={changed ? 'bold' : 'normal'} component="span">{v}</Text>;
   return (
-    <AppDialog open title={`Revision ${rev.rev} of ${so.number}`} onClose={onClose} maxWidth="md">
+    <AppDialog open title={`Update ${rev.rev} of ${so.number}`} onClose={onClose} maxWidth="md">
       <Text type="s4" sx={{ mb: 1 }}>Saved {rev.date} by {rev.by}. {rev.note}</Text>
       <ValueGrid cols={3}>
         <ValueField label="Contract End" value={<>{b(rev.contractEnd !== so.contractEnd, rev.contractEnd ?? '-')} (now {so.contractEnd ?? '-'})</>} />

@@ -344,7 +344,7 @@ export function HeavyForm() {
     <>
       <FormHeader
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment Fixed Asset' }]}
-        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
+        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <TabPanels key={tab.key} initial={tab.initial} tabs={[

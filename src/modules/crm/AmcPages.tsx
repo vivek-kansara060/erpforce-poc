@@ -276,7 +276,7 @@ export function JobCardForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? f.soNumber, to: `/crm/amc-orders/${f.soId}` }, { label: id ? `Edit ${f.number}` : `New Job Card, visit ${f.visitIdx + 1}` }]}
-        actions={<><Button variant="outlined" onClick={back}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={back}>Discard</Button><Button variant="contained" onClick={save}>{id ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <SpecForm specs={jcSpecs(f, true)} f={jcView(f)} set={set} />
         <Section title="Materials consumed (optional)" change="new" req={R_AMC} hint="Billed by default. Tick FOC (Chargeable Override, Project Team) to give a line free of cost (the billed price shows as 0); the material still leaves the van stock.">

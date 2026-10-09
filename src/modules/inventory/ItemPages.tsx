@@ -178,7 +178,7 @@ export function ItemForm() {
     <>
       <FormHeader
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Item' }]}
-        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="outlined" onClick={() => save(true)}>Save as draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>}
+        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="outlined" onClick={() => save(true)}>Save as draft</Button><Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[

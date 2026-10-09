@@ -22,7 +22,7 @@ import { ChangeTag } from '@/components/ChangeTag';
 import { customerAddresses, useAddressAutofill, type AddressCfg } from './addressKit';
 import { invoiceByRef } from '@/modules/accounting/engine';
 import { useInvoices } from '@/modules/accounting/shared';
-import { R, R8, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
+import { R, R8, R9, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
 import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 import { neutral } from '@/theme/color';
 import { Tooltip } from '@mui/material';
@@ -56,6 +56,7 @@ export function ReturnList() {
         columns={[
           { key: 'number', label: 'ID' }, { key: 'date', label: 'Date' }, { key: 'customer', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'salesperson', label: 'Salesperson' }, { key: 'soNumber', label: 'Sales Order' }, { key: 'entity', label: 'Entity' },
           { key: 'status', label: 'RMA Status', render: (r) => <StatusChip status={r.status} tone={tone(r.status)} /> },
+          { key: 'operationType', label: 'Operation Type', change: 'new', req: R9('Replacement is a delivery and a collection: the faulty unit comes back like a return, billing is not stopped'), render: (r) => <StatusChip status={r.operationType} tone={r.operationType === 'Replacement' ? 'amber' : 'grey'} /> },
           { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'timestamp', label: 'Return Date & Time', change: 'new', req: R.ret, render: (r) => r.timestamp.replace('T', ' ') },
           { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, render: (r) => <StatusChip status={inspectionOf(r)} tone={tone(inspectionOf(r))} /> },
         ]} />
@@ -68,6 +69,8 @@ export function ReturnList() {
 type Row = { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string; files?: string[] };
 const R_SEP = R8('Category and Subcategory shown separately, as on the Sales Order');
 const R_ATT = R8('Attachment per returned item');
+/** 9 Oct call: say who brings the asset back; the stored values stay the same. */
+export const METHOD_LABEL: Record<string, string> = { 'Company Collection': 'Company Collection (our fleet or an external transporter)', 'Self-Return': 'Customer Self-Return (the client brings it to our yard)' };
 const R_END = R8('Invoice end date on return');
 const mkRow = (lineId: string, deliveryId: string, assetId: string): Row => ({ id: `ri${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, lineId, deliveryId, assetId });
 
@@ -106,7 +109,7 @@ export function ReturnForm() {
   };
   const [f, setF] = useState<Record<string, any>>(() => ({
     date: TODAY, soId: so0?.id ?? '', customerId: so0?.customerId ?? '', shippingAddress: so0?.site ?? '', salesperson: so0?.owner ?? 'Ahmed Al Khouri', entity: so0?.entity ?? masterValues('entity')[0], reference: '', currency: so0?.currency ?? 'AED', exchangeRate: 1, narration: '',
-    location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], method: '', timestamp: `${TODAY}T${dayjs().format('HH:mm')}`, checks: [] as string[], photos: [] as string[], fuelNote: '', offHireDate: '', addInvoice: '', addAmount: '', addNote: '', deliveryId: sp.get('delivery') ?? '',
+    location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], method: 'Company Collection', timestamp: `${TODAY}T${dayjs().format('HH:mm')}`, checks: [] as string[], photos: [] as string[], fuelNote: '', offHireDate: '', addInvoice: '', addAmount: '', addNote: '', deliveryId: sp.get('delivery') ?? '',
     ...(src ? { ...src, checks: src.siteChecklist, date: copy ? TODAY : src.date, timestamp: copy ? `${TODAY}T${dayjs().format('HH:mm')}` : src.timestamp, offHireDate: copy ? '' : (src.offHireDate ?? ''), addInvoice: src.additional ? 'Yes' : '', addAmount: src.additional?.amount ?? '', addNote: src.additional?.note ?? '', number: copy ? undefined : src.number } : {}),
   }));
   const [rows, setRows] = useState<Row[]>(initialRows);
@@ -142,7 +145,7 @@ export function ReturnForm() {
     { key: 'narration', label: 'Narration', type: 'textarea', full: true },
   ];
   const rental: Spec[] = [
-    { key: 'method', label: 'Return Method', type: 'select', options: RETURN_METHODS, required: true, change: 'new', req: R.ret, hint: 'Self-Return: the client brings it to our yard. Company Collection: we collect it from the site with a trip', disabled: locked },
+    { key: 'method', label: 'Return Method', type: 'select', options: RETURN_METHODS.map((m) => ({ value: m, label: METHOD_LABEL[m] ?? m })), required: true, change: 'changed', req: R9('Return method made clear, Company Collection by default'), hint: 'Company Collection is the normal case: the collection is planned in Fleet like a delivery, with our vehicle or an external transporter', disabled: locked },
     { key: 'timestamp', label: 'Return Date & Time', type: 'datetime', required: true, change: 'new', req: R_END, hint: 'When the asset is physically returned or collected. Can be set earlier or later than today', disabled: locked },
     { key: 'offHireDate', label: 'Invoice End Date (Off-Hire)', type: 'date', required: true, change: 'new', req: R_END, hint: 'Rental is billed up to the day before this date, the same rule as today. Defaults to the return date', disabled: locked, value: (g) => g.offHireDate || String(g.timestamp ?? '').slice(0, 10) },
     { key: 'fuelNote', label: 'Fuel Note', change: 'new', req: R.ret, hint: 'Reference only. Fuel is never billed as part of rental', disabled: locked },
@@ -193,7 +196,7 @@ export function ReturnForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: existing ? 'Edit Customer Return' : 'Add Customer Return' }]}
-        actions={<>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => saveIt(true)}>Save as Draft</Button>}<Button variant="outlined" onClick={() => nav(existing ? `${BASE}/${existing.id}` : BASE)}>Discard</Button><Button variant="contained" onClick={() => saveIt(false)}>Save</Button></>} />
+        actions={<>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => saveIt(true)}>Save as Draft</Button>}<Button variant="outlined" onClick={() => nav(existing ? `${BASE}/${existing.id}` : BASE)}>Discard</Button><Button variant="contained" onClick={() => saveIt(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {locked && <Alert severity="info" sx={{ mb: 2 }}>Billing has already stopped for this return, so its assets and return details are locked. Header details can still be edited.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
@@ -284,7 +287,7 @@ export function ReturnView() {
   const [ask, setAsk] = useState<'accept' | 'reject' | 'delete' | null>(null);
   if (!r) return <Page><PageTitle title="Return not found" right={<Button variant="outlined" onClick={() => nav(BASE)}>Back</Button>} /></Page>;
   const waiver = hasWaiver(orders.get(r.soId)?.lines ?? []);
-  const rTrips = trips.rows.filter((t) => t.docId === r.id);
+  const rTrips = trips.rows.filter((t) => t.docId === r.id || t.alsoDoc?.id === r.id);
   const ct = rTrips.find((t) => t.status !== 'Cancelled');
   const received = new Set(r.grns.flatMap((g) => g.items.map((i) => i.itemId)));
   const toReceive = r.items.filter((i) => !received.has(i.id));
@@ -301,7 +304,7 @@ export function ReturnView() {
   const rentalSpecs: Spec[] = [
     { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'ts', label: 'Return Date & Time', change: 'new', req: R_END, value: () => r.timestamp.replace('T', ' ') },
     { key: 'end', label: 'Invoice End Date (Off-Hire)', change: 'new', req: R_END, value: () => r.offHireDate ?? r.timestamp.slice(0, 10) },
-    { key: 'billing', label: 'Billing', change: 'new', req: R.ret, value: () => (r.status === 'Draft' ? 'Running (not yet saved as a return)' : `Stops at ${r.offHireDate ?? r.timestamp.slice(0, 10)}`) },
+    { key: 'billing', label: 'Billing', change: 'new', req: R.ret, value: () => (r.keepBilling ? 'Not stopped: the line keeps billing through the replacement unit' : r.status === 'Draft' ? 'Running (not yet saved as a return)' : `Stops at ${r.offHireDate ?? r.timestamp.slice(0, 10)}`) },
     ...(r.additional ? [{ key: 'ainv', label: 'Additional Invoice', change: 'new' as const, req: R_END, value: () => (r.additionalInvoiceId ? `${invoiceByRef(r.additionalInvoiceId)?.number ?? '-'}, ${r.additional!.from} to ${r.additional!.to} (${r.additional!.days} day(s)), ${aed(r.additional!.amount)}` : '-') }] : []),
     { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, value: () => inspectionOf(r) }, { key: 'fuel', label: 'Fuel Note', value: () => r.fuelNote || '-' }, { key: 'waiver', label: 'Damage Waiver on order', change: 'new', req: R.meet, value: () => (waiver ? 'Yes' : 'No') },
     { key: 'coll', label: 'Collection', value: () => (r.collection ? `Failed, ${r.collection.by === 'Client' ? `charged to client AED ${r.collection.amount}` : 'company loss'}` : r.collected ? `Collected ${r.collected}` : r.method === 'Company Collection' ? 'Pending' : 'Not applicable') },
@@ -325,6 +328,7 @@ export function ReturnView() {
           {chargeInv && <Button variant="outlined" onClick={() => nav(`/accounting/invoices/${chargeInv.id}`)}>View Damage Invoice</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
+        {r.replacementId && <Alert severity="info" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => nav(`/crm/replacements/${r.replacementId}`)}>View Replacement</Button>}>Collection of the faulty unit for replacement {r.reference}. Billing was not stopped; after the yard inspection the unit goes to the status chosen on the replacement.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: { xl: 'none' } }}><Section title="Summary"><SummaryRows f={r} /></Section></Box>
@@ -420,7 +424,7 @@ export function ReturnGrnForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? `Edit ${g0.number}` : 'Add GRN' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>{g0 ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Section title="Customer Returns"><ValueGrid cols={4}><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Customer" value={custName(r.customerId)} /><ValueField label="Sales Order" value={r.soNumber} /><ValueField label="Entity" value={r.entity} /><ValueField label="Currency" value={r.currency} /><ValueField label="Return Method" change="new" req={R.ret} value={r.method} /><ValueField label="Return Entry Timestamp" change="new" req={R.ret} value={r.timestamp.replace('T', ' ')} /></ValueGrid></Section>
         <Section title="Items">

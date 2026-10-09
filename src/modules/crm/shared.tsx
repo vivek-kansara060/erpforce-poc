@@ -55,6 +55,8 @@ export const R = {
 };
 /** Requirement reference for changes from the 8 Oct client call. */
 export const R8 = (topic: string) => `Client call 8 Oct: ${topic}`;
+/** Requirement reference for changes from the 9 Oct client call. */
+export const R9 = (topic: string) => `Client call 9 Oct: ${topic}`;
 export const TO_CONFIRM = 'Rule to be confirmed with client';
 export const aed = (n?: number) => (n === undefined ? '-' : fmtAED(Math.round(n * 100) / 100));
 export const fmtDate = (s?: string) => (s ? s.replace('T', ' ') : '-');

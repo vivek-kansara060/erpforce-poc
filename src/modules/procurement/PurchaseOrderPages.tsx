@@ -125,7 +125,7 @@ export function PurchaseOrderForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Purchase Orders', to: '/procurement/purchase-orders' }, { label: existing ? `Edit ${existing.number}` : 'New Purchase Order' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/procurement/purchase-orders/${existing.id}` : '/procurement/purchase-orders')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/procurement/purchase-orders/${existing.id}` : '/procurement/purchase-orders')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {!existing && !approvalRequired() && <Alert severity="info" sx={{ mb: 2 }}>No approval workflow is configured in Procurement Settings: this Purchase Order will not be blocked from proceeding to GRN.</Alert>}
         <SpecForm specs={specs} f={f} set={set} err={err} />

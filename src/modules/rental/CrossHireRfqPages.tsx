@@ -137,7 +137,7 @@ export function ChRfqForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? `Edit ${src!.number}` : 'Add New' }]}
-        actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button>{(!editing || src!.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+        actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button>{(!editing || src!.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{editing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((q) => q.number).join(', ')}. Add the suppliers in Call For Tender, then Save.</Alert>}
         <TabPanels tabs={[
@@ -301,7 +301,7 @@ export function ChResponseForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number, to: `${BASE}/${r.id}` }, { label: 'Responses', to: `${BASE}/${r.id}/responses` }, { label: x0 ? 'Edit' : 'Add New' }]} actions={<><Button variant="text" onClick={() => nav(`${BASE}/${r.id}/responses`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number, to: `${BASE}/${r.id}` }, { label: 'Responses', to: `${BASE}/${r.id}/responses` }, { label: x0 ? 'Edit' : 'Add New' }]} actions={<><Button variant="text" onClick={() => nav(`${BASE}/${r.id}/responses`)}>Discard</Button><Button variant="contained" onClick={save}>{x0 ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Section title="Basic Detail"><SpecForm specs={responseSpecs(supOpts.filter((o) => r.vendorIds.includes(o.value)), !!x0)} f={view} set={set} err={err} /></Section>
         <Section title="Items">

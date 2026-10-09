@@ -19,21 +19,23 @@ import { deliveredQty } from './flow';
 import { UOMS } from '@/modules/inventory/data';
 import { liveItems } from './data';
 import { RowMenu, type RowMenuItem } from './shared';
-import { AvailabilityBadge, R, TO_CONFIRM, aed, useServiceCharges } from './shared';
+import { AvailabilityBadge, R, R9, TO_CONFIRM, aed, useServiceCharges } from './shared';
 
 type Mode = 'opp' | 'quote' | 'order';
 const kindLabel = (a: string) => (a === 'Rental' ? 'Equipment' : a === 'Fixed Asset Trading' ? 'Asset' : a === 'Service' ? 'Service charge' : a);
 const stock = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 
-interface Col { id: string; label: string; change?: 'new' | 'changed'; vis: boolean; right?: boolean; only?: Mode[]; render: (l: Line, i: number, c: Ctx) => ReactNode }
+interface Col { id: string; label: string; change?: 'new' | 'changed'; req?: string; vis: boolean; right?: boolean; only?: Mode[]; render: (l: Line, i: number, c: Ctx) => ReactNode }
 interface Ctx { vat: string; fleet?: HeavyRec[] }
 
+// 9 Oct call: S.No, Category, Subcategory, then the item, in the same order on every add, edit and view screen.
+const R_ORDER = R9('Item columns identical on add, edit and view: S.No, Category, Subcategory, Item');
 const COLS: Col[] = [
-  { id: 'sno', label: 'S.No', vis: true, only: ['order'], render: (_l, i) => i + 1 },
-  { id: 'kind', label: 'Line', change: 'new', vis: true, render: (l) => kindLabel(l.activity) },
+  { id: 'sno', label: 'S.No', change: 'changed', req: R_ORDER, vis: true, render: (_l, i) => i + 1 },
+  { id: 'category', label: CATEGORY_LABEL, change: 'changed', req: R_ORDER, vis: true, render: (l) => l.group ?? '-' },
+  { id: 'subcategory', label: SUBCATEGORY_LABEL, change: 'changed', req: R_ORDER, vis: true, render: (l) => l.category ?? '-' },
   { id: 'item', label: 'Item', vis: true, render: (l) => <span>{l.item || '-'}{l.foc ? ' (FOC)' : ''}</span> },
-  { id: 'category', label: CATEGORY_LABEL, change: 'new', vis: true, render: (l) => l.group ?? '-' },
-  { id: 'subcategory', label: SUBCATEGORY_LABEL, change: 'new', vis: true, render: (l) => l.category ?? '-' },
+  { id: 'kind', label: 'Line', change: 'new', vis: true, render: (l) => kindLabel(l.activity) },
   { id: 'qty', label: 'Quantity', vis: true, right: true, render: (l) => l.qty },
   { id: 'remaining', label: 'Remaining Quantity', vis: true, right: true, only: ['order'], render: (l) => Math.max(0, l.qty - (l.activity === 'Rental' ? deliveredQty(l) : l.fulfilment ? l.qty : 0)) },
   { id: 'uom', label: 'UoM', vis: true, render: (l) => l.unit },
@@ -103,8 +105,8 @@ export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pr
           <TableHead>
             <TableRow sx={{ bgcolor: neutral[100] }}>
               {selectable && <TableCell padding="checkbox"><Checkbox size="small" checked={lines.length > 0 && selected.length === lines.length} indeterminate={selected.length > 0 && selected.length < lines.length} onChange={(e) => onSelect?.(e.target.checked ? lines.map((x) => x.id) : [])} /></TableCell>}
+              {vis.map((c) => <TableCell key={c.id} align={c.right ? 'right' : 'left'} sx={{ ...cellSx, fontWeight: 500 }}>{c.label}<ChangeTag kind={c.change} req={c.req ?? R.meet} /></TableCell>)}
               {extra && <TableCell sx={{ ...cellSx, fontWeight: 500 }}>{extra.label}<ChangeTag kind={extra.change ?? 'new'} req={extra.req ?? R.so} /></TableCell>}
-              {vis.map((c) => <TableCell key={c.id} align={c.right ? 'right' : 'left'} sx={{ ...cellSx, fontWeight: 500 }}>{c.label}<ChangeTag kind={c.change} req={R.meet} /></TableCell>)}
               {((!locked && onChange) || rowActions) && <TableCell sx={{ ...cellSx, fontWeight: 500, width: 48 }} />}
             </TableRow>
           </TableHead>
@@ -113,8 +115,8 @@ export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pr
             {lines.map((l, i) => (
               <TableRow key={l.id} hover selected={selected.includes(l.id)}>
                 {selectable && <TableCell padding="checkbox"><Checkbox size="small" checked={selected.includes(l.id)} onChange={(e) => onSelect?.(e.target.checked ? [...selected, l.id] : selected.filter((x) => x !== l.id))} /></TableCell>}
-                {extra && <TableCell sx={cellSx}>{extra.render(l)}</TableCell>}
                 {vis.map((c) => <TableCell key={c.id} align={c.right ? 'right' : 'left'} sx={cellSx}>{c.render(l, i, ctx)}</TableCell>)}
+                {extra && <TableCell sx={cellSx}>{extra.render(l)}</TableCell>}
                 {((!locked && onChange) || rowActions) && (
                   <TableCell sx={cellSx}>
                     <RowMenu items={[...(rowActions?.(l) ?? []), ...(!locked && onChange ? [{ label: 'Edit', onClick: () => setEdit({ idx: i, line: l }) }, { label: 'Delete', danger: true, onClick: () => onChange(lines.filter((x) => x.id !== l.id)) }] : [])]} />
@@ -171,7 +173,7 @@ function ItemModal({ line, isNew, header, mode, vat, pricing, fleet, contract, d
   const g = lineGross(l); const net = lineTaxable(l);
   const foc = <CheckInput label="FOC" change="new" req={R.quote} checked={l.foc} onChange={(v) => set({ foc: v, price: v ? 0 : l.price })} hint={service ? 'Amount is zero' : 'Rate is set to zero, the asset is still tracked'} />;
   return (
-    <AppDialog open title={`${isNew ? 'Add' : 'Edit'} ${kindLabel(l.activity)}`} onClose={onClose} maxWidth="lg" confirmLabel="Save" onConfirm={() => save(false)}
+    <AppDialog open title={`${isNew ? 'Add' : 'Edit'} ${kindLabel(l.activity)}`} onClose={onClose} maxWidth="lg" confirmLabel={isNew ? 'Save' : 'Update'} onConfirm={() => save(false)}
       actions={isNew ? <Button variant="outlined" onClick={() => save(true)}>Save and Add another</Button> : undefined}>
       {rental && (err.contract || !contract?.start || !contract?.end) && <Alert severity={err.contract ? 'error' : 'info'} sx={{ mb: 2 }}>Set the Contract Start and End Date in the main form before adding rental equipment. They apply to every rental line.</Alert>}
       <FormGrid cols={3}>

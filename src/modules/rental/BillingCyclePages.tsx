@@ -76,7 +76,7 @@ export function BillingCycleForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Billing Cycle', to: BASE }, { label: c ? `Edit ${c.name}` : 'Add New' }]} actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader crumbs={[{ label: 'Billing Cycle', to: BASE }, { label: c ? `Edit ${c.name}` : 'Add New' }]} actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>{c ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}><SpecForm specs={specs} f={f} set={set} err={err} /></Page>
     </>
   );

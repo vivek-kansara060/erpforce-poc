@@ -12,6 +12,47 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 9 Oct, around 10:30 PM: Replacement brings the faulty unit back: a delivery and a collection
+**Where:** CRM / Sales > Orders > Replacement Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Where:** CRM / Sales > Fleet > Trips
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Where is the replacement asset now?" The collection note was missing: a replacement is like a return, with our fleet or an external transporter collecting it, but the invoice is not stopped. The same vehicle can deliver and collect, or another one can collect at another time. The form should show the order details, the asset being replaced and the price list rate, and the faulty asset can go to maintenance or straight back to stock when nothing is wrong (9 Oct, 17:20 to 27:21).
+*What we did.* Saving a replacement now creates two documents: the Delivery Order of the new unit (as before) and a Customer Return with Operation Type Replacement for the faulty unit, already approved and waiting to be received. The faulty unit goes Off Hire - In Transit, then Yard Inspection when the Goods Receipt is made, then the status chosen on the replacement after validation: Under Maintenance (Routine), Under Maintenance (Critical) or Ready for Hire. Damage found at the inspection still sends it to Critical maintenance with the damage charge. Billing is not stopped: the line keeps billing through the new unit. Collection by "Same vehicle as the delivery" makes one Replacement trip linked to both documents; "Separate trip" makes a Collection trip with its own date and own fleet vehicle or external transporter, whose charge goes into the trip expenses and the order's Logistics Cost. The form starts with the Sales Order details (customer, project, site, LPO, contract end), lists the units on hire to pick the one to replace, and shows the price list rate next to the line rate; the price adjustment is prefilled with the difference when the Subcategory differs. The replacement view has a Collection panel (collection, status, collected, chosen status, asset status now, cost of both legs), the list has a Collection column, the return shows a banner back to the replacement and the Customer Returns list an Operation Type column. A Replacement trip now dispatches and delivers its Delivery Order, and completing it also marks the collection as collected.
+*Be aware.* Replacements recorded before today have no collection; their view says so. A separate own-fleet collection cannot use the delivery vehicle on the same day (one trip per vehicle per day): choose Same vehicle instead. This changes the 8 Oct rule for replacements only; a normal return still always goes to maintenance.
+
+### 9 Oct, around 10:00 PM: Renewals and Expiry is for the follow-up call only
+**Where:** CRM / Sales > Orders > Renewals and Expiry
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* Renewals is operational, not financial: rental keeps billing until the material is returned, so no fault attribution or billing treatment. Show what ends within a week, not contracts months away. Extend or return should open the page directly, without a pop-up (9 Oct, 2:39 to 8:13).
+*What we did.* Overdue handling (Fault Attribution, Same Rate, Penalty Rate, Hold Billing) and the Fault Attribution column are removed. The list opens on the next 7 days, with a window filter (7, 14, 30 days, overdue only, all live) and a search; overdue rows carry a "Still billing" chip. The row menu has Notify, Extend (opens the Extend page) and Return (opens a new customer return). The notice period is 7 days everywhere (dashboard, reports). The second tab is called Extensions and a row opens the Sales Order.
+
+### 9 Oct, around 9:40 PM: Extend: one date for the whole order, saved as an update
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* One new end date for the whole order instead of one line at a time, like the contract period on the main form; save it as an update, not a revision; and is the amount shown monthly (9 Oct, 9:13 to 13:11)?
+*What we did.* The Extend page starts with "New End Date (all lines)" and Apply to all lines; a line can still get its own date. The button reads Update, the toast says the order is updated, the Revisions tab is now Update History (Update 1, Update 2) and the order shows "(Updated)". The grid shows the Amount per period (units still out x new rate, what is invoiced every period until the return) and the Extension amount (for the new period only), with totals.
+
+### 9 Oct, around 9:20 PM: Item columns in one order; no Delivery when everything is delivered
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Quotation
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* S.No first, then Category, Subcategory and the description, identical on the new, edit and view screens. And no Delivery button on an extended order that is already delivered (9 Oct, 13:26 to 16:28).
+*What we did.* Every item table (Opportunity, Quotation, Sales Order add, edit and view, the Extend grid) reads S.No, Category, Subcategory, Item, then the other columns; the Status column of the view moved to the end. Create, Delivery is not offered on a rental order once every unit is delivered.
+
+### 9 Oct, around 9:00 PM: Edit pages say Update; return method made clear
+**Where:** every module, every edit page
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* The button on an edit page should be Update, not Save, everywhere, to tell an edit from a new record. What is the difference between self-return and company collection (9 Oct, 10:00 to 11:01, 22:25 to 23:57)?
+*What we did.* Every page and dialog that edits an existing record now has Update; add pages keep Save, draft buttons are unchanged. On the customer return the method reads "Company Collection (our fleet or an external transporter)" or "Customer Self-Return (the client brings it to our yard)", and Company Collection is preselected, so the collection transport shows at once.
+*Be aware.* The existing ERP uses Save on edit pages; the POC follows Ajin here.
+
 ### 9 Oct, around 7:30 PM: Replacement Orders: view page, working search and filters, links to the Sales Order; Expiry column reads on its own
 **Where:** CRM / Sales > Orders > Replacement Orders
 **Where:** CRM / Sales > Orders > Renewals and Expiry

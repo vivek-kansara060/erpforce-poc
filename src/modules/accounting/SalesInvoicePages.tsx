@@ -230,7 +230,7 @@ export function InvoiceForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? `Edit ${existing.number}` : 'New Invoice' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/invoices/${existing.id}` : '/accounting/invoices')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/invoices/${existing.id}` : '/accounting/invoices')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromSo && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromSo.number}: {soLines.length} line(s) at the Sales Order price. Remove a row to leave it out; saving marks the lines invoiced on the order.</Alert>}
         {warn && <Alert severity="warning" sx={{ mb: 2 }}>{warn}. Warning only (rule to be confirmed with client).</Alert>}

@@ -78,7 +78,7 @@ export function QuotationForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: ex ? `Edit ${ex.number}` : 'Add Quotation' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/quotations')}>Discard</Button>{!locked && <Button variant="contained" onClick={save}>Save</Button>}</>} />
+      <FormHeader crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: ex ? `Edit ${ex.number}` : 'Add Quotation' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/quotations')}>Discard</Button>{!locked && <Button variant="contained" onClick={save}>{ex ? 'Update' : 'Save'}</Button>}</>} />
       <Page sx={{ pt: 2 }}>
         {locked && <Alert severity="info" sx={{ mb: 2 }}>This quotation is {ex!.status}. Use Create Revision on the view page to change it; the previous version is retained in full.</Alert>}
         {lineErr.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>{lineErr.map((m) => <div key={m}>{m}</div>)}</Alert>}

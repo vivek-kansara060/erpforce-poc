@@ -101,7 +101,7 @@ export function LocationForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Location', to: '/inventory/locations' }, { label: existing ? `Edit ${existing.name}` : 'Add Location' }]}
-        actions={<><Button variant="outlined" onClick={() => nav('/inventory/locations')}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav('/inventory/locations')}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <FormGrid>
           <TextInput label="Name" required value={f.name} onChange={set('name')} error={errors.name} />

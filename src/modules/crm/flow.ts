@@ -6,7 +6,7 @@ import { billCrossHirePeriod, billDisputeCharge, invoiceAdditionalCharge, billFr
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
   AMC_LIKE, amcLine, docTotals, expenseGross, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, vehicleFreeOn, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
-  type AdditionalCharge, type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type AdditionalCharge, type ReplacementOutcome, type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 /* Small collection helpers (modules share the same in-memory collections through the store). */
@@ -514,8 +514,10 @@ export function returnToSupplier(ch: CrossHire, dispute: number, reissueRef?: st
  * Replacement (8 Oct call, F12): started from the Sales Order. The new unit may be of another Category or Subcategory than the line (for example 250 KVA when 200 KVA is not
  * available) and gets its own Delivery Order. The old unit goes to maintenance, Critical after a breakdown, Routine otherwise (F10).
  */
-export function replaceAsset(i: { soId: string; lineId: string; oldId: string; newId: string; reason: string; priceAdjust: number; notified: boolean; crossHireId?: string; transport?: TransportInput; group?: string; category?: string; delivery?: { date: string; status: string; reference?: string } }): Replacement {
-  if (i.transport) assertTransport(i.transport, TODAY);
+export function replaceAsset(i: { soId: string; lineId: string; oldId: string; newId: string; reason: string; priceAdjust: number; notified: boolean; crossHireId?: string; transport?: TransportInput; group?: string; category?: string; delivery?: { date: string; status: string; reference?: string };
+  collection?: { mode: 'Same vehicle' | 'Separate trip'; date?: string; transport?: TransportInput; outcome: ReplacementOutcome }; priceListRate?: number }): Replacement {
+  if (i.transport) assertTransport(i.transport, i.delivery?.date ?? TODAY);
+  if (i.collection?.mode === 'Separate trip' && i.collection.transport) assertTransport(i.collection.transport, i.collection.date ?? TODAY);
   const o = getOrder(i.soId)!;
   const oldA = assetById(i.oldId)!;
   const newA = assetById(i.newId)!;
@@ -534,23 +536,41 @@ export function replaceAsset(i: { soId: string; lineId: string; oldId: string; n
     requestedSub: line.category, deliveredSub: category, siteReady: true, items: [{ lineId: i.lineId, qty: 1, assetIds: [i.newId], deliveredSub: category }], reference: dd.reference, location: whereIs(i.newId), operationType: 'Replacement', project: o.costCentre, transportedBy: i.transport?.transporter,
     vehicleNumber: i.transport?.vehicleId ? assetById(i.transport.vehicleId)?.plateNumber : undefined, mobile: i.transport?.mobile, salesperson: o.owner, replacementId: rid };
   put(COL.deliveries, d);
-  const rec: Replacement = { id: rid, number, soId: o.id, lineId: i.lineId, oldAssetId: i.oldId, newAssetId: i.newId, reason: i.reason, priceAdjust: i.priceAdjust, notified: i.notified, date: TODAY, crossHireId: i.crossHireId, by: ACTOR, deliveryId: did, group, category };
+  const outcome: ReplacementOutcome = i.collection?.outcome ?? (i.reason === 'Breakdown' ? 'Under Maintenance - Critical' : 'Under Maintenance - Routine');
+  const mode = i.collection?.mode ?? 'Same vehicle';
+  // 9 Oct call: the faulty unit comes back through a collection like a customer return (Collection Note, trip, Goods Receipt, yard inspection), but billing is not stopped.
+  const retId = uid('rt');
+  const collDate = mode === 'Separate trip' && i.collection?.date ? i.collection.date : dd.date;
+  const ret: ReturnEntry = { id: retId, number: rmaNo(), date: TODAY, customerId: o.customerId, soId: o.id, soNumber: o.number, source: 'sales order', shippingAddress: o.site, operationType: 'Replacement', salesperson: o.owner, entity: o.entity, reference: number,
+    currency: o.currency, exchangeRate: 1, narration: `Collection of ${oldA.assetId} for replacement ${number}`, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], status: 'Pending Receipt', approver: ACTOR,
+    items: [{ id: uid('ri0'), lineId: i.lineId, deliveryId: old.deliveryId, assetId: i.oldId, narration: i.reason }], grns: [], method: 'Company Collection', timestamp: collDate, offHireDate: TODAY, siteChecklist: [], photos: [], fuelNote: '',
+    transport: mode === 'Separate trip' ? i.collection?.transport : i.transport, replacementId: rid, keepBilling: true,
+    log: [log('Collection for a replacement', `${number}: ${oldA.assetId} replaced by ${newA.assetId}. Billing is not stopped, the line keeps billing through ${newA.assetId}`, 'blue')] };
+  put(COL.returns, ret);
+  const rec: Replacement = { id: rid, number, soId: o.id, lineId: i.lineId, oldAssetId: i.oldId, newAssetId: i.newId, reason: i.reason, priceAdjust: i.priceAdjust, notified: i.notified, date: TODAY, crossHireId: i.crossHireId, by: ACTOR, deliveryId: did, group, category,
+    returnId: retId, collectionMode: mode, outcome, priceListRate: i.priceListRate };
   put(COL.replacements, rec);
-  patchAsset(i.oldId, { assetStatus: 'Under Maintenance', maintenanceType: i.reason === 'Breakdown' ? 'Critical' : 'Routine', maintenanceRef: rec.number }, { title: 'Replaced and sent to maintenance', detail: `${rec.number}: ${i.reason}` }, { type: 'Sent for Repair', from: dest, to: 'Workshop: Al Masaood Service Centre', reference: rec.number });
+  patchAsset(i.oldId, { assetStatus: 'Off Hire - In Transit' }, { title: 'Replaced, to be collected', detail: `${rec.number}: ${i.reason}. Collection ${ret.number}, then ${outcome} after the yard inspection` });
+  const chOld = all<CrossHire>(COL.crossHire).find((c) => unitsOf(c).some((u) => u.assetId === i.oldId && u.stage === 2));
+  if (chOld) patchUnit(chOld.id, i.oldId, (u) => ({ ...u, stage: 3, condition: { notes: `Replacement ${rec.number}: collection ${ret.number}, yard inspection pending`, files: [], checks: [] } }), log(`${oldA.assetId} replaced, coming back to us`, `Collection ${ret.number}`, 'amber'));
   patchAsset(i.newId, { assetStatus: 'On Hire', crossHireIdle: false }, { title: 'Asset Status changed', detail: `Ready for Hire to On Hire (${rec.number}, ${d.number})` }, { type: 'Delivery', from: whereIs(i.newId), to: dest, reference: d.number, customer: custName(o.customerId), project: o.costCentre });
   const ch = all<CrossHire>(COL.crossHire).find((c) => unitsOf(c).some((u) => u.assetId === i.newId && u.stage < 2));
   if (ch) patchUnit(ch.id, i.newId, (u) => ({ ...u, stage: 2, soId: o.id, soNumber: o.number, lineId: i.lineId }), log(`${assetById(i.newId)?.assetId} allocated to ${o.number} as a replacement`, rec.number));
   const differs = category !== line.category || group !== line.group;
   saveOrder(o.id, (x) => ({
     ...mapLine(x, i.lineId, (l) => ({ ...l, assigned: [...l.assigned.map((a) => (a === old || (a.assetId === i.oldId && a.state === 'On Hire') ? { ...a, state: 'Replaced' as const, stop: TODAY } : a)), { assetId: i.newId, deliveryId: did, start: TODAY, state: 'On Hire' as const, extendedTo: old.extendedTo, extRev: old.extRev }] })),
-    log: [log(`Replacement ${rec.number}: ${oldA.assetId} out, ${newA.assetId} in`, `${i.reason}. Delivery Order ${d.number} created for the new unit. The invoice cycle is not paused by a replacement${i.priceAdjust ? `; price adjustment AED ${i.priceAdjust}` : ''}`, 'blue'),
+    log: [log(`Replacement ${rec.number}: ${oldA.assetId} out, ${newA.assetId} in`, `${i.reason}. Delivery Order ${d.number} for the new unit, collection ${ret.number} for the old one (${mode === 'Same vehicle' ? 'same vehicle' : 'separate trip'}). The invoice cycle is not paused by a replacement${i.priceAdjust ? `; price adjustment AED ${i.priceAdjust}` : ''}`, 'blue'),
       ...(differs ? [log('Allocation differs from the request', `Requested ${line.group} ${line.category}, delivered ${group} ${category}. Client documents keep the requested spec`, 'amber')] : []), ...x.log],
   }));
   // The original Delivery Order closes when the replaced unit was the last one still out on it.
   const after = getOrder(o.id)!;
   if (!after.lines.some((ln) => ln.assigned.some((a) => a.deliveryId === old.deliveryId && (a.state === 'On Hire' || a.state === 'Hold')))) patch<Delivery>(COL.deliveries, old.deliveryId, (x) => ({ ...x, closed: true }));
-  // One trip carries the new unit out and the old unit back; it is linked to the Delivery Order of the replacement unit.
-  if (i.transport) createTrip({ kind: 'Replacement', doc: { id: d.id, number: d.number }, soId: o.id, date: `${TODAY}T${dayjs().format('HH:mm')}`, ...i.transport });
+  // 9 Oct call: two legs. Same vehicle: one Replacement trip carries the new unit out and brings the old one back, linked to both documents. Separate: a trip for each.
+  if (i.transport) {
+    const tr = createTrip({ kind: 'Replacement', doc: { id: d.id, number: d.number }, soId: o.id, date: dd.date, ...i.transport });
+    if (mode === 'Same vehicle') patch<Trip>(COL.trips, tr.id, (x) => ({ ...x, alsoDoc: { id: ret.id, number: ret.number }, log: [...x.log, log('Also collects', `${oldA.assetId} on ${ret.number}, on the way back`)] }));
+  }
+  if (mode === 'Separate trip' && i.collection?.transport) createTrip({ kind: 'Collection', doc: { id: ret.id, number: ret.number }, soId: o.id, date: collDate, ...i.collection.transport });
   return rec;
 }
 
@@ -589,7 +609,7 @@ export function extendOrder(i: { soId: string; lines: { lineId: string; newEnd?:
       return { ...l, end: t.newEnd ?? l.end, price: t.newPrice ?? l.price, rateHistory: repriced && until ? [...(l.rateHistory ?? []), { until, price: l.price }] : l.rateHistory,
         assigned: t.newEnd ? l.assigned.map((a) => (a.state === 'On Hire' || a.state === 'Hold' ? { ...a, extendedTo: t.newEnd, extRev: rev } : a)) : l.assigned };
     }),
-    log: [log(`Revision ${rev}: extended to ${newEnd}${rateChanged ? ', rate changes ' + changes : ''}`, `${rec.number}. Confirmed by ${i.confirmedBy}. The previous version is kept under Revisions, no new order is created${rateChanged ? '. The new rate applies to the extension period only' : ''}`, 'green'), ...x.log],
+    log: [log(`Update ${rev}: extended to ${newEnd}${rateChanged ? ', rate changes ' + changes : ''}`, `${rec.number}. Confirmed by ${i.confirmedBy}. The previous version is kept under Update History, no new order is created${rateChanged ? '. The new rate applies to the extension period only' : ''}`, 'green'), ...x.log],
   }));
   return rec;
 }
@@ -686,6 +706,15 @@ export function validateReturnGrn(id: string, gid: string) {
     const damaged = it.inspection !== 'Passed';
     const chOf = all<CrossHire>(COL.crossHire).find((c) => unitsOf(c).some((u) => u.assetId === it.assetId && u.stage === 3));
     if (chOf) patchUnit(chOf.id, it.assetId, (u) => ({ ...u, condition: { notes: `${r.number}: ${it.inspection === 'Passed' ? 'inspection passed' : `damage found, ${it.damageNote ?? ''}`}`, files: [], checks: it.yardChecklist } }));
+    const repl = r.replacementId ? all<Replacement>(COL.replacements).find((x) => x.id === r.replacementId) : undefined;
+    if (!cross && !damaged && repl?.outcome === 'Ready for Hire') {
+      patchAsset(it.assetId, { assetStatus: 'Ready for Hire', crossHireIdle: false, maintenanceType: undefined }, { title: 'Inspection passed', detail: `${r.number}: no fault found, back to stock as chosen on ${repl.number}` });
+      return { ...it, outcome: 'Ready for Hire' };
+    }
+    if (!cross && !damaged && repl?.outcome === 'Under Maintenance - Critical') {
+      patchAsset(it.assetId, { assetStatus: 'Under Maintenance', crossHireIdle: false, maintenanceType: 'Critical', maintenanceRef: repl.number }, { title: 'Inspection passed', detail: `${r.number}: Under Maintenance (Critical) as chosen on ${repl.number}` }, { type: 'Sent for Repair', from: it.yard, to: 'Workshop: Al Masaood Service Centre', reference: repl.number });
+      return { ...it, outcome: 'Critical Maintenance' };
+    }
     if (cross) patchAsset(it.assetId, { assetStatus: 'Yard', crossHireIdle: true }, { title: damaged ? 'Damage found at inspection' : 'Inspection passed', detail: `${r.number}: stays at the yard, idle, for Return to Supplier. No maintenance for a cross-hired asset` });
     else if (!damaged) patchAsset(it.assetId, { assetStatus: 'Under Maintenance', crossHireIdle: false, maintenanceType: 'Routine', maintenanceRef: r.number }, { title: 'Inspection passed', detail: `${r.number}: Yard Inspection to Under Maintenance (Routine)` }, { type: 'Sent for Maintenance', from: it.yard, to: `${it.yard} (maintenance bay)`, reference: r.number });
     else patchAsset(it.assetId, { assetStatus: 'Under Maintenance', crossHireIdle: false, maintenanceType: 'Critical', maintenanceRef: r.number }, { title: 'Damage found at inspection', detail: `${r.number}: Yard Inspection to Under Maintenance (Critical)` }, { type: 'Sent for Repair', from: it.yard, to: 'Workshop: Al Masaood Service Centre', reference: r.number });
@@ -793,7 +822,7 @@ export function createTrip(i: { kind: TripKind; doc: { id: string; number: strin
 }
 /** A Delivery Order follows its trip: Packed until the trip starts, Dispatched while it runs, Delivered when it completes (the customer signature is still required). */
 const syncDelivery = (t: Trip, status: string, why: string, requireSignature = false) => {
-  if (t.kind !== 'Delivery') return;
+  if (t.kind !== 'Delivery' && t.kind !== 'Replacement') return;
   const d = all<Delivery>(COL.deliveries).find((x) => x.id === t.docId);
   if (!d || ['Delivered', 'Acknowledged'].includes(d.status)) return;
   if (requireSignature && !d.signature) { addLog(t.soId, log(`${d.number}: ${why}`, 'The Delivery Order is marked Delivered once the customer signature is captured', 'amber')); return; }
@@ -806,7 +835,7 @@ export function startTrip(t: Trip) {
   saveTrip(t.id, (x) => ({ ...x, status: 'En Route', since: stamp(), origin, log: tlog(x, 'Trip started', undefined, 'blue') }));
   // The vehicle leaves its yard: Movement History of the delivery vehicle.
   if (v) patchAsset(v.id, {}, { title: 'Trip started', detail: `${t.number} for ${t.docNumber}` }, { type: 'Trip', from: origin!, to: `Client: ${custName(t.customerId)}${t.site ? `, ${t.site}` : ''}`, reference: t.number, customer: custName(t.customerId), project: t.costCentre });
-  if (t.kind === 'Delivery') {
+  if (t.kind === 'Delivery' || t.kind === 'Replacement') {
     const d = all<Delivery>(COL.deliveries).find((x) => x.id === t.docId);
     if (d && ['Picked', 'Packed'].includes(d.status)) syncDelivery(t, 'Dispatched', `Trip ${t.number} started`);
   }
@@ -867,8 +896,10 @@ export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []
   const v = cur.vehicleId ? assetById(cur.vehicleId) : undefined;
   if (v && cur.origin) patchAsset(v.id, {}, { title: 'Trip completed', detail: `${cur.number} for ${cur.docNumber}` }, { type: 'Trip', from: whereIs(v.id), to: cur.origin, reference: cur.number, customer: custName(cur.customerId), project: cur.costCentre });
   if (cur.kind === 'Delivery') syncDelivery(cur, 'Delivered', `Trip ${cur.number} completed`, true);
-  if (cur.kind === 'Collection') {
-    const r = all<ReturnEntry>(COL.returns).find((x) => x.id === cur.docId);
+  // A replacement unit's Delivery Order has no customer signature step of its own.
+  if (cur.kind === 'Replacement') syncDelivery(cur, 'Delivered', `Trip ${cur.number} completed`);
+  if (cur.kind === 'Collection' || cur.alsoDoc) {
+    const r = all<ReturnEntry>(COL.returns).find((x) => x.id === (cur.kind === 'Collection' ? cur.docId : cur.alsoDoc?.id));
     if (r && !r.collection && !r.collected) patch<ReturnEntry>(COL.returns, r.id, (x) => ({ ...x, collected: `${TODAY} ${dayjs().format('HH:mm')}`, log: [...x.log, log('Collection completed', `Trip ${cur.number}: the assets are on their way to the yard. Receive them with a Goods Receipt`, 'green')] }));
   }
 }

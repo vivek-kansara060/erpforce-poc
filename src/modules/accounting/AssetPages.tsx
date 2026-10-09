@@ -175,7 +175,7 @@ export function AssetForm() {
   return (
     <>
       <FormHeader crumbs={[{ label: 'Assets Management', to: ASSETS_PATH }, { label: existing ? `Edit ${existing.assetId}` : 'Add Asset' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(existing ? `${ASSETS_PATH}/${existing.id}` : ASSETS_PATH)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(existing ? `${ASSETS_PATH}/${existing.id}` : ASSETS_PATH)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 3, alignItems: 'start' }}>
           <Box>{main}</Box>

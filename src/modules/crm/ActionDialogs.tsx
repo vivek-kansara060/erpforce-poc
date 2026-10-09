@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Box, Checkbox } from '@mui/material';
 import { Text } from '@/components/Text';
@@ -10,25 +10,6 @@ import { DateInput, FileInput, FormGrid, NumberInput, SelectInput, TextInput } f
 import { TODAY, cust, log, type Line, type LogItem } from './data';
 import { NEXT_STEP, fulfilLine, getLine, getOrder, invoiceOrderLines, raiseCrossHire } from './flow';
 import { MasterSelect, R, TO_CONFIRM, aed } from './shared';
-
-/** Expiry decision for the whole order (decision 2): Extend the SAME Sales Order (on its Extend page, as a revision), or Proceed to Return. */
-export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
-  const nav = useNavigate();
-  const [choice, setChoice] = useState('Extend the existing Sales Order');
-  useEffect(() => { if (open) setChoice('Extend the existing Sales Order'); }, [open]);
-  const so = getOrder(soId);
-  if (!so) return null;
-  const ret = choice.startsWith('Proceed');
-  const go = () => { onClose(); nav(ret ? `/crm/customer-returns/add?so=${so.id}` : `/crm/sales-orders/${so.id}/extend`); };
-  return (
-    <AppDialog open={open} title={`Client confirmation: ${so.number}`} onClose={onClose} confirmLabel={ret ? 'Proceed to Return' : 'Open Extend page'} onConfirm={go}>
-      <FormGrid cols={1}>
-        <SelectInput label="Client decision" required change="new" req={R.exp} value={choice} options={['Extend the existing Sales Order', 'Proceed to Return']} onChange={setChoice} />
-      </FormGrid>
-      {!ret && <Alert severity="info" sx={{ mt: 2 }}>The existing Sales Order is revised on its Extend page: change the dates and rates there, and the previous version is kept under Revisions. No new order is created.</Alert>}
-    </AppDialog>
-  );
-}
 
 export function NextStepDialog({ open, onClose, soId, lineId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
   const toast = useToast();

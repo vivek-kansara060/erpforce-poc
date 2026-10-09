@@ -88,7 +88,7 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
   const exp = expiryRows(d);
   const reports: ReportDef[] = [
     { slug: 'replacement-history', title: 'Replacement History Report', purpose: 'Full history of replacements, filterable by project, client and asset.', group: 'Rental', change: 'new', req: RR,
-      columns: [{ key: 'no', label: 'Replacement' }, { key: 'so', label: 'Sales Order (project)' }, { key: 'customer', label: 'Client' }, { key: 'out', label: 'Asset Out (to maintenance)' }, { key: 'in', label: 'Asset In' }, { key: 'reason', label: 'Reason' }, { key: 'date', label: 'Date' }],
+      columns: [{ key: 'no', label: 'Replacement' }, { key: 'so', label: 'Sales Order (project)' }, { key: 'customer', label: 'Client' }, { key: 'out', label: 'Asset Out' }, { key: 'in', label: 'Asset In' }, { key: 'reason', label: 'Reason' }, { key: 'date', label: 'Date' }],
       rows: d.rep.map((r) => { const o = d.orders.find((x) => x.id === r.soId); return { no: r.number, so: o?.number, customer: o ? custName(o.customerId) : '-', out: assetById(r.oldAssetId)?.assetId, in: assetById(r.newAssetId)?.assetId, reason: r.reason, date: r.date }; }) },
     { slug: 'cross-hire-frequency', title: 'Cross-Hire Frequency Report', purpose: 'How often a category is cross-hired, to guide future fleet purchase decisions.', group: 'Cross-Hire', change: 'new', req: RR,
       columns: [{ key: 'category', label: 'Group + Category' }, { key: 'count', label: 'Cross-Hire Requests', align: 'right' }, { key: 'cost', label: 'Supplier Cost', align: 'right' }, { key: 'revenue', label: 'Rental Revenue', align: 'right' }],
