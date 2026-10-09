@@ -5182,3 +5182,4292 @@
     @1:05:11 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
     
     Yeah, Okay. Yeah, thank you. Bye. Thank you, everyone. Thank you. Bye.
+    
+
+## October 5, 2026 1st half
+
+### Meeting with Ajin
+
+- Transcript
+    
+    # Impromptu Google Meet Meeting - October 05
+    
+    **VIEW RECORDING - 50 mins (No highlights)**
+    
+    @0:02 - **Darshit Maniar**
+    
+    On 17th, I'll be back, then on 18th, I have the match. Good job. Superb. Good, good. Feeling excited now, right?
+    
+    @0:19 - **Ajin**
+    
+    I feel that the first time I'm going to UAE, even though I'm just there for last 12 years, don't know, this is the first time I've been there.
+    
+    So, have you hired the house?
+    
+    @0:29 - **Darshit Maniar**
+    
+    No, no, that's why I was telling that one. Whenever I was going there, I have apartment flats, everything is there.
+    
+    Now, when I'm going, I don't have my car, I sold it, because the last six months I'm there, I sold it, apartment, I just canceled everything.
+    
+    @0:47 - **Ajin**
+    
+    So, now when I'm going, I am starting something like a new.
+    
+    @0:54 - **Darshit Maniar**
+    
+    Yeah, but my friends will handle that. Yeah, that is fine.
+    
+    @1:00 - **Vivek Kansara**
+    
+    But it's a new beginning.
+    
+    @1:02 - **Darshit Maniar**
+    
+    Hmm, seems like it. Yes. Okay. Hi guys, Vivek, Anurag.
+    
+    @1:11 - **Ajin**
+    
+    Good morning. Good morning.
+    
+    @1:13 - **Darshit Maniar**
+    
+    Hi, good morning. Morning, morning, Anurag.
+    
+    @1:17 - **Ajin**
+    
+    Okay, I believe that you have a couple of questions.
+    
+    @1:20 - **Anurag Jain (TRooInbound)**
+    
+    can shoot the questions. Yes.
+    
+    @1:22 - **Ajin**
+    
+    Couple of questions, especially regarding CRM module.
+    
+    @1:26 - **Anurag Jain (TRooInbound)**
+    
+    And just to inform you, we have implemented your feedback as discussed. And now Vivek will ask a few questions that he has regarding CRM module.
+    
+    Okay, let's go ahead.
+    
+    @1:40 - **Ajin**
+    
+    If you're sharing the stream, you can share. And then we can proceed. Sure, sure.
+    
+    @2:01 - **Vivek Kansara**
+    
+    Has it visible? Yeah, it's chartered, yes.
+    
+    @2:06 - **Ajin**
+    
+    Yeah, so I'm on the documentation.
+    
+    @2:09 - **Vivek Kansara**
+    
+    I have a main conclusion is that there is TRM module and rental module, both are documented in your document, right?
+    
+    @2:21 - **Ajin**
+    
+    Yes.
+    
+    @2:22 - **Vivek Kansara**
+    
+    You have also mentioned rental orders, delivery orders.
+    
+    @2:26 - **Ajin**
+    
+    Why I mentioned, as I told Vivek, because if I'm making everything on single sheet, because as I told that, CRM, we are not going for multiple screens like how we are doing right now.
+    
+    There is only one screen for CRM. Under the screen, there will be one activity. That activity will sort it out, what is the type we are doing.
+    
+    But while I'm writing the document, if I'm merging everything, it would be confusing. For me to write also, I'm not that much confident to write in that.
+    
+    So I explained in two areas, one related with the CRM, second one with the render. But while you are incorporating in the design, it should be one single screen.
+    
+    Okay, so I write the business model like that. Okay, so you are saying that?
+    
+    @3:17 - **Vivek Kansara**
+    
+    Yeah, continue, please.
+    
+    @3:19 - **Ajin**
+    
+    No, I was trying to tell that I'm not writing how the screen looks like. I was trying to explain you how the system should be.
+    
+    This is the document more about.
+    
+    @3:30 - **Vivek Kansara**
+    
+    Okay, okay, done. So you are saying that this CRM module is the, that will be a single one? Yes, it will be single one.
+    
+    So will the rental module then be accessed? Rental module, we don't need to keep it separate.
+    
+    @3:53 - **Ajin**
+    
+    We don't need to keep it as separately. We can make it in one single area. But rental reports and all, it will help it.
+    
+    that. that. Okay, keep it there, it's fine, but we need to incorporate everything in the single AD itself, in the CRM itself.
+    
+    Okay, okay. Why I am telling that rental, because for example, for a couple of people, related with operations, I can pass it in the rental module.
+    
+    For example, assume that I am a salespeople, I'm just doing from the CRM. After that, when I need to go to allocations, fleet management and other things.
+    
+    So I can allocate it, allocate those things in the, in the rental module, and then gives to the rental operation people.
+    
+    Okay, okay, okay, no issues.
+    
+    @4:40 - **Vivek Kansara**
+    
+    So, I'm assuming that via sales order, we are defining everything, like whether it is a rental, it is an AMC or whatever it is.
+    
+    So if we define it as a rental activity type, okay, so that order will be single, the delivery order will be record.
+    
+    The CRM model and other rental activities like cross hiring, reports, replacements, all of the things will be placed in the CRM model.
+    
+    So the lead, quotation, opportunity and the delivery orders, all of the things which are common will be placed in the CRM model itself.
+    
+    @5:26 - **Ajin**
+    
+    We can do like that. Now, just a second.
+    
+    @5:35 - **Vivek Kansara**
+    
+    Here, we have prepared that, like this is just in local. I haven't deployed it, but I have placed the activity type over here where the rental trading, fuel trading, AMC service and other things.
+    
+    Can you just scroll it above?
+    
+    @5:52 - **Ajin**
+    
+    Yeah, sure. ID, customer, but here also we are missing the entity. . . Entity, Entity first, because I may have multiple entities, I guess, company, company is there, but is it client or is it my company?
+    
+    **ACTION ITEM: Update CRM: Entity first; add Add Another; remove Fuel Trading; add FA Trading; add AMC Orders; implement rental line; connect service master - WATCH**
+    
+    @6:16 - **Darshit Maniar**
+    
+    It's an entity. Okay, you need to change the label to entity, and it should be the first. Yeah, and each and every firm, we had an entity.
+    
+    Yes, each and every firm, yeah, that should be at the first itself. Yeah, okay.
+    
+    @6:32 - **Vivek Kansara**
+    
+    Okay, so based on the end activity type, the rental is pretty much clear that we already have a rental and we are following the same operations, just the category and subcategory things, I mean, that is a difference.
+    
+    Okay, so let me explain the flow first.
+    
+    @6:51 - **Ajin**
+    
+    So when we choose the rental, okay, we are only choosing over here in the line items that using the but, uh...
+    
+    Yeah, the category, subcategory only. Prices also.
+    
+    @7:07 - **Vivek Kansara**
+    
+    Okay, yeah, prices, the monthly, weekly, that kind of thing.
+    
+    @7:10 - **Ajin**
+    
+    Yeah.
+    
+    @7:11 - **Vivek Kansara**
+    
+    And do we need to choose the item over here?
+    
+    @7:15 - **Ajin**
+    
+    Might be. Might be. Okay. Yeah, we can change. be item. Sorry, sorry, we wait to cut. Item in, item in the sense, what item?
+    
+    Inventory that you are asking? Fixed asset. Fixed asset. No, fixed asset. No need to, no need to. Only category and subcategory.
+    
+    Only category. What I was thinking that sometimes I need to add the item. For example, I'm telling that one, this quotation is for rending the material.
+    
+    Okay. 100 KV. Okay, what I will choose? I will choose the generator as the category. Subcategory, will choose that 100 KV.
+    
+    And then I will mention that one. What is the pricing list that we have?
+    
+    @7:58 - **Vivek Kansara**
+    
+    So we choose everything. Okay. Prices also comes there.
+    
+    @8:01 - **Ajin**
+    
+    And next question, what exactly I have, if it is rental, sometimes I'm giving some items also along with that one.
+    
+    For example, transportation, it is service charges. So I need to add some services also along with that one. Maybe I'm adding waiver charge, maybe I will add something like transportation, maybe I will add some expenses like what I was mentioning that one.
+    
+    Like this, the add equipment.
+    
+    @8:34 - **Vivek Kansara**
+    
+    Add equipment, I don't need it.
+    
+    @8:37 - **Ajin**
+    
+    Add equipment, that means the category and subcategory. So fixed asset.
+    
+    @8:43 - **Vivek Kansara**
+    
+    And the service charge. Service charge is required, yes, this is correct.
+    
+    @8:49 - **Ajin**
+    
+    And fuel trading.
+    
+    @8:53 - **Vivek Kansara**
+    
+    Or what do you have mentioned that? Fuel trading, why this is like that?
+    
+    @9:00 - **Ajin**
+    
+    Let's go in depth about that one. For example, you are sending the quotation. Can you add something like I'm sending 100 KVA generator?
+    
+    Okay, I'm the generator subcategory 100 KVA.
+    
+    @9:18 - **Vivek Kansara**
+    
+    Okay, so we will remove this item currently by choosing OA. Yeah, we can change that in the delivery order.
+    
+    This is pricing I believe.
+    
+    @9:29 - **Ajin**
+    
+    Okay, you can choose the pricing against that. Mm hmm.
+    
+    @9:33 - **Vivek Kansara**
+    
+    But okay, um, quantity, frequency, okay, here is the frequency. But frequency already along, along with the item I connected with that one.
+    
+    @9:48 - **Ajin**
+    
+    This one, right?
+    
+    @9:49 - **Vivek Kansara**
+    
+    Actually, this is item itself.
+    
+    @9:53 - **Ajin**
+    
+    I mean, fixed asset.
+    
+    @9:54 - **Vivek Kansara**
+    
+    Okay, okay. no, no, no, no, no, no, no, we were, we were, I thought it is, it is.
+    
+    @9:59 - **Ajin**
+    
+    Okay. Okay.
+    
+    @10:00 - **Vivek Kansara**
+    
+    Pricing, because you mentioned that one item pricing line, I said, yes, yes, yes, I will remove that, this one, this input will be removed, yeah, so the frequency, yeah, and start date and end date, I don't need to mention here, you can give it, give it here, but it should be at the front, okay, the main form, in the main form, in the main form, okay, for example, I may have, for the project, I'm asking, multiply, that's why I I can, I can change it here, that is fine, but usually there should be a heading at the first, what from date and end date, start date and end date, and it should auto, auto fetch here, okay, okay, yeah, I will, okay, let me, okay, let me save it, and, and this description can,
+    
+    So what is the description that it is mentioned there?
+    
+    @11:05 - **Ajin**
+    
+    There is one one area description. can see this one?
+    
+    @11:11 - **Vivek Kansara**
+    
+    No, no, no. Yeah, yeah, yeah, yeah. This this one will be showing on the on the screen, right?
+    
+    @11:19 - **Ajin**
+    
+    On the main screen? Not on the main screen in the printout. This one will be showing right? Okay, okay.
+    
+    Yeah, sure. Okay, so this. So you need to change something like this will be at the top. So I need to choose the category.
+    
+    First of all, the line should be like category, subcategory, that is fine. After that one pricing, then this pricing list after that one, there should be a description.
+    
+    So it will be it will be make it as match itself. Yeah, sure. Yeah, it's a text area with a match character.
+    
+    Okay, so I can write as many as content as I required because I will have A lot of specification contents or something, whatever it is, it should save there and then UOM and quantity, that's it.
+    
+    Automatically the pricing, everything, frequency, those things will be showing down, that is fine, but always keep whatever I need to type, it should be on the top, frequency, can be down, start date and end date, it can be down because automatically it is fetching.
+    
+    If I record, I can scroll it and change, okay, do you know the logic? Yes, yes, yes. Okay, and FOC also, you can keep it at the top itself, because I don't want to come down in order to click this FOC, because while in the price itself, you can keep a functionality FOC.
+    
+    If FOC is there, I don't want to put the rate, you can make it a zero itself, okay, likewise, okay, you can save it.
+    
+    Okay, so I have saved that. Okay, fine. And how I can add the next line? Again, I need to click add.
+    
+    Yes, yes, yes. Instead of that one, we can do one thing. If I need to, you click, can you go to the right side?
+    
+    And can you click edit? Yeah, sure. Okay, for example, if you are adding something along with the seed, you can give one more button, add button.
+    
+    So automatically, the item will show you again, same like this one. So I can create multiple item. If it is saved, you can close it.
+    
+    So I don't want to go outside. And again, I need to click add button, then same dialog box, we can reduce the time, right?
+    
+    What do you think?
+    
+    @13:48 - **Vivek Kansara**
+    
+    Yes, yes, yes, yes, you're right. But in that case, we have to give a drop down or something because there is three things we can add.
+    
+    Yes, that you can set itself.
+    
+    @13:57 - **Ajin**
+    
+    Yeah, yes, that you can that you can give. But if it is activity type is rental, why I need to add fuel trading here?
+    
+    Because I believe that when we discussed that one. You only asked, I was writing that I required service fuel trading also here.
+    
+    But last time when you communicated, you were telling that one, okay, if it is fuel that you're selling, that should be separately.
+    
+    Separate. Yes, yes, yes. That's why it was confusing. Yes, was, I guess, mystically added here.
+    
+    @14:34 - **Vivek Kansara**
+    
+    For me, it is happy. But for the logic purpose, you can think about that.
+    
+    @14:39 - **Ajin**
+    
+    No, I also think, I also think about that. Why this has kept over here.
+    
+    @14:46 - **Vivek Kansara**
+    
+    Yes.
+    
+    @14:47 - **Ajin**
+    
+    Maybe due to my document, in my document, I was mentioned like that. Okay, yeah, yes, yes, yes.
+    
+    @14:52 - **Vivek Kansara**
+    
+    Yes, and like also in the previous call, before we discussed, before we log this option, we
+    
+    @15:00 - **Anurag Jain (TRooInbound)**
+    
+    We that sometimes heavy coupon and fuel trading goes together and which is why this happened, but we'll keep in mind and remove it.
+    
+    @15:08 - **Vivek Kansara**
+    
+    No problem.
+    
+    @15:09 - **Anurag Jain (TRooInbound)**
+    
+    I was insisting to keep it same in the screen itself, but you were telling that one, it will be difficult to track.
+    
+    @15:16 - **Ajin**
+    
+    Yes, because of billing and invoicing flow. Yes, yes. Okay, go ahead, please. Yeah, so the second option is the add service and charges.
+    
+    @15:26 - **Vivek Kansara**
+    
+    Okay, where I can add the service charges because I'm thinking about the master form.
+    
+    @15:34 - **Ajin**
+    
+    Master form. Yeah, I'm very because here. Yes. No, no. When you click the service charge, it is fitting from somewhere, right?
+    
+    Oh, okay. From where it is fitting?
+    
+    @15:52 - **Vivek Kansara**
+    
+    No, currently it is not fetching from anywhere. We can directly add that like whatever. out on the Okay, I'm asking that one.
+    
+    For example, this, this, you drop down?
+    
+    @16:06 - **Ajin**
+    
+    Close. Can you, no, no, this item, can you, here it is delivery, charge, return, charge, damage, waiver, there is something.
+    
+    @16:14 - **Vivek Kansara**
+    
+    Okay, there will be a list of information where I can see here, right?
+    
+    @16:18 - **Ajin**
+    
+    From where it is fetching. Is it our service master or is it something separately that we are adding?
+    
+    @16:23 - **Vivek Kansara**
+    
+    Yes, currently it is separately like a delivery charge, return charge. And I mean, no, we haven't implemented anything like service item or no.
+    
+    Yes.
+    
+    @16:37 - **Ajin**
+    
+    Any item is something like that one. You can keep some there. Okay. Service masters, service master.
+    
+    @16:45 - **Vivek Kansara**
+    
+    You mean the item will be connected over here? Not the service item or anything?
+    
+    @16:52 - **Ajin**
+    
+    No. Can you go our system? We have one service master there. In inventory? In inventory. Can you go? Can our demo version or something?
+    
+    Yeah, sure. I was asking that, is it same? Can you go to the inventory? Yeah. Inventory.
+    
+    @17:12 - **Vivek Kansara**
+    
+    Under the inventory, can you go to the product item?
+    
+    @17:17 - **Ajin**
+    
+    Product management? Second one.
+    
+    @17:24 - **Vivek Kansara**
+    
+    Second one.
+    
+    @17:26 - **Ajin**
+    
+    And then item. Can you drop down that all item? All. And there is one service. Yes. Are we going to connect it here?
+    
+    This is the, this is my question or similarly somewhere I need to, I need, I need to connect it because I need to see the listing.
+    
+    @17:48 - **Darshit Maniar**
+    
+    Okay. So these are all that service, whatever that service we can use, right? Yeah.
+    
+    @17:54 - **Ajin**
+    
+    Similarly, we can, we, we need to see that one because sometimes I need to change. I need to change the description.
+    
+    I need to change some. So whatever you are preparing in that drop-down, same like this one, there should be a ServiceMaster.
+    
+    Okay, so we can use the ServiceItem.
+    
+    @18:09 - **Darshit Maniar**
+    
+    Okay, that is completely fine. Yeah, so I was asking like, do we need to define types of services since Weaver is a completely different type of service?
+    
+    Because it has downstream effect.
+    
+    @18:26 - **Ajin**
+    
+    Weaver is also a service, while we are creating the ServiceMaster, there should be some condition that we need to mention.
+    
+    Okay, is it a waiver charges or something? So logic how you are preparing, you need to prepare like that.
+    
+    @18:38 - **Anurag Jain (TRooInbound)**
+    
+    Yes, and then there we will have to put fields that is relevant to waiver, like how much exactly is the waiver and like...
+    
+    Anurag Jain, I am not asking you to keep it same like what the ServiceMaster did.
+    
+    @18:51 - **Ajin**
+    
+    I was trying to tell, similarly like that one, you need to show me a table, then I can see the list of information.
+    
+    @18:59 - **Darshit Maniar**
+    
+    Sure. So we will connect this service item master.
+    
+    @19:04 - **Vivek Kansara**
+    
+    So service items will be listed over here instead of this fixed delivery charge or return charges. Again, Vivek, I don't have any demand that use the same service master what we have.
+    
+    @19:14 - **Ajin**
+    
+    Maybe you can change as per how the logic that you require because you know that one what is service charges and adopting that our waiver charges, maybe insurance or maybe some other things we will be charging monthly weekly like that.
+    
+    that one or yearly we will charge for numsum we will charge. can connect all this logic inside this one, but give me a master file.
+    
+    Okay. Okay.
+    
+    @19:42 - **Darshit Maniar**
+    
+    So I think it's required some modification in service item so we can keep it is the same, but there are some bit modification required for service to handle this scenarios.
+    
+    Yes.
+    
+    @19:57 - **Ajin**
+    
+    So you can, again, when you, when you. Preparing in your mind, any drop down or something, think that first of all, there should be a master, there should be a list view, I can see, don't drop down like this one, and click Add button, I know that when this is just a design, but keep it in your mind, my next question always will be, where is the list?
+    
+    @20:20 - **Vivek Kansara**
+    
+    Okay, so if, if we go with the same, these of things, I mean the delivery charge and all of this, we have to prepare the master of all of this, all of this, oh yeah, okay, okay, so it's our choice that we, we have to use that service item, or we can go with this, fixed charges, but we are able to add the new ones, yes, exactly, okay, okay, thank you, and, okay, recurring, so if we choose recurring, but I don't need, I don't need to show it here.
+    
+    @21:00 - **Ajin**
+    
+    I can fetch it from the master itself. can create two. That is what I was trying to do. If it is a waiver charge, I can mention that waiver recurring or waiver one time waiver lump sum, I can create multiple service charges.
+    
+    If I'm choosing there, it will automatically come in there. Based on the master.
+    
+    @21:23 - **Darshit Maniar**
+    
+    Based on the master.
+    
+    @21:25 - **Ajin**
+    
+    So it will help me to reduce the selection over here. Because think that one.
+    
+    @21:31 - **Vivek Kansara**
+    
+    If I'm creating in the master, this is one time job.
+    
+    @21:34 - **Ajin**
+    
+    If I'm selecting always, that means all time job. So we can reduce the clickability.
+    
+    @21:41 - **Vivek Kansara**
+    
+    Always think in that. We need to reduce the clicks and we can just do it.
+    
+    @21:45 - **Ajin**
+    
+    Because here you can see, if it is recurring, it is monthly. Frequency will be monthly only. Why I need to add separately.
+    
+    Because if this particular quotation is always asking for frequency monthly, the frequency will be monthly itself. Okay. So those logic, we need to auto-fetch.
+    
+    So according to the frequency, it will automatically fetch the required billing. Again, I will tell. For example, waiver charge.
+    
+    Waiver charge, we mentioned that when we create two service master, one waiver charge monthly, one waiver charge lump sum.
+    
+    That is okay. So if I'm mentioning as a recurring one in the master, when I'm choosing that, automatically system should take that one.
+    
+    It is recurring. And frequency should be taken based on what the quotation it is made. For example, if it is weekly quotation, then this waiver charge frequency also will be weekly.
+    
+    Okay. Because if it is weekly, never ever the client will go for monthly waiver charge. So it should be auto-connected, auto-fitch.
+    
+    And I don't need start date, end date, like these things, because I've already written there. I want to choose it here.
+    
+    And delivery, commitment, expected shipping, because this is service test, why I need to deliver something. Yes.
+    
+    @23:23 - **Vivek Kansara**
+    
+    So I guess the form, it has been cloned automatically.
+    
+    @23:27 - **Darshit Maniar**
+    
+    Yes, it is cloned automatically.
+    
+    @23:29 - **Ajin**
+    
+    So we need to think about what we are delivering, based on that, we need to clone it. Sure, sure.
+    
+    And service charge is not replaced one. So we don't need to add the replacement cost there. Yep. And I don't need department narrations here.
+    
+    Description should be there, but I don't need department at all, because department I already connected there, in the master, in the screen itself.
+    
+    @23:51 - **Darshit Maniar**
+    
+    Why I need to do it in the item master level.
+    
+    @23:54 - **Ajin**
+    
+    Yep. If the quotation is prepared for ABC entity. Thank Item will not be changing for ABT, HYC, which are also the same asset, then why I need to choose it there.
+    
+    So some of the things we can reduce, or we can remove it. Sure.
+    
+    @24:16 - **Vivek Kansara**
+    
+    Okay.
+    
+    @24:19 - **Ajin**
+    
+    Okay, FOC, we can keep it. But the logic we can change, FOC, asset will be trapped, because it is not asset.
+    
+    So we start this, always something like amount. FOC is okay. I guess it has cloned the exit.
+    
+    @24:39 - **Darshit Maniar**
+    
+    problem. I understood. For the easiness, you cloned it, but I was trying to tell the logic. Correct. yeah, yeah.
+    
+    Sure.
+    
+    @24:46 - **Vivek Kansara**
+    
+    And yeah, I just have to inform you that this is not the final design. I have prepared it in local.
+    
+    @24:54 - **Darshit Maniar**
+    
+    No problem. You can change it. Okay.
+    
+    @24:57 - **Ajin**
+    
+    Go ahead.
+    
+    @25:00 - **Vivek Kansara**
+    
+    yeah so yeah um yeah so the rental item will be uh i mean we will remove this uh the service charge will be there and with them um yeah pro suggested changes and uh yeah my next next question is that um if we choose amc yes right uh currently i have something yeah there is no delivery order or uh something with yes right no delivery only the milestone we will connect it and from the milestone we are what we what we created is we same like the rental order we will have one head amc orders so operations team will go to the amc and they will see what is the visit so for example i will click that first visit record visit i will record it and against that i can
+    
+    @26:00 - **Ajin**
+    
+    created a job card. Job card. Job card in the sense, what is the activity I'm doing? Same like how we are doing, it is same like our delivery order itself.
+    
+    So what are the services that we created against that? will add, okay, for example, I allocated some service charges, I allocated some materials, I already allocated something, and these all are having some invoices.
+    
+    For example, this is $25,200. If I'm splitting that $25,000, these six, four times, that means each will have some value.
+    
+    For example, $5,000 or $5,250, it will be going for each AMC, right? Yeah. And then if I'm adding some service items or consumables, I need to add it there, and I need to give to the client that I consumed that one.
+    
+    I cannot directly tell that, okay, I take some filters or something like that. Not possible, right? I need to record it somewhere.
+    
+    So, currently, as we don't have any flow for AMC in the, I mean, the fields and all of the, in our system, as well as in the document, yeah.
+    
+    **ACTION ITEM: Implement AMC: Job Card (no routing); AMC orders; consolidated report; split billing; project/cost center - WATCH**
+    
+    But in the document I've mentioned, right?
+    
+    @27:16 - **Vivek Kansara**
+    
+    Yeah, you have mentioned, but the form, I mean, how the form or how the view page will be of this particular AMC already have, in our manufacturing, we already have our job card.
+    
+    Same, you can replicate.
+    
+    @27:29 - **Ajin**
+    
+    For the AMC orders? Yeah, for the AMC orders. Okay, just a second. In our manufacturing, we have job card.
+    
+    Go to the manufacturing, go to the job card. Can you click add or something? Okay, can you click anything?
+    
+    Okay, fine. So, this is something like a job card. So, you can keep it, anything. You can add material.
+    
+    Avoid the routing. Okay. Because we don't need routing. can take the same. All the information is here. Because I have ID, I have entity, can just take the, instead of items or something, you can add, which is our AMC code, and what is the basic numbers and all.
+    
+    can take the same strings, some speak you can do, and you can do it. And then against this job card, I can do the invoice.
+    
+    Okay.
+    
+    @28:19 - **Vivek Kansara**
+    
+    So this main item will be the, I mean, this generator. It's exactly right. Not generator.
+    
+    @28:27 - **Ajin**
+    
+    I mean, actually. The item itself, AMC annual contract like. Yes. Yes, yes. Yes. And the materials will be whatever.
+    
+    @28:36 - **Vivek Kansara**
+    
+    Material. It will be there.
+    
+    @28:39 - **Ajin**
+    
+    So I can add the material, or I can add the services, what I'm doing for there. Yeah, correct.
+    
+    @28:45 - **Vivek Kansara**
+    
+    So the materials will be, which is used in that particular service or in visit. Yes. And it will be always considered as a project itself.
+    
+    @28:55 - **Ajin**
+    
+    AMC will be a project. It will be a cost center. So at any moment. It be I I can go and check against this particular AMC as a project, how much I got, how much I consume, how much I get the revenue, and what is my profit.
+    
+    @29:11 - **Vivek Kansara**
+    
+    Okay. So currently there is four planned AMC, I mean visits. So each of them have individual AMC order record?
+    
+    @29:21 - **Ajin**
+    
+    Chop card. Yeah, chop card. So each individual have a different chop card. Yes. Okay. Okay. Okay. But I need to have a consolidated also.
+    
+    For example, if I need to submit to my client against this AMC, what all things I do. So I can mention that one.
+    
+    Okay. These all are the dates, planned visit, these all are the job card, these all are the consumables I incurred, this much cost, this much sales invoice raised.
+    
+    So some consolidation should be there. Okay. Okay. Okay. But you can, we can. So, we can adopt our existing screens.
+    
+    Sorry? We can adopt our existing screens also. Yeah, yeah, yeah. Sure. And, Ajin, I have one question.
+    
+    @30:15 - **Vivek Kansara**
+    
+    I think you mentioned in the earlier call, during AMC visits, the stock from the location would be transferred to a van or car location, and then the AMC will consume from the car or van location, correct?
+    
+    @30:29 - **Anurag Jain (TRooInbound)**
+    
+    Yes, that is our location, location tracking.
+    
+    @30:33 - **Ajin**
+    
+    Yes, so we need to figure out a way to, you know, transfer the stock to van and, like, use it.
+    
+    We already have the functionality. We don't need to do anything. If you go to the, if you go to the, our inventory, can you go to the operations, locations, locations, I can create as many as locations as it is here.
+    
+    @30:59 - **Anurag Jain (TRooInbound)**
+    
+    Okay.
+    
+    @30:59 - **Ajin**
+    
+    Okay. Okay. can create a car or something like that. Now go to the stock transfer. In the stock transfer, I can do something like that one.
+    
+    @31:07 - **Vivek Kansara**
+    
+    can transfer from my main location to stock location. But what you need to change the logic, only one thing.
+    
+    @31:14 - **Ajin**
+    
+    Who is the assigned person? I need to assign that because currently we have under the location, I have supplier also we connected.
+    
+    Last time you showed me against a supplier, we are connecting with some location. Similarly, I can connect with employees also.
+    
+    You can add with employee. Okay, for example, Ajin, I have a location, ABC location. So here what I can do, for example, AMC is allocated to Ajin.
+    
+    Then the consumption can be selected from my location. So you want a particular location to be tagged with an employee.
+    
+    @31:53 - **Vivek Kansara**
+    
+    Yes, not every employee, but to some service employees.
+    
+    @31:57 - **Ajin**
+    
+    And do we need to keep the flexibility? Yes, and our location would be only tagged to an employee.
+    
+    @32:05 - **Vivek Kansara**
+    
+    can be tagged to multiple employees.
+    
+    @32:07 - **Ajin**
+    
+    Anyone, please. Can you mute anyone?
+    
+    @32:15 - **Vivek Kansara**
+    
+    Yes, totally understand.
+    
+    @32:18 - **Anurag Jain (TRooInbound)**
+    
+    Yes, so my question is, you said the location would be uniquely tagged to an employee. My question here is, can it be multiple employees or it can be only singular employees?
+    
+    Like a car or van location would be tagged to Vivek only. Sometimes Anurag can also use, like there will be scenarios, right?
+    
+    @32:40 - **Ajin**
+    
+    Fine, because he can give the flexibility, let the client decide. But why are we giving the employee a location?
+    
+    Because it will be more convenient for them to ask the question. For example, if ABC is the location Darshit and Ajin use, okay, for the consumption, to whom?
+    
+    It should be asked to Darshit or to Ajin. There is an ambiguity there. Okay. So for the time being, we will keep it uniquely tagged to a singular location.
+    
+    @33:10 - **Anurag Jain (TRooInbound)**
+    
+    No.
+    
+    **ACTION ITEM: Update Inventory: add Employee location type; tag to multiple users; restrict dropdowns - WATCH**
+    
+    @33:12 - **Ajin**
+    
+    Give to multiple employees. That will be much convenient. You don't want to change the code. All right. We will do that.
+    
+    Yeah. Let's do one small thing. Whenever you're in location, you were asking that supplier. Instead of supplier, ask a question that supplier or employee.
+    
+    If it is supplier, I can choose the supplier. If it is employee, I can choose the employee. So it can save over time.
+    
+    @33:37 - **Anurag Jain (TRooInbound)**
+    
+    And I assume this would affect stock count in inventory too.
+    
+    @33:41 - **Ajin**
+    
+    Like it will give you an option on yard, supplier yard, or the car or van location, something like that.
+    
+    No need to change anything like that. Instead of location type, on yard or supplier yard, right? Instead of supplier, we can give one more film, employee.
+    
+    On Yard, Supply Allocation, and Employee. If it is Employee, instead of Supply, what we are choosing, I can choose the employee, that we can adopt.
+    
+    @34:21 - **Anurag Jain (TRooInbound)**
+    
+    Got it.
+    
+    @34:21 - **Vivek Kansara**
+    
+    Got it. Any other question?
+    
+    @34:25 - **Ajin**
+    
+    Yeah, just a second.
+    
+    @34:33 - **Vivek Kansara**
+    
+    So, the AMC records will be listed over here, in the CRM itself. Maybe we can give AMC orders.
+    
+    @34:42 - **Ajin**
+    
+    Same like our rental orders, you can give AMC heading, that is also fine for me. Over here, in the module, or in the sidebar.
+    
+    In the same module, can give AMC orders. Correct.
+    
+    @35:03 - **Vivek Kansara**
+    
+    And these AMC items will be kept from the inventory itself? In the inventory itself, inventory masters. So currently, currently what we did that whenever you add the product classification, we put the product classification in the inventory items where you can choose this is a normal inventory item.
+    
+    This is AMC fuel trading or a normal trading item?
+    
+    @35:32 - **Ajin**
+    
+    No need for trading and inventory. Always inventory will be trading itself, right? Okay. Okay. Feature assets only we need to have the mismatches.
+    
+    Okay. So the trading item will be the normal inventory item itself? Yes. Okay. So AMC fuel trading and trading.
+    
+    Three options. So whenever we create the AMC orders in that only the AMC items will be listed down.
+    
+    @35:59 - **Vivek Kansara**
+    
+    Yes. Okay, perfect. Now, the last question is about the fuel trading. But fuel trading is also a simple bit.
+    
+    @36:17 - **Ajin**
+    
+    It is also a trading itself. Okay, no, no.
+    
+    @36:22 - **Vivek Kansara**
+    
+    I am just clarifying the thing that if we choose the fuel trading, then it will be like the normal inventory or normal trading operations.
+    
+    Yeah, we can choose the fuel trading items and then create a delivery order and deliver it. Correct.
+    
+    @36:37 - **Ajin**
+    
+    Only one thing that I will be choosing. Okay, if it is a fuel trading, I can choose it from my own yard or from my supplier yard.
+    
+    @36:46 - **Vivek Kansara**
+    
+    Or my supplier yard. Okay. For example, one simple logic. Vivek, you asked me for 100 gallons.
+    
+    @36:54 - **Ajin**
+    
+    Okay, maybe and you are in Abu Dhabi. Assume that Darshit is my supplier. I already have... A thousand gallon with Darshit.
+    
+    So Darshit is in Abu Dhabi. I'm not checking about Abu Dhabi or something. Maybe even Darshit can be in Dubai and he can deliver.
+    
+    But I'm asking that Darshit, can you deliver to Vivek? So what my question is, when I'm doing this delivery orders, I can assign from which location it should be going out.
+    
+    @37:20 - **Vivek Kansara**
+    
+    So I can choose, okay, Darshit location is going out and Darshit will be delivering. But in that case, I need to mention that what is the delivery order?
+    
+    @37:29 - **Ajin**
+    
+    Because Darshit, his own delivery order. Because when Darshit is delivering to Vivek, Darshit have an ERP system, Darshit will do a delivery order to Vivek, right?
+    
+    So this delivery order, Darshit will share to me. So somewhere I need to note that when this is Darshit delivery order.
+    
+    Because if any mismatches, okay, I'm giving a statement to you, Vivek. Vivek, I'm giving a statement. Vivek, I'm giving statement.
+    
+    Vivek doesn't know that one, Darshit shared to you. Vivek is dealing with Ajin. Okay. Do you understand? So Vivek will not ask Darshit, okay, where is my stroke or where is my count or something.
+    
+    Vivek will always asking Ajin. But have another connection with Darshit, Darshit will tell you. So I need to have a tracking for that.
+    
+    Okay, got that.
+    
+    @38:36 - **Vivek Kansara**
+    
+    Just a second, have one last question in my mind. Yeah, you can.
+    
+    @38:42 - **Ajin**
+    
+    I will tell you the logic also, because that will also help you. Why I am telling this logic, because for example, oil and gas industry, because everyone will not get the access permissions or something to go inside to deliver.
+    
+    Yeah. Maybe I will be dealing with things with my I don't, I might not be getting the pass. Maybe Darshit will have the pass.
+    
+    So I will align with Darshit to do that. Correct. Okay. That's why we got this information from the suppliers.
+    
+    In a lot of cases, we will be like that. Okay. Got it.
+    
+    @39:21 - **Vivek Kansara**
+    
+    Before wrapping up, one last question is that everything will be finalized on the delivery order, right? So we can change the items and everything.
+    
+    I mean, if it is, if it is trading, I can lock it at the same time itself.
+    
+    @39:36 - **Ajin**
+    
+    For example, if it is spare parts or something, I can allocate it at the time of inventory itself. Same like our normal trading, spare parts, such type of things.
+    
+    But if it is asset, Anurag, can I complete and then you can ask, is it okay? No, no, no, you can go ahead.
+    
+    I'll ask after.
+    
+    @39:57 - **Vivek Kansara**
+    
+    Okay. For example, if it is general,
+    
+    @40:00 - **Ajin**
+    
+    If sales or a fixed asset sale, then we are allocating at the time of delivery. Okay. Okay, so flow will be same for fixed asset trading.
+    
+    If it is normal trading, then for example, have, it's not fixed asset, it is in my inventory, I'm selling the inventory to the customer.
+    
+    So I can allocate at the time of delivery, same like how we have right now, no changing losses. Okay.
+    
+    Okay. Okay.
+    
+    @40:35 - **Vivek Kansara**
+    
+    So for only fixed assets, we can finalize it on the delivery order, but for normal inventory operations like the trading and fuel trading, we can decide it on the sales order itself.
+    
+    Sales order itself. Okay. order.
+    
+    @40:53 - **Ajin**
+    
+    Okay. So is there a category or subcategory logic in that, or we can directly choose?
+    
+    @41:00 - **Vivek Kansara**
+    
+    We can directly choose the item itself, no need to select a category and subcategory, it will only exist in the fixed asset, the rental section, not rental section, fixed asset sales also, okay, okay, fixed asset, I can sell the fixed asset or I can rent this fixed asset, in both cases, this category logic will be there, okay, okay, so, just a second, currently, how we can sell the fixed asset, as we don't have the activity type, we have the trading, fuel trading, can you go to, can you go to the activities once again, just a second, okay, where it is locked, maybe we can, we can,
+    
+    @42:00 - **Ajin**
+    
+    Make an activity, something like, okay, for example, featured assets, first one, featured asset rental, or keep it as rental itself, and featured asset trading.
+    
+    Okay. We can make it featured asset trading. And then field trading and normal trading, you can just mention it as normal trading itself.
+    
+    Okay. Perfect. Then this logic will be much more easy, I believe. Yeah. Perfect. Okay. Yeah. That is clear to me.
+    
+    Okay.
+    
+    @42:29 - **Anurag Jain (TRooInbound)**
+    
+    Okay.
+    
+    @42:29 - **Vivek Kansara**
+    
+    So what we will do is, currently, we have designed the orders, but yeah, there is a few changes in that, as well as, first, we will prepare it for the rental.
+    
+    Okay. Okay. And then we will go for the AMC.
+    
+    @42:45 - **Ajin**
+    
+    Okay. Because both have separate connections, and both have a separate, I mean, designs, and all of the things, yes, for those.
+    
+    Yes. But trading, you don't need to change anything. We already have the trading. Yes. Yes. Yes. Yes. Yes. Yes.
+    
+    Yes. Yes. Or maybe of a normal trading, you don't need to change anything. can keep the same site, you can just replicate.
+    
+    But only thing what you need to change is for the fixed asset sale and also fixed asset rental. But both are same itself.
+    
+    The same doesn't change. Correct. And the EMC?
+    
+    @43:17 - **Vivek Kansara**
+    
+    The EMC will be separated. Yep. The end of the workflow will be changed.
+    
+    @43:23 - **Ajin**
+    
+    Okay. Yeah, Anurag, do you have any questions? Yes. Ajin, just give me 10 seconds.
+    
+    @43:31 - **Anurag Jain (TRooInbound)**
+    
+    I need to ask something. Just a minute.
+    
+    @43:46 - **Darshit Maniar**
+    
+    Ajin. Yes. Have you discussed digital signature with Ankit? Noted. So I think we need to pass it to him.
+    
+    **ACTION ITEM: Schedule 1:30 PM follow-up w/ Ajin + Darshit re: digital signature - WATCH**
+    
+    Yes. We can make it. Yeah, we can make it both. Yeah. Can we connect post-lens? Yeah, fine. I have a meeting after this.
+    
+    @44:14 - **Ajin**
+    
+    And after that, I have a meeting. Yeah, sure, sure. will be almost 1.30.
+    
+    @44:19 - **Darshit Maniar**
+    
+    At that moment, we can connect. Yeah, yeah. No worry. Yes, Anurag.
+    
+    @44:25 - **Ajin**
+    
+    One last question that we have. And this is just for confirmation. We are currently tagging every employee to our own yard location.
+    
+    @44:33 - **Anurag Jain (TRooInbound)**
+    
+    Do we need to tag employees to supplier-held location too? Or do we need to keep it as if?
+    
+    @44:43 - **Ajin**
+    
+    I was saying, currently, as per our discussion in the call, we are taking every employee to our location. Right?
+    
+    So that is own yard location.
+    
+    @44:55 - **Darshit Maniar**
+    
+    Do we need to tag employee to supplier-held location also?
+    
+    @44:59 - **Anurag Jain (TRooInbound)**
+    
+    No, no,
+    
+    @45:00 - **Ajin**
+    
+    It is not like that. For example, I am creating a location. Assume that location A, B, C. And this location, I have an option that what is the type of location.
+    
+    Is it Onyard? Is it Supplier? And again, one more option you can add, it is Employee. And then, if it is Supplier, there is an option to connect the Supplier from the list.
+    
+    Just, if it is Employee, change the label that Supplier to Employee. And there, connect with my Employee Master, not Employee Master, connect with my User IDs.
+    
+    I don't want to see all the employees. If an employee is choosing, that means it is going to our User IDs only.
+    
+    Okay, makes sense. I may have thousands of employees, but thousands of employees, I don't want to show them. If the employee is delivering something, that means I can connect only with my User
+    
+    @46:00 - **Darshit Maniar**
+    
+    all right we'll do that that is also employed got it is it clear yeah i guess everything is clear okay then we can connect it here second half and then yeah yeah we will connect yeah yeah definitely okay thank you thank you before wrapping up sorry uh little uh have you conformed about this uh call centers or still having issues because i saw a couple of emails from you both side uh yeah last one point uh we had uh in discussion point regarding to that uh how how we handling that uh uh cost center in each and every module like uh sales invoice uh purchase invoice like that so initially we have discussed regarding to that coa request
+    
+    If it is a CEO having a cost center, then we will apply, but Kartik confused with either we can put with line item, line level, or with only account level, so this is the niche to only leave it with the account level, because if it is a sales invoice, I don't want to go with item master level, I need to go with the account level.
+    
+    Actually, we are just thinking about that, it is put in with the line level, or maybe in like purchase or sales invoice level, then it should everywhere, we need to put that drop down, and it is getting more effort to manage everywhere, so this is why we are just thinking twice.
+    
+    What you can do is simple way, always, in project management, there is a lucid type one, whenever I am choosing a project,
+    
+    It will go line-wise and also by top level. But always top level is the mandatory thing.
+    
+    @48:07 - **Ajin**
+    
+    If I need to change anything on the particular line, I can go and change. For example, I will tell you simply, I'm going for a purchase.
+    
+    Usually the purchase is taking against a project. If I'm selecting the project at the header level, then I'm telling that all the item is going to specific projects itself.
+    
+    But if I'm not choosing against the header level, if I'm going by tab level, by item level, then I can choose that.
+    
+    Okay, ABC item, it is for project A. XYC project item, it is going for project B. I can specify that one.
+    
+    Then the cost in this is defining that one. ABC cost will be allocated against project A. XYC project item is allocated against the project B.
+    
+    **ACTION ITEM: Finalize cost center design (header mandatory, line optional) - WATCH**
+    
+    This is a normal standard. Hmm. Okay, so you can defend it.
+    
+    @49:03 - **Darshit Maniar**
+    
+    Yeah, I will conclude this too by today. But if you recruit me, over them. Sure, sure, definitely. Okay, thank you.
+    
+    Yeah, thank you. Thanks for your time. Thank you. Thank you, everyone. Thank you. Thank you.
+    
+    @49:19 - **Vivek Kansara**
+    
+    Thank you.
+    
+
+## October 5, 2026 2nd half
+
+### Meeting with Ajin
+
+- Transcript
+    
+    # Heavy rental module discussion - October 05
+    
+    **VIEW RECORDING - 71 mins (No highlights)**
+    
+    @0:26 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    All right, back to you, Luke. Hello? Is call? Anurag Jain, the call? Hello? Hey, Ravaj, come on. Hello?
+    
+    @2:28 - **Anurag Jain (TRooInbound)**
+    
+    Hello. Thank you. you. Vivek Bhai, Am I Audible? Yes.
+    
+    @5:56 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Hello. Hello.
+    
+    @6:02 - **Anurag Jain (TRooInbound)**
+    
+    Are you?
+    
+    @6:05 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Fluctuate. you? Hmm.
+    
+    @6:10 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    don't I'll you a minute. No, I'll to stay stable. Are you?
+    
+    @6:19 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    No, no, it's fluctuate. I've changed. Okay.
+    
+    @6:46 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Hello. Hello.
+    
+    @6:53 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Are you? Yes. If you give me a call with Nishit, me five minutes.
+    
+    @7:34 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Nishit, it's a second call. Okay, first all, I'm posting more.
+    
+    @7:39 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Maybe.
+    
+    @13:08 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Anurag Jain, it's recorded and there's some issues on recording. Hi, how are you? Good, can we start? Yes, yes we can.
+    
+    @13:25 - **Ajin Babu (ERPForce)**
+    
+    Good afternoon, Niralnath.
+    
+    @13:27 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Good afternoon.
+    
+    @13:28 - **Anurag Jain (TRooInbound)**
+    
+    I'll share my screen now. Okay. So, as discussed, in the morning, we have made changes in CRM module, like the rental flow.
+    
+    i'll show you the rental flow as well so i'll go ahead and i will create a lead and here as you can see we have the activity type also the new activity type which
+    
+    you told on the call earlier in the morning, that fixes it trading.
+    
+    @14:05 - **Ajin Babu (ERPForce)**
+    
+    This is the form like currently exists in our ERPForce already.
+    
+    @14:12 - **Anurag Jain (TRooInbound)**
+    
+    So we have taken the fields from there. Address is also there and the contact is also there. The fields are same from the existing CRM.
+    
+    Only those fields which you mentioned or which the dot mentions, only we have touched those only.
+    
+    @14:29 - **Ajin Babu (ERPForce)**
+    
+    So I'll move on to opportunity now. This is the opportunity listing screen.
+    
+    @14:37 - **Anurag Jain (TRooInbound)**
+    
+    And I'll go ahead and create an opportunity. Now here, entity, first entity.
+    
+    **ACTION ITEM: Update Opportunity: rename 'Entity' to 'Entity'; remove LPO; add Opportunity Title search - WATCH**
+    
+    @14:46 - **Ajin Babu (ERPForce)**
+    
+    Okay. Yes. Okay. Okay. We'll do that. I think we have missed that.
+    
+    @14:55 - **Anurag Jain (TRooInbound)**
+    
+    I will change the name to entity and I will put it first. um one can select a customer then opportunity title the project and uh they can also put the statuses called warm hot lpo number lpo dead location site but lp lp number will not come here okay lp number will come only on the same sort of sales order all right and uh it will be derived from somewhere or manually entered manually entered okay all right we'll remove the lpo number from here and put in the sales order form okay go ahead all right so um now um we'll move on to quotation okay all right but but industry and all other details it is there right um yes i think everything is there yeah
+    
+    all right crn is not required for ue i believe it is it is for ksa we go for the crn okay let's go ahead okay i will click on the add button now now one can select the opportunity here or convert from the opportunity as discussed and the activity type is rental here that is can i search it with the opportunity opportunity title um yes simon we can do that we will implement that yes it should be there i yes i i have an opportunity title because uh sometime uh sometime what i will do i will just search my opportunity type and based on that i can duplicate so you want to search via opportunity type on both opportunity and quotation quotation yes all right we'll do that yes so we have
+    
+    **ACTION ITEM: Update Quotation: remove Opportunity ID/ID Number; add Opportunity Title search; keep Activity Type open - WATCH**
+    
+    @17:00 - **Ajin Babu (ERPForce)**
+    
+    Entity here, and the other things are auto-faced. But again, again here, some of the fields that I don't require here, because this ID number, ID number, it is not required.
+    
+    @17:12 - **Anurag Jain (TRooInbound)**
+    
+    Opportunity ID, because it is duplicating these two areas here. Opportunity title, okay.
+    
+    @17:18 - **Ajin Babu (ERPForce)**
+    
+    That you can keep it in my activities. We are wasting the spaces. Got it. So we need to keep only opportunity title.
+    
+    Okay, if you, if you, can I, can I share one UI design, just, just for your purpose, just, just one, just let me, let me share my screen, but I'm not trying to tell that one, follow the same thing, but I'm just trying to give you one insight.
+    
+    For example, if I'm going for a, going for, you can see my screen, right? Hello? Yes, yes, yes.
+    
+    @17:57 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Okay, so, um, this is the screen, which
+    
+    @18:00 - **Ajin Babu (ERPForce)**
+    
+    Which me and Ankit developed, for example, here, you can see that one, some of the major information, we kept it at the top itself, for example, this is the project ID, but I am not wasting my space project ID there, for example, if I'm creating new estimations also, you can see that one, I'm not wasting the space or something like that, it kept somewhere high on the top, I'm just entering the project like that one and the screen and then I'm moving.
+    
+    Yes, I understand. So what you can do is, if you're mentioning about the new estimation, you can kept at the top estimation, and then activity type, you can mention as random.
+    
+    Now, if you are mentioning here in this space, then I'm wasting my space, wasting my ender spaces. All right.
+    
+    Do you understand what I mean? So that helps me a lot in this. Okay, yes.
+    
+    @19:04 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    But Ajin, currently we have not yet implemented this entire new design system.
+    
+    @19:12 - **Ajin Babu (ERPForce)**
+    
+    But I believe that you are working with our cloud itself, right, and the design systems. But cloud is provided only with HTML and components.
+    
+    @19:19 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    It is not reusable component what we have developed. So the design system is ready with the cloud only. But we need to convert into that what module we have, what component we are going to use, that reusability, how much property and how much method we need to require and get that confirmation and everything.
+    
+    So these are that everything is not there in this design system. I already discussed this with Naidu, not Naidu, Amkit.
+    
+    @19:55 - **Ajin Babu (ERPForce)**
+    
+    Because he is just preparing this, this is just a simple working application.
+    
+    @19:59 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    that a idea. I Thank html what currently we are just produced from that system so this entire system we need to convert from different module different package wise we need to handle that that I'm not that was detail into the development cases yeah I was I was trying to yeah I was trying that is currently what we try to present here that is based on currently what our package is developed with this design so based on that we have just produced so if you wanted something related to like a spacing and don't be required filter that we can do that but but you can you can show this design to neither ones because definitely definitely but before before developing this thing and daily yeah because he he might have some idea to do that how it will be because now if the design system if we are 这个音量
+    
+    **ACTION ITEM: Send prototype to Naidu for design review - WATCH**
+    
+    Following the same thing, we cannot, uh, because we are following with that, whatever the current, our structure, based on that, we are just following, like, this is just a prototype, what we are just, can you share this prototype design to Naidu once before?
+    
+    Yeah, yeah, we are developing a lot, so he checked, check this, this is just a wireframe, you cannot say it's, uh, same as we have just developed, but yeah, it is same as, but you can, uh, pick it, uh, HRMS, or, uh, pick up here, like, rental module, so, wherever, Yes, HRMS also, Naidu was telling that one, our design is not that much cool, because now he, uh, seeing this, uh, clouded design, that is why, because cloud provide that design, but it is, convertible is, convert, conversation is a different thing, completely, no worry, we will discuss, uh, on that.
+    
+    Have a discussion at earlier, because rather than late, discussion at earlier, mostly today or tomorrow, I will close this point.
+    
+    Okay, thank you. Anurag, can continue. Okay, yes.
+    
+    @22:22 - **Anurag Jain (TRooInbound)**
+    
+    So, here are the rotation fields.
+    
+    @22:28 - **Ajin Babu (ERPForce)**
+    
+    Yeah, only one suggestion, Anurag, you can see here a lot of fields, it is hidden.
+    
+    @22:33 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    It is wasting my space also.
+    
+    @22:37 - **Ajin Babu (ERPForce)**
+    
+    Because I don't have any, any logic to have the opportunity, an endell activity, a customer. Rendell activity, can, you can, because at the time of opportunity, I may don't have that much information about Rendell or something.
+    
+    But opportunity, activity type, I'm adding the most information. You can keep it open. Thank you.
+    
+    @23:13 - **Anurag Jain (TRooInbound)**
+    
+    So this is the contact type, can select contact type, contact start that as well for the rental, and let's say I selected this, and I'll add the equipment, we have removed the fuel trading as discussed earlier in the call in the morning, one can select this, and the pricing, now UAM quantity FOC is there, as discussed, can you click FOC, yes, hit on discount rate, no discount, nothing, can just mention, I'm just a little bit worried that when it will go for the negative, okay, okay.
+    
+    **ACTION ITEM: Add Add button on Charges master; open modal for new charge - WATCH**
+    
+    well we'll do that and uh one can save and hit another from here only as you mentioned in the feedback that one has to go out and then hit again so one can do that one can add also a service charge so these are the service charges but plus the prospect is gone now add new button go now okay so you want uh add button here as well every master file records it exactly okay okay we'll put a add button here and upon clicking that add button it will open the model for the charges to be defined all right so here are the charges and yeah we have kept foc here as well in this service charge as well is it fine okay fine yep but the same logic oh yeah same logic
+    
+    No Payment, but only Tracing, as in Trackability. One can save. Right now, I have to fill everything. So I'm moving on to Sales Order.
+    
+    So here is the Sales Order screen. And one can create a Sales Order from an Approved Quotation. And here is, I have got all the details from the quotation.
+    
+    And I'll just create order from this. The order is created. Now, if I want to... What is the line?
+    
+    you... Okay, go ahead.
+    
+    @25:44 - **Ajin Babu (ERPForce)**
+    
+    Yeah. Okay. I'll do a delivery from here. And I can add a delivery order here as well. Right.
+    
+    @25:57 - **Anurag Jain (TRooInbound)**
+    
+    And this, everything is taken from... existing system, and this order changed fields, which has changed level, right, and let's say this is the generator, this is the part that you mentioned very strongly during our requirement gathering session, that during the delivery, one can change a specific, one can choose and change a specific generator or their type, right, so, was mentioning that, okay, I'm not changing the entire quantity here, yes, what, what, I believe that will be following 100 KB, so, same 100 KB should be there in the item itself, all right, so, one cannot change any subcategory here, you are saying that, no, no, no, while I'm tracing, I can do that, okay, okay, but, okay, but, the same category can be changed, right, yeah, same category, all right, subcategory, I can go for anything, but, I need it,
+    
+    @27:00 - **Ajin Babu (ERPForce)**
+    
+    What I was asked and what I delivered. Got it. Understood.
+    
+    @27:06 - **Anurag Jain (TRooInbound)**
+    
+    Now one can select the transport type on fleet and external transporter.
+    
+    @27:12 - **Ajin Babu (ERPForce)**
+    
+    But my question now, how I will understand?
+    
+    @27:15 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Now the delivery happened, right? Now I'm placed at one.
+    
+    @27:18 - **Ajin Babu (ERPForce)**
+    
+    How I will know that one which is available? Manually I need to see? As in the fleet availability you are talking about?
+    
+    Yes, fleet availability. Now I need to see that you are allocating the transportation. here. Okay. On or external? There is a question.
+    
+    But I need to see that one which is available. I have 1020 fleets away. Is there which is available?
+    
+    How I will know? Do I need to remember? Yes, I understand.
+    
+    @27:45 - **Anurag Jain (TRooInbound)**
+    
+    So currently we have not like prepared a fleet management right now in the in this POC. So once we are working on that, we will show you this part two that how it works out in the entire process.
+    
+    @27:58 - **Ajin Babu (ERPForce)**
+    
+    And to be frank, what I required it, fleet, from here I need to open something like a dashboard, which is, I need to have a view, vision, how, which is available, which is not available, what is the status, the filter should be there, so available fleet I'm checking, then from there I'm clicking, then automatically the details should be auto-fetched.
+    
+    Okay, so as I'm understanding it, like this will show you the details of which fleet is available, and you can choose a fleet from there, and once it is selected, it will auto-fetch the relevant details of that fleet.
+    
+    **ACTION ITEM: Update Delivery Order: auto-fetch Project; allow same-category subcategory change; add Transporter (supplier) + cost - WATCH**
+    
+    Exactly, if it is external, I need to do manually those entries, and then transported by, it should be a supplier, and transportation cost also need to be mentioned, because this is my cost of the project.
+    
+    Yes, I think this is already here, I suppose, external cost. Transporter, but transported by, because, okay, this is secondary thing, for example, now I need to understand against which supplier it is happening, I have a vendor, against the vendor only, I am choosing the money, because I need to give payback to the supplier, that is one case, I need to do something else also, whatever the things that I have, I need to add it here.
+    
+    Okay, noted. And can you go upward? Yes. Yes. As you mentioned, core center, that's where I was thinking, can you just go ahead, above, above, where is the project?
+    
+    Okay, above? Yes, where is the project? Project is missing, because once we come back to the, because in quotations and all, we have project, once it comes here, the project is lost.
+    
+    Okay. Which be careful. Yeah, because. Yes.
+    
+    @30:00 - **Anurag Jain (TRooInbound)**
+    
+    You mentioned down, that is correct only, what it is, it is there, because issued to the project and all.
+    
+    @30:10 - **Ajin Babu (ERPForce)**
+    
+    Yes, it will auto-fetch from the previous. And I don't need to show it like this one, it is just for your reference, I just showed it.
+    
+    Okay. In the document, I was showing that one for explaining what is the logic. Yes, yes, certainly.
+    
+    @30:29 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay, now another question.
+    
+    @30:33 - **Ajin Babu (ERPForce)**
+    
+    Yes. At this point, if you check my document, I was telling that one, can you go down? Yes. Okay.
+    
+    No, no. In the item level, asset level. sure. Okay. Now I have this generator. But at this moment only, I understood that one, this company need ROG also.
+    
+    Need what?
+    
+    @30:57 - **Anurag Jain (TRooInbound)**
+    
+    ROG. ROG. Yeah. God.
+    
+    @30:59 - **Ajin Babu (ERPForce)**
+    
+    Thank Wow. Great ROPE. Okay. Okay. Any other additional inventory items you mean? Inventory or as feature asset or anything.
+    
+    Yes. Anything with addition to the current things. Yes. But usually if it is, if it is payable, I will go directly with the sales order itself.
+    
+    But sometimes due to my relationship, you know, that generator will have a barricade or something like that one to cover up there.
+    
+    **ACTION ITEM: Add FOC inventory/fixed-asset lines to Delivery Order; track traceability - WATCH**
+    
+    Okay. The client is telling that one. Okay. Send me this one also. I'm not taking any additional charge. I'm adding as a delivery.
+    
+    So there should be an option to add delivery directly here. But I need to have a track what they asked, what delivered, how much you delivered.
+    
+    Okay.
+    
+    @31:48 - **Anurag Jain (TRooInbound)**
+    
+    So you want an option to add in normal inventory items here in the line items with the main item they are requesting and the delivery order and traceability for the scene.
+    
+    Yes. Yes. Okay. Sometimes it is a asset also.
+    
+    @32:03 - **Ajin Babu (ERPForce)**
+    
+    Or OP is also a feature asset to me. Okay. I'm directly mentioning in the item level what is the category, subcategory, and then mentioning exactly the information.
+    
+    Okay. That can be also done here. Okay.
+    
+    @32:22 - **Anurag Jain (TRooInbound)**
+    
+    So this would only include the normal inventory items or you want the AMC or anything like that? no, nothing, nothing, nothing.
+    
+    @32:30 - **Ajin Babu (ERPForce)**
+    
+    Only this one. inventory, normal inventory. fix the set and normal inventory item. Yes. Again, Anurag, I don't know why you are mentioning only the items on the sales order can be developed.
+    
+    UL level fuel was not captured. This is the sentence that I prepared for you in the document. I don't want to show it in the screen.
+    
+    @32:52 - **Anurag Jain (TRooInbound)**
+    
+    Yes. This is just for reference as in this is a POC. So we can, you know, easily hide them by using.
+    
+    This, you know, we have like, we can change everything. So if you want, we will remove all this notes.
+    
+    @33:07 - **Ajin Babu (ERPForce)**
+    
+    This is just for our understanding as well as your understanding from where the things are derived from. So it gives a little bit of hint since the system is quite big.
+    
+    Okay, I can understand, but I'm someone, something like a cat falls on a hot water. Why I'm telling the same?
+    
+    Because Darshit know better than me. Because on the thermos, I'm suffering a lot of things to change. After that one, when it comes to the delivery, the problem, problems will stay.
+    
+    @33:41 - **Anurag Jain (TRooInbound)**
+    
+    Okay, so that's why I'm mentioning that while preparing the screen, please mention that one.
+    
+    @33:47 - **Ajin Babu (ERPForce)**
+    
+    Because once you did the screen, and I approve, once it comes on the screen, then you will refer same to the screen itself.
+    
+    I didn't POC is there, you can see. I cannot tell anything. Yes, I The difficult position you are having.
+    
+    No, I'm more flexible, but these type of things you need to take. Yep, yep. So what we'll do, we'll hide these dialogues, and we'll turn on them only when it is needed.
+    
+    **ACTION ITEM: Hide POC notes; add '?' tooltips on item fields - WATCH**
+    
+    @34:20 - **Anurag Jain (TRooInbound)**
+    
+    We'll put a button or something for the scene. So to make it easy for you and for us as well.
+    
+    @34:26 - **Ajin Babu (ERPForce)**
+    
+    Oh, or otherwise, give a question mark or something there.
+    
+    @34:29 - **Anurag Jain (TRooInbound)**
+    
+    I mouse over there, then I can see this information. That is also there.
+    
+    @34:33 - **Ajin Babu (ERPForce)**
+    
+    Yes, I mean, we can do that.
+    
+    @34:35 - **Anurag Jain (TRooInbound)**
+    
+    can, maybe text color can be different so anyone can understand this is not the actual I don't want to show as it is at the time.
+    
+    @34:45 - **Ajin Babu (ERPForce)**
+    
+    Maybe in the items, you can give a question mark. If I'm tooltip over there on the question mark, I can see this information.
+    
+    Yes, yes. Yeah, we can do that. Like a help menu.
+    
+    @34:57 - **Anurag Jain (TRooInbound)**
+    
+    Yeah, we can do that. We'll do that. Okay, let's go ahead. now you, do you understand what is the logic in the transportation I require?
+    
+    Yes, kind of the availability of the fleet and once selecting the fleet will auto-patch everything from the fleet itself.
+    
+    @35:15 - **Ajin Babu (ERPForce)**
+    
+    So once we, you know, do the fleet management thing, we can, you know, go to this screen once again to ensure that we are aligned.
+    
+    Okay. Yes. So I'll move on to saving this. Okay.
+    
+    @35:32 - **Anurag Jain (TRooInbound)**
+    
+    But here you do, do some, can you go down?
+    
+    @35:35 - **Ajin Babu (ERPForce)**
+    
+    Go down, go down, go down. Description and attachments. Delivery condition attachments, FOC zero pricing. Can you explain about this, this area?
+    
+    I think this were in the documents. And this, this was, I was thinking to attach about the. Uh. Uh.
+    
+    Other items, photographs is about the one, pictures what we are delivering, that is fine, attachment. E-signature is okay, but F4C items is zero, still track, this was the same thing I was asking for, plus add button there.
+    
+    Okay, like add button for F4C, do you mean?
+    
+    @36:31 - **Anurag Jain (TRooInbound)**
+    
+    No, no, was trying to tell that one, the delivery, at the delivery time, I got some other requirements, which I'm giving for free, how I will trace.
+    
+    @36:42 - **Ajin Babu (ERPForce)**
+    
+    Yes. So I was telling that one, give a button plus, and the plus, I can choose exactly the category, generator, quantity, and then while trace, I can allocate the traceability items.
+    
+    Yes.
+    
+    @37:00 - **Anurag Jain (TRooInbound)**
+    
+    So you want, you want, is discussed, you want other items in this form as well, right? Yes, there might, yeah, there might be a chance.
+    
+    Yeah, let's say I need, I need 500 meter wire so I can add this with the generator as well, right?
+    
+    Yes, yes.
+    
+    @37:17 - **Ajin Babu (ERPForce)**
+    
+    That will be a separate line itself because I need a separate line itself, but invoice together, right? But invoice, yeah, that you can give a separate because FOC items also need to be mentioned there, give flexibility because while we are typing the print, maybe we will include FOC, are, we not included.
+    
+    @37:38 - **Anurag Jain (TRooInbound)**
+    
+    So perhaps we can include the FOC in the line item only, so one can click tick mark FOC, and that particular item would be considered as FOC, rest of the items will be charged as usual.
+    
+    Yes, got it. Same like how we showed in the quotation, quotation, while I'm raising the item itself or selecting the item itself, you've given a tick mark over there.
+    
+    So same same level you can give it here a separate item need to be added understood so yes so this is the delivery order and like we can you know fully delivered the order after this there is crosshair flow but we are still working on it right so but crosshair crosshair should be done from the sales order yes yes we will do that and I think maybe we have already put oh yes here is the crosshair button so we have put it like this but still we are working on it so you know still there is a lot of brainstorming and everything but no don't keep like this button here it is looking very very ugly yes it's a little bit clunky and I understand
+    
+    We'll find out a way to iterate this.
+    
+    @39:04 - **Ajin Babu (ERPForce)**
+    
+    Okay, if I'm going for crosshair, only one item, the same like how you're given for edit or other button, give a button like dodge, and then if I'm clicking that one, there is an option for crosshair, something like that one you can adopt.
+    
+    Don't use this method. And I don't know what is the pending for delivery, then there is a button like deliver.
+    
+    What is that?
+    
+    @39:26 - **Anurag Jain (TRooInbound)**
+    
+    This is exactly showing that this particular sales order is pending delivery, and like one can do the deliver delivery from here only.
+    
+    But we will explain more in the next poll, like this is, this section is still under. But this is not the logic.
+    
+    @39:45 - **Ajin Babu (ERPForce)**
+    
+    From the sales order, I can do delivery directly. Yes. do need to go for one by one delivery? Yes, which is what it is happening right now.
+    
+    @39:56 - **Anurag Jain (TRooInbound)**
+    
+    No, I mean, sorry, just a minute. Let's say that. This is the sales order, right? And one can do the delivery, right?
+    
+    Only from here. now we have come to deliver. I don't need like that one.
+    
+    @40:07 - **Ajin Babu (ERPForce)**
+    
+    Why you need to do delivery one by one? Maybe I am sending multiple items on the same delivery order.
+    
+    @40:14 - **Anurag Jain (TRooInbound)**
+    
+    Got it. So you want, yes, on the whole level, just like it works right now.
+    
+    @40:18 - **Ajin Babu (ERPForce)**
+    
+    Yes. Maybe I can remove it. That is fine. It is my description that I can do delivery one items or multiple items.
+    
+    **ACTION ITEM: Update Sales Order: move Print to Actions; add template selection; hide Queue Delivery - WATCH**
+    
+    Yeah, multiple is there, here only. We have done that. And I don't know whether the queue delivery is required there.
+    
+    @40:33 - **Anurag Jain (TRooInbound)**
+    
+    Okay, leave the queue delivery as hidden. We can keep the delivery option. Because I need the traceability over there.
+    
+    @40:41 - **Ajin Babu (ERPForce)**
+    
+    Okay. Okay. Now, we have one more thing. At very, very first itself. Can you create that action button? Action button towards the right?
+    
+    Yes, yes. Okay. Now, Now, Pinduction. I don't need this for induction like this one. I may have 10 formats for the sales order.
+    
+    How I will choose? Noted. We will remove this. No, I'm not to remove. Pinduction should be there. I need to select the type which I'm going.
+    
+    We need to find a logic for that one. Okay. Yeah. Perhaps selecting template or something else. Yes, exactly. Selecting templates.
+    
+    Okay. We'll do that. Yes. All right. And not only for the sales order, for every and every screen, for the lead, opportunity, quotations, for any of the printouts in this multiple module.
+    
+    We have multiple templates. I need to choose the multiple templates. All right.
+    
+    @41:51 - **Anurag Jain (TRooInbound)**
+    
+    So, apart from this, we have also prepared AMC orders. Shall I go ahead and show you?
+    
+    @41:58 - **Ajin Babu (ERPForce)**
+    
+    Yeah, you can. You can go ahead. Yeah. So this is the AMC order screen.
+    
+    @42:03 - **Anurag Jain (TRooInbound)**
+    
+    To create an AMC order, you need to select an opportunity. When one selects the opportunity, they need to select entity, opportunity title, cost-centered project, and all the relevant fields, right?
+    
+    And one can get this AMC as well. But AMC...
+    
+    **ACTION ITEM: Fix AMC mapping; update AMC: show Project; add split logic, Invoice/Payment, Actual Date, Job Card print/upload, Edit, Generate Invoice - WATCH**
+    
+    @42:26 - **Ajin Babu (ERPForce)**
+    
+    Okay. Okay. Wait, wait. I think I misclicked on some screen. Oh, yes. Okay. Clicked. It goes to open your quotation again.
+    
+    I think. Mapping is wrong. Yes, I think the mapping is wrong.
+    
+    @42:48 - **Anurag Jain (TRooInbound)**
+    
+    It's fine. You can show me later also. But connected in a proper way in the AMC level itself.
+    
+    @42:55 - **Ajin Babu (ERPForce)**
+    
+    Yeah, I'm not sure it will. Let me see. But anyways, I'll show you an existing AMC.
+    
+    @43:00 - **Anurag Jain (TRooInbound)**
+    
+    So one can click on this, and then they can see all the information, and they can create job card for the AMC, and this is just a high level overview for your feedback, we are still working on this, so if you have any high level overview or any feedback that we are completely going wrong, or anything you might point us in the right direction.
+    
+    @43:26 - **Ajin Babu (ERPForce)**
+    
+    Can you open that AMC orders one second, just to see, previously sales order, okay, stop it, AMC items, AMC period, now where you mention about the project, because I need the project also here, okay, the customer, and then the sites, and then, I think project is, oh, okay, okay, sorry, I didn't see that one, okay, keep it as project details, okay, then LPU, entity, finds site, order status, okay, plan visits, okay, values plated, how the values plated, but the boarder, know
+    
+    I need to see because because how I how it is that is that is important for me because if if I have a 20,000 a month how it will be split yes yes so how that that logic we need to build first of all and second second of all you already prepared this job cut GC something like that one what is the status is it paid is it invoice created with such type of information invoices should be there and one more thing is payment status also should be there okay okay so that that is also visit a plan date okay what is the plan date what is the actual date my plan date is on 16th but what is my actual date I think the actual date there is we can from the job card from the job card you need to take okay my plan date is something like 27
+    
+    Of October, but I visited by number 10. So we need an option to get the actual date. No need to option.
+    
+    We just need to take the data from the job card. Can I go back to the same sort Okay.
+    
+    Now I'm creating the job card. For example, it is mentioned by 8.16.27. Okay. If I click job card today, so today's date will be showing us actual once I submit.
+    
+    What is the date?
+    
+    @45:30 - **Anurag Jain (TRooInbound)**
+    
+    Yeah, date will be featured from the date of card.
+    
+    @45:33 - **Ajin Babu (ERPForce)**
+    
+    Okay. And we'll automate. Yes. Fetch from there on. Got it. So, and the project should be carry forwarded here.
+    
+    It is not showing here. And then the material. Add material. Okay. Fine. The cost will be there. Going down.
+    
+    Okay. Services perform. Okay. Fine. That is also clear. And it is mentioned. But do one thing. Make a general sentence.
+    
+    What is that? don't Job Activities we mentioned there, because there will be some description that we mentioned against the job card, usually I need to do that process every month, along with that, this material consumption and service consumption is something like new, but even though if these two things is also not there, I need to do my standard process, job card need to be created, and against this one, I need to take a printout option also, because I need to get it signed, and upload to this system itself, so don't go like this one, this is something like different, our architecture is not like that one, so there should be a create button, there should be create the job card, there should be action button, then there should be generate button, from the generate button, I can create the invoice.
+    
+    But here, from the job card, I need to mention that one, what action button should be there, it is missing, I can edit also, while I do consumption, there is journal also, because my inventory is getting off, that means financially it is hitting, and also inventory ledger is also hitting, so I need to get a transitional level also information there.
+    
+    Oh, got it. That is also missing there. Okay. But it will not be there in my document, because it is already there in the system, this is in the accounting ledger, and also we need to follow that.
+    
+    All right, we'll have a look and do some research, and in the next call, we'll show something to you.
+    
+    Okay.
+    
+    **ACTION ITEM: Update Asset: add Entity; set Category/Subcategory dropdowns; auto-fetch CapEx; add Compliance Add; warn on expired certs - WATCH**
+    
+    @47:51 - **Anurag Jain (TRooInbound)**
+    
+    Yeah, and apart from this, I think we have, I think we good for the time being we are okay there is one thing that is the feedback we received from you earlier so i'll be showing you that to us to ensure that i can show you so i mean if you want to go through it together or if you want to go through it later on then also it's fine i mean you have to go ahead we have time maximum we can utilize we don't want to wait okay no worries so here i am adding the heavy command fixed asset and uh this ownership type is derived so right now we'll move it to ownership this has okay entity missing yeah i think entity was there yes i think it is missing we'll put that subcategory should be selective one uh category is selective one okay okay fine
+    
+    @49:00 - **Ajin Babu (ERPForce)**
+    
+    Cable. Then, okay. Can you select the generator? Category as generator? Yep.
+    
+    @49:19 - **Anurag Jain (TRooInbound)**
+    
+    Okay, fine. Understood, understood. So category attributes, but where is the attribute that you mentioned?
+    
+    @49:25 - **Ajin Babu (ERPForce)**
+    
+    In the configuration, is it already there? Yes, here it is the attribute.
+    
+    @49:32 - **Anurag Jain (TRooInbound)**
+    
+    But here it is there, but in the configuration, is it there or not?
+    
+    @49:36 - **Ajin Babu (ERPForce)**
+    
+    I think it is there. It should be there, because if I need to map it with the category in order to show what all the category attributes.
+    
+    Got it. Okay. Okay. Brand models. This is, I believe this is also something like an attribute itself. Okay. Capacity.
+    
+    Can we go down? Asset value. Purchase, okay, this all will be auto-fetched from the purchase entry itself, right?
+    
+    @50:04 - **Anurag Jain (TRooInbound)**
+    
+    Yes, yes, this will be auto-fetched, and I think we, as mentioned earlier, we have created that attribute thing, right, just as the attribute.
+    
+    Oh, okay, fine, that is fine. Yeah. That is fine. Yes.
+    
+    @50:23 - **Ajin Babu (ERPForce)**
+    
+    Can you go down? Yep. Okay, fine, these are, these all are okay, they appreciate it, CapEx value. Uh, CapEx value, how I will add it in.
+    
+    Okay. CapEx value will be auto-fetched, you may mention it as a mandate, for example, if it is, if it is mandatory, whenever I'm purchasing asset also, capital expense, how I will, how I will add.
+    
+    Yes. Okay. It is not possible. So do we have to remove it or we have to keep it optional?
+    
+    It's not optional. It should auto-fetched from. Because there is an option from modify. From the modify, whatever we modified, it shows me here.
+    
+    All right. So we'll do that. Okay. But I have some other things, certificates and other things. Can you go there?
+    
+    Yes. Actually, this was, I believe this was referenced by you to move the compliance and certificates to here.
+    
+    @51:26 - **Anurag Jain (TRooInbound)**
+    
+    Yes. Exactly. This is the thing. Can you drop down the type?
+    
+    @51:31 - **Ajin Babu (ERPForce)**
+    
+    Masters, leave the master. Okay. Now, registration inspection warranty. If another thing happens, what I will write. So it should be a master.
+    
+    The stop and everything should be a master. Okay. We'll put an add button here as well. Yes. Yes. A reference is fine.
+    
+    @51:45 - **Anurag Jain (TRooInbound)**
+    
+    Then expired date is okay. Then the remainder date is okay.
+    
+    @51:49 - **Ajin Babu (ERPForce)**
+    
+    Uploading the document. Okay. View, edit. Okay. That is fine. Yes.
+    
+    @51:54 - **Anurag Jain (TRooInbound)**
+    
+    And like when creating an expired certificate, like choosing expired. Generator, during delivery, it will not hard block, it will just show a warning that certificate is expired.
+    
+    Thank you. But can you open any fixed asset and show me the ownership or moment data?
+    
+    @52:12 - **Ajin Babu (ERPForce)**
+    
+    I think there is none at the moment.
+    
+    **ACTION ITEM: Update Movement History: remove At Movement; auto-fetch from DO/Maintenance; add Customer + Project - WATCH**
+    
+    @52:18 - **Anurag Jain (TRooInbound)**
+    
+    Maybe moment history.
+    
+    @52:20 - **Ajin Babu (ERPForce)**
+    
+    Give me something. Moment history. Can you click there? Moment history. Moment entry, date, moment type. Okay. Here, add the customer name also.
+    
+    Okay. Okay. duration at the project, not just the duration, add the project also. So what you can do is moment entry number, that is fine.
+    
+    Then that is the reference number, what we have, do number or something. Date is fine. Moment type, okay, that is fine.
+    
+    From and to is okay. And then add the customer name and then add the project. Duration is fine. Duration also, you can keep it under right.
+    
+    So two things you can add here.
+    
+    @53:00 - **Anurag Jain (TRooInbound)**
+    
+    I think there would be this movement history somewhere else also. Let me check just to show you.
+    
+    @53:10 - **Ajin Babu (ERPForce)**
+    
+    Okay, it will be in the fixed asset. Yes, I think it is here only.
+    
+    @53:16 - **Anurag Jain (TRooInbound)**
+    
+    Okay, to climb, that is fine.
+    
+    @53:19 - **Ajin Babu (ERPForce)**
+    
+    Project is missing. Okay.
+    
+    @53:34 - **Anurag Jain (TRooInbound)**
+    
+    Okay, we will do that. But why you did at movement?
+    
+    @53:39 - **Ajin Babu (ERPForce)**
+    
+    From where you did that at movement? No, no, no, no, no, no, no, this is not the way. At movement, it should be taken from ours, but delivery order, I don't.
+    
+    it should be auto-fetched. And I don't need at movement here.
+    
+    @53:51 - **Anurag Jain (TRooInbound)**
+    
+    We can remove it.
+    
+    @53:53 - **Ajin Babu (ERPForce)**
+    
+    Yes, we'll do that. It should be auto-fetched. Okay. If it goes to the maintenance. So it should take maintenance.
+    
+    Once I change the status, automatically, the next movement also should be out of it, and out of it should be mentioned that internal transfer to ER.
+    
+    Likewise, it should take.
+    
+    @54:14 - **Anurag Jain (TRooInbound)**
+    
+    All right.
+    
+    @54:15 - **Ajin Babu (ERPForce)**
+    
+    We'll do that. Okay. Now, here's the item category, and I think we removed the category type from here. Yes.
+    
+    And also removed the label. Last time we discussed that one, parent category, we can remove. I don't want to merge it with the parent category, category name, and the brand.
+    
+    Okay. Then what is the parent categories is working like that is the category, and the second one would be the subcategory.
+    
+    **ACTION ITEM: Create separate Category and Subcategory masters - WATCH**
+    
+    @54:49 - **Anurag Jain (TRooInbound)**
+    
+    It would work like that.
+    
+    @54:51 - **Ajin Babu (ERPForce)**
+    
+    Subcategory. Subcategories separated. Okay. We will.
+    
+    @54:56 - **Anurag Jain (TRooInbound)**
+    
+    So you want a separate master for both category and subcategories. Yes. Currently, in our system, we thought that it would be good if we create a single master, but I understand your concern, and we'll create the separate masters for both.
+    
+    Yeah, because I may have in the generator as a category, may have thousands, hundreds of subcategories.
+    
+    @55:19 - **Ajin Babu (ERPForce)**
+    
+    So I assume this brand and description and everything would come in the subcategory option only.
+    
+    @55:25 - **Anurag Jain (TRooInbound)**
+    
+    Um, because the subcategory would define, you know, brand and all.
+    
+    @55:32 - **Ajin Babu (ERPForce)**
+    
+    No need to add it here directly, because category and subcategory, for example, I have a category of generator, 100 kV, as a subcategory.
+    
+    @55:43 - **Anurag Jain (TRooInbound)**
+    
+    But while I'm creating the feature asset, I may have thousands of brands.
+    
+    @55:47 - **Ajin Babu (ERPForce)**
+    
+    Give me one second, sorry. Perfect. uh sorry guys uh so i was i was trying to tell that one for example in the master file i just need to add the category i need to add the subcategory and then the attributes i don't need the brand and all because how i can define the brand brand will be a separate thing because uh while i'm doing the feature as said uh you you
+    
+    can see that one, assume that one, parent category is SUV, I'm just mentioning that category as SUV, and then while I'm taking the brand, so how many brands I will choose here?
+    
+    But this is our default form, yeah, default form it's okay, but we need to think about the logic also, right?
+    
+    @57:25 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yeah, but if we are not putting brown brand, that is fine, right? It is non-mandatory, it's fine. It is, we don't need to add the brand, but we need the brand, that is, that is a problem.
+    
+    I need the brand with the asset level. Alright, so you want it separately, manually add brand on the asset level.
+    
+    @57:44 - **Anurag Jain (TRooInbound)**
+    
+    I need, I need the brand level, because what all the brand should be.
+    
+    **ACTION ITEM: Create Brand master; move Brand to asset level - WATCH**
+    
+    @57:48 - **Ajin Babu (ERPForce)**
+    
+    in item level we have, yes, we already have that. So currently, implementation is like that, are different or not?
+    
+    No, current implementation is like that, that brand would be auto phased. from the subcategory and category but it can be manually edited too what what you can do what you can do is you can remove the branded from the category and subcategory level and give it in the asset level and make that master I can create them brand type thing otherwise for example if you choose Skoda as the as the brand I can type something I can type with the different spelling then I cannot do any filter for example my client want to see what all the SUV in Skoda then it will be difficult to search if the if they are we are giving them manual typing all right so brand master would work globally globally across all fixed heavy assets yes yes okay even in the item master is also fine we can connect it and okay this is the set type it told us to create a master so it is a small form but we think we'll remove it and just have the add button in the asset
+    
+    @59:00 - **Anurag Jain (TRooInbound)**
+    
+    Type, drop down. That is fine.
+    
+    @59:03 - **Ajin Babu (ERPForce)**
+    
+    Type is okay. Yes. And this is the heavy equipment pricing that you earlier discussed with us. So let's say this is for rental.
+    
+    I created a category. It's category.
+    
+    **ACTION ITEM: Update Rental Pricing: add 'Add' to create weekly/monthly; show list per item - WATCH**
+    
+    @59:16 - **Anurag Jain (TRooInbound)**
+    
+    Billing frequency. I choose daily. I put a price 1000. Now, you mentioned that sometimes you give discounts or something like that.
+    
+    So one can go ahead and like what changes here.
+    
+    @59:30 - **Ajin Babu (ERPForce)**
+    
+    I was not telling like that. was telling that one. If I need to create a separate pricing for weekly, I can click a button here.
+    
+    Then all the details will be out of it and weekly will be the frequency. The price only I need to change automatically.
+    
+    It will create. Okay. But because currently our record shows you all the kind of pricing.
+    
+    @59:50 - **Anurag Jain (TRooInbound)**
+    
+    No, no, it will be separate. I specifically mentioned that one, one by one pricing will be there.
+    
+    @59:55 - **Ajin Babu (ERPForce)**
+    
+    Right. right. Understood. For example, if it is a generic. Why I'm telling like that one, in my document, I was telling that one, there is a bulk uploader.
+    
+    If it is frequency like this one, I cannot do bulk uploading. Okay, so whatever is like you want a separate edition like add button here or just give a button here add.
+    
+    So if I'm clicking add, another screen will be there. It shows me same like above, I just need to change the description, the frequency automatically will show you about the weekly, the price will be there.
+    
+    So can you click the heavy equipment list? It's a separate record. Yes, got it. Where do you want me to click?
+    
+    @1:00:43 - **Anurag Jain (TRooInbound)**
+    
+    Heavy equipment pricing list. Pricing list.
+    
+    @1:00:47 - **Ajin Babu (ERPForce)**
+    
+    Yes.
+    
+    @1:00:48 - **Anurag Jain (TRooInbound)**
+    
+    Okay, for example, this is the thing. For rental activity, generator 100 KVA.
+    
+    @1:00:53 - **Ajin Babu (ERPForce)**
+    
+    If I have seven item pricing, I will get seven, seven listed source. So at any point of. time I can go and check what is the pricing list I'd put it for 100 KB.
+    
+    Okay, got it. Let me make sense.
+    
+    **ACTION ITEM: Rename 'Trading' to 'Fixed Asset Trading' across modules - WATCH**
+    
+    @1:01:12 - **Anurag Jain (TRooInbound)**
+    
+    You will do that. Yeah, the feedback.
+    
+    @1:01:15 - **Ajin Babu (ERPForce)**
+    
+    Okay.
+    
+    @1:01:16 - **Anurag Jain (TRooInbound)**
+    
+    And this is for the trading one where we select generator. Now I think this trading option would change to fixed heavy asset trading, right?
+    
+    Yes, asset trading.
+    
+    @1:01:29 - **Ajin Babu (ERPForce)**
+    
+    Yes. Okay, we will change this trading to fixed asset trading which we created earlier this morning.
+    
+    @1:01:36 - **Anurag Jain (TRooInbound)**
+    
+    Yes. Yes.
+    
+    @1:01:37 - **Ajin Babu (ERPForce)**
+    
+    And one can put this price here.
+    
+    @1:01:40 - **Anurag Jain (TRooInbound)**
+    
+    And just go ahead, save it. Okay. think trading price already exists. Okay. So someone already set out price for this.
+    
+    **ACTION ITEM: Remove City field from Location master - WATCH**
+    
+    Okay. Yes. So this works like that.
+    
+    @1:01:55 - **Ajin Babu (ERPForce)**
+    
+    Now we will move on to I think location. Okay.
+    
+    @1:01:59 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay. Okay. Okay. Okay. Okay. Thank you mentioned that location type home yard or supplier held this would be linked supplier we were mentioning about the employee also okay yes yes that is in process that feedback is in process that car and this this i already saw it's fine yeah we will we'll put a separate employee location i don't need the city there okay okay we have removed address and everything now we'll remove the city also here okay okay now we will move on to disposal request feedback that you provided us that also i was telling that one by the uh from the randall only we can we can connect modify disposal
+    
+    **ACTION ITEM: Move Disposal Request to Fixed Asset; add approval history + income/expense ratio; redirect to Invoice on approval - WATCH**
+    
+    @1:03:00 - **Ajin Babu (ERPForce)**
+    
+    No, from the asset level itself, I can take it and do the modification for the disposable.
+    
+    @1:03:06 - **Anurag Jain (TRooInbound)**
+    
+    So you are saying that we can move this form to asset level only? Yeah, from the fixed asset level.
+    
+    Okay, just like we currently have compliance and certificates, you want this to be?
+    
+    @1:03:25 - **Ajin Babu (ERPForce)**
+    
+    No, disposable request is something like, if it is revenue is more, sorry, expense is more than something like a revenue.
+    
+    At that moment, I'm just checking that one, this is under lows. So what I can do, I can click on the fixed asset itself, and then there's a button for disposable request.
+    
+    So once it is approved, then I can do something like the same process like this itself.
+    
+    @1:03:54 - **Anurag Jain (TRooInbound)**
+    
+    Okay, okay, we will see, we will do that for the time. Okay, you can show me this.
+    
+    @1:04:03 - **Ajin Babu (ERPForce)**
+    
+    Yeah.
+    
+    @1:04:05 - **Anurag Jain (TRooInbound)**
+    
+    Let's say this is a scrap, disposable reason, and one can put a value here, and then can submit for approval.
+    
+    I will approve this. Okay. Once approved, I'll get an option to create invoice. Okay, but go ahead, before going to the request.
+    
+    @1:04:27 - **Ajin Babu (ERPForce)**
+    
+    Okay. Okay. One, one request raised, how I will do for the approval, approval. So I need to see the history, history of the asset, right?
+    
+    How, how, how much I do, what is the invoice, how much I getting the invoices, it knows or something.
+    
+    End of useful life doesn't makes me sense. For example, I can do capital improvement. So I need to see that history of that particular asset.
+    
+    Somewhere I need to see the. I see Okay. Income versus Expenses Ratio. All right. And that will be derived from accounting.
+    
+    @1:05:05 - **Anurag Jain (TRooInbound)**
+    
+    Yes. All right. All right. We have noted that. Yeah, because only one thing.
+    
+    @1:05:14 - **Ajin Babu (ERPForce)**
+    
+    You go to request. But request doesn't means that when I need to go for multiple screens and then define what is the problem for that.
+    
+    I need to see that one. What is the issue? Okay, you mentioned end of the useful list. So I need to see that one, whether my expense is correct.
+    
+    Okay, end of use. Again, again, I'm telling that I have a car.
+    
+    @1:05:35 - **Anurag Jain (TRooInbound)**
+    
+    Okay, I'm mentioning theoretically three years or five years is the useful life of 10 years is the useful life.
+    
+    Okay, it goes for 200,000 kilometers also assume that one, but it is running fine.
+    
+    @1:05:49 - **Ajin Babu (ERPForce)**
+    
+    I don't have maintenance. I don't have any issue. Do I need to make it a scrap? Because of the reason of an end of useful life.
+    
+    So I need to see that one. there's you. Okay. And when. What is the history of this particular asset, what is the current process, did it go for the maintenance or something, what is the cycle for that one, and then let's take the decision.
+    
+    Yeah, I understand, you want us to show the historical data to an employee who can judge that should I corrupt this or not.
+    
+    @1:06:22 - **Anurag Jain (TRooInbound)**
+    
+    During create invoice, one can do invoice number and one can choose customer list or entered manually. an invoice too, and then just, if this is a thing, if this is a field you need, okay, scrap preference, and create invoice, okay, just click it, let me see what it will see, invoice is created, yes, but make it our same screen of invoice, what is the problem?
+    
+    @1:07:01 - **Ajin Babu (ERPForce)**
+    
+    because now i don't have any clarity where i can see this information previously yes because yes because this is directly connected to accounting but we will have a look on that this is this is uh uh we haven't currently developed accounting basis so uh this is in progress and we just keep a button that so so we can identify that after this process we have to create an interest yeah once it is created the invoice then you can directly redirect to our invoice it's yes yes if any field is had added you can add it that's it yeah yeah sure sure yeah when we design the accounting we will make the those changes but you don't need to design accounting a lot right because it is standard itself okay okay you can go ahead let's see what you're building
+    
+    @1:08:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Any other changes that you did? Yes, yes.
+    
+    @1:08:03 - **Anurag Jain (TRooInbound)**
+    
+    So the flow is similar for sale too. Here, I'll show you.
+    
+    @1:08:10 - **Ajin Babu (ERPForce)**
+    
+    That I understood. Okay. Okay. Then this is the physical stock verification.
+    
+    @1:08:15 - **Anurag Jain (TRooInbound)**
+    
+    You told us that if that is a stock items, right, and the location is selected, everything is selected, the reason should be global.
+    
+    we have made it global. But you told us that you need individual reason for fixed effects.
+    
+    @1:08:31 - **Ajin Babu (ERPForce)**
+    
+    So we have kept it.
+    
+    @1:08:32 - **Anurag Jain (TRooInbound)**
+    
+    So if not found, then one can enter the manual reset there only as a text box for that individual asset.
+    
+    **ACTION ITEM: Review Physical Stock Verification report w/ Ajin - WATCH**
+    
+    @1:08:42 - **Ajin Babu (ERPForce)**
+    
+    Okay. And yes, there are filters in the report now.
+    
+    @1:08:47 - **Anurag Jain (TRooInbound)**
+    
+    The report, we will check it later because I need the understanding because this is not the report.
+    
+    @1:08:53 - **Ajin Babu (ERPForce)**
+    
+    Okay.
+    
+    @1:08:55 - **Anurag Jain (TRooInbound)**
+    
+    Sure thing. So I feel like we are good from our side. If there's any... Then you can let us know, and also you already have the link for the POC, as in the wireframes, so you can also browse from your end, and if there's anything, you can let us know.
+    
+    @1:09:12 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay, only one thing, my suggestion, Darshit, can I just show this to Niralnath, and not the logic, but for the design system, please confirm it.
+    
+    Yeah, definitely, and one more point, related to that, if it is a module, doesn't have a change, like a sales invoice, or anything, we have just a value, or maybe some fields, needs to update in line level, or something, so that's, we need to develop with the wireframe, or do we just.
+    
+    We go, and we don't want to waste the time, we can directly go there, and is what my concern, yeah, yeah, we have just focusing on the, what exact changes we have need to do, for specific screens, that is, we need to confirm with you.
+    
+    **ACTION ITEM: Share progress updates w/ Naidu - WATCH**
+    
+    Okay, that is fine, because. Whatever we don't require to have the changes, we don't need to do that, but the CRM and all, there is some changes, that we can work out.
+    
+    @1:10:08 - **Ajin Babu (ERPForce)**
+    
+    That is why we are working on it. Okay, and Ajin, one more thing, you can share the progress with Naidu, whatever we discuss.
+    
+    @1:10:17 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Yes, I'm giving the feedback, I'm also getting the feedback, whatever you are also passing.
+    
+    @1:10:22 - **Ajin Babu (ERPForce)**
+    
+    Okay. Okay, let's check about, from my side, I'm giving the feedback. Okay, okay.
+    
+    @1:10:33 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Okay. Okay, thanks Ajin. Thank you. Thank you.
+    
+    @1:10:38 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Thank you. Thank you. Thank Thank you.
+    
+
+## October 6, 2026
+
+### Meeting with Ajin
+
+- Transcript
+    
+    dasd
+    
+
+## October 7, 2026
+
+### Meeting with Ajin
+
+- Transcript
+    
+    # Heavy rental module discussion - October 07
+    
+    **VIEW RECORDING - 59 mins (No highlights)**
+    
+    @0:52 - **Anurag Jain (TRooInbound)**
+    
+    Hi, Jain. Hello, everyone. Sorry, guys, I'm late. was busy on another call. Shall I start? Am I audible? Yes.
+    
+    Yes. Am I audible?
+    
+    @1:17 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Yes. Yes. Okay. Okay.
+    
+    @1:21 - **Anurag Jain (TRooInbound)**
+    
+    Thanks. So I'll be starting presentation. Okay. You can start the presentation. All right. So today Ajin on the agenda is to show you the AMC flow and the changes that we discussed earlier in the call as well as the fleet management.
+    
+    @1:41 - **Ajin Babu (ERPForce)**
+    
+    module that we have prepared today.
+    
+    @1:44 - **Anurag Jain (TRooInbound)**
+    
+    And as well as the connections with the delivery order for the fleet management and also with inventory fixed asset.
+    
+    Okay. Yeah. So I'll start with AMC first. All right. So here is the opportunity. The screen, as you see, and we have quoted an AMC, I will start from right here only, so the AMC we have quoted, we will click on View Quotation, I will create an order from here for the AMC.
+    
+    Okay, how to prepare that quotation with the AMC? For that, one has to create a lead and go to...
+    
+    go with that one, because the preparation of AMC will be differed from the others. All right, no worries, no worries.
+    
+    Lead is okay, go with the opportunity, can directly create the opportunity without the lead. Okay, give me a second.
+    
+    @2:55 - **Ajin Babu (ERPForce)**
+    
+    Yes, no worries. Okay.
+    
+    @3:11 - **Anurag Jain (TRooInbound)**
+    
+    very much. Thank you.
+    
+    @6:31 - **Ajin Babu (ERPForce)**
+    
+    uh okay uh sorry sorry extremely sorry i got a call it's okay okay uh let's proceed sorry okay okay so uh i had filled this song
+    
+    @7:00 - **Anurag Jain (TRooInbound)**
+    
+    And I selected the activity type as ANC. Okay. Now I will save this. Please completely mandatory fills. There are mandatory fills.
+    
+    Expecting closing date. Okay. Yeah. Fine.
+    
+    @7:18 - **Ajin Babu (ERPForce)**
+    
+    All right. Now I can make a quotation.
+    
+    @7:21 - **Anurag Jain (TRooInbound)**
+    
+    But you have not entered any information there, right, in the opportunity. Right. Okay, fine. That's also okay. We don't need, it's not mandatory to write any information there.
+    
+    Okay. Okay, on quotation, what, what are you writing? How to make the quotations there? Yeah, I think, uh, I'll go ahead and make the quotation.
+    
+    This is the opportunity screen. Okay. There is the quotation screen.
+    
+    @7:48 - **Ajin Babu (ERPForce)**
+    
+    Great. Fine. Fine. Now I can, here is the main part.
+    
+    @7:53 - **Anurag Jain (TRooInbound)**
+    
+    That is the contact of the entire AMC. Start that and end date. I can, uh, select the number of visits.
+    
+    visits. the I Which I want. For example, I'll choose 8, right? And I'll choose the contact value as 12,000 AD.
+    
+    Correct. Okay, now, what I'll do is, I choose this total amount here, and I'll just go ahead and save this.
+    
+    But before that one, I need to have, show some description, right? Where, where to write the description?
+    
+    @8:25 - **Ajin Babu (ERPForce)**
+    
+    But not to be there. Because in the printout, I, I just, I just, I yes.
+    
+    @8:31 - **Anurag Jain (TRooInbound)**
+    
+    Yes, I think this covers this. Yeah, and this narration also is there. The scope need to be right in a proper way.
+    
+    Okay, then go ahead. All right. So I'll click on save now. But if I have multiple scope, then what I need to do?
+    
+    @8:48 - **Ajin Babu (ERPForce)**
+    
+    Multiple scope as in, can you please articulate?
+    
+    @8:51 - **Anurag Jain (TRooInbound)**
+    
+    For example, I may have multiple services there.
+    
+    @8:56 - **Ajin Babu (ERPForce)**
+    
+    Okay. You can see that one in the item master, we have item. click? Lenape, indigiatum. And... Date, pricing, and everything, right?
+    
+    So, for example, one AMC, I'm just telling that one, okay, I'm giving you this AC filter, then AC cleaning, maybe AC, something XYZ, 3, 4, 3 services I'm adding there.
+    
+    @9:16 - **Anurag Jain (TRooInbound)**
+    
+    But I need to mention the services, right? Where I can write this? All right, so each AMC, Vishid, should have services on top of it, and I think it already has, once you go to the job card, per my understanding.
+    
+    @9:30 - **Ajin Babu (ERPForce)**
+    
+    Job card is something different, before that one, for example, will you accept me one lump sum amount for getting your service?
+    
+    Think in your shoes itself.
+    
+    @9:39 - **Anurag Jain (TRooInbound)**
+    
+    I am thinking in that way, Ajin, let me explain to you in a different way. You are going to give you a car maintenance, car service in your, in a garage.
+    
+    @9:51 - **Ajin Babu (ERPForce)**
+    
+    They mentioned that 12,000 is the amount.
+    
+    @9:55 - **Anurag Jain (TRooInbound)**
+    
+    Will you ask that, what are the services that you are doing?
+    
+    @10:00 - **Ajin Babu (ERPForce)**
+    
+    Yes.
+    
+    @10:01 - **Anurag Jain (TRooInbound)**
+    
+    And what is the particular amount also you will ask them, right? Yes. Okay. That's what I was asking. Where I can see that one?
+    
+    The total amount, is fine. But how I can do the service amount? I totally understand your concern. And I have a suggestion, which is why I have made this way.
+    
+    I'll explain you fully. So can I please show you like first and then we can, I think it will understand what I'm trying to, what I totally understand your concern, but I think I have, I have a way out of this.
+    
+    Okay. Thanks. Show me that. Yeah. Okay. I'm sorry. Summary format, for example, and this is, there are a lot of, I think it should be good now.
+    
+    Right. I'll submit for approval and I can approve it. Okay. All right. No, I. I can do the create order thing.
+    
+    But before that one, I need to submit the quotation to the client, the print.
+    
+    @11:07 - **Ajin Babu (ERPForce)**
+    
+    This order confirmation is once they send me the LPO.
+    
+    @11:13 - **Anurag Jain (TRooInbound)**
+    
+    Quotation is something that when your estimate, where is my estimate, how I can send that estimate? All right. So you need an option to send that estimate to the client.
+    
+    The quotation need to be sent, right? Yes. The breakdown of... Vivek, you are there. Darshit is there. Yes.
+    
+    @11:31 - **Ajin Babu (ERPForce)**
+    
+    You are for my invoice.
+    
+    @11:34 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    I'm not expecting from you this case.
+    
+    @11:36 - **Ajin Babu (ERPForce)**
+    
+    This question need to be addressed by yourself. Quotation need to be sent to the client. Where is it? Yes.
+    
+    @11:42 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    But it is our default behavior, right? default is there. But the AMC, I'm just writing the lump sum amount.
+    
+    @11:50 - **Ajin Babu (ERPForce)**
+    
+    I'm not writing anything there. How I can submit the quotation there?
+    
+    @11:58 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Can you... Vivek,
+    
+    @12:00 - **Ajin Babu (ERPForce)**
+    
+    Can you show that screen once again, quotation stream, edit that screen, quotation edit, yeah, can you edit that? Okay, go down, go down, now you can see that one, I just entered the value from what day to what date, and what is the visit, after that one directly the contract amount, but what I'm expecting is, I may have doing a couple of things, the services where I'm bifurcating those services, Yes, Sajan, and that is what I intended to show you on the next screen, because we have coupled that with a job card, no, no, no, no, Anurag, you are missing the point, that's why I'm just stopping, sorry, I understood that one, you may do some services, but first of all, I need to do some process, after that one only, I can go to the next step, now,
+    
+    I'm having the quotation right now, this quotation need to send to the client, then only I can do the sales order and then the job card, you're not understanding my process.
+    
+    **ACTION ITEM: Add service line items to AMC quotation; include scope/narration in print - WATCH**
+    
+    Sure, we will aid that in quotation.
+    
+    @13:12 - **Anurag Jain (TRooInbound)**
+    
+    Yes, we will aid the service line items as you mentioned in the quotation. Yes, I need to add some things there.
+    
+    I need to mention that what all the services, I need to make the scope for that one and then need to mention that one.
+    
+    what is the amount for that and the total of the amount is converting as the grand total. Okay. Okay.
+    
+    Understood. Okay. So I will jump on to a successful AMC order screen. But I need the sales order as per year process.
+    
+    Go ahead.
+    
+    @13:48 - **Ajin Babu (ERPForce)**
+    
+    I think because I need to see that one, how the job card is coming, how the sales are not the successful AMC before that one, how it is happen.
+    
+    I need to. Okay. I think I am, it shows already converted, so I think there is, there is double eight, that is submitted for approval, you can submit it, yeah, that is for a rental activity type, oh, okay, MC, yeah, okay, then show me that one, what is the signals order, okay, you create the signals order, again, one question, as you show me this one, can you, can you, can you, can you just show me that actions, yes, there is create revision, can you show me what is the rental order against this one, that is sales order, did you convert this to sales order already or not, yes, it is converted, how I can do the revision, go to the view button, actually,
+    
+    @15:00 - **Anurag Jain (TRooInbound)**
+    
+    This is because I think I did not reload the page because it is right now everything is hardcoded in the POC, as in one.
+    
+    Okay, fine. But be with the process itself. Once I create the sales order, I cannot do the revision because once it is locked and then it's moved to the sales order.
+    
+    Yes, I think one cannot do that. Yeah, as you can see, sorry, again, I'm getting a couple of, one second, sorry, urgent one.
+    
+    Yeah, go ahead. Sorry. Hello. Yes, go ahead. Sorry, sorry. Yes. So as you can see in the sales order, we do not have a revision, revision option, as you mentioned earlier.
+    
+    @16:00 - **Ajin Babu (ERPForce)**
+    
+    it was showing only on the quotation screen it's because i normally normally sales order cannot be revised quotation yeah can be revised yes yes okay all right so any which ways i i have created this order now we'll move this to amc screen we created eight visits right for 12,000 aed correct okay now i can see the job cards for all right uh better better filter with the amc orders because if maybe i have hundreds of uh amc orders and hundreds of visits how i can see this one this information so what you can show me what uh what is the uh this dashboard can show with the what is the active or um consolidated information from that one create the job card not directly okay okay but but you can give a separate report what is the nearest one upcoming one
+    
+    **ACTION ITEM: Build AMC consolidated report (customer, dates, next visit, job card link) - WATCH**
+    
+    @17:00 - **Anurag Jain (TRooInbound)**
+    
+    Okay.
+    
+    @17:02 - **Ajin Babu (ERPForce)**
+    
+    Upcoming plan visit you can show, but AMC orders always should show me something with the consolidated information. Alright. There is this consolidated report, which we… But here also the problem is, it is also planned.
+    
+    It should show me same like what is the rental order, what is the… sorry, that AMC order, what is AMC date, against which customer, what is the date, from what date to what date, what is the next planned date, those all information should be there.
+    
+    Once I click, I need to see the details from there, also I need to create the job card. Alright.
+    
+    We'll do that. Yeah. Because this gives me the consolidation information. Yes, understood. We'll do that.
+    
+    @17:45 - **Anurag Jain (TRooInbound)**
+    
+    Where is the activity log? If you go to the sales order, can you open the sales order? Once, just, just one click.
+    
+    @17:51 - **Ajin Babu (ERPForce)**
+    
+    Now you can see that one. This is, no, no, no, don't go there. You can see that one. What is the ID?
+    
+    What is the date? Information. Oh, okay.
+    
+    @18:01 - **Anurag Jain (TRooInbound)**
+    
+    We'll do that. Okay. From there, I need to open that.
+    
+    @18:05 - **Ajin Babu (ERPForce)**
+    
+    But what, what you can give another information for the people who is working. They can see what is the next planned activity, like a task management.
+    
+    Okay. Understood. Okay.
+    
+    @18:19 - **Anurag Jain (TRooInbound)**
+    
+    All right. I'll jump again. I'll click on create job card. Okay. So let's say this was the technician Sanjay Kumar is the service run location.
+    
+    Okay. Cancel. Yes. And this would be the job activities, right? General description of everything. One can aid materials here to be in service when there is battery.
+    
+    I can keep that as FOC. So when I click on FOC, see the invoice is getting zero. If not, it is being charged.
+    
+    **ACTION ITEM: Fix AMC job card: set FOC bill price 0; add Qty/UOM/VAT; add print; remove services; add SOW - WATCH**
+    
+    Okay. Add one more item. Yeah. Okay. Okay. Conducting.
+    
+    @18:58 - **Ajin Babu (ERPForce)**
+    
+    Add FOC for the second. Second line only. Okay.
+    
+    @19:04 - **Anurag Jain (TRooInbound)**
+    
+    428. Okay.
+    
+    @19:05 - **Ajin Babu (ERPForce)**
+    
+    So what you can do is if it is something like bill price also need to show us zero itself, not 420.
+    
+    Okay.
+    
+    @19:13 - **Anurag Jain (TRooInbound)**
+    
+    Okay. It will confuse. Okay. Because you can see that when visit contract value, it is taking the summarization. 640 plus 420 is showing there.
+    
+    Yes. I understand it will create some confusion. Yes. Okay. Yeah. So this is the invoice total is also wrong.
+    
+    @19:36 - **Ajin Babu (ERPForce)**
+    
+    The total amount will be only 640. Okay.
+    
+    @19:40 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay. It's correct. It's correct. Sorry. It's correct.
+    
+    @19:43 - **Ajin Babu (ERPForce)**
+    
+    Yeah. And this is the part that I was telling you earlier that one can add services here.
+    
+    @19:49 - **Anurag Jain (TRooInbound)**
+    
+    One can select any kind of services here and like eight that it will get added here. And I understand it is wrong according to you.
+    
+    Okay. So we will add it on the quotation level.
+    
+    @20:02 - **Ajin Babu (ERPForce)**
+    
+    the quotation, first of all, in the quotation, I need to show that what is the amount and everything should be comes here.
+    
+    And before consumable, can you go at the top? top. And then you can see that one job activity, something not like this one.
+    
+    @20:17 - **Anurag Jain (TRooInbound)**
+    
+    You need to show the services. What I need to do then the services.
+    
+    @20:21 - **Ajin Babu (ERPForce)**
+    
+    The scope of work should be here.
+    
+    @20:23 - **Anurag Jain (TRooInbound)**
+    
+    All right. Okay. Okay. And then you can add additional consumable things. If required. Okay. So we'll, we will remove services from here, like the addition that will come.
+    
+    I can add services also. That is also fine. I'm not add additional service.
+    
+    @20:40 - **Ajin Babu (ERPForce)**
+    
+    This service, keep it like that one. For example, I do for some, for one site visit. I'm not supposed to do some other service, but there is, occasionally there is one additional service I need to do.
+    
+    @20:52 - **Anurag Jain (TRooInbound)**
+    
+    This you can consider as additional service. All right. You can keep it in mind. So the job activities will be.
+    
+    @21:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Be the default one, which is mentioned in the quotation, right? Exactly, exactly. And these two things are okay. Okay for me.
+    
+    @21:08 - **Anurag Jain (TRooInbound)**
+    
+    Okay. That means material consumption and service is good because I can do another service also for them.
+    
+    @21:14 - **Ajin Babu (ERPForce)**
+    
+    But what it is missing here, I'm just choosing the service.
+    
+    @21:18 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    What is the description? What is the material description?
+    
+    @21:21 - **Ajin Babu (ERPForce)**
+    
+    Nothing it is showing here.
+    
+    @21:25 - **Anurag Jain (TRooInbound)**
+    
+    Because we are not following our pattern, what we are using there.
+    
+    @21:28 - **Ajin Babu (ERPForce)**
+    
+    Because here, material, what is the material description? What is the quantity? What is the UAM? What is the VAT amount?
+    
+    What is the VAT percentage? Such type of things should be there. It is not showing. All right. We will aid those.
+    
+    @21:45 - **Anurag Jain (TRooInbound)**
+    
+    No, you need to follow the design pattern also.
+    
+    @21:48 - **Ajin Babu (ERPForce)**
+    
+    Because we cannot change our existing design. Okay.
+    
+    @21:57 - **Anurag Jain (TRooInbound)**
+    
+    Okay. We missed that. they will do that no problem but i'm not expecting you to miss that one because it's a serious miss sorry yeah okay go ahead so one can do this uh one can save this okay one can generate an invoice from here after completing the visit okay i'll go ahead and complete the visit i have completed the visit now i can generate invoice okay but what is what is this okay okay go ahead yeah but you can yesterday i believe i was telling the same feedback don't show by something like that one you have our invoice format way to do the same pop-up if you if you remember or if you share my record my previous screen you can check that one i was telling the same thing there somewhere you show me this
+    
+    **ACTION ITEM: Redirect AMC invoice to standard sales invoice; add Entity/Activity/Customer; remove Posting Time - WATCH**
+    
+    @23:00 - **Ajin Babu (ERPForce)**
+    
+    The same pop-up, I was telling that when this pop-up is not required, instead of we can show with our existing screen itself, our invoice screen, generate our sales invoice itself.
+    
+    @23:11 - **Anurag Jain (TRooInbound)**
+    
+    Okay. So the sales, we have to redirect it to the sales invoice phone. Exactly.
+    
+    @23:16 - **Ajin Babu (ERPForce)**
+    
+    There also, we need to follow the, because I'm, one thing I'm missing here in the screen, I'm missing the activity type, AMC.
+    
+    Okay, I have PTT type is here. Okay, fine. Totally agree. Totally agree. Sorry, because the pattern, it is changing, because invoice ID, date, it is coming, because I was telling that one, it should go with the entity first, then, okay, ID number, entity, then activity, customer, such type of information should be at the top.
+    
+    Because salespeople are something, okay, reference is fine, but I'm missing this activity, it should be on the top. Okay, so entity is totally missing here.
+    
+    @23:58 - **Anurag Jain (TRooInbound)**
+    
+    Entity, we are following, Yeah, is there, actually. But currently, as per that document, we have just followed the document.
+    
+    Yes, and also the entity is always there. Yes.
+    
+    @24:11 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yeah, and also, I don't know what is the relevance of posting time here. There's a lot of things. Yeah, actually, it's based on what time they are posting this, they are going to create.
+    
+    So based on that, we have just put. I have a question then.
+    
+    @24:27 - **Anurag Jain (TRooInbound)**
+    
+    Can you open the job card once again? You the job card, edit the, edit this, edit this particular job card, back, back, if I do big, I think it might comes, that is, okay, no problem, just, okay, go ahead, create a job card, this is a wire from just, it's okay, so a separate job card, anything, just open a job card, you can go at the top, can I change the time?
+    
+    Okay, I was telling that about the design, a lot of things. So, you you. you.
+    
+    @25:00 - **Ajin Babu (ERPForce)**
+    
+    is not showing here, what is the relevant information, you can keep it at the activity type, only entity, and the customer can be shown here, for example, activity, can show there, reminding things, can, for example, salespeople, services, and we discussed about the three line also, not the two line.
+    
+    Yeah, yeah, that actually, we are not implementing that, because I need to get that information from Ankit, so we are just follow that, interesting, design system, yeah, but, while we are developing, that time, we are taking care of, while demo, you can get that, everything.
+    
+    @25:42 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay, not an issue, okay, go ahead.
+    
+    @25:44 - **Ajin Babu (ERPForce)**
+    
+    Shall I go ahead, answer Yeah, you can go ahead, please, check my feedback, I'm directly telling, I believe it is recording also.
+    
+    So, please consider my feedback, yes, okay, go ahead. Yes, I need to print the job card. Can I print it?
+    
+    We can add the print. How it is printed? Can you show me once again? Sorry, I missed it. Go to the MC orders.
+    
+    No, no. Go to the MC orders once again. Now I need to print that particular one. Click it. Yeah, this one I need to print.
+    
+    How I will print. Open. Okay.
+    
+    @27:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    No, Kenji üunlumpeth that. Obviously it is a wire supply. Ah, okay. I was thinking that we'll just ele where we are going into the real devoto.
+    
+    @27:12 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay, no, no, no, it's going. All right.
+    
+    **ACTION ITEM: Implement finance activity tagging (Entity, Activity, Cost Center, Project) across SO/Invoice/GL - WATCH**
+    
+    @27:17 - **Anurag Jain (TRooInbound)**
+    
+    So, it is okay, I will conclude the EMC flow right here and start the split management work. But Nishit is here right?
+    
+    @27:32 - **Ajin Babu (ERPForce)**
+    
+    Yes, Mehaati i need your help man here uh because whenever we are checking this and this finance because you ended the finance here uh so uh at that point we need to check that one which is the activity type tomorrow whenever i'm going to a trial balance or pre-p handle if my client is asking that one how much revenue i'm generating from the amc i need to get a get a clarity i should have a clarity i like particular
+    
+    No, any type of activity, because business activity is not just to select what I am doing, it's something like a business activity itself.
+    
+    So filtration should be there. So if I need moment, I am going to the trial balance sheet, if I'm filtering based on the particular activity, I should be able to select.
+    
+    Okay. So financial level also, this activity centric should be going ahead. Activity, so couple of things we need to think, one entity, that already it is going, second one, it is activity, the third one, it is co-sender, that which we are allocating everywhere, fourth one, it is project.
+    
+    So just much level that we need to go into the finance itself. Okay.
+    
+    @28:49 - **Nishit Vankawala**
+    
+    So you are talking about the activity that we are selecting when we are working on this sales order, correct?
+    
+    Yes, from the sales order.
+    
+    @28:59 - **Ajin Babu (ERPForce)**
+    
+    Sales order. Because the revenue is generating from the same area, so we need to record that while creating CVS.
+    
+    @29:07 - **Nishit Vankawala**
+    
+    Yeah, exactly. Okay, got it.
+    
+    @29:10 - **Ajin Babu (ERPForce)**
+    
+    Okay, thank you, thank you, carry on Anurag, sorry, Anurag are you there? You are not audible.
+    
+    @29:26 - **Anurag Jain (TRooInbound)**
+    
+    So I'll start the fleet management now and I'll go from how are we adding a car or a vehicle into what the our fixed asset register.
+    
+    Okay, but it is already there, right? So what what is the what is the problem for that? Yeah, yeah, there are a couple of details that we I think your document mentions regarding vehicles.
+    
+    So but heavy equipment, it is it is not coming here, right?
+    
+    @29:56 - **Ajin Babu (ERPForce)**
+    
+    It is not for rental, so it should go to our Accounting itself. Under accounting, we have a fixed asset.
+    
+    **ACTION ITEM: Move fleet vehicles to Accounting Fixed Assets; add Fleet Vehicle flag - WATCH**
+    
+    It will go there. Okay. Okay.
+    
+    @30:10 - **Anurag Jain (TRooInbound)**
+    
+    This is for rental fixed asset, right? All right. So you want the vehicles to be added to accounting fixed asset register?
+    
+    Yes. Yes, it will be on the accounting feature because I'm purchasing for my own purpose. Yeah. Totally understood. For the time being, we have kept it here, but we'll move it to there.
+    
+    The logic is almost the same, so you don't need to worry about that. Yeah.
+    
+    @30:34 - **Ajin Babu (ERPForce)**
+    
+    So, when we add any heavy rental asset, we can choose delivery fleet vehicle.
+    
+    @30:40 - **Anurag Jain (TRooInbound)**
+    
+    In the accounting case, we can give this checkbox and they can identify this is a fleet vehicle. One can type the fleet and the default driver.
+    
+    The driver is coming from HRMS Employee Master. Okay. So one can select. can select. Thank They can select asset type, they can select category as a vehicle, but from where this category, you already create some category somewhere, right?
+    
+    @31:10 - **Ajin Babu (ERPForce)**
+    
+    Yes. Okay.
+    
+    @31:12 - **Anurag Jain (TRooInbound)**
+    
+    Yes. And the rest of the things are totally same. In the heavy, just, just, just close, call slowly, can go down.
+    
+    @31:21 - **Ajin Babu (ERPForce)**
+    
+    Okay, given that's it, brand, model, engine, okay, capacity, I believe you cloned the same thing from the generator, okay, purchase, purchase asset on the, on the CapEx.
+    
+    @31:31 - **Anurag Jain (TRooInbound)**
+    
+    Okay, go down the status, okay, okay, fine, okay, okay, go ahead.
+    
+    @31:36 - **Ajin Babu (ERPForce)**
+    
+    Yeah. Okay, now you mentioned that one, Omer Farooq is the driver, is there any way that I can, I can change that?
+    
+    Yes, it can be changed from the delivery order.
+    
+    @31:52 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Not from the delivery order, but I'm asking that one, Omer Farooq is the default driver here.
+    
+    @31:57 - **Ajin Babu (ERPForce)**
+    
+    Yes. Okay. But Omer Farooq is going for a vacation.
+    
+    **ACTION ITEM: Add default driver edit + activity log on vehicle master - WATCH**
+    
+    @32:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Now I need to assign back to Ajin. As a default one.
+    
+    @32:05 - **Anurag Jain (TRooInbound)**
+    
+    As a default.
+    
+    @32:07 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Can I edit it and change? I don't think currently we have that implementation, but if you want, we'll do that.
+    
+    @32:14 - **Anurag Jain (TRooInbound)**
+    
+    Just you need to change the edit, but I should have an activity type. That's it.
+    
+    @32:19 - **Ajin Babu (ERPForce)**
+    
+    Yes. No workflow required.
+    
+    @32:23 - **Anurag Jain (TRooInbound)**
+    
+    For time being, at least, until and unless I go to information.
+    
+    @32:26 - **Ajin Babu (ERPForce)**
+    
+    But I need the activity type. Because who was the default driver when it is changed?
+    
+    @32:32 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    And who, like, those information should be there.
+    
+    @32:35 - **Ajin Babu (ERPForce)**
+    
+    Yeah. Yeah.
+    
+    @32:36 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Go ahead. Go ahead. Go ahead to the delivery. Yeah.
+    
+    @32:40 - **Ajin Babu (ERPForce)**
+    
+    I was just seeking this.
+    
+    @32:42 - **Anurag Jain (TRooInbound)**
+    
+    And yes, I can change this. Fine. Yeah. But you missed that activity. That is, that is why I was asking.
+    
+    I didn't see the activity here. Activity report is not here. Maybe you can go to the view and then you can check.
+    
+    @32:58 - **Ajin Babu (ERPForce)**
+    
+    Can we click? yeah thank you man okay can you click that and check the view view here also activity is not there that's why you got it activities are not not there that's where you can check that okay go ahead all all right so i'll go to the uh now crm just to show you how the fleet management works right click on any sales order right this is the sales order and i can create a delivery from here upon creating a delivery i can select a vehicle right let's this truck right so the default driver comes up and i can change the driver ad hoc on ad hoc basis right and
+    
+    @34:00 - **Anurag Jain (TRooInbound)**
+    
+    I can trace this, let's see, we can trace a separate generator, and we have traced this, right, I will click on save, so this delivery order with transportation is created, now this is just assigned, the treat is not started yet, for us to start the treat, we will go to the fleet management, so I will click it here, it will automatically redirect to fleet, so this is the screen, and here we can have actions, such as start trip, reassign vehicle or driver, but how this, the operation people will understand that, this treat is started or not, are we giving any provision, this particular screens to the drivers, yes, I mean, the sales order will show, but I cannot give the sales order information to the driver, no, no, they both have separate informations, the driver would see their own status, and sales order would,
+    
+    see status such as package, dispatched, delivered, like that. And the driver would see status such as trip started, en route, stock, trip completed, like that.
+    
+    I hope I'm explaining it correctly.
+    
+    **ACTION ITEM: Add driver app bypass setting; if off, use dispatch/delivered - WATCH**
+    
+    @35:18 - **Ajin Babu (ERPForce)**
+    
+    But the problem, what I'm feeling, it is complicating the system. Alright.
+    
+    @35:27 - **Anurag Jain (TRooInbound)**
+    
+    Is there any way that I can bypass?
+    
+    @35:29 - **Ajin Babu (ERPForce)**
+    
+    Because, for example, I cannot give every options to my driver to do that, not trip started, trip ended.
+    
+    @35:36 - **Anurag Jain (TRooInbound)**
+    
+    Okay, it's good. Your logic is correct itself, but is there any way I can bypass it?
+    
+    @35:41 - **Ajin Babu (ERPForce)**
+    
+    It's not giving me flexibility. Yes, we can.
+    
+    @35:48 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Go ahead. We'll think on that and we'll come up with something. Okay. But what we can do is, I'm thinking that in the settings, settings, I'm
+    
+    @36:00 - **Ajin Babu (ERPForce)**
+    
+    You can give an option that provision for the driver. If it is not ticked or something, then what you can do is we can do the same logic of dispatch and everything.
+    
+    @36:13 - **Anurag Jain (TRooInbound)**
+    
+    Okay, once it is delivered, it is delivered. Okay, all right. Okay, go ahead. So I'll go ahead and start the trip now.
+    
+    Okay. So the trip is started. I can also add expenses. These are the expenses that are our own expenses, like our own driver's expenses.
+    
+    **ACTION ITEM: Add VAT/description to trip expenses; link to Expense Head; allow booking via SO/Delivery - WATCH**
+    
+    But why we are using this particular drop, this pop-up?
+    
+    @36:40 - **Ajin Babu (ERPForce)**
+    
+    Because for the expense type, I have expense type. I need to have the description. I need to enter the, if I have VAT, where I will do the VAT line and all.
+    
+    For example, I'm giving this particular expenses in the sense I'm giving to external company.
+    
+    @36:57 - **Anurag Jain (TRooInbound)**
+    
+    So at that moment, I need to allocate my account. I need to add the amount. Maybe I'm getting VAT against that one.
+    
+    @37:03 - **Ajin Babu (ERPForce)**
+    
+    Where I will fit the VAT? Okay.
+    
+    @37:06 - **Anurag Jain (TRooInbound)**
+    
+    I thought this was the kind of expenses, suppose a driver needs to have food or the vehicle tire got punctured.
+    
+    If it is punctured also, I put it on the fast truck. Fast truck will give me a bill.
+    
+    @37:19 - **Ajin Babu (ERPForce)**
+    
+    There is also VAT is there. Okay. Okay. Okay. So we'll include the VAT here. I'm asking that, well, this expense type is something, but it should allocate to an account, right?
+    
+    Yep.
+    
+    @37:44 - **Anurag Jain (TRooInbound)**
+    
+    And normally, okay, fine.
+    
+    @37:45 - **Ajin Babu (ERPForce)**
+    
+    Drivers will give submitted bank and detail only. Maybe finance or something will allocate the bill against that. So it should ask me for a generator.
+    
+    @38:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Expense. Under the Expense, it should show me same like our Expense Head. So I can, I can add some fields from data, amendments.
+    
+    @38:08 - **Anurag Jain (TRooInbound)**
+    
+    need to add any of our Expense Account to choose that account and we are just getting that account, that is getting that Expense inside that account.
+    
+    @38:19 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Darshit, your voice was not clear to me. I'm just talking about that. Do we need to add any Account Selection over here?
+    
+    No, not like that.
+    
+    @38:33 - **Ajin Babu (ERPForce)**
+    
+    When I was asking that one, if it is something like an Expense, we need to treat something like an Expense Head, it's driver will not allocate this one driver, what driver will do, driver will submit the bill to the Accountant.
+    
+    Accountant. Yes. definitely Accountant will choose that one. He, he will do same like our Expense Entry. Yes.
+    
+    @38:55 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    If I have the same as the line item, what is line item, so I need to allocate that. that.
+    
+    That's where we need to add the expense entry. Exactly. Maybe driver already paid against that one. Okay. That is the same thing that we are adding in purchase.
+    
+    it should happen here. So it should open me and expense. So what it will happen by default, the cost of my project is increasing.
+    
+    So we need to record this cost against this particular when I'm taking the profitability of a project.
+    
+    @39:29 - **Ajin Babu (ERPForce)**
+    
+    So what will be there? One, three items will be there. First, it will start revenue what I'm doing.
+    
+    @39:37 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Now this is the expenses. What are the other expenses it is allocating? So the material cost plus the expenses will be my total cost.
+    
+    Yeah. So such a way we need to align with that one. Any moment I can see what is the expense against this.
+    
+    @39:55 - **Ajin Babu (ERPForce)**
+    
+    Got it. Got it. So this we will adding is a line.
+    
+    @40:01 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    We can treat same like our expense account. You can open our expense itself.
+    
+    @40:06 - **Ajin Babu (ERPForce)**
+    
+    When I'm adding this one, you don't need to change. Take our expense.
+    
+    @40:10 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Expense account. Same, you can allocate cash expenses or purchase expenses. Same like that. Got it. You don't need to disable notes.
+    
+    can save the data. Yeah, That is we had already. Yes. Go ahead, please. Sorry.
+    
+    @40:31 - **Ajin Babu (ERPForce)**
+    
+    Anurag, you're mute. Yeah.
+    
+    @40:35 - **Anurag Jain (TRooInbound)**
+    
+    So, um, based on the, since the trip has started, I can, uh, mark it, structurally, complete trip. I can add expenses.
+    
+    I can cancel the trip. So let's say I'll cancel this trip. Okay. So we can go again to the delivery order.
+    
+    And... We can rearrange the transport, we can again select a vehicle, and the driver is here, we can create trip again.
+    
+    Okay, go ahead with the driver, and just I need to see the next process.
+    
+    @41:17 - **Ajin Babu (ERPForce)**
+    
+    Yeah, now the trip has been started, now I can, I think from the...
+    
+    @41:28 - **Anurag Jain (TRooInbound)**
+    
+    Okay, now stop it, this is en route itself, right?
+    
+    @41:32 - **Ajin Babu (ERPForce)**
+    
+    Go to the delivery order, and assign another one.
+    
+    @41:43 - **Anurag Jain (TRooInbound)**
+    
+    That means another delivery order, go with another delivery order. Okay, but I think we... It is limitation.
+    
+    @41:57 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay, but what I'm thinking, Anurag when I'm... I'm just going for another delivery order, it should support that one, only the filtration will shows what it is available.
+    
+    Yeah, that is the same as current flow. No, I meant about the transportation. Transportation means it is taking a single charge or it is taking double charge because if it is a parcel, then two deliveries happen.
+    
+    @42:26 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    whatever the service, for example, you can see that one.
+    
+    @42:30 - **Ajin Babu (ERPForce)**
+    
+    I'm allocating for another delivery order under the delivery order. If I'm allocating another person, my first trip number, it is there.
+    
+    One trip is going. So you can see that when it is under, it's in travel. Okay, it is not available for or delivered completely.
+    
+    **ACTION ITEM: Enforce vehicle availability: block reassignment when trip in progress - WATCH**
+    
+    So what it happens, that means my fleet is still occupied.
+    
+    @42:58 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yes, yes. Is another delivery order.
+    
+    @43:00 - **Ajin Babu (ERPForce)**
+    
+    If I'm, if I'm selecting this particular vehicle should not show that it will be working like that whenever any vehicle is assigned to any particular driver and if the trip is continuing, then that vehicle is, I mean to say, is booked for that particular trip, so it's not showing to other delivery order, exactly, unless it is completed, yes, but what is happening here, this is like dummy data.
+    
+    understood, only the logic, if you're following the logic, I'm happy with that, yes, okay, okay, go ahead, yes, so I will complete the trip now, okay, I can add expenses while completing the trip, but no, no, it should complete as it is, as I'm mentioning, and then at the same time, I cannot enter the expenses, how the driver will do that, okay, not it, okay, so what I need to do, I need to go to,
+    
+    the order or something, leave the trip, trip, make it as it is, from the sales order, I need to book an expense, under the expense, I need to mention that, which is that, which is that, which is that, that, I need to call the trip, I need to assign that, which is the vehicle, and which is the expenses, such type of things you can call there, maybe I can call the trip details against this particular delivery, that's also possible, okay, okay, can you go with the, external one, how it can be written, yeah, I think external one, has, no handling, it is totally manual, but, it is manual, it is, can you go ahead, but I, I need one particular information, that's right, okay, let me try, because we, only have limited, our demo data, oh, no problem, go ahead, all right, create, create identity,
+    
+    @45:02 - **Anurag Jain (TRooInbound)**
+    
+    I may have 600 types of items.
+    
+    **ACTION ITEM: Implement external transport: select supplier; capture driver/cost; book as Expense - WATCH**
+    
+    @45:13 - **Ajin Babu (ERPForce)**
+    
+    Dropping down, it is something like a mess. Again, I'm pulling. Yes. Okay, not on field. On fleet. Not. Oh, yes.
+    
+    @45:27 - **Anurag Jain (TRooInbound)**
+    
+    Apologies. Okay. So currently, we do not have the data required for external transport. Okay. But I need to send, first of all, transported by, I need to select the supplier.
+    
+    Yeah. Yeah. I need to add the driver name. I need to add, not external transportation cost. It should not be like that one.
+    
+    @45:50 - **Ajin Babu (ERPForce)**
+    
+    I need to book separately. Okay. Because it's a bill. I will get a bill. Maybe a man. Billing or Billing will be there.
+    
+    Same like I mentioned previously, I need to allocate that.
+    
+    @46:06 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay.
+    
+    @46:09 - **Ajin Babu (ERPForce)**
+    
+    Maybe not only one expense. For example, for my delivery, they were telling that one, I need 250 Dharm. Maybe I use two Salik, so each Salik will be 4 Dharm, that means 8 Dharm for Salik.
+    
+    So separate Salik charges will be there. So I need to record that.
+    
+    @46:27 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Maybe a batter for the driver for 10 Dharm.
+    
+    @46:32 - **Ajin Babu (ERPForce)**
+    
+    So total expense will be 268. Okay. Okay. Not a hairdoser.
+    
+    @46:43 - **Anurag Jain (TRooInbound)**
+    
+    So I think, yes, we have shown what we have prepared and like completed this. Okay.
+    
+    @47:02 - **Ajin Babu (ERPForce)**
+    
+    Fine, but a couple of things are missing, still stuck in my mind.
+    
+    @47:13 - **Anurag Jain (TRooInbound)**
+    
+    Yes, and apart from this, I think we have also completed rental flow with cross hiring, but there is some correction that we are still working on.
+    
+    So Anurag, from the CRM purpose, we have a couple of things.
+    
+    @47:29 - **Ajin Babu (ERPForce)**
+    
+    One, service, second one, AMC, third one, rental trading, fourth one, sorry, not rental trading, what? Are you talking about the activity?
+    
+    @47:46 - **Anurag Jain (TRooInbound)**
+    
+    Yes, yes, each activity should have a run.
+    
+    @47:51 - **Ajin Babu (ERPForce)**
+    
+    Should have a? It should show in the system, right?
+    
+    @47:55 - **Anurag Jain (TRooInbound)**
+    
+    How I need to see that one.
+    
+    @47:56 - **Ajin Babu (ERPForce)**
+    
+    Yes, Now you showed me AMC, I mentioned about a couple of things. Not ERAS, Enhancements. You showed me a rental, there also I mentioned about rentals, Enhancements.
+    
+    @48:07 - **Anurag Jain (TRooInbound)**
+    
+    Now I need to see about some services. Alright, like fuel trading, trading? No, fuel trading is separate. For example, service in the sense, I have mechanics to do the work.
+    
+    @48:20 - **Ajin Babu (ERPForce)**
+    
+    For example, one of my client is telling that one, Ajin, I need to repair this generator. So I will allocate my mechanics over there.
+    
+    So we have service masters, same like that one, just make an activity, call the services, and then allocate the service description, same like that, what we are doing AMC.
+    
+    Instead, in the AMC, we are doing recurring. That's why the list will be there, number of times. But this is only one time.
+    
+    That is a difference.
+    
+    **ACTION ITEM: Create Service activity type (clone AMC); remove visits; add start/end dates; enable 1-time job card - WATCH**
+    
+    @48:49 - **Anurag Jain (TRooInbound)**
+    
+    AMC is also a service.
+    
+    @48:50 - **Ajin Babu (ERPForce)**
+    
+    But AMC, we are doing only one time. Okay. Sorry, sorry.
+    
+    @48:55 - **Anurag Jain (TRooInbound)**
+    
+    Multiple times. Multiple times.
+    
+    @48:57 - **Ajin Babu (ERPForce)**
+    
+    Service is one time. Yes. That is a difference, but they are treating it as activity types, only one difference from the AMC, can you click AMC, I'll explain that one, whatever I mentioned there, do as it is, but even job card also required, but no, AMC sales order, under the sales order AMC, sales order or quotation anywhere AMC, okay, here AMC start date and end date should not be there, and number of visits also not required, only what we required, when we start this process, as a service, service start date and service end date, number of visits you can remove, remaining everything will be seen, okay, only one time I can create the job card, only one time I will do the service charges, consumptions, everything can be possible and do the process, but activity type will be service, okay.
+    
+    Okay.
+    
+    @50:01 - **Anurag Jain (TRooInbound)**
+    
+    You can just clone it. Okay.
+    
+    @50:04 - **Ajin Babu (ERPForce)**
+    
+    Only change couple of terminologies and remove the number of visits. Okay. Okay. We'll do this.
+    
+    @50:16 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay. Fine. Any other things that you developed? I think we have completed rental through with gross hiring too, but there is some correction that we are currently working on it.
+    
+    Okay. we are planning to show you that tomorrow. Okay. But once it's complete, I believe that when you need to show me an entire workflow with the all corrected data.
+    
+    @50:41 - **Ajin Babu (ERPForce)**
+    
+    So we can once confirm because only changes is happening on the CRM remaining. Everything is there in the system.
+    
+    @50:49 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Sure.
+    
+    @50:50 - **Ajin Babu (ERPForce)**
+    
+    Most of the things I'm not telling 100% it is there in the system. Around 90% is already there in the system.
+    
+    Just that's why I was mentioning to Nishit. So changing the logic of allocating the cost centers, allocating the activity debts, remaining things is there.
+    
+    **ACTION ITEM: Replicate Spark procurement workflows (Capex/Overhead/Standard) - WATCH**
+    
+    @51:08 - **Anurag Jain (TRooInbound)**
+    
+    All right.
+    
+    @51:10 - **Ajin Babu (ERPForce)**
+    
+    Okay. We already developed for Spark related with the capital improvement type of POs, workflows. So we can just copy paste the same thing.
+    
+    You don't need to work again. Yes.
+    
+    @51:29 - **Anurag Jain (TRooInbound)**
+    
+    Yeah, that's it.
+    
+    @51:35 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yes. We can copy paste the same thing.
+    
+    @51:38 - **Ajin Babu (ERPForce)**
+    
+    What we delivered today with Spark, the procurement workflow. Procurement workflow already mentioned that one. What is the overhead purchase?
+    
+    What is the capex purchase? What is the standard purchase? You can just replicate the same thing. This is what it is I written in the purchase.
+    
+    Okay. So we need to mention that some workflow and workflows it's also connected. If it is extra, then it should.
+    
+    But I have a question there.
+    
+    @52:07 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    If I'm not creating any type of operas, what is the case?
+    
+    @52:13 - **Ajin Babu (ERPForce)**
+    
+    It will go directly approved? No.
+    
+    @52:18 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    So what do you need to think about that one?
+    
+    @52:20 - **Ajin Babu (ERPForce)**
+    
+    Also, I didn't create any workflow in the PU. If it is PU, what is the next step?
+    
+    @52:27 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So if the workflow is not defined, nothing will be happening. But can I process it? This is a question.
+    
+    @52:35 - **Ajin Babu (ERPForce)**
+    
+    The PU is there. PO created. I didn't create the workflow.
+    
+    **ACTION ITEM: Set default PO approval flow; allow GRN if no workflow - WATCH**
+    
+    @52:41 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So again, can I proceed to GRN? No. Yeah.
+    
+    @52:46 - **Ajin Babu (ERPForce)**
+    
+    So need to think about that one.
+    
+    @52:47 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    If I didn't create the workflow, I need to process.
+    
+    @52:51 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    I need to proceed.
+    
+    @52:52 - **Ajin Babu (ERPForce)**
+    
+    I think we should go with that default flow.
+    
+    @52:57 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Like they can. Otherwise, we need to define.
+    
+    @53:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yes, standard flow for the system itself.
+    
+    @53:03 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Hmm, that is the current we are using. Yes. If it is not that, then this and that, if it is someone who assigned that to workflow, then it is working as a workflow.
+    
+    @53:16 - **Ajin Babu (ERPForce)**
+    
+    Okay, and second thing, what I'm asking that, I need a provision that we need self, for example, now you created that approval workflow, and there is one logic.
+    
+    If I edit that, then what is the logic?
+    
+    @53:33 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Do I need to create the same again?
+    
+    @53:36 - **Ajin Babu (ERPForce)**
+    
+    Yes. No, there should be a provision that I need to add, create an add, it should be same itself, same workflow.
+    
+    Hmm, yes, it's there, you can create.
+    
+    @53:48 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yes, so whenever any PU is rejected, and if it will be edited. Not rejected, not rejected. Anything. For example, I created a PU.
+    
+    @53:58 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay. Yeah.
+    
+    @54:00 - **Ajin Babu (ERPForce)**
+    
+    I have a logic that one, if it is something like an inventory purchase, 200,000, then it should go to admin to approve, assume like that one, else approved by user, this is the logic, I do something like inventory creation, that means purchase order creation, I created it, okay, I go for approval, now we have a super admin to change the, we are developing that one, so incorporate that one also, we have a provision that we can edit by someone, okay, we edited that PU, then what is the next logic, so it is going back again to for a review process, same approval workflow, need to work on, yes, it will remain as it is, update also should, but, but I saw inside the system, create the creation, update, change, a different actions, it is there, if you go and check, it was confusing for me, that's why it was asked,
+    
+    @55:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    No, I mean, if someone is editing in between that, then if the approval is pending, then it will not send it again, it will remain as it is.
+    
+    And also he can see the updated data. Okay. So, sorry, one, one second, I will share my screen.
+    
+    @55:23 - **Ajin Babu (ERPForce)**
+    
+    Sorry, I'm jumping into the other things. But this is also relevant for this particular project.
+    
+    @55:29 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    That's why I'm pointing here.
+    
+    @55:35 - **Ajin Babu (ERPForce)**
+    
+    Okay, for example, here, approval workflow. So when I'm creating this approval workflow, open the editor. So here, I'm purchasing, I'm making an workflow.
+    
+    Here, you can see that one, I have some conditions.
+    
+    @55:55 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay, purchase or that means
+    
+    @56:00 - **Ajin Babu (ERPForce)**
+    
+    This is the operator, go to create it, yeah? One second, I was thinking that one, if any conditions is there.
+    
+    @56:16 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Click on the block. Because you can see that one, feel, update, create new record, delete record, I was asking that one.
+    
+    No, currently we had only request approval, because for create new record, delete record, it is a, we have, it is a, we have, uh, passing to, uh, like, it is in second phase, so, currently we have- everything the same itself, same workflow, go for the same workflow, why I need to create it for everything.
+    
+    **ACTION ITEM: Enable single approval workflow for create/update/delete; keep pending approvals - WATCH**
+    
+    @56:58 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    These are the future actions, right? Right, which will be implemented in the phase two or next phase. Okay. I'm just trying to tell that one.
+    
+    @57:07 - **Ajin Babu (ERPForce)**
+    
+    At the same point, if I'm updating also same workflow, go ahead with the same workflow. So at the same time itself, it will be completing.
+    
+    Instead of we are creating separate, separate action, any actions that these happen, go with the same workflow. Yeah.
+    
+    @57:23 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So you just have to click on the block. What we can do is if they want to do with changes, we can do on the second phase.
+    
+    Okay.
+    
+    @57:33 - **Ajin Babu (ERPForce)**
+    
+    But it will be simple at while you are creating, right? Yeah. If it is editing also, I required for one approval workflow.
+    
+    The same workflow, what we created. The benefit is I don't want to create multiple times. For update, for delete, like that one, I don't want to create.
+    
+    @57:53 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay. So you mean to say that in single order, we can, we, single workflow, we can. And then that all that event.
+    
+    Usually it should be give a tick mark, give a tick mark to everything.
+    
+    @58:06 - **Ajin Babu (ERPForce)**
+    
+    If anyone don't want to use that workflow, they will untick and they will create a new one that they can do it on the second phase.
+    
+    @58:16 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay. But I'm going to with everything with the same workflow.
+    
+    @58:22 - **Ajin Babu (ERPForce)**
+    
+    Okay. Any other things?
+    
+    @58:30 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    No. One thing I think we need to discuss. Anyone can drop it. I just need to Ajin. Okay. Thank you.
+    
+    @58:42 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay. Thank you. Thank you. you.
+    
+    @58:49 - **Ajin Babu (ERPForce)**
+    
+    Okay. Okay. Yeah. So for actually others pushing me for that report. Okay. I will give a call. I didn't give the call to
+    
+
+## October 8, 2026
+
+### Meeting with Ajin
+
+- Transcript
+    
+    # Heavy rental module discussion - October 08
+    
+    **VIEW RECORDING - 69 mins (No highlights)**
+    
+    @4:02 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Hello. Good afternoon, Marcin. Hi. afternoon. Good afternoon.
+    
+    @4:09 - **Anurag Jain (TRooInbound)**
+    
+    Good afternoon. Is everyone joined? Yeah, just a minute, I think. Darshit, I didn't test that HRMS.
+    
+    **ACTION ITEM: Deploy HRMS to KSA; upload Employee Master; align standard workflow - WATCH**
+    
+    @4:32 - **Ajin**
+    
+    I've been tested in the UAT Spark. Meanwhile, Shravni is mentioning about something related with the KEC. Please help her to upload that.
+    
+    Yeah, she mentioned that she wanted HRMS on KSE. So I think I need to deploy that. Because FicePrior was
+    
+    @5:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    too many things in my depth. Okay, I try to. Yeah, because FizBuy and PolitiBuy is insisting us to start the for KSA.
+    
+    @5:14 - **Ajin**
+    
+    At least the time period, the other software came, we can just test it with the live data. Okay.
+    
+    @5:23 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    No, I will deploy it, not to worry. But Dave said, is there any data related to that initial setting what exactly we required?
+    
+    They shared a couple of details, but whatever they didn't share, we can keep it as open.
+    
+    @5:45 - **Ajin**
+    
+    So I just prepared as a what, currently we had our default data with it, or?
+    
+    @5:51 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yeah, default data, default data, the live master and everything, we can do it as a default one. Okay. And just upload the.
+    
+    The Employee Master, and just align this standard workflow.
+    
+    @6:06 - **Ajin**
+    
+    Okay. Okay. Sure.
+    
+    @6:13 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yeah, I think we can start. Okay. Sure thing. So I'll start now.
+    
+    @6:23 - **Anurag Jain (TRooInbound)**
+    
+    I'll share my screen. Okay. Is it recording? I believe so. Okay. Hello everyone. Apologies for the delay.
+    
+    @6:37 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    That's Let's start. Yes. Okay.
+    
+    @6:53 - **Anurag Jain (TRooInbound)**
+    
+    So I'll today, yesterday as discussed, we will proceed with the full rental flow as in cross Crosaire 1 specifically, which we were working on.
+    
+    So I'll show you that the Crosaire flow. For that, we have prepared some data. And I'll show you that from sales order.
+    
+    So here in sales order, I have prepared order number 58 specifically for that. So as you can see in the sales order 58, there are a total of this much services and equipments, right?
+    
+    **ACTION ITEM: Remove delivery/job card for service items - WATCH**
+    
+    I will select one of those equipments, and go for Crosaire. One more thing, Anurag Jain, related with the service, we don't need the delivery.
+    
+    @7:42 - **Ajin**
+    
+    Okay, so that also you need to check because service, there won't be any delivery, right?
+    
+    @7:49 - **Anurag Jain (TRooInbound)**
+    
+    Yes, it will work.
+    
+    @7:51 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Same like the AMC. Same like the AMC, yeah, right. Not same like AMC because services might be transportation.
+    
+    @8:00 - **Anurag Jain (TRooInbound)**
+    
+    So we don't need the job card and all, but it's, it's executing along with that one, just for the invoicing purpose, we maintain that one.
+    
+    Yeah. Yeah. Okay. Oh, go ahead. All right.
+    
+    @8:13 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So I'll prepare this cross our request and serve it. Right.
+    
+    @8:17 - **Anurag Jain (TRooInbound)**
+    
+    Now I'm going to submit it. I've submitted it. Now I will create an order or an RFQ. First, we'll go with an order.
+    
+    Okay, go with an order, it's an RFQ mostly not required. Okay. Okay. Yeah. So here are the fields that are currently existing in the order.
+    
+    Yeah. And I'll prepare a rental period here. But it is, it will be carried forward.
+    
+    **ACTION ITEM: Implement supplier auto-populate in Cross-Hire order - WATCH**
+    
+    @8:47 - **Ajin**
+    
+    Because in the sales order, we already have a start date and end date, right? Correct. Yes.
+    
+    @8:52 - **Anurag Jain (TRooInbound)**
+    
+    So we can be careful. Got it. Yes. Because most of the details it is.
+    
+    @9:00 - **Ajin**
+    
+    Only what I required is I just need to generate the supplier because the end of the ID, activity, type, post-sender, everything is carried forwarded here.
+    
+    @9:11 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay. I will do that. We'll implement it. For the time being, I'll just select this. Go ahead. Go ahead.
+    
+    Please write this notes. Yep. Okay. Okay.
+    
+    @9:25 - **Ajin**
+    
+    All right. So now I'll submit this.
+    
+    @9:30 - **Anurag Jain (TRooInbound)**
+    
+    I think... Supply are not used. Oh, yeah. Sorry. So I chose the supplier and expand the items.
+    
+    @9:41 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Let's collect it. Okay. So after timing, I'll choose 2018 and submit. Now, what I can do here is I can submit it further, submit further, approval, and edit it.
+    
+    @10:00 - **Anurag Jain (TRooInbound)**
+    
+    For the timing, I'll just submit it for kick approval. Now I have submitted it. Now I'll do receiving of the seal.
+    
+    Ajin, are you there? Yeah, I'm there. I'm just seeing there. Okay. Now I've done the receiving. Here I can put the driver details.
+    
+    But here also, we've seen the category, such type of information, category, subcategory, and asset.
+    
+    @10:32 - **Ajin**
+    
+    So because in the order, whatever we carry forward, it should be carried forward here. Okay.
+    
+    **ACTION ITEM: Standardize category/subcategory display across rental/cross-hire forms - WATCH**
+    
+    @10:40 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. We can certainly fetch those fields here and show it. So in the main form you wanted? Yeah, currently we have combined category and subcategory and display.
+    
+    Don't do that one because once I'm seeing that one,
+    
+    @11:02 - **Ajin**
+    
+    We are doing one format in sales order and another format in course have, and again, we want to train it to the people, we can reduce that.
+    
+    @11:13 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay.
+    
+    **ACTION ITEM: Add Project field to Cross-Hire order/receiving; carry forward from SO - WATCH**
+    
+    @11:16 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So I'll just go ahead and see you this. No, I can validate this.
+    
+    @11:22 - **Anurag Jain (TRooInbound)**
+    
+    I'll need to track the details. Sorry, I missed one thing. Are we entering project here?
+    
+    @11:31 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    I'm not sure. We are not entering project here.
+    
+    @11:34 - **Anurag Jain (TRooInbound)**
+    
+    We need project because in the sales order, we are assigning the project. There is a chance that when supplier will directly allocate, deliver this material to the site itself, right?
+    
+    @11:43 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    There is a chance. I believe that we have already in our system.
+    
+    @11:50 - **Ajin**
+    
+    That's it, we have directly drop off and one with the inventory, right?
+    
+    @12:01 - **Anurag Jain (TRooInbound)**
+    
+    I think Darshit is on mute. Okay, please check with them. Yeah, sorry, I could have just replying to Sonar.
+    
+    @12:13 - **Ajin**
+    
+    Okay, Darshit, I was telling that one in our system in the crossfire, there is two options, either we can do as an inventory or directly delivering to the supplier customer location.
+    
+    @12:25 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yes, right. So exactly. Dropshipper inventory method. So same thing that we required here. Yeah, okay.
+    
+    @12:36 - **Ajin**
+    
+    And secondly, we need to arrange the project also, because in the sales, sales order, it is the same, actually, whatever that flow we had, so that it is missing here.
+    
+    @12:48 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Maybe due to the description is not mentioned, so it is wireframe is not taking, but we have already considered this.
+    
+    Okay, we need to consider that. Yeah, already. Okay, go ahead. All right. I'll track these details.
+    
+    **ACTION ITEM: Add optional brand/model fields to hired-asset traceability - WATCH**
+    
+    @13:04 - **Anurag Jain (TRooInbound)**
+    
+    So I'll put an ID here, 455. No. Okay, go ahead.
+    
+    @13:12 - **Ajin**
+    
+    I will tell you. Can you go ahead? Yeah. Okay.
+    
+    @13:16 - **Anurag Jain (TRooInbound)**
+    
+    Now traceability happened. Traceability happened. At that moment, I need to enter the details also because I am hiring the materials.
+    
+    So asset ID, okay, it's fine. But I need to mention that which is the brand, which is the other details.
+    
+    Okay. Just like we have in heavy equipment form. In heavy equipment. Because I also need to mention that one in the project, in our asset as hired one.
+    
+    Comprehensive asset. Yeah. Okay. Those information. Assume that only you are hiring a car.
+    
+    @13:49 - **Ajin**
+    
+    Crosshair item added as asset only, right?
+    
+    @13:52 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    And it is not deprecated. No, no. Nothing. Nothing is different. One. Just only the name. In the configuration. What?
+    
+    Yes, configuration, because if I have this asset, asset ID, definitely I won't understand, but I, if I have, okay, for example, it is Parker, this is this model, this is something like that, so it will be easy for defining, don't make it as mandatory, but give us this option.
+    
+    @14:14 - **Ajin**
+    
+    No, we, we just maintaining with the type only, so either it is item is a crosshair item, and we have our own item, so this way we can segregated that both items, because there are not only that one, for example, I hired 100 kb generator, from one supplier, but 100 kb generator, I won't understand, definitely it is mine out there, so what I require, I need the brand, I need the other models to understand that.
+    
+    **ACTION ITEM: Add Cross-Hire flag to item/asset master; use for supplier returns - WATCH**
+    
+    No, no, that is fine, that is fine, that is information, what in asset required, that is we added, but this way we need to segregate that two types, like is a crosshair or not crosshair, like that, so if it is, we are sending to,
+    
+    @15:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Another customer, so that we can do with that crosshair item, or we can send as our own item, so this way we can know that, user can know that, which gender they are going to select.
+    
+    Okay, fine. That is also okay. Alright. Go ahead.
+    
+    @15:21 - **Anurag Jain (TRooInbound)**
+    
+    I'll validate this now.
+    
+    @15:26 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Now I'll, I'll, I can even change F, this, this is the asset, I think this is the asset ID that is being generated here.
+    
+    Alright.
+    
+    @15:42 - **Anurag Jain (TRooInbound)**
+    
+    So I can just go ahead and view the order, and see everything, and I can, I'll, I can allocate through delivery directly here.
+    
+    I can also click on bill and, you know, fill in the bill details, and save it. Additionally, what is the bill details?
+    
+    Can, can you.
+    
+    @16:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Show me that? Yep.
+    
+    @16:08 - **Ajin**
+    
+    Okay. You are met about the supplier invoice, right? Yes. Yes. Okay.
+    
+    @16:13 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Got it. Got it. Yes.
+    
+    @16:17 - **Anurag Jain (TRooInbound)**
+    
+    So now I can either allocate through delivery directly or I can go through sales order. For the timing, we'll go to sales order.
+    
+    Anurag, just a second.
+    
+    @16:27 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Ajin. Yeah. Yeah. Currently in our system, it is not working like the rental invoicing. mean, the invoice will not generate periodically.
+    
+    They will give us and we will enter the bill. Okay. Perfect.
+    
+    @16:48 - **Ajin**
+    
+    Okay. Time being, let it be like that one. Let us get some feedback from the client.
+    
+    @16:54 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Recurring purchase invoice. Now for time being, let it go like this. Okay. welcome. Thank
+    
+    @17:00 - **Anurag Jain (TRooInbound)**
+    
+    Okay, now I'll go ahead and view the sales order, and then again, see, this is the 1500 KVA we earlier selected, I'll choose this one and I'll crosshair these two, right?
+    
+    I won't select a vendor here, I'll just save here, and I can just submit here, and then choose RFQ here.
+    
+    You're telling about the RFQ model, right? Yes. Okay.
+    
+    @17:28 - **Ajin**
+    
+    Is it not needed? Yeah, keep it like that, I don't the workflow is okay.
+    
+    @17:33 - **Anurag Jain (TRooInbound)**
+    
+    But, yeah, I'll go through it, like, real fast, just to, you know, see, we already, all right, call for vendor, select place minus, same.
+    
+    do offer always do keep mandatory in HRM, the same into Jeffers fill free action Aryan Submit this. Submit this.
+    
+    Take Approval. Receive. Same way. Nala. Okay. Yeah, type of details. Put ID. Validate. You can see the ID has come up.
+    
+    View Order. I will go to Sales Order again. And I will create Delivery. Now, in Delivery, I can choose Lead.
+    
+    Driver will come assigned. And I think here in the trust details, as you can see, this cross-layered one also came.
+    
+    You see it. Okay. Same as for this one too. I can trace them normally as we have been doing.
+    
+    Here I have one question. For example, I don't have availability of 500 KB. I need to select, I have 550.
+    
+    @20:19 - **Ajin**
+    
+    How I will choose that? Yes, for that I believe you can choose from here to drop down and then can select a different asset.
+    
+    @20:33 - **Anurag Jain (TRooInbound)**
+    
+    you click 500?
+    
+    @20:37 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Okay. Like this one. Okay. Yeah. Go ahead and save those.
+    
+    @20:44 - **Anurag Jain (TRooInbound)**
+    
+    And this is like the delivery is done.
+    
+    @20:49 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Now, now I can see this is the trip that has been assigned. I can start trip.
+    
+    @21:00 - **Anurag Jain (TRooInbound)**
+    
+    Trip has been started, I'll complete the trip, and now, yeah, the expense one is not worked on, like, the feedback is given earlier, yes, go ahead, yeah, and now, I will view the delivery order, right, and mark it as delivered with the signature, and mark acknowledged.
+    
+    Now, this flow is completed. Now, I'll show you the self-sort result, and this is the scheduled invoices for the generator.
+    
+    Now, I, after this, so, Here, I can select a customer, and I can select that. I think I have these two invoices, but, okay, yes, now they are coming.
+    
+    I can select some of them, and then submit them. When they are submitted, and we can see it in previous job, as processed, in like in Kiwi, right, and we can view this, right, so this is the invoicing.
+    
+    **ACTION ITEM: Set rental invoicing default to auto; allow manual override - WATCH**
+    
+    But this will be automated, right? Yes, it can be both ways, or manual or automatic, whatever billing.
+    
+    @23:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    cycle, whatever configuration set in the billing cycle, but automatically making my default, it'd make it as automatic.
+    
+    @23:07 - **Anurag Jain (TRooInbound)**
+    
+    Okay. No issues.
+    
+    @23:11 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Okay. Okay. I'll show you the, uh, previous jobs in the previous jobs in the since previously invoiced one, right?
+    
+    @23:23 - **Anurag Jain (TRooInbound)**
+    
+    Uh, it means that when, yes, whatever.
+    
+    @23:27 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yeah, yeah, no, I will show you the, no, oh .
+    
+    @23:35 - **Anurag Jain (TRooInbound)**
+    
+    I think, I'll show you the customer returns module, wherein we can add a customer return. And I'm not sure this will work since I think, uh, the website reloaded.
+    
+    So I think the data has been. Reset.
+    
+    @24:01 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Can you give me a minute, Ajay? Go to the sales order. Okay.
+    
+    @24:05 - **Anurag Jain (TRooInbound)**
+    
+    Okay.
+    
+    @24:11 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    58th number. Next page. All right. Create return. Okay.
+    
+    **ACTION ITEM: Create return checklist master; allow per-item/global attachments - WATCH**
+    
+    @24:30 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Now, this is the pre-return site checklist that I have to do. Can I prepare by myself? This is the question.
+    
+    As in, can you, like, I don't understand.
+    
+    @24:48 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    For example, we can keep it as a master's.
+    
+    @24:51 - **Anurag Jain (TRooInbound)**
+    
+    What, for example, today we have mentioned that one. Yes. Yes, we can do that. Please do that.
+    
+    @24:58 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Same checklist. Yeah, we can.
+    
+    @25:00 - **Ajin**
+    
+    A master and one can add as many as items they want in checklist according to them. But each item need to be on the same checklist, right?
+    
+    @25:09 - **Anurag Jain (TRooInbound)**
+    
+    Can I give me a second? I'm getting a quote. Sorry. Yeah, sure. Take care.
+    
+    @26:42 - **Ajin**
+    
+    I'm sorry guys, let's continue. Yes, totally understood.
+    
+    @26:51 - **Anurag Jain (TRooInbound)**
+    
+    Here are the return methods, self-return and company collection. I can do company connection, I can do self-return. What? Okay.
+    
+    @27:00 - **Ajin**
+    
+    go ahead yeah now here i think i'm not sure if the set is not complete but there is a problem in that one in here for example every item will not return on the same time yes we can delete them okay just delete that one and then i need to understand the flow from where it where i need to deliver go for the remaining return same sales order itself right i think yes okay not on the delivery order i believe so okay and then there is a process that we are missing is replacement yes we will i mean we are working on it oh okay then it's fine it's fine yeah because the same logic of return will be there but at the same time i can assign some some other materials also yeah yeah i mean we are still working on it it has been created
+    
+    @28:00 - **Anurag Jain (TRooInbound)**
+    
+    to some extent but there are still some things that we have to you know work out and think how to proceed okay go ahead yeah but uh keep keep the photograph of something okay attachment is there can you please pardon no attachment we can we can keep it for per item from where your voice cut agent um am i only going or not yes you are i'm i'm telling that one but item we can give attachment and bottom also we can give attachment yeah now get that yeah yes okay we'll do that okay mandatory fields okay attachment I'll just put attachment here
+    
+    I'll just save this. Okay. Yes. Don't do this, keep the approval of something. We are going with our latest approval cycle.
+    
+    @29:17 - **Ajin**
+    
+    Same like what we did for our program and workflow. We already discussed that.
+    
+    @29:24 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Everybody, we are going with the latest one.
+    
+    @29:29 - **Ajin**
+    
+    Yes, but this is like just wireframe.
+    
+    @29:34 - **Anurag Jain (TRooInbound)**
+    
+    Okay, fine. I'm just trying to tell that one. submit button.
+    
+    @29:38 - **Ajin**
+    
+    Keep approval. Don't miss, miss, uh, treat like that.
+    
+    @29:42 - **Anurag Jain (TRooInbound)**
+    
+    You don't need that.
+    
+    @29:43 - **Ajin**
+    
+    As in we will take care while developing time. No problem. Take care. Go ahead.
+    
+    @29:48 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Okay. Okay.
+    
+    @29:50 - **Ajin**
+    
+    Now I can receive this. Okay. Receive at the appropriate location, wherever I want.
+    
+    @29:58 - **Anurag Jain (TRooInbound)**
+    
+    Okay. And I can. It the time at what time it reached my yard as a key, okay, and here are the other details, as you can see on the screen, but if what we missing in this part of time, they're in the delivery order, we missed one area that one went to start the invoicing and return also, we missed one portion that went to stop the order because this is I guess this is based on the billing cycle configuration.
+    
+    @30:33 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    But Billings, I was clearly mentioning, mentioned that one. For example, there is a chance that when I delivered today, maybe my invoicing will start by tomorrow week.
+    
+    **ACTION ITEM: Add invoicing start/end dates; prompt additional invoice if delivery/return dates differ - WATCH**
+    
+    @30:43 - **Ajin**
+    
+    And similarly, my delivery, I am taking by today, but off hiring may be happen on Monday. There is a chance.
+    
+    @30:57 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay, so one date we need to Based on the date only, yes, based on the date, not on the details.
+    
+    Yes, if you check my document and also in the PPT, was clearly mentioned, when we deliver, there is a question, okay, question that one, invoicing date, check the delivery date and invoicing date, if it is invoice date is not equal to delivery date, then there should be a question, you want to raise an invoice, additional invoice.
+    
+    yes or no, it is no, just go ahead, if it is yes, you need to create an additional invoice against that.
+    
+    @31:39 - **Anurag Jain (TRooInbound)**
+    
+    Yes, it's fine.
+    
+    @31:40 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay, similarly, similarly in the return, you need to mention that one, what is the case?
+    
+    @31:47 - **Ajin**
+    
+    When to stop that one, because off-hiring need to happen based on that. Yes, yes, yes, Go ahead, go ahead.
+    
+    @31:58 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay. Go ahead. Okay, it is a critical point, but I'm considering that you will do that process.
+    
+    @32:06 - **Anurag Jain (TRooInbound)**
+    
+    No, I can inspect them line by line.
+    
+    @32:11 - **Ajin**
+    
+    Sorry, you told that one no, or you'll do that.
+    
+    @32:18 - **Anurag Jain (TRooInbound)**
+    
+    Which one? No, I'm kidding.
+    
+    @32:21 - **Ajin**
+    
+    was just telling that one, we need to take care of the critical thing, then the first one there that you told is no.
+    
+    @32:30 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Oh, apologies. No, no, no, just go ahead.
+    
+    @32:33 - **Anurag Jain (TRooInbound)**
+    
+    There is a lot of brainstorming going nowadays, at least for me, because it's not easy for me to understand everything, because it's not that knowledge, but I'm trying my best here.
+    
+    I hope we can deliver it.
+    
+    **ACTION ITEM: Route returned own assets to maintenance; apply checklists; skip cross-hire - WATCH**
+    
+    @32:52 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yeah, and I can inspect them line by line. Okay. And can... ... ... ...
+    
+    @33:00 - **Anurag Jain (TRooInbound)**
+    
+    tools, anything, and, okay, like this, and just save the inspection, if everything is fine, but there is a process that, once it comes, it is directly going to the maintenance itself, not ready for fact.
+    
+    @33:20 - **Ajin**
+    
+    Okay, you are saying if our damage is sound, then it should directly go to maintenance. Not even, directly, always it will, for example, even when, when, assume that when these are generators, I know, it will go on the construction site, once it comes, maybe cleaning, washing, such type of things should happen.
+    
+    So it will directly go for the maintenance itself. So maintenance itself, if you go that one, there are some checklists, okay, something like maintenance or critical maintenance, critical maintenance, so they will understand that it will take long time.
+    
+    If it is a small maintenance, like, like that one, it will go for some other things. Mm-hm-hm-hm. Okay, sure.
+    
+    Okay. And it will be for all of the assets, mean, own and the cross-hire ones.
+    
+    @34:04 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Well, cross-hire, we don't need to check that one, that they will take care. But for our asset, it should be like that.
+    
+    It will go for the maintenance.
+    
+    @34:12 - **Ajin**
+    
+    Is there any security deposit or anything that requires all of this?
+    
+    @34:19 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    To be frank, security deposit is there.
+    
+    @34:22 - **Ajin**
+    
+    So, similarly, like bank, LC and all, we need to create security deposit.
+    
+    @34:28 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    It is some major damage we received, so based on that, we get that money count. Yes, security deposit, bank, LC is also required.
+    
+    @34:43 - **Anurag Jain (TRooInbound)**
+    
+    Okay, I just make it as a phase two. Okay. Okay. Okay. Because everything will not be possible to check.
+    
+    @34:53 - **Ajin**
+    
+    Mm-hmm. Got it, got it. Okay, let's go ahead.
+    
+    **ACTION ITEM: Implement global inline error messaging w/ field navigation - WATCH**
+    
+    @34:58 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay, so I can validate them. I think I have to inspect every one of them. Okay, I have a question here.
+    
+    @35:10 - **Ajin**
+    
+    I believe that previously also I was asking the same question. For example, once it comes, this error message, you previously also when you selected that one, mandatory fills is not missing.
+    
+    It is comes like a pop-up and book. Instead of that one, why we can show something like in the bottom or in the sideways, what is the error?
+    
+    And if I'm clicking that error, it should redirect it me to that particular error point itself. Why I need to, because you know that one, there are a lot of fields to check.
+    
+    So, all right. So, okay, we will do that. Okay, it will help the user to find easily, you know, they want to go in each and every line and find what is the error.
+    
+    Yep. That is where using ERP itself. Yeah, correct. Okay.
+    
+    @36:06 - **Anurag Jain (TRooInbound)**
+    
+    Okay, go ahead.
+    
+    @36:11 - **Ajin**
+    
+    Maybe we can adopt it as a global one itself. Yeah, I've validated them.
+    
+    @36:23 - **Anurag Jain (TRooInbound)**
+    
+    I can view their RMA, and I can view their sales order as well as GRN. I'll view the sales order.
+    
+    Here, I think, in the crosshair one, it shows like this. And this is a higher orders, wherein, I think, yes, in the units, it is tracking that it was written to us.
+    
+    **ACTION ITEM: Enhance Asset Dashboard: show category, subcategory, asset, company, status - WATCH**
+    
+    Okay, but I need, I don't want to see.
+    
+    @37:00 - **Ajin**
+    
+    I need to see here, but along with that one, I need to see that in the Asset Dashboard, in the Asset Dashboard, when I'm checking that one, I need to see that one, I don't know whether it is completed, and you see that one, what is my category, subcategory, asset, name, then, which is the current company which is pursuing, what is the status, such type of things, it should be there.
+    
+    **ACTION ITEM: Track requested vs delivered capacity; plan utilization report - WATCH**
+    
+    @37:29 - **Anurag Jain (TRooInbound)**
+    
+    Okay. Okay. Okay.
+    
+    @37:32 - **Ajin**
+    
+    And critically, one thing, not to do right now, but to explain, while you are preparing one report, there is a question that asset utilization, okay, asset utilization report is always telling that one, for example, you asking for 100 KV, this client is asking for 100 KV, okay, but we don't have 100 KV, so what we do, we allocate it for 100.
+    
+    120 KBA. Okay. So 120 KBA that we allocated, that means that generator is not fully utilized. They utilize 400 only.
+    
+    20 is not utilized.
+    
+    @38:11 - **Anurag Jain (TRooInbound)**
+    
+    It is underutilized. Okay. Okay. So because we are getting less amount for 100 KBA.
+    
+    @38:22 - **Ajin**
+    
+    So as an utilization, you need to track.
+    
+    @38:25 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    So every time what client requested, what we delivered, there should be a track at any point of time.
+    
+    @38:33 - **Anurag Jain (TRooInbound)**
+    
+    And that should join a report. That report format and all we can discuss later, but keep it in mind.
+    
+    Yeah, track. Yeah, should be a track should be there.
+    
+    @38:45 - **Ajin**
+    
+    Yeah. Underutilized or overutilized?
+    
+    @38:49 - **Anurag Jain (TRooInbound)**
+    
+    For example, they asked for 120. I don't have 120. I give it 100 KBA. That is also a need to understand.
+    
+    @39:00 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Correct.
+    
+    @39:00 - **Anurag Jain (TRooInbound)**
+    
+    Now, from here, I can reissue to another project and return to supplier. What is this? This is the asset that customer returned to us that was cross-hired.
+    
+    But how the cross-hiring has happened? Because it is already cross-hired or not? It was cross-hired via RFQ and order, right?
+    
+    @39:28 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    I delivered that one.
+    
+    @39:30 - **Ajin**
+    
+    I returned that in my inventory. It is under my inventory now. So leave about this screen, render. But I need to see that one, I need to return that material.
+    
+    How I will do that? That is only what we are doing here, return to supplier.
+    
+    @39:48 - **Anurag Jain (TRooInbound)**
+    
+    So I need to keep it, remember which order I do the cross-hiring and against that one, I need to do the return.
+    
+    @40:00 - **Ajin**
+    
+    i try to keep my people lazy seriously then only i can sell my software yeah yeah so yeah this way no it should not be like here it should be from the sales out of the from our asset there that's why we kept it for crossfire yeah that is what i mentioned that we can manage it to one type price that crosshair or own so if it is a crosshair and directly we need to return that item from there so we can easily identify and we can do that exactly so here also it can be done or other or from the feature asset area also i can do likewise you need to understand okay all right um is it clear or not do i need to explain once again no it is clear okay go ahead yeah
+    
+    so i can either reach you to another project or return to supplier and can close the loop from here it is return to supplier okay at this moment i need to allocate the bill also how i do the bill um allocate the bill for i return the material once i return only i will get the bill of the supplier all right how we are thinking a very straightforward way if i have a generator i render with my client after that one once i get the material return i will give the invoice to the client to pay me back right similarly my client also will give me the bill no sorry my supplier also will give me the bill against this prospect
+    
+    I need to make it bill also, so monthly billing will be there, weekly billing will be there, or last bill will be there, so it should be tackled, same like how we are doing our render invoicing, understood, okay, we will, please repeat, actually I am not, Darshit, same like how we are giving render invoice to our clients, we also need to mention our billing cycle with our supplier, because I render a generator from my supplier, for a month wise, okay, consider that one, is for three months, so there will be, first one there will be invoice, second one there will be invoice, while I am returning there will be an invoice, three months, but that invoice actually as we discuss here, I am not mentioning to automate, I need to have a provision to endorse that one, right.
+    
+    **ACTION ITEM: Add Cross-Hire Bill action on SO; allow manual supplier bills - WATCH**
+    
+    So we just need to create a bill or we should go we need to create a we need to just create a bill only right we need to have a bill so only for all the crosshead item from the sales order I need to have the billing okay got it from the sales order so everyone we need to we need to have a provision that there will be a billing cycle but that billing cycle how we calculate it is based on that no need to do the frequency or something just just what that actual amount and based on that days and what is that rate we are getting and we don't RFQ what we are not even what we can give is for example when I'm going to the supply sales order okay if I do any crosshead against that particular sales order there will be a bill
+    
+    There a cross-hire bill, there should be an action cross-hire bill, if I'm clicking the cross-hire bill, only the asset which I have, I'll have the cross-hire, okay, I can allocate there, and the supply details can be added, and I will write the information for monthly billing, billing cycle, just same like how we are giving our invoice to the client, maybe, that is fine, no, actually, yeah, item is there, everything is So just, I wanted to know that, how we calculating that, how much we are paying, and that, so I think we had a data, so based on that, we will do it, and we will get the invoice, yeah, yeah, yeah, we will get the invoice, we just need to close verify that, I think we had, currently, I think we remove, or maybe hide the bill, but, we hide the option, I believe, in the, yeah, yeah, in the internal, this should be there, yes, yes, yes, you don't need to create a workflow, same like,
+    
+    @45:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Automated Workflow, you don't need to create, same like sales, just need that provision to enter the bill.
+    
+    @45:10 - **Ajin**
+    
+    Okay, so the schedule will not be created, but he can manually bill it.
+    
+    @45:15 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yes. Okay. Got it.
+    
+    @45:24 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    So, I think we are good from my side.
+    
+    @45:32 - **Anurag Jain (TRooInbound)**
+    
+    This is what we had done. Okay. Okay. Anurag can you please open that PPT, what Ajin said with us?
+    
+    @45:48 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yes. Because we need to know that how much we have covered up and what other things are pending. Yes.
+    
+    Anurag I guess majorly changes we have in sales order and CRM, so we don't need to jump into the HRMS accounting.
+    
+    **ACTION ITEM: Add HR letters and HSE-related documents to HRMS - WATCH**
+    
+    HRMS will be there, there are certain things, but it is standard only. Yeah, is the standard only, so we are only required that HR letters are all there, because in this industry, HR letters will be loaded, because HSE related information, warning letters, those will be there.
+    
+    **ACTION ITEM: Add KPI tracking for appreciation/performance - WATCH**
+    
+    And these people will maintain these KPIs for the appreciations. Yeah, that we will consider with HRMS.
+    
+    @46:53 - **Anurag Jain (TRooInbound)**
+    
+    Yes, but once this is done, we can start our development.
+    
+    @46:57 - **Ajin**
+    
+    That is, that is what my, so we can.
+    
+    @47:00 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Start with the processing with that estimation and start to the development so that is my main concern I guess can you go the second screen so it is a crosshair but this is I guess done next so that we know that is we discussed so I think we make a point so that we can handle it no worry replacement is not done it is under development yeah it's uh replacement is uh what current we had replacement that is the same we are going to use right what it is a difference no okay in current system just just the item is including yes right but here I need to return the asset and I need to allocate another asset I guess I guess
+    
+    It's not the same like scaffolding like an untraceable, this is traceable item. No, so here just the changing is based on the category subcategory, we just need to choose that another serial number.
+    
+    Another serial number and this particular serial number need to be allocated as a maintenance. Yes, yes, true, true. So that is the actual case.
+    
+    Yes, we have a replacement ready. Like, we have almost ready, like we were working on it.
+    
+    @48:31 - **Anurag Jain (TRooInbound)**
+    
+    But if you have some time, then we can show it right now. I have time, it's not an issue, but I was trying to...
+    
+    @48:40 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    not be the... No, no, no, go with the PPT itself. Alright. Yes.
+    
+    @48:50 - **Anurag Jain (TRooInbound)**
+    
+    Okay, so we will get an idea. Okay, replacement is the only thing. Okay, go ahead. go.
+    
+    @49:00 - **Ajin**
+    
+    This is not done, that means contract expiry check, for example, I need a couple of dashboards we discussed, the one dashboard it is based on the contract expiry, that means end date, there should be prior date, one week or two weeks as per the order, it should be pop up in the dashboard, and from the dashboard, the salespeople who helped us, they will call them, and they will mention about the allocations, okay, do they want to extend, or do they want to do that, so there is a promotion for extending the sales order also, okay, that is also we covered it up, so that we didn't show that extend, no, right now, we are going to show, so what are the process, we will show you, okay, next,
+    
+    go next i'm telling about current process i didn't see that yeah yeah yeah i mean we were still working on it as i said but we are happy to show what we have done till now okay this is fine on fleet couple of things i will say uh discussed that one but it is not happened because once i did once i delivered the material there is a chance for invoicing okay invoice start date and similarly return also invoice end date so those information it is not done possibly actually yeah that actually uh that is we will taking care in uh development phase so okay because it is uh once we are covering everything over here then it is uh getting bigger and bigger so okay go ahead yeah this is just a flow shall i go yes but service master you didn't show but
+    
+    Same, you can do same, same like, same, same, same service, yes, requirements, currently, we already executed for Ultrad, so you can do the same thing, yeah, we don't need to see that, there is no change, okay, great, okay, here, the call center logic, once you develop the call center logic, that also will be solved, as we are posting currently for the Ultrad groups, yes, currently, we are just, given, when the estimation and timeline, so, I mean, that based on that, it is, not just, okay, go ahead, it's not normal, it's, only one thing, same, another dashboard, what I required, same, like, the sales order dashboard, there should be a collection dashboard.
+    
+    @52:02 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    I think, Anurag Jain, my one suggestion, or my request, that you kindly provide that what type of dashboard you require, so it is easy to understand what type of graph, what type of menu, or what type of boxes you require, so whatever the HRMS UAMs created, it is very good, easy to adopt, easy to integrate, so this, it says UAP, it is you are completed, then it is easier to us, that it is complete, you need Excel, maybe in Excel, or if it is possible, you can use of the cloud, so it is easier to us, I can give you, yeah, thanks, I said almost, we did, only one thing that we, that I didn't, that I'm not interested,
+    
+    Currently, however, scrap method or however disposable method, there is no connection. There is just a status changing. So I've given some feedback.
+    
+    So you can make it as well. Sure, sure. No problem.
+    
+    @53:19 - **Ajin**
+    
+    So there's a lot of some statuses of asset.
+    
+    @53:24 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    So when I'm in asset, you can see that when on hire, when it is deployed, you can change it to on hire.
+    
+    When it is, that means when once it is there, then you need to mention that in transit, it is not comes to yard, but it is off-fair that you can mention off-fair in transit.
+    
+    Okay.
+    
+    @53:43 - **Ajin**
+    
+    then a while in the yard inspection, you can mention that it is under the yard inspection because, you know, if we are doing, Anurag is doing manual by himself, he can understand.
+    
+    But I have different departments. Off-hiring is doing. operation department, but sales department need to see that one, which I need to do, that means characters of sales need to understand, which is available, then only they can allocate and offer this particular inventory.
+    
+    So this is just, we update the status based on that, based on the activity, yes, it is not big, only the process logic, you don't need to develop anything.
+    
+    Yeah, assume this will be the status on the fixed heavy equipment asset listing of each asset, whether it is ready for hire, like that.
+    
+    @54:42 - **Anurag Jain (TRooInbound)**
+    
+    Okay. This certificate compliance, we already did that one, but we need to have a dashboard or somewhere, what is going to expect, like a reminder.
+    
+    @54:58 - **Ajin**
+    
+    Yes, reminder course. Uh... you Even report is also fine.
+    
+    @55:01 - **Anurag Jain (TRooInbound)**
+    
+    You don't need to keep as a dashboard also.
+    
+    @55:03 - **Ajin**
+    
+    Even report is fine. But I think if it is in dashboard, always come in front and you get that idea that, okay, this I need to update.
+    
+    @55:13 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    That is also fine.
+    
+    @55:17 - **Ajin**
+    
+    Because there are a lot of chances that a lot of things they won't renew.
+    
+    @55:21 - **Anurag Jain (TRooInbound)**
+    
+    So I believe that when it will come at the top also.
+    
+    @55:24 - **Ajin**
+    
+    Yeah. So a lot of data, for example, for example, maybe all of the items, they won't go for anything or off the certification.
+    
+    @55:32 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Mm-hmm. That's why I was thinking that and to keep it in the report.
+    
+    @55:37 - **Ajin**
+    
+    Okay, let me check. Yeah, So this is all that we have. We don't need anything.
+    
+    @55:43 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Yep. It's already there in our HrMessage.
+    
+    @55:51 - **Anurag Jain (TRooInbound)**
+    
+    You can go ahead. All finished.
+    
+    @55:54 - **Ajin**
+    
+    I think finished. HrMessage. Yeah, that's it. Okay, so I think we are cool with that two point what we are this is replacement one, and I think extension one, there are certainly a lot of things, for example, cross building, such type of things also, you need to do that.
+    
+    And especially I need to get a logic type on how you will go for rental along with scaffolding rental.
+    
+    This is also very important question what I have, because yesterday I met a company, so those companies are into heavy equipment or rental, but they are into, for example, Bobcat, such type of things, construction materials, but they have aluminum scaffolding.
+    
+    Okay, so we have two types of rentals, so there should be. That way that we need to incorporate in one single system, having this a vehicle, but yeah, actually, we just following with that two different, different rental models, and that then can handle it.
+    
+    @57:14 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    Okay, okay, perfect.
+    
+    @57:22 - **Anurag Jain (TRooInbound)**
+    
+    Anurag, do you have any other thing to show me? Yes, we have replacement orders and we will show that renewals and expiry thingy.
+    
+    **ACTION ITEM: Implement replacement from SO; add fleet, category/subcategory, delivery selection - WATCH**
+    
+    But renewal is not from here, not address replacement.
+    
+    @57:35 - **Ajin**
+    
+    I need to add replacement from the sales order. Always do it from the sales order. Sure, not that we will do that.
+    
+    @57:43 - **Anurag Jain (TRooInbound)**
+    
+    So here I will choose the rental order. I will choose the asset which I want to replace. I will choose a replacement reason.
+    
+    I will choose a replacement asset which is ready for hire. much. that I will do Again, there is a problem.
+    
+    We need to follow the same instruction.
+    
+    @58:07 - **Ajin**
+    
+    You are losing the instruction. Here, I need to allocate what? I need to choose the category. I need to choose the subcategory.
+    
+    Because, for example, at the time of replacement, maybe I don't have 200 KBA with me. I have 250 KBA.
+    
+    I will allocate 250 KBA. Certainly. We will do that. Yes.
+    
+    @58:34 - **Anurag Jain (TRooInbound)**
+    
+    Okay. So, I can choose, again, transport type as in on fleet. But here also, there is missing. Our delivery order selection is missing here.
+    
+    @58:47 - **Ajin**
+    
+    If it is on fleet, how I can, I need to select a fleet. I believe that it is down.
+    
+    Okay, go ahead. Okay.
+    
+    **ACTION ITEM: Show allocated/returned/pending assets on SO - WATCH**
+    
+    @59:00 - **Anurag Jain (TRooInbound)**
+    
+    So replacement, and I think the replacement is sealed now.
+    
+    @59:07 - **Ajin**
+    
+    Now I have a question. If I'm going in the sales order, to view the assets which is delivered to that particular sales order or rental order, there should be a provision to see those details.
+    
+    @59:29 - **Anurag Jain (TRooInbound)**
+    
+    Um, we will check, as I said, we are still, we were still working on this, so we will check how it is shown.
+    
+    Still, still Ajin, if you have any comments on the thing, you can just, uh, share.
+    
+    @59:51 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Sorry, I lost, I got a message from Purpose, we are lost, um, yeah, so whatever, whatever the inputs you can share.
+    
+    And Anurag will take care, Anurag and Vivek Kansara.
+    
+    @1:00:03 - **Ajin**
+    
+    Okay, what I am suggesting is replacement should be happen from the sales order itself, first thing, second thing, there should be fleet selection and all, there should be an area that I can generate, that I can select the category and subcategory, there should be one thing, after that one, when I am going in the sales order, I need to see that one, what all the assets I allocated against that, okay, what all the things it is written, what is pending, such type of information should be there.
+    
+    @1:00:43 - **Anurag Jain (TRooInbound)**
+    
+    All right, so we have noted it down, we will work on this. All right, here are the contracts, I have, these are the options that I have, overdue handling, trying to confirm.
+    
+    I can choose fault of company or either the client and sorry I lost it yeah we can choose the overdue of on hire handling and like attribute the fault the fault can be attributed to company or either the client overdue on hire handling yeah I believe this is something wherein the rental asset was used beyond the rental period but we already connected with the uh rental cycle itself it should be returned that's why we we have of hiring uh dashboard yep okay I don't think so really okay okay the thing is yeah we will work on this and we will show you um
+    
+    in a bit proper way okay we need we need to assign the return that that's our duty yeah can you give me an idea how many screens that we created right now um like overall the total in the wild sims yes just a big idea very difficult to assert an engine because the screen depends upon the flows and like there are so many branching flows uh it is very difficult to define uh
+    
+    Same from the team, that how much screen is there, but that's why I was asking that in a big idea is also fine.
+    
+    @1:03:06 - **Ajin**
+    
+    We'll check and revert on that.
+    
+    @1:03:10 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Yeah. All right. So, Ajin, we'll show the replacement and the rewards. We have noted your feedback, but we are still working on this.
+    
+    @1:03:21 - **Ajin**
+    
+    Okay, just we can consider SF dashboard itself. That is fine. And from here, I will get a noted notification to that one how it should be.
+    
+    And you can, you can, just what we need to do is, if I'm clicking this particular dashboard, it will redirect it to me, the sales order.
+    
+    And from there, you can give an option to extend the, extend that. But the rate will be same itself.
+    
+    Or rate will be increased. That they can do it from the rental order itself. And then I can amend it.
+    
+    Because that is also same rental, sales order itself. Extension will not be separated. Separate LPO or something like that, you can give it in the letters, sorry, I cut you, but this is what, I think this is what you were talking about, from the sales order, extend or terminate, yes, exactly, no need for terminate, yeah, you can see the warning, and like, from there, one can extend to, okay, if I'm mentioning that, terminate, then I need to do some close for closing there, Yeah, I mean, if it is needed, if it is not needed, it is fine, we'll remove it, and we'll just keep the extend, okay, if it is extend, I need to understand the flow, yeah, for that, we will do some R&D, and we'll show you tomorrow.
+    
+    @1:05:00 - **Anurag Jain (TRooInbound)**
+    
+    So, like, in the sense we have already done, but let us confirm once again internally and then we can show.
+    
+    I guess that will be better.
+    
+    @1:05:09 - **Ajin**
+    
+    Okay, I have a suggestion that one, when it is H10, same like revisions what we are doing, you can show the same exact information without any change of the sales order.
+    
+    @1:05:21 - **Anurag Jain (TRooInbound)**
+    
+    All right, we'll do that. And then what we can do is, can just change the date. If the rental rate or something they want to negotiate, they will negotiate it and they will change it there and then they can save it.
+    
+    Okay, so we will get two things. We will have the previous rental order and we have the current rental order.
+    
+    @1:05:43 - **Ajin**
+    
+    So that we can maintain same like how we do our contracts in our HRM. Same what?
+    
+    @1:05:50 - **Anurag Jain (TRooInbound)**
+    
+    Maintain same your voice cut, Ajin. Maintain same sales order itself. All right. All right. All right. Okay. Extend you, you don't need to increase.
+    
+    The or change the sales order. That is fine. Yeah, perfect. So we'll do that. Is there anything to add from the development team?
+    
+    Or if anyone has any doubt, they can, maybe I have one more, one more situation for example, I met in, I met in the sales order.
+    
+    That is for generator, for generator, already I returned three generators and only one generator is running and the customer is asking for extension.
+    
+    @1:06:30 - **Ajin**
+    
+    So in that extension, only one generator should be extended from mining, it should be kept, keep it as returned itself.
+    
+    Yeah, I mean, the other three would show the status as returned only.
+    
+    @1:06:44 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    Yes, exactly. Exactly. Yeah. So you need to maintain like that. Yeah. Yeah. The status would be updated in real time.
+    
+    Okay. Yeah.
+    
+    @1:06:55 - **Anurag Jain (TRooInbound)**
+    
+    Okay. I guess if there's anything else from anyone. To add, they can. That's not mine.
+    
+    @1:07:04 - **Vivek Kansara (TRooTech Business Solutions)**
+    
+    you.
+    
+    @1:07:07 - **Anurag Jain (TRooInbound)**
+    
+    Okay, then, Ajin, I guess it's good to wrap up, I guess. Yeah, I hope, Ajin, you are happy with the progress.
+    
+    @1:07:15 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    Yeah, the progress is good. Seriously. Okay, and mostly me and Darshit, we are, you know, thinking to conclude everything by tomorrow.
+    
+    Most probably we will discuss internally first. If you need to book me multiple calls, you can book me because I don't have that much meeting tomorrow.
+    
+    @1:07:33 - **Ajin**
+    
+    My current is not booked.
+    
+    @1:07:35 - **Darshit Maniar (TRooTech Business Solutions)**
+    
+    But I think, I guess, as per that updates on, it is very, like, last two or three points a year we had remaining.
+    
+    Okay. So, that's, I think, we can conclude yesterday. And whatever the changes, we just pointed out that list, and that list we set in our document.
+    
+    **ACTION ITEM: Send estimation/timeline to Ajin; start dev early next week - WATCH**
+    
+    So...
+    
+    @1:08:00 - **Niralnath Dharmnathi (TRooTech Business Solutions)**
+    
+    that we can get with this and I think we go we can start with this implementation most probably yeah so most probably what we are thinking we are providing the estimation time because we are mostly things are clear with us right and by the early next week we will surely will complete each and everything I guess okay that's good does it anything else and finally start the development also yeah yeah yes yes yes that is most important yes actually that's the plan yes that is why I was just asking yes okay great okay then thank you yeah thank you thank you you thank you a lot yeah thank you thank you bye
