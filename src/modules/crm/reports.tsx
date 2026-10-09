@@ -1,16 +1,28 @@
-import { Navigate, useParams, type RouteObject } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, type RouteObject } from 'react-router-dom';
+import { DataTable } from '@/components/DataTable';
+import { StatusChip } from '@/components/StatusChip';
 import { DashboardPage, DashboardsIndex, ReportPage, ReportsIndex, type DashboardDef, type ReportDef } from '@/components/ReportsAndDashboards';
 import { ASSET_STATUSES } from '@/mock-data/masters';
 import { chItems, ACTIVITY_TYPES, categoryOptions, groupOptions, ESCALATION_DAYS, EXPIRY_NOTICE_DAYS, assetById, availability, custName, docTotals, isLive, lineTotal, ownedEquivalent, type HeavyRec } from './data';
 import { CrmReportPage, type CrmReportDef } from './CrmReport';
 import { days, deliveredQty, outstanding } from './flow';
-import { aed, useCrossHire, useDeliveries, useExtensions, useFleet, useJobCards, useLeads, useOpps, useOrders, useQuotes, useReplacements } from './shared';
+import { R8, aed, useCrossHire, useDeliveries, useExtensions, useFleet, useJobCards, useLeads, useOpps, useOrders, useQuotes, useReplacements } from './shared';
 import type { JobCard, SalesOrder } from './data';
 
 const RC = 'CRM > Reports and Dashboards';
 const RR = 'Rental > Reports and Dashboards';
 const GROUP_COLORS = ['#2EB273', '#3E8193', '#A6914D', '#9C4F9C', '#C64D4D', '#7B7F85'];
 
+/** The Renewal & Overdue list: a click opens the Sales Order, where the contract is extended (8 Oct call). */
+/** Days to the end date, written so it reads on its own: In 8 days, Ends today, 15 days overdue. */
+export const expiryText = (left: number) => (left < 0 ? `${-left} day${-left === 1 ? '' : 's'} overdue` : left === 0 ? 'Ends today' : `In ${left} day${left === 1 ? '' : 's'}`);
+function ExpiryList({ rows }: { rows: { id: string; so: string; c: string; item: string; end?: string; left: number; state: string }[] }) {
+  const nav = useNavigate();
+  return (
+    <DataTable hideToolbar pageSize={6} rows={rows} emptyText="Nothing is expiring or overdue" onRowClick={(r) => nav(`/crm/sales-orders/${r.id}`)}
+      columns={[{ key: 'so', label: 'Sales Order' }, { key: 'c', label: 'Customer' }, { key: 'item', label: 'Line' }, { key: 'end', label: 'End' }, { key: 'left', label: 'Expiry', change: 'changed', req: R8('Expiry shown with its unit: In 8 days, 15 days overdue'), render: (r) => expiryText(r.left) }, { key: 'state', label: 'State', render: (r) => <StatusChip status={r.state} /> }]} />
+  );
+}
 function useData() {
   return { leads: useLeads().rows, opps: useOpps().rows, quotes: useQuotes().rows, orders: useOrders().rows, dels: useDeliveries().rows, ch: useCrossHire().rows, rep: useReplacements().rows, ext: useExtensions().rows, fleet: useFleet().rows, jobCards: useJobCards().rows };
 }
@@ -62,8 +74,8 @@ function crmDefs(d: D): CrmReportDef[] {
       columns: [{ key: 'so', label: 'Sales Order' }, { key: 'activity', label: 'Activity Type', filter: true }, { key: 'kind', label: 'Line Type', filter: true }, { key: 'item', label: 'Line' }, { key: 'revenue', label: 'Revenue', align: 'right', money: true, total: true }, { key: 'cost', label: 'Direct Cost', align: 'right', money: true, total: true }, { key: 'margin', label: 'Margin', align: 'right', money: true, total: true }],
       rows: lineRows.map(({ o, l }) => { const rev = lineTotal(l); const cost = d.ch.reduce((n, c) => n + chItems(c).filter((i) => i.lineId === l.id).reduce((m, i) => m + i.qty * i.rate, 0) + (c.lineId === l.id ? c.dispute ?? 0 : 0), 0) + (l.activity === 'Rental' ? o.logisticsCost / Math.max(1, o.lines.filter((x) => x.activity === 'Rental').length) : 0); return { so: o.number, activity: o.activity, kind: l.activity, item: l.item, revenue: Math.round(rev), cost: Math.round(cost), margin: Math.round(rev - cost), _link: soLink(o.id) }; }) },
     { slug: 'contract-lpo-expiry', title: 'Contract and LPO Expiry Report', purpose: 'Orders whose contract or LPO ends soon, for renewal or return follow-up.', group: 'Sales', change: 'new', req: RC,
-      columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer', filter: true }, { key: 'activity', label: 'Activity Type', filter: true }, { key: 'lpo', label: 'LPO' }, { key: 'end', label: 'Contract End' }, { key: 'lpoEnd', label: 'LPO Expiry' }, { key: 'left', label: 'Days left', align: 'right' }, { key: 'state', label: 'State', status: true, filter: true }],
-      rows: d.orders.filter((o) => !['Closed', 'Cancelled'].includes(o.status)).map((o) => { const end = o.contractEnd ?? o.amcEnd ?? o.lpoExpiry; const left = end ? -days(end) : 9999; return { so: o.number, customer: custName(o.customerId), activity: o.activity, lpo: o.lpo, end: o.contractEnd ?? o.amcEnd ?? '-', lpoEnd: o.lpoExpiry || '-', left: end ? left : '-', state: left < 0 ? 'Overdue' : left <= EXPIRY_NOTICE_DAYS ? 'Expiring' : 'Active', _link: soLink(o.id) }; }).sort((a, b) => Number(a.left) - Number(b.left)) },
+      columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer', filter: true }, { key: 'activity', label: 'Activity Type', filter: true }, { key: 'lpo', label: 'LPO' }, { key: 'end', label: 'Contract End' }, { key: 'lpoEnd', label: 'LPO Expiry' }, { key: 'left', label: 'Expiry' }, { key: 'state', label: 'State', status: true, filter: true }],
+      rows: d.orders.filter((o) => !['Closed', 'Cancelled'].includes(o.status)).map((o) => { const end = o.contractEnd ?? o.amcEnd ?? o.lpoExpiry; const left = end ? -days(end) : 9999; return { so: o.number, customer: custName(o.customerId), activity: o.activity, lpo: o.lpo, end: o.contractEnd ?? o.amcEnd ?? '-', lpoEnd: o.lpoExpiry || '-', left: end ? expiryText(left) : '-', state: left < 0 ? 'Overdue' : left <= EXPIRY_NOTICE_DAYS ? 'Expiring' : 'Active', _link: soLink(o.id) }; }).sort((a, b) => Number(a.left) - Number(b.left)) },
     { slug: 'amc-consolidated', title: 'AMC Consolidated Report', purpose: 'Every AMC order across all customers: contract period, next planned visit and status, with a link to open the order.', group: 'AMC', change: 'new', req: RC,
       columns: [{ key: 'customer', label: 'Customer', filter: true }, { key: 'period', label: 'AMC Period' }, { key: 'next', label: 'Next planned visit date' }, { key: 'status', label: 'Status', status: true, filter: true }],
       rows: d.orders.filter((o) => o.activity === 'AMC').map((o) => ({ customer: custName(o.customerId), period: `${o.amcStart ?? '-'} to ${o.amcEnd ?? '-'}`, next: nextAmcVisit(o, d.jobCards), status: o.status, _link: `/crm/amc-orders/${o.id}` })) },
@@ -89,8 +101,8 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
       rows: d.orders.map((o) => { const t = docTotals(o.lines, o.discountPct, o.vatType).sub; return { so: o.number, customer: custName(o.customerId), rev: aed(t), log: aed(o.logisticsCost), pct: `${t ? ((o.logisticsCost / t) * 100).toFixed(1) : 0}%` }; }) },
     { slug: 'contract-expiry', title: 'Overdue On-Hire and Contract Expiry Report', purpose: 'Rental lines nearing or past their Contract End Date without a completed return.', group: 'Rental', change: 'new', req: RR,
       filters: [{ key: 'state', label: 'State', options: ['Overdue', 'Expiring', 'Active'] }],
-      columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer' }, { key: 'item', label: 'Line' }, { key: 'end', label: 'Contract End' }, { key: 'left', label: 'Days left', align: 'right' }, { key: 'state', label: 'State', status: true }],
-      rows: exp.map((e) => ({ so: e.so.number, customer: custName(e.so.customerId), item: e.line.item, end: e.so.contractEnd, left: e.left, state: e.state })) },
+      columns: [{ key: 'so', label: 'Sales Order' }, { key: 'customer', label: 'Customer' }, { key: 'item', label: 'Line' }, { key: 'end', label: 'Contract End' }, { key: 'left', label: 'Expiry' }, { key: 'state', label: 'State', status: true }],
+      rows: exp.map((e) => ({ so: e.so.number, customer: custName(e.so.customerId), item: e.line.item, end: e.so.contractEnd, left: expiryText(e.left), state: e.state })) },
   ];
   /* Existing Rental reports (unchanged names), now fed by the same Sales Orders and Fixed Asset Register. */
   const rentalOrders = d.orders.filter((o) => o.activity === 'Rental');
@@ -121,11 +133,11 @@ function rentalDefs(d: D): { reports: ReportDef[]; dashboards: DashboardDef[] } 
   const cats = Array.from(new Set(live.map((a) => `${a.category} ${a.subCategory}`)));
   const dashboards: DashboardDef[] = [
     { slug: 'fleet-status', title: 'Fleet Status Dashboard', purpose: 'Live counts by category, Available / On-Hire / Under-Maintenance / Disposed.', change: 'new', req: RR,
-      kpis: [{ title: 'Ready for Hire', value: live.filter((a) => a.assetStatus === 'Ready for Hire').length }, { title: 'On Hire', value: live.filter((a) => a.assetStatus === 'On Hire').length }, { title: 'Hold', value: live.filter((a) => a.assetStatus === 'Hold').length }, { title: 'Yard / Off Hire', value: live.filter((a) => ['Yard', 'Off Hire'].includes(a.assetStatus)).length }, { title: 'Under Maintenance', value: live.filter((a) => a.assetStatus === 'Under Maintenance').length }],
-      widgets: [{ type: 'donut', title: 'Fleet by Asset Status', data: stat, centerLabel: 'Assets' }, { type: 'heat', title: 'Assets by category and status', rows: cats, cols: ['Ready for Hire', 'On Hire', 'Yard', 'Under Maintenance'], values: cats.map((c) => ['Ready for Hire', 'On Hire', 'Yard', 'Under Maintenance'].map((s) => live.filter((a) => `${a.category} ${a.subCategory}` === c && a.assetStatus === s).length)) }] },
+      kpis: [{ title: 'Ready for Hire', value: live.filter((a) => a.assetStatus === 'Ready for Hire').length }, { title: 'On Hire', value: live.filter((a) => a.assetStatus === 'On Hire').length }, { title: 'Hold', value: live.filter((a) => a.assetStatus === 'Hold').length }, { title: 'Yard / Off Hire', value: live.filter((a) => ['Yard', 'Off Hire', 'Off Hire - In Transit', 'Yard Inspection'].includes(a.assetStatus)).length }, { title: 'Under Maintenance', value: live.filter((a) => a.assetStatus === 'Under Maintenance').length }],
+      widgets: [{ type: 'donut', title: 'Fleet by Asset Status', data: stat, centerLabel: 'Assets' }, { type: 'heat', title: 'Assets by category and status', rows: cats, cols: ['Ready for Hire', 'On Hire', 'Off Hire - In Transit', 'Yard Inspection', 'Yard', 'Under Maintenance'], values: cats.map((c) => ['Ready for Hire', 'On Hire', 'Off Hire - In Transit', 'Yard Inspection', 'Yard', 'Under Maintenance'].map((s) => live.filter((a) => `${a.category} ${a.subCategory}` === c && a.assetStatus === s).length)) }] },
     { slug: 'renewal-overdue', title: 'Renewal & Overdue Dashboard', purpose: `Upcoming contract expiries (notice ${EXPIRY_NOTICE_DAYS} days) and current overdue on-hire assets together, for Service Desk and Sales follow-up. Escalation after ${ESCALATION_DAYS} overdue days.`, change: 'new', req: RR,
       kpis: [{ title: 'Overdue', value: exp.filter((e) => e.state === 'Overdue').length, tint: '#FFEBEB' }, { title: 'Expiring soon', value: exp.filter((e) => e.state === 'Expiring').length, tint: '#FFF3CC' }, { title: 'Escalated', value: exp.filter((e) => -e.left > ESCALATION_DAYS).length }],
-      widgets: [{ type: 'table', title: 'Expiry and overdue list', span: 2, columns: [{ key: 'so', label: 'Sales Order' }, { key: 'c', label: 'Customer' }, { key: 'item', label: 'Line' }, { key: 'end', label: 'End' }, { key: 'left', label: 'Days left', align: 'right' }, { key: 'state', label: 'State', status: true }], rows: exp.filter((e) => e.state !== 'Active').map((e) => ({ so: e.so.number, c: custName(e.so.customerId), item: e.line.item, end: e.so.contractEnd, left: e.left, state: e.state })) }] },
+      widgets: [{ type: 'custom', title: 'Expiry and overdue list', span: 2, change: 'changed', req: R8('Dashboard row opens the Sales Order, where the contract is extended'), node: <ExpiryList rows={exp.filter((e) => e.state !== 'Active').map((e) => ({ id: e.so.id, so: e.so.number, c: custName(e.so.customerId), item: e.line.item, end: e.so.contractEnd, left: e.left, state: e.state }))} /> }] },
     { slug: 'maintenance-breakdown', title: 'Maintenance / Breakdown Dashboard', purpose: 'Assets due for service or currently down, by category.', change: 'new', req: RR,
       widgets: [{ type: 'table', title: 'Assets in maintenance or breakdown', span: 2, columns: [{ key: 'a', label: 'Asset' }, { key: 'c', label: 'Category' }, { key: 's', label: 'Status', status: true }, { key: 'l', label: 'Last movement' }], rows: live.filter((a) => ['Under Maintenance', 'Breakdown'].includes(a.assetStatus)).map((a) => ({ a: `${a.assetId} - ${a.name}`, c: `${a.category} ${a.subCategory}`, s: a.assetStatus, l: [...a.movements].sort((x, y) => y.date.localeCompare(x.date))[0]?.type })) }] },
     { slug: 'cross-hire-cost-revenue', title: 'Cross-Hire Cost vs. Rental Revenue Dashboard', purpose: 'Cost of cross-hired units vs. revenue earned.', change: 'new', req: RR,

@@ -53,6 +53,8 @@ export const R = {
   trip: 'Rental > Delivery & Fleet Logistics (per-delivery expense capture, outside-fleet tracking; 18 Sep, 5 Oct calls)',
   meet: 'Client meetings 17 Sep to 2 Oct (docs/crm-decisions.md)',
 };
+/** Requirement reference for changes from the 8 Oct client call. */
+export const R8 = (topic: string) => `Client call 8 Oct: ${topic}`;
 export const TO_CONFIRM = 'Rule to be confirmed with client';
 export const aed = (n?: number) => (n === undefined ? '-' : fmtAED(Math.round(n * 100) / 100));
 export const fmtDate = (s?: string) => (s ? s.replace('T', ' ') : '-');

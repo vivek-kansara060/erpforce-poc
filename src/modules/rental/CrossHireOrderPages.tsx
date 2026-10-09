@@ -11,22 +11,25 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { neutral } from '@/theme/color';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { FileInput, FormGrid, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
+import { FieldError, FileInput, FormGrid, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
-import { DEPARTMENTS, RENTAL_DURATIONS, TODAY, categoryOptions, groupOptions, stockLocations, masterValues, unitsOf, fleetRows, chItems, reqItems, itemReceived, type CrossHire, type CrossHireGrn } from '@/modules/crm/data';
+import { DEPARTMENTS, RENTAL_DURATIONS, TODAY, custName, categoryOptions, groupOptions, stockLocations, masterValues, unitsOf, fleetRows, chItems, reqItems, itemReceived, type CrossHire, type CrossHireGrn } from '@/modules/crm/data';
 import { createChOrderFromForm, createGrn, deleteGrn, saveChOrder, saveGrn, validateGrn } from '@/modules/crm/flow';
 import { Section, SpecForm, SpecView, type Spec } from '@/modules/crm/FormKit';
 import { addressSpecs, useAddressAutofill, type AddressCfg } from '@/modules/crm/addressKit';
-import { aed, useChRequests, useChRfqs, useCrossHire, useOrders } from '@/modules/crm/shared';
+import { R8, aed, useChRequests, useChRfqs, useCrossHire, useOrders } from '@/modules/crm/shared';
 import { rfqItems } from './CrossHireRfqPages';
 
 const HIRE_SUPPLIERS = suppliers.filter((s) => s.type === 'Cross-Hire Company');
 const supOpts = HIRE_SUPPLIERS.map((s) => ({ value: s.id, label: s.name }));
 const R_CH = 'Existing ERP Cross Hire Orders and GRN; Rental > Cross-Hire (Rental Side)';
+const R_CTX = R8('Sales Order context carried to the Cross-Hire order');
+const R_SEP = R8('Category and Subcategory shown separately, as on the Sales Order');
+const R_BM = R8('Optional Brand and Model when tracing a hired asset');
 
 /* ------------------------------------------------------------------ Order add / edit form (existing ERP: Basic Details, Address & Contact) */
 const orderSpecs = (soOpts: { value: string; label: string }[], fromRfq: boolean): Spec[] => [
@@ -34,6 +37,10 @@ const orderSpecs = (soOpts: { value: string; label: string }[], fromRfq: boolean
   { key: 'number', label: 'Hire Order No.', type: 'readonly', value: (f) => f.number ?? 'Auto-generated' },
   { key: 'date', label: 'Date', type: 'date', required: true },
   { key: 'soId', label: 'Rental Order ID (optional)', type: 'select', options: soOpts, disabled: fromRfq, hint: 'The demand this order is raised for. Units are bound to a Sales Order at the Delivery Order, not here' },
+  { key: 'project', label: 'Project (Cost Centre)', type: 'readonly', change: 'new', req: R_CTX, hint: 'Fetched from the Sales Order' },
+  { key: 'activity', label: 'Activity Type', type: 'readonly', change: 'new', req: R_CTX, hint: 'Fetched from the Sales Order' },
+  { key: 'customer', label: 'Customer', type: 'readonly', change: 'new', req: R_CTX, hint: 'Fetched from the Sales Order' },
+  { key: 'site', label: 'Delivery Site', type: 'readonly', change: 'new', req: R_CTX, show: (f) => f.type === 'Dropship', hint: 'Dropship: the supplier delivers straight to this site' },
   { key: 'supplierId', label: 'Supplier', type: 'select', options: supOpts, required: true, disabled: fromRfq, hint: 'Suppliers of type Cross-Hire Company' },
   { key: 'type', label: 'Cross Hire Type', type: 'select', options: ['Inventory', 'Dropship'], required: true },
   { key: 'confirmationDate', label: 'Confirmation Date', type: 'date', required: true },
@@ -92,12 +99,15 @@ export function ChOrderForm() {
   const [f, setF] = useState<Record<string, any>>(() => existing
     ? { ...existing.form, number: existing.number, date: existing.date, soId: existing.soId, supplierId: existing.supplierId, type: existing.type ?? 'Inventory', confirmationDate: existing.confirmationDate, expectedReceipt: existing.expectedReceipt, paymentTerms: existing.paymentTerms, startDate: existing.startDate, endDate: existing.endDate }
     : { date: TODAY, company: masterValues('entity')[0], currency: 'AED', type: sp.get('type') === 'Dropship' ? 'Dropship' : 'Inventory', paymentTerms: rfq?.paymentTerms ?? '30 days', representative: 'Bilal Ahmed', department: 'Operations', location: 'Jebel Ali Main Yard', duration: 'Monthly',
-      confirmationDate: TODAY, expectedReceipt: rfq?.expectedDate ?? TODAY, startDate: rfq?.start ?? line0?.start, endDate: rfq?.end ?? line0?.end, supplierId: award?.vendorId ?? r0?.vendorId ?? '', soId: so0?.id ?? '', narration: rfq ? `From ${rfq.number}, awarded to ${award?.vendor ?? ''}` : '' });
+      confirmationDate: TODAY, expectedReceipt: rfq?.expectedDate ?? TODAY, startDate: rfq?.start ?? line0?.start ?? so0?.contractStart, endDate: rfq?.end ?? line0?.end ?? so0?.contractEnd, supplierId: award?.vendorId ?? r0?.vendorId ?? '', soId: so0?.id ?? '', narration: rfq ? `From ${rfq.number}, awarded to ${award?.vendor ?? ''}` : '' });
   const [err, setErr] = useState<Record<string, string>>({});
   const set = (k: string, v: any) => setF((x) => ({ ...x, [k]: v }));
   useAddressAutofill(f, set, orderAddrCfg);
   const setItem = (i: number, p: Partial<OItem>) => setItems((xs) => xs.map((x, j) => (j === i ? { ...x, ...p } : x)));
   const total = items.reduce((n, i) => n + (Number(i.qty) || 0) * (Number(i.rate) || 0), 0);
+  // Project, Activity Type, Customer and Site come from the selected Sales Order (read-only, 8 Oct call).
+  const soSel = orders.get(f.soId);
+  const ctxView = { ...f, project: soSel?.costCentre ?? '-', activity: soSel ? 'Rental' : '-', customer: soSel ? custName(soSel.customerId) : '-', site: soSel?.site ?? '-' };
   const save = (draft: boolean) => {
     const e: Record<string, string> = {};
     (draft ? ['supplierId'] : ['date', 'supplierId', 'type', 'company', 'confirmationDate', 'expectedReceipt', 'currency', 'paymentTerms', 'startDate', 'supplierAddress', 'contactPerson', 'shippingAddress']).forEach((k) => { if (!String(f[k] ?? '').trim()) e[k] = 'This field is required'; });
@@ -116,7 +126,7 @@ export function ChOrderForm() {
     if (existing) {
       const so = orders.get(f.soId);
       const its = clean.map((c, k) => ({ id: `${existing.id}-i${k}`, ...c, lineId: c.lineId ?? so?.lines.find((l) => l.activity === 'Rental' && l.group === c.group && l.category === c.category)?.id }));
-      saveChOrder(existing.id, { date: f.date, supplierId: sup.id, supplier: sup.name, type: f.type, items: its, group: its[0].group, category: its[0].category, qty: its.reduce((n, x) => n + x.qty, 0), rate: its.reduce((n, x) => n + x.qty * x.rate, 0), soId: f.soId ?? '', confirmationDate: f.confirmationDate, expectedReceipt: f.expectedReceipt, paymentTerms: f.paymentTerms, startDate: f.startDate, endDate: f.endDate, form: f, status: draft ? 'Draft' : existing.status === 'Draft' || existing.status === 'Rejected' ? 'Pending' : existing.status });
+      saveChOrder(existing.id, { project: so?.costCentre, customerId: so?.customerId, site: so?.site, date: f.date, supplierId: sup.id, supplier: sup.name, type: f.type, items: its, group: its[0].group, category: its[0].category, qty: its.reduce((n, x) => n + x.qty, 0), rate: its.reduce((n, x) => n + x.qty * x.rate, 0), soId: f.soId ?? '', confirmationDate: f.confirmationDate, expectedReceipt: f.expectedReceipt, paymentTerms: f.paymentTerms, startDate: f.startDate, endDate: f.endDate, form: f, status: draft ? 'Draft' : existing.status === 'Draft' || existing.status === 'Rejected' ? 'Pending' : existing.status });
       toast('Order updated'); nav(`/rental/cross-hire-orders/${existing.id}`); return;
     }
     const nid = createChOrderFromForm({ supplierId: sup.id, supplier: sup.name, soId: f.soId || undefined, items: clean, type: f.type, draft, rfqId: rfq?.id, requestIds: rfq?.requestIds ?? fromReqs.map((r) => r.id), form: f });
@@ -132,11 +142,11 @@ export function ChOrderForm() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecForm specs={orderSpecs(rentals.map((o) => ({ value: o.id, label: o.number })), !!rfq && !!so0)} f={f} set={set} err={err} />
+              <SpecForm specs={orderSpecs(rentals.map((o) => ({ value: o.id, label: o.number })), !!rfq && !!so0)} f={ctxView} set={set} err={err} />
               <Section title="Rental Period"><SpecForm specs={rentalPeriodSpecs} f={f} set={set} err={err} cols={3} /></Section>
               <Section title="Items" change="changed" req={R_CH}>
                 <SpecForm specs={itemSpecs} f={f} set={set} err={err} cols={3} />
-                {err.items && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>{err.items}</Text>}
+                <FieldError label="Items" error={err.items} />
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', my: 1 }}><Button size="small" variant="outlined" onClick={() => setItems([...items, { id: `i${Date.now().toString(36)}${items.length}`, group: '', category: '', qty: 1, rate: '' }])}>+ Add</Button></Box>
                 <TableContainer sx={{ border: '1px solid #E4E5E7', borderRadius: '8px', maxWidth: '100%' }}>
                   <Table size="small">
@@ -175,7 +185,10 @@ const grnSpecs: Spec[] = [
   { key: 'company', label: 'Entity', type: 'readonly' },
   { key: 'number', label: 'Goods Receipt No.', type: 'readonly', value: (f) => f.number ?? 'Auto-generated' },
   { key: 'date', label: 'Receipt Date', type: 'date', required: true },
-  { key: 'vendor', label: 'Vendor', type: 'readonly' }, { key: 'currency', label: 'Currency', type: 'readonly' },
+  { key: 'vendor', label: 'Vendor', type: 'readonly' },
+  { key: 'soNumber', label: 'Rental Order', type: 'readonly', change: 'new', req: R_CTX },
+  { key: 'project', label: 'Project', type: 'readonly', change: 'new', req: R_CTX },
+  { key: 'currency', label: 'Currency', type: 'readonly' },
   { key: 'receivedBy', label: 'Received By', type: 'select', options: ['Sanjay Kumar', 'Bilal Ahmed', 'Omar Farouk'] },
   { key: 'narration', label: 'Narration', type: 'textarea', full: true },
 ];
@@ -205,6 +218,7 @@ export function ChGrnForm() {
   const nav = useNavigate();
   const toast = useToast();
   const c = useCrossHire().get(id);
+  const orders = useOrders();
   const g0 = (c?.grns ?? []).find((x) => x.id === gid);
   const [f, setF] = useState<Record<string, any>>(() => ({ date: TODAY, receivedBy: 'Sanjay Kumar', transportedBy: c?.supplier ?? '', location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], ...g0 }));
   const [err, setErr] = useState<Record<string, string>>({});
@@ -228,7 +242,7 @@ export function ChGrnForm() {
     toast('Goods Receipt Note saved successfully. Add the assets received with Track Details, then Validate.');
     nav(`/rental/cross-hire-orders/${c.id}/grns/${gid2}`);
   };
-  const view = { ...f, vendor: c.supplier, currency: c.form?.currency ?? 'AED', company: c.form?.company ?? masterValues('entity')[0] };
+  const view = { ...f, vendor: c.supplier, soNumber: c.soNumber || 'Not tied to an order', project: c.project ?? orders.get(c.soId)?.costCentre ?? '-', currency: c.form?.currency ?? 'AED', company: c.form?.company ?? masterValues('entity')[0] };
   return (
     <>
       <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: `ID: ${c.number}`, to: `/rental/cross-hire-orders/${c.id}` }, { label: 'Goods Receipt', to: `/rental/cross-hire-orders/${c.id}/grns` }, { label: g0 ? `Edit ${g0.number}` : 'Add New' }]}
@@ -240,7 +254,7 @@ export function ChGrnForm() {
               <SpecForm specs={grnSpecs} f={view} set={set} err={err} />
               <Section title="Items">
                 <DataTable hideToolbar rows={chItems(c).map((i) => ({ ...i, id: i.id }))} columns={[
-                  { key: 'item', label: 'Item', render: (i) => `${i.group} ${i.category}` }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'line', label: 'Order Line', render: () => c.number },
+                  { key: 'grp', label: 'Category', change: 'changed', req: R_SEP, render: (i) => i.group }, { key: 'cat', label: 'Subcategory', change: 'changed', req: R_SEP, render: (i) => i.category }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'line', label: 'Order Line', render: () => c.number },
                   { key: 'ord', label: 'Units ordered', align: 'right', render: (i) => i.qty }, { key: 'got', label: 'Assets received', align: 'right', render: (i) => itemReceived(c, i) }, { key: 'rem', label: 'Remaining', align: 'right', render: (i) => Math.max(0, i.qty - itemReceived(c, i)) },
                 ]} />
                 <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The assets received are added on the Goods Receipt page with Track Details, one serial number for each unit.</Text>
@@ -306,7 +320,7 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
   const pct = ordered ? Math.min(100, ((got + mine.length) / ordered) * 100) : 0;
   const stat = (k: string, v: string | number, hot?: boolean) => <Box sx={{ flex: 1, minWidth: 90, p: 1.25, borderRadius: '10px', bgcolor: hot ? '#E8F5F0' : '#F6F8F7' }}><Text type="s5" color="theme.secondary.700">{k}</Text><Text type="s2" weight="medium">{v}</Text></Box>;
   return (
-    <AppDialog open title={`Track Details: ${item ? `${item.group} ${item.category}` : 'Not on the order'}`} onClose={onClose} maxWidth="md" confirmLabel={done ? undefined : 'Save'} confirmDisabled={bad} onConfirm={done ? undefined : () => onSave([...outside, ...mine.filter((r) => r.serial.trim()).map((r) => ({ ...r, serial: r.serial.trim() }))])}>
+    <AppDialog open title={`Track Details: ${item ? `Category ${item.group}, Subcategory ${item.category}` : 'Not on the order'}`} onClose={onClose} maxWidth="md" confirmLabel={done ? undefined : 'Save'} confirmDisabled={bad} onConfirm={done ? undefined : () => onSave([...outside, ...mine.filter((r) => r.serial.trim()).map((r) => ({ ...r, serial: r.serial.trim() }))])}>
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
         {stat('Ordered', item ? ordered : '-')}{stat('Received so far', item ? got : '-')}{stat('On this receipt', mine.length, true)}{stat('Still to come', item ? Math.max(0, ordered - got - mine.length) : '-')}
       </Box>
@@ -343,6 +357,12 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
                   <Box sx={{ width: 190 }}>{done ? <Text type="s3" weight="medium">{r.serial}</Text> : <TextField size="small" variant="standard" value={r.serial} error={!!err} onChange={(e) => set(i, { serial: e.target.value })} inputProps={{ style: { fontWeight: 600 } }} />}</Box>
                   {(done || (!diff && chg !== i)) ? <Tooltip title={done ? '' : 'Received as a different Category? Click to change'}><Chip size="small" variant="outlined" label={`${r.group} ${r.category}`} onClick={done ? undefined : () => setChg(i)} /></Tooltip> : null}
                   {!done && (diff || chg === i) && <Select size="small" value={`${r.group}|${r.category}`} sx={{ fontSize: 12, minWidth: 190 }} onChange={(e) => { const [group, category] = String(e.target.value).split('|'); set(i, { group, category }); setChg(null); }}>{catOpts.map((o) => <MenuItem key={o.v} value={o.v}>{o.l}</MenuItem>)}</Select>}
+                  {done ? (r.brand || r.model) && <Text type="s4" color="theme.secondary.700">{[r.brand, r.model].filter(Boolean).join(' ')}</Text> : (
+                    <>
+                      <TextField size="small" variant="standard" placeholder="Brand (optional)" value={r.brand ?? ''} onChange={(e) => set(i, { brand: e.target.value })} sx={{ width: 120 }} />
+                      <TextField size="small" variant="standard" placeholder="Model (optional)" value={r.model ?? ''} onChange={(e) => set(i, { model: e.target.value })} sx={{ width: 120 }} />
+                    </>
+                  )}
                   <Box sx={{ flex: 1 }} />
                   <ToggleButtonGroup exclusive size="small" value={cond} disabled={done} onChange={(_, v) => v && set(i, { condition: v })}>
                     {['OK', 'Needs check', 'Damaged'].map((k) => <ToggleButton key={k} value={k} sx={{ px: 1.25, py: 0.25, fontSize: 12, textTransform: 'none', '&.Mui-selected': { bgcolor: COND_TONE[k], color: '#fff', '&:hover': { bgcolor: COND_TONE[k] } } }}>{k}</ToggleButton>)}
@@ -359,7 +379,7 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
           })}
         </Box>
       )}
-      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1.5 }}>{mine.filter((r) => r.condition === 'Damaged').length} damaged. Validate puts each asset on the Fixed Asset Register as Cross-Hired; a damaged unit enters as Under Maintenance. Serial numbers must be new to the register.</Text>
+      <Text type="s5" color="theme.secondary.700" sx={{ mt: 1.5 }}>{mine.filter((r) => r.condition === 'Damaged').length} damaged. Validate puts each asset on the Fixed Asset Register as Cross-Hired; a damaged unit enters as Under Maintenance. Serial numbers must be new to the register. Brand and Model are optional, they help to recognise a hired unit among the owned ones.</Text>
     </AppDialog>
   );
 }
@@ -369,6 +389,7 @@ export function ChGrnView() {
   const nav = useNavigate();
   const toast = useToast();
   const c = useCrossHire().get(id);
+  const orders = useOrders();
   const g = (c?.grns ?? []).find((x) => x.id === gid);
   const room = c && g ? Math.max(0, (c.qty ?? 1) - unitsOf(c).length - (c.grns ?? []).filter((x) => x.id !== g.id && !x.validated).reduce((n, x) => n + x.traces.length, 0)) : 0;
   const [trk, setTrk] = useState<string | null>(null);
@@ -397,10 +418,10 @@ export function ChGrnView() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecView specs={[...grnSpecs.filter((s) => s.key !== 'narration' && s.key !== 'number'), { key: 'narration', label: 'Narration' }]} f={{ ...g, vendor: c.supplier, currency: c.form?.currency ?? 'AED', company: c.form?.company ?? masterValues('entity')[0] }} />
+              <SpecView specs={[...grnSpecs.filter((s) => s.key !== 'narration' && s.key !== 'number'), { key: 'narration', label: 'Narration' }]} f={{ ...g, vendor: c.supplier, soNumber: c.soNumber || 'Not tied to an order', project: c.project ?? orders.get(c.soId)?.costCentre ?? '-', currency: c.form?.currency ?? 'AED', company: c.form?.company ?? masterValues('entity')[0] }} />
               <Section title="Items">
                 <DataTable hideToolbar rows={[...chItems(c).map((i) => ({ ...i, id: i.id, other: false })), ...(cur.some((t) => !chItems(c).some((i) => i.group === t.group && i.category === t.category)) ? [{ id: 'other', group: 'Not on the order', category: '', qty: 0, rate: 0, other: true }] : [])]} columns={[
-                  { key: 'item', label: 'Item', render: (i) => (i.other ? i.group : `${i.group} ${i.category}`) }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'line', label: 'Order Line', render: () => c.number },
+                  { key: 'grp', label: 'Category', change: 'changed', req: R_SEP, render: (i) => i.group }, { key: 'cat', label: 'Subcategory', change: 'changed', req: R_SEP, render: (i) => (i.other ? '-' : i.category) }, { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'line', label: 'Order Line', render: () => c.number },
                   { key: 'ord', label: 'Units ordered', align: 'right', render: (i) => (i.other ? '-' : i.qty) }, { key: 'got', label: 'Assets received', align: 'right', render: (i) => (i.other ? '-' : itemReceived(c, i)) },
                   { key: 'rem', label: 'Remaining', align: 'right', render: (i) => (i.other ? '-' : Math.max(0, i.qty - itemReceived(c, i))) },
                   { key: 'this', label: 'On this receipt', change: 'changed', req: R_CH, align: 'right', render: (i) => cur.filter((t) => (i.other ? !chItems(c).some((x) => x.group === t.group && x.category === t.category) : t.group === i.group && t.category === i.category)).length },
@@ -415,7 +436,7 @@ export function ChGrnView() {
       </Page>
       {trk && <TraceDialog c={c} g={g} itemId={trk} all={cur} room={room} onClose={() => setTrk(null)} onSave={(rows) => { saveGrn(c.id, g.id, { traces: rows }); setTrk(null); toast('Traceability is Completed.'); }} />}
       <ConfirmDialog open={preview} info title="Validate Goods Receipt" confirmLabel="Validate" onClose={() => setPreview(false)}
-        description={`These ${cur.length} asset(s) will be added to the register as Cross-Hired (no depreciation): ${cur.map((t) => `${t.serial.trim()} as ${t.group} ${t.category}${t.condition === 'Damaged' ? ' (Damaged, Under Maintenance)' : ''}`).join('; ')}.`}
+        description={`These ${cur.length} asset(s) will be added to the register as Cross-Hired (no depreciation): ${cur.map((t) => `${t.serial.trim()} as ${t.brand ? `${t.brand}${t.model ? ` ${t.model}` : ''} ` : ''}${t.group} ${t.category}${t.condition === 'Damaged' ? ' (Damaged, Under Maintenance)' : ''}`).join('; ')}.`}
         onConfirm={() => { saveGrn(c.id, g.id, { traces: clean(cur) }); validateGrn({ ...c, grns: (c.grns ?? []).map((x) => (x.id === g.id ? { ...x, traces: clean(cur) } : x)) }, g.id); setPreview(false); toast(`${cur.length} asset(s) validated and on the Fixed Asset Register`); }} />
       <ConfirmDialog open={del} title="Delete Goods Receipt" description={`Delete ${g.number}?`} danger confirmLabel="Delete" onClose={() => setDel(false)} onConfirm={() => { deleteGrn(c.id, g.id); toast('Deleted'); nav(`${base}/grns`); }} />
     </>

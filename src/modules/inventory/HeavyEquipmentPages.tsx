@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, IconButton } from '@mui/material';
+import { Alert, Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
 import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, type CrossHire } from '@/modules/crm/data';
 import { returnToSupplier, returnToUs } from '@/modules/crm/flow';
+import { R8, TO_CONFIRM } from '@/modules/crm/shared';
+import { employees } from '@/mock-data/masters';
 import { DataTable, type Column } from '@/components/DataTable';
-import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
+import { CheckInput, DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
 import { Timeline } from '@/components/Flow';
@@ -35,6 +37,7 @@ const REQ_NAME = 'Fixed Asset > Asset Name (2 Oct call: suggested, editable by t
 const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, manual change where needed)';
 /** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
 const READY_FROM = ['Yard', 'Off Hire', 'Under Maintenance', 'Breakdown', 'Hold'];
+const REQ_MAINT = R8('Returned owned assets go to maintenance with a routine or critical checklist');
 const useHeavy = () => useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
 /**
  * One cross-hire record for the whole POC: the Rental > Cross Hire order. Inventory reads it through this view, so the asset page,
@@ -413,24 +416,32 @@ export function HeavyView() {
   const r = heavy.get(id);
   const crossHires = useCrossHires();
   const [statusDlg, setStatusDlg] = useState(false);
-  const [sf, setSf] = useState({ to: '', reason: '' });
+  const [sf, setSf] = useState({ to: '', reason: '', mtype: '' });
+  const [mDlg, setMDlg] = useState(false);
+  const [mf, setMf] = useState<{ tech: string; date: string; notes: string; checks: string[] }>({ tech: '', date: TODAY, notes: '', checks: [] });
+  const [mErr, setMErr] = useState<Errors>({});
   const [sfErr, setSfErr] = useState<Errors>({});
   const board = useMemo(() => (r ? buildBoard({ start: r.putToUseDate || r.purchaseDate, assetValue: r.assetValue, notDepreciable: r.notDepreciable, months: r.usefulLifeYears * 12, method: r.method, factor: r.decliningFactor }) : []), [r]);
   if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
-  const setStatus = (to: string, reason: string) => {
+  const setStatus = (to: string, reason: string, extra: Partial<HeavyRec> = {}) => {
     const maint = ['Under Maintenance', 'Breakdown'];
     const back = to === 'Ready for Hire' || to === 'In Service';
     const mv: Movement | undefined = maint.includes(to) && !maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Sent for Repair', from: currentLocation(r), to: 'Workshop: Al Masaood Service Centre', reference: `Maintenance: ${reason}`, by: 'Current User' }
       : back && maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Internal Transfer', from: currentLocation(r), to: 'Jebel Ali Main Yard', reference: `Maintenance completed: ${reason}`, by: 'Current User' } : undefined;
-    heavy.update(r.id, { ...(mv ? { movements: [...r.movements, mv] } : {}), assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
+    heavy.update(r.id, { ...(mv ? { movements: [...r.movements, mv] } : {}), ...(to !== 'Under Maintenance' ? { maintenanceType: undefined } : {}), ...extra, assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
     toast(`Asset Status changed to ${to}`);
   };
   const crossHired = r.ownership === 'Cross-Hired';
   const ch = crossHires.rows.find((c) => c.heavyId === r.id);
   const returned = ch?.stage === 'Returned to Supplier';
   const canReady = !crossHired && r.status === 'Active' && READY_FROM.includes(r.assetStatus);
+  // 8 Oct call: a unit under maintenance is completed against its Routine or Critical checklist, not with one click.
+  const underMaint = r.assetStatus === 'Under Maintenance';
+  const mType = r.maintenanceType ?? 'Critical';
+  const mList = masterValues(mType === 'Routine' ? 'maintenanceRoutine' : 'maintenanceCritical');
+  const closeMaint = () => { setMDlg(false); setMf({ tech: '', date: TODAY, notes: '', checks: [] }); setMErr({}); };
   /** Cross-hire stage changes drive the asset's status; returning to the supplier ends the hire and the unit leaves the active fleet. */
   const moveStage = (stage: CrossHireRec['stage']) => {
     const order = crossHires.raw.rows.find((c) => c.id === ch?.id);
@@ -453,7 +464,8 @@ export function HeavyView() {
           <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
           {!crossHired && r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
           {!crossHired && r.assetStatus !== 'Disposed' && r.status === 'Active' && <Button variant="outlined" onClick={() => nav(`/inventory/disposals/add?asset=${r.assetId}`)}>Disposal Request</Button>}
-          {canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
+          {canReady && !underMaint && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
+          {canReady && underMaint && <Button variant="outlined" color="success" onClick={() => setMDlg(true)}>Complete Maintenance</Button>}
           <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>
         </>}
       />
@@ -469,6 +481,7 @@ export function HeavyView() {
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_HE} />
               <ValueField label="Entity" value={r.company} change="new" req={REQ_HE} />
               <ValueField label="Asset Status" change="changed" req={REQ_STATUS} value={<><StatusChip status={r.assetStatus} /><Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{crossHired ? 'Follows the cross-hire stage' : r.statusOverride ? `Set manually by ${r.statusOverride.by} on ${r.statusOverride.when}: ${r.statusOverride.reason}` : 'Set by the system (delivery, return, cross-hire, disposal)'}</Text></>} />
+              {underMaint && <ValueField label="Maintenance Type" value={mType} change="new" req={REQ_MAINT} />}
               <ValueField label="Current Location" value={currentLocation(r)} change="new" req={REQ_MV} />
             </ValueGrid>
           </Box>
@@ -552,22 +565,43 @@ export function HeavyView() {
           { label: 'Usage Readings', change: 'new', req: REQ_USE_TAB, content: <AssetReadings assetId={r.assetId} /> },
         ]} />
       </Page>
-      <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"
+      <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '', mtype: '' }); setSfErr({}); }} confirmLabel="Change Status"
         onConfirm={() => {
           const e: Errors = {};
           if (!sf.to) e.to = 'New Asset Status is required';
           else if (sf.to === r.assetStatus) e.to = 'The asset already has this status';
           if (!sf.reason.trim()) e.reason = 'Reason is required for a manual change';
+          if (sf.to === 'Under Maintenance' && !sf.mtype) e.mtype = 'Maintenance Type is required';
           setSfErr(e);
           if (Object.keys(e).length) return;
-          setStatus(sf.to, sf.reason.trim());
-          setStatusDlg(false); setSf({ to: '', reason: '' });
+          setStatus(sf.to, sf.reason.trim(), sf.to === 'Under Maintenance' ? { maintenanceType: sf.mtype as 'Routine' | 'Critical' } : {});
+          setStatusDlg(false); setSf({ to: '', reason: '', mtype: '' });
         }}>
         <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>Asset Status is normally set by the system from deliveries, returns, cross-hire and disposal. Use this only when the business process needs a manual change, for example after a yard check. Disposed is set only by an approved Disposal Request.</Text>
         <FormGrid cols={1}>
           <TextInput label="Current Asset Status" value={r.assetStatus} disabled />
           <SelectInput label="New Asset Status" required change="new" req={REQ_STATUS} value={sf.to} options={ASSET_STATUSES.filter((s) => s !== 'Disposed' && s !== 'In Service')} onChange={(v) => setSf({ ...sf, to: v })} error={sfErr.to} />
+          {sf.to === 'Under Maintenance' && <SelectInput label="Maintenance Type" required change="new" req={REQ_MAINT} value={sf.mtype} options={['Routine', 'Critical']} onChange={(v) => setSf({ ...sf, mtype: v })} error={sfErr.mtype} hint="Decides the checklist used by Complete Maintenance" />}
           <TextInput label="Reason" required change="new" req={REQ_STATUS} value={sf.reason} onChange={(v) => setSf({ ...sf, reason: v })} error={sfErr.reason} multiline rows={2} />
+        </FormGrid>
+      </AppDialog>
+      <AppDialog open={mDlg} title="Complete Maintenance" onClose={closeMaint} confirmLabel="Complete Maintenance"
+        onConfirm={() => {
+          const e: Errors = {};
+          if (mf.checks.length < mList.length && !mf.notes.trim()) e.notes = 'Notes are required when a check is not ticked';
+          if (!mf.date) e.date = 'Completed On is required';
+          setMErr(e);
+          if (Object.keys(e).length) { toast('Please complete the mandatory fields', 'error'); return; }
+          setStatus('Ready for Hire', `Maintenance completed (${mType}): ${mf.checks.length} of ${mList.length} checks${mf.tech ? `, technician ${mf.tech}` : ''}${mf.notes.trim() ? `. ${mf.notes.trim()}` : ''}`, { maintenanceType: undefined, maintenanceRef: undefined });
+          closeMaint();
+        }}>
+        <Alert severity="info" sx={{ mb: 2 }}>{mType} maintenance{r.maintenanceRef ? ` after ${r.maintenanceRef}` : ''}. Tick every check that is done; the unit becomes Ready for Hire. Checklist content to be supplied by the client.</Alert>
+        <FormGrid cols={1}>
+          <TextInput label="Maintenance Type" change="new" req={REQ_MAINT} value={mType} disabled />
+          <Box>{mList.map((k) => <CheckInput key={k} label={k} checked={mf.checks.includes(k)} onChange={(on) => setMf({ ...mf, checks: on ? [...mf.checks, k] : mf.checks.filter((x) => x !== k) })} />)}</Box>
+          <SelectInput label="Technician" change="new" req={REQ_MAINT} value={mf.tech} options={employees.map((x) => x.name)} onChange={(v) => setMf({ ...mf, tech: v })} hint="Optional" />
+          <DateInput label="Completed On" required change="new" req={REQ_MAINT} value={mf.date} onChange={(v) => setMf({ ...mf, date: v })} error={mErr.date} />
+          <TextInput label="Notes" required={mf.checks.length < mList.length} change="new" req={REQ_MAINT} value={mf.notes} onChange={(v) => setMf({ ...mf, notes: v })} error={mErr.notes} multiline rows={2} hint={`Required when a check is not ticked. ${TO_CONFIRM}`} />
         </FormGrid>
       </AppDialog>
     </>

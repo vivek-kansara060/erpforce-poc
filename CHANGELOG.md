@@ -12,6 +12,224 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 9 Oct, around 7:30 PM: Replacement Orders: view page, working search and filters, links to the Sales Order; Expiry column reads on its own
+**Where:** CRM / Sales > Orders > Replacement Orders
+**Where:** CRM / Sales > Orders > Renewals and Expiry
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What the client team asked.* Show the days with their unit instead of a bare number and name the column so overdue is not read as "days left". A Delivery Order that is always Packed, with no choice. A view page for a Replacement Order. A link to the Sales Order in the list and in the view, like the Delivery Order. Filters, and a search that works. A way from the Sales Order to its replacement orders, and a way to see on the Sales Order that an item was replaced.
+*What we did.* The column is called Expiry and reads "In 8 days", "Ends today" or "15 days overdue" on Renewals and Expiry, on the Renewal & Overdue dashboard and in the contract expiry reports. The Delivery Status of a replacement is shown as Packed and cannot be chosen; the trip then dispatches and delivers it. Replacement Orders has a view page (details, the asset out and the asset in with their status now, the Delivery Order and its trip, the activity), and a row of the list opens it. The Sales Order and the Delivery Order are links in the list and in the view, and each row menu has View, View Sales Order and View Delivery Order. The search finds a replacement number, a Sales Order, a customer, an asset, a Delivery Order or a reason (it only saw ids before). There are filters by Reason, Customer and Delivery Status. On the Sales Order the View menu has Replacement Orders (the list of that order only), there is a Replacements tab when the order has any, and a replaced line has a small "1 replaced" chip beside its status chip, as the existing ERP keeps one chip per status and puts the detail in a hover text: the hover lists "AST-1017 replaced by AST-1061 (RP-26-00006)" and a click opens the replacement (or the list of the order when there are several). The Traceability tab already showed the replaced unit as Replaced.
+*Be aware.* Replacement Orders and Renewals and Expiry are in the CRM side menu (see the entry before). The Subcategory column of an older replacement is the Subcategory of the order line it replaced.
+
+### 9 Oct, around 6:00 PM: Demo data for Renewals and Replacement Orders
+**Where:** CRM / Sales > Orders > Renewals and Expiry
+**Where:** CRM / Sales > Orders > Replacement Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* A new rental order, SO-26-00088 (Emirates Hospitality Group, four 200 KVA generators for the Marina hotels events season), is on Renewals and Expiry as Expiring in 4 days with its LPO ending the same day. Three of its four units (AST-1091, AST-1092, AST-1093) are already returned and Ready for Hire again, and AST-1090 is still on hire. It has its Delivery Order DO-26-00161, three completed returns (RMA-26-00124 to 126), earlier monthly invoices and a manual invoicing type, so the whole flow can be shown: open the order from Renewals and Expiry, Extend only the unit that is out with a new end date and rate, then Replace it with one of the returned units or another Subcategory. SO-26-00041 (Expiring in 8 days, two lines) shows an earlier revision under Revisions and its units as Extended, and the Replacement Orders list now shows the Delivery Order of every replacement that was done before.
+*Be aware.* The data moves with the demo day like the rest of the seed data. The orders that were already overdue (SO-26-00061 and SO-26-00048) are unchanged for the overdue handling part of the demo. A replacement with no Ready for Hire unit of the chosen Subcategory still offers Raise Cross-Hire.
+
+### 9 Oct, around 5:40 PM: A unit that is still out after an extension shows as Extended
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* Three of four generators are returned and one is extended: the extended one should show as extended and the others stay returned, nothing happens to them (1:06:30 to 1:06:44, and your answer on the call).
+*What we did.* Saving an extension marks the units of the extended lines that are still out as Extended to the new end date. The line status of the Sales Order says Extended, the Traceability and Asset Ledger tabs show the unit as Extended and the Delivery Order has an Asset Status column with one status for each asset (Extended to a date, Off Hire, On Hire, Hold, Replaced). Returned units are not touched.
+
+### 9 Oct, around 5:20 PM: The new rate of an extension applies to the extension period only
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Invoicing > Invoicing Rental Order
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* When the date is extended there is an option to add the new rate, and it is valid for the extension period only.
+*What we did.* The old rate is kept as rate history up to the current end date and the new rate starts the day after it. The Sales Order total counts each rate for its own part of the term. The invoice schedule and the rental invoices split a period that crosses that date into two lines, the part before at the old rate and the part after at the new rate. The Extend page says so. This replaces the earlier rule that the new rate applied to every period not invoiced yet.
+*Be aware.* A period that ends exactly on the current end date is not split. A period already invoiced is never changed.
+
+### 9 Oct, around 5:00 PM: Early Termination removed everywhere
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Renewals and Expiry
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "No need for terminate" (1:03:21). The answer on the call: remove termination from everywhere.
+*What we did.* Early Termination is gone from the Actions menu of the Sales Order, the expiry dialog (it offers Extend or Proceed to Return), the Renewals and Expiry menu and tab names (now "Extension requests"), the data and the logic. The sample termination request EX-26-00010 and its log line on SO-26-00067 are removed. This reverses the earlier decision to keep it.
+
+### 9 Oct, around 4:40 PM: Replacement: only the Subcategory can be changed
+**Where:** CRM / Sales > Orders > Replacement Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* Choose the subcategory when the same one is not available (58:07). The answer on the call: only the Subcategory can be changed.
+*What we did.* The Category on the replacement form is shown and locked to the Category of the Sales Order line; the Subcategory stays selectable, with the allocation-differs warning and log.
+
+### 9 Oct, around 4:20 PM: Certificate reminder is a report, not a dashboard widget
+**Where:** Inventory & Fixed Assets > Dashboards
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* A reminder for the certificates of an asset, the Compliance and Certificates tab of a Heavy Equipment asset (54:42 to 55:37). The answer on the call: for now a report.
+*What we did.* The "Certificates due or expired" figure and the "Certificate reminders" table are removed from the Fleet Status Dashboard. The Certificate Expiry Report, built from the same Compliance and Certificates data of every asset, is the reminder for now. The status table "Assets: where they are now" stays.
+
+### 9 Oct, around 4:00 PM: The invoice schedule starts on the Invoice Start Date of the delivery
+**Where:** Rental > Settings > Billing Cycle
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* An input of the date the invoicing starts, and the schedule generated from it, not from the billing cycle (31:58, and your answer on the call).
+*What we did.* The Invoice Start Date entered on the Delivery Order is the start of the schedule of the order. The "Invoice Start Date" option of the Billing Cycle (from the first delivery, from the order creation, or a custom date) is removed from the form, the list and the view; the cycle only says how long one invoice period is. The additional invoice question (Yes or No) stays on the Delivery Order.
+*Be aware.* The existing orders and cycles all started from the first delivery, so their schedules do not change. The delivery hint says that the schedule starts from this date.
+
+### 9 Oct, around 3:40 PM: A Service order has no visit and no job card
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > AMC Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* A service has no delivery and no job card, it is executed along with the order and only invoiced (7:42 to 8:00). The answer on the call: no job card, as Ajin wanted.
+*What we did.* An order with Activity Type Service carries Service charge lines, like the service lines of a Rental order. It has no visit plan, no job card, no AMC start and end dates and no number of visits, and it is not listed under AMC Orders. Each line is charged and invoiced from the order (Charge / Invoice, or Create, Invoice). Delivery is not offered. AMC orders are unchanged.
+*Be aware.* No sample Service order existed, so no data changed. A recurring service item picked on a Service order is not billed by a rental run, choose one-time service items there.
+
+### 9 Oct, around 2:00 PM: Sales Order shows what is out, returned and still to deliver
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "What all the assets I allocated against that, what is returned, what is pending" (59:07 and 1:00:03).
+*What we did.* Under the status chip of every rental line the Sales Order shows "{out} out, {returned} returned, {pending} to deliver". The detail was already in the Traceability, Asset Ledger and Deliveries tabs.
+*Be aware.* A unit that was replaced is not counted as returned, it is counted in neither number.
+
+### 9 Oct, around 1:40 PM: Invoicing Type is Automatic by default
+**Where:** Rental > Settings > Billing Cycle
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "This will be automated, right?" Vivek: "Whatever configuration is set in the billing cycle, but by default make it automatic" (22:xx to 23:07).
+*What we did.* The seeded billing cycles Monthly, 2 Months, Quarterly and Calendar Month Prorated are Automatic (Weekly already was), a new billing cycle starts as Automatic, and a Sales Order created from a quotation or typed in the form starts as Automatic. Manual stays selectable on the cycle and on the order.
+*Be aware.* The seeded Sales Orders keep the value they had, so the app opens without new invoices (the scheduler runs once when the app opens).
+
+### 9 Oct, around 1:20 PM: Asset dashboard: where every asset is now, and certificate reminders
+**Where:** Inventory & Fixed Assets > Dashboards
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "What is my category, subcategory, asset name, which is the current company which is using it, what is the status" (37:00). And a reminder on a dashboard for certificates that need renewing, a report is fine but the dashboard "always comes in front" (54:58 to 55:21).
+*What we did.* The Fleet Status Dashboard has a table "Assets: where they are now" (Category, Subcategory, Asset ID, Asset Name, Ownership, Status, Current Customer, Project, Sales Order, Current Location) with search, a status filter and a click into the asset. It has a "Certificates due or expired" figure and a "Certificate reminders" table with a button to the Certificate Expiry Report. A new status group "Returning" holds Off Hire - In Transit and Yard Inspection, so those assets are no longer counted as Available. The Fleet Status Dashboard of CRM and Rental has the two statuses in its heat map and in its Yard / Off Hire figure.
+*Be aware.* The current customer is read from the Sales Order line that has the asset On Hire or on Hold. Some certificates in the sample data belong to assets that are not on the register, they show an asset ID without a name, as they do in the report.
+
+### 9 Oct, around 1:00 PM: Extension is a revision of the same Sales Order
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Renewals and Expiry
+**Where:** Rental > Dashboards
+**Type:** NEW
+
+*What Ajin asked.* "If I'm clicking this particular dashboard it will redirect me to the sales order, and from there give an option to extend ... the rate will be same, or rate will be increased ... Extension will not be separate." "Same like revisions, you can show the same exact information of the sales order ... just change the date. If the rental rate they want to negotiate, they will change it there and save it. We will have the previous rental order and the current rental order." And when three of four generators are returned, only the one still running is extended and the other three stay returned (1:03:21 to 1:06:44).
+*What we did.* The Sales Order has an Extend button and a page: the order as on the view, with an Extension grid with a row for every rental line and every recurring service line (Units out, Current End, New End, Current Rate, New Rate, Frequency). Only lines that still have units out can be extended. Saving keeps the old version under a new Revisions tab (click a revision to see its lines next to the current ones, what changed in bold), shows "Rev 1" next to the number, moves the contract end, and writes the new rate on the line. Early Termination moved from the header into the Actions menu. The expiry dialog sends "Extend" to the new page. A row of Rental > Renewals and Expiry and of the Renewal & Overdue dashboard opens the Sales Order. Renewals and Expiry shows the revision and what changed.
+*Be aware.* The new rate applies to every rental period that is not invoiced yet, including a past period that has not been billed (default D4). Rule to be confirmed with client. Early Termination is kept (default D5, Ajin: "no need for terminate" but "if I'm mentioning terminate, I need to do some closing"). A recurring service line without its own New End follows the new contract end. A revision row shows the date it was replaced and the note of the change that replaced it. The 1:06:30 part of the call was cut off in the transcript we had; the last lines (only the running generator is extended, the others stay returned) are built as described.
+
+### 9 Oct, around 12:40 PM: Replacement only from the Sales Order, with Category, Subcategory and a Delivery Order
+**Where:** CRM / Sales > Orders > Replacement Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "I need to add replacement from the sales order. Always do it from the sales order ... I need to choose the category, I need to choose the subcategory, because at the time of replacement maybe I don't have 200 KVA, I have 250 KVA ... our delivery order selection is missing here" (57:35 to 1:00:43).
+*What we did.* Replacement Orders has no Add button; opening the form without a Sales Order says replacements are started from the Sales Order (line menu Replace asset, or Create, Replacement). The Rental Order is fixed. The "Same-category check" became "Replacement unit": Category and Subcategory (both can be changed, they start as those of the line), then the Replacement Asset, owned or cross-hired. A different Subcategory shows a warning and writes "Allocation differs from the request" in the Sales Order log. A new "Delivery Order" section (date and time, status, reference) creates the Delivery Order of the new unit; the list has a Delivery Order column; the trip is linked to that Delivery Order. The old unit goes to Under Maintenance, Critical after a breakdown and Routine otherwise.
+*Be aware.* The replacement creates its own Delivery Order, the old flow reused the original number (default D6). Category can be changed too (default D7, the Delivery Trace Details keeps it locked). A replaced cross-hired unit is also set to Under Maintenance, as before.
+
+### 9 Oct, around 12:20 PM: Two new asset statuses: Off Hire - In Transit and Yard Inspection
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Off-hire in transit ... while in the yard inspection, mention that it is under yard inspection ... the sales department needs to see which is available ... this will be the status on the heavy equipment asset listing" (53:24 to 54:42).
+*What we did.* The status list has Off Hire - In Transit and Yard Inspection. Saving a customer return sets Off Hire - In Transit; the Goods Receipt sets Yard Inspection and writes the Return movement to the yard; validating the receipt gives the final status (see the next entry). The statuses show on the Items list and on the asset page, and a Yard Inspection asset still counts as In Stock like a Yard one.
+*Be aware.* The Asset Status list is admin-extendable in the requirement, so it is edited in the shared status master `src/mock-data/masters.ts`, one of the three exceptions to the builder-guide rule on shared files (the others are the form components for the error panel). The Return movement is now written when the receipt is created, not when it is validated, so a return validated in this version has one Return movement; the seeded returns were written with the old order of events.
+
+### 9 Oct, around 12:00 PM: A returned own asset always goes to maintenance, a cross-hired one does not
+**Where:** Inventory & Fixed Assets > Product Management > Items
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Always it will ... once it comes, maybe cleaning, washing ... it will directly go for the maintenance itself. In maintenance there are some checklists, something like maintenance or critical maintenance." Vivek: "Cross-hire, we don't need to check that one, they will take care" (33:20 to 34:12).
+*What we did.* When a Goods Receipt of a return is validated, an owned asset that passed the yard inspection goes to Under Maintenance (Routine) with a movement to the maintenance bay, and one with damage goes to Under Maintenance (Critical) as before; the damage charge is unchanged. A cross-hired asset stays at the yard, idle, waiting for Return to Supplier; the damage charge to the client still applies. On the asset page an Under Maintenance asset has Complete Maintenance instead of Mark Ready for Hire: the Routine or Critical checklist (two new masters in CRM Masters), technician, completion date and notes (required when a check is not ticked), then it is Ready for Hire. The asset shows its Maintenance Type; Change Status asks for the Maintenance Type when the new status is Under Maintenance.
+*Be aware.* An owned asset that passes the yard inspection is no longer Ready for Hire at once, it is Under Maintenance first (default D8); this replaces the rule of the earlier version. The checklist content is sample data, to be supplied by the client.
+
+### 9 Oct, around 11:40 AM: Attachment for each returned item
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Per item we can give attachment, and at the bottom also we can give attachment" (28:00).
+*What we did.* The items table of a customer return has an Attachments column with a paperclip button and the count of files (their names on hover); the locked table and the view show the file names. The header attachment and the mandatory Return Photo Attachments stay.
+
+### 9 Oct, around 11:20 AM: Return: Invoice End Date, separate from the return date
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Similarly in the return you need to mention it ... when to stop that one, because off-hiring needs to happen based on that" (31:40 to 31:47). "My collection I am taking today, but off-hiring may happen on Monday" (30:43).
+*What we did.* "Return Entry Timestamp (Off-Hire)" is now Return Date & Time, and there is a new Invoice End Date (Off-Hire) that starts as the return date and can be earlier or later. Rental is billed up to the day before the Invoice End Date, as before. When the Invoice End Date is before the return date a question appears: raise an additional invoice for those days? Yes asks for an amount (default units x day rate x days) and a narration and raises a Pending invoice; when it is after the return date a note says billing continues until then. The return view shows both dates and the additional invoice; the assets go Off Hire - In Transit.
+*Be aware.* The question is asked only when the Invoice End Date is before the return date, because when it is after, the rental run keeps billing those days (default D3). Rule to be confirmed with client. The amount is a lump sum, defaulted from the day rate (Monthly price / 30, Weekly / 7, Daily / 1) and editable (default D2).
+
+### 9 Oct, around 11:00 AM: Delivery: Invoice Start Date and the "additional invoice?" question
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "When I delivered today, maybe my invoicing will start by tomorrow week." Darshit: "If the invoice date is not equal to the delivery date, then there should be a question: do you want to raise an additional invoice? Yes or no. If no, just go ahead; if yes, you need to create an additional invoice against that" (29:58 to 31:58).
+*What we did.* "Rental Start Date (Invoice Start)" is renamed Invoice Start Date (Rental Start). When it is after the delivery date, the optional waiting-period lump sum is replaced by the question "Invoice starts {n} day(s) after delivery. Raise an additional invoice for those days?", with an amount (default units x day rate x days, shown in the hint) and a narration. Yes raises a Pending invoice for those days, linked to the Delivery Order and shown on its view and in the Sales Order Invoices tab and log; the assets are on Hold until the start date as before.
+*Be aware.* A delivery that was saved with a waiting-period lump sum before this version keeps the old behaviour. That lump sum is billed on the first rental invoice and also appears in the order's Charges tab, where Raise Invoice can bill it again, so check both before invoicing it. New deliveries never use it. The amount is a lump sum defaulted from the day rate (default D2). Rule to be confirmed with client.
+
+### 9 Oct, around 10:40 AM: Return to Supplier and Re-Issue from the Sales Order
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "I need to return that material ... it should not be like here [the Cross-Hire order], it should be from the sales order, or from our asset" (39:28 to 40:00).
+*What we did.* The Cross Hire tab of a Sales Order has a table "Cross-hired units on this order" (Asset ID, Category, Subcategory, Brand, Model, Supplier, Cross Hire Order, Lifecycle Stage, Asset Status). A unit that is Returned to Us has Return to Supplier and Re-Issue to another project in its row menu, with the same dialogs as on the Cross-Hire order (now one shared component); Open asset is always there. The asset page already had Return to Supplier.
+*Be aware.* Nothing changes on the Cross-Hire order itself.
+
+### 9 Oct, around 10:20 AM: Cross-Hire Bill from the Sales Order, entered by hand for each period
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** Rental > Cross Hire > Orders
+**Where:** Accounting & Finance > Invoice > Bills
+**Type:** NEW
+
+*What Ajin asked.* "From the sales order, if I do any cross-hire against that particular sales order there should be an action, Cross-Hire Bill. If I'm clicking it, only the assets which I have cross-hired I can allocate there, and the supplier details can be added." Darshit: "You don't need to create a workflow ... just need that provision to enter the bill" (39:48 to 45:15, and Vivek at 16:27).
+*What we did.* Create, Cross-Hire Bill on the Sales Order opens a page: the Cross Hire Order (the orders of this Sales Order that are not Fully Billed), the supplier invoice number and date, Periodic or Final, and the billing period (From is the day after the last billed period or the order start, To is one billing duration later, up to today). A table lists the cross-hired assets of the order with Days and Amount (default rate x days / 30, 7 or 1, editable) and a total; the order's expenses can be added. Save creates one Pending bill for the period. The Cross-Hire order shows Partially Billed after a periodic bill and Fully Billed after the final one; its Bill button opens this page while the order is not Fully Billed, and the Bills tab shows the period. The Sales Order Cross Hire tab lists the supplier bills.
+*Be aware.* Nothing is scheduled or raised automatically. The cost of an order on the Sales Order profitability still uses the agreed rate, not the bills that were entered by hand. An order without a Sales Order is still billed from Accounting.
+
+### 9 Oct, around 10:00 AM: Optional Brand and Model on a hired asset
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "I need to mention which is the brand ... just like we have in the heavy equipment form ... I hired a 100 KVA generator from one supplier ... I need the brand, I need the model ... Don't make it mandatory, but give us this option" (13:16 to 14:14).
+*What we did.* Each unit in Track Details of a Goods Receipt has two optional fields, Brand and Model. Validate puts them on the asset (blank when not given) and in its name, and the order Units tab shows them.
+*Be aware.* The asset no longer takes the brand and model of a template unit, so a unit received without them shows blank ones.
+
+### 9 Oct, around 9:40 AM: Cross-Hire order and Goods Receipt carry the Sales Order, including the Project
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Orders
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "I just need to select the supplier, because the ID, activity type, cost centre, everything is carried forwarded here." "We need project because in the sales order we are assigning the project. There is a chance the supplier will directly deliver this material to the site itself" (8:47 to 9:30, 11:22 to 12:48).
+*What we did.* The order form shows Project (Cost Centre), Activity Type and Customer from the Sales Order, and the Delivery Site for a Dropship order (all read only); the rental period starts from the contract dates of the order when no line or RFQ gives one. The order view and list, the request view and the Goods Receipt show the Project, and the Goods Receipt also shows the Rental Order.
+*Be aware.* Everything except the supplier is carried from the order; the supplier is filled in when the request or the RFQ award has one (default D1). For an order with no Sales Order the new fields show a dash.
+
+### 9 Oct, around 9:20 AM: Category and Subcategory in two columns on every Cross-Hire and rental screen
+**Where:** Rental > Cross Hire > Requests
+**Where:** Rental > Cross Hire > Process Cross Hire
+**Where:** Rental > Cross Hire > Request for Quote
+**Where:** Rental > Cross Hire > Orders
+**Where:** CRM / Sales > Orders > Sales Orders
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Currently we have combined category and subcategory and display. Don't do that ... we are doing one format in sales order and another format in cross-hire" (10:32 to 11:13).
+*What we did.* The request list, Process Cross Hire, the order view (Items, Item Entries and Units), the Goods Receipt, the RFQ items, responses and comparison, the Sales Order Cross Hire and Traceability tabs and the customer return items show Category and Subcategory as two columns or fields, as the Sales Order does. The Track Details title reads "Category {x}, Subcategory {y}".
+*Be aware.* Dropdown options, log texts, invoice and bill item names and the compact category selector of a Track Details row still show the two together.
+
+### 9 Oct, around 9:00 AM: One error panel for every form, a click goes to the field
+**Where:** All modules > Form validation (global)
+**Type:** EXISTING WITH CHANGE
+
+*What Ajin asked.* "Instead of [a pop-up], why can't we show something at the bottom or at the side, what is the error? And if I'm clicking that error, it should redirect me to that particular error point itself ... Maybe we can adopt it as a global one" (35:10 to 36:11).
+*What we did.* When a form fails to save, a panel at the side lists every field to fix, with its message. A click scrolls to the field, opens its tab when it is on another tab, focuses it and flashes it. A tab that holds errors shows a red count. The panel closes by itself when nothing is left, when it is closed, or when the page changes. A failure that is not about a field (for example "This charge is already invoiced") is still a toast. Tabs now stay loaded so an error on another tab is found; an items table or a checklist shows its error as one entry (Items, Customer Signature, Pre-Return Site Checklist, Reason and responsibility, Extension, Cross-hired assets).
+*Be aware.* The panel sits below the page header, not at the very top, so it never covers the Save or Submit button. This is the exception to the builder-guide rule on shared files: `src/components/Form.tsx`, `Widgets.tsx`, `Dialogs.tsx` and a new `ErrorPanel.tsx` are changed, because Ajin asked for a global behaviour.
+
 ### 8 Oct, around 11:30 AM: Goods Receipt: assets traced on the view page, in a Track Details dialog
 **Where:** Rental > Cross Hire > Orders
 **Type:** EXISTING WITH CHANGE
@@ -212,7 +430,7 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 ### 6 Oct, around 8:30 PM: The driver comes with the vehicle on a delivery, collection or replacement
 **Where:** CRM / Sales > Orders > Delivery Orders
 **Where:** CRM / Sales > Orders > Customer Returns
-**Where:** Rental > Rental > Replacement Orders
+**Where:** CRM / Sales > Orders > Replacement Orders
 **Where:** CRM / Sales > Fleet Management > Fleet Availability
 **Type:** EXISTING WITH CHANGE
 
@@ -277,7 +495,7 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 **Where:** CRM / Sales > Orders > Delivery Orders
 **Where:** CRM / Sales > Orders > Customer Returns
 **Where:** CRM / Sales > Orders > Sales Orders
-**Where:** Rental > Rental > Replacement Orders
+**Where:** CRM / Sales > Orders > Replacement Orders
 **Where:** Inventory & Fixed Assets > Product Management > Items
 **Where:** CRM / Sales > Settings > Masters
 **Type:** NEW

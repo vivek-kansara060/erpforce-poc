@@ -10,7 +10,7 @@ export type { HeavyRec, PricingRec };
 export const ACTIVITY_TYPES = ['Rental', 'Fixed Asset Trading', 'Trading', 'Fuel Trading', 'AMC', 'Service', 'Other'] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 /** AMC and Service share the same contract header fields (start/end, scope, itemized service lines) and the same Order/Job Card flow; Service just has no Number of Visits and produces exactly one job card. */
-export const AMC_LIKE: ActivityType[] = ['AMC', 'Service'];
+export const AMC_LIKE: ActivityType[] = ['AMC'];
 /** A line is an Activity Type, or a Service charge. A service is a charge from the Inventory service master (delivery charge, labor, installation, waiver), never an Activity Type. */
 export type LineKind = ActivityType | 'Service';
 
@@ -46,11 +46,11 @@ export interface CycleRec {
   startOption: 'delivery' | 'order_creation' | 'custom'; customStart?: string; maxSchedule?: number; initialEnabled: boolean; initialDays?: number; prorated: boolean;
 }
 export const cycleSeed: CycleRec[] = [
-  { id: 'bc1', name: 'Monthly', count: 1, duration: 'Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 12, initialEnabled: false, prorated: false },
-  { id: 'bc2', name: '2 Months', count: 2, duration: 'Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 6, initialEnabled: false, prorated: false },
-  { id: 'bc3', name: 'Quarterly', count: 1, duration: '3 Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 4, initialEnabled: false, prorated: false },
+  { id: 'bc1', name: 'Monthly', count: 1, duration: 'Month', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 12, initialEnabled: false, prorated: false },
+  { id: 'bc2', name: '2 Months', count: 2, duration: 'Month', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 6, initialEnabled: false, prorated: false },
+  { id: 'bc3', name: 'Quarterly', count: 1, duration: '3 Month', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 4, initialEnabled: false, prorated: false },
   { id: 'bc4', name: 'Weekly', count: 1, duration: 'Week', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 8, initialEnabled: false, prorated: false },
-  { id: 'bc5', name: 'Calendar Month Prorated', count: 1, duration: 'Calendar Month', invoicingType: 'Manual', startOption: 'delivery', maxSchedule: 12, initialEnabled: true, initialDays: 1, prorated: true },
+  { id: 'bc5', name: 'Calendar Month Prorated', count: 1, duration: 'Calendar Month', invoicingType: 'Automatic', startOption: 'delivery', maxSchedule: 12, initialEnabled: true, initialDays: 1, prorated: true },
 ];
 export const INVOICING_TYPES = ['Manual', 'Automatic'];
 export const LINE_TYPES = ['Individual', 'Package'];
@@ -91,9 +91,9 @@ export const CROSS_STAGES = ['Request', 'Received', 'Allocated', 'Returned to Us
 export const SALESPEOPLE = ['Leena Thomas', 'Yousef Karim', 'Omar Farouk'];
 /**
  * Activity Types that a header Activity Type allows on its lines (decision 1: Rental may also carry Service and Fuel Trading lines).
- * A Service header (one-time AMC-style contract) reuses the AMC line kind for its service lines, so it shares the AMC item picker, totals and job-card billing flow.
+ * A Service header carries Service charge lines only (8 Oct call: a service has no delivery and no job card, it is executed and invoiced from the order).
  */
-export const LINE_ACTIVITIES: Record<string, string[]> = { Rental: ['Rental', 'Service'], 'Fixed Asset Trading': ['Fixed Asset Trading', 'Service'], Service: ['AMC'] };
+export const LINE_ACTIVITIES: Record<string, string[]> = { Rental: ['Rental', 'Service'], 'Fixed Asset Trading': ['Fixed Asset Trading', 'Service'], Service: ['Service'] };
 export const lineActivitiesFor = (header: string) => LINE_ACTIVITIES[header] ?? [header];
 /** Admin-configurable in the real system. */
 export const EXPIRY_NOTICE_DAYS = 14;
@@ -114,6 +114,8 @@ export const MASTER_SEED: Record<string, string[]> = {
   replacementReason: ['Breakdown', 'Customer request', 'Upgrade'],
   industry: ['Construction', 'Utilities', 'Hospitality', 'Oil & Gas', 'Events', 'Logistics', 'Manufacturing', 'Real Estate'],
   tripExpenseTypes: ['Transport Charge', 'Salik', 'Fuel', 'Driver Allowance', 'Parking', 'Other'],
+  maintenanceRoutine: ['Wash and clean the unit', 'Check oil, coolant and filters', 'Battery and charging check', 'Load test', 'Canopy and paint touch-up'],
+  maintenanceCritical: ['Fault diagnosed and recorded', 'Parts replaced and recorded', 'Load test after repair', 'Workshop supervisor sign-off'],
 };
 export interface MasterRec { id: string; values: string[] }
 export const masterSeed: MasterRec[] = Object.entries(MASTER_SEED).map(([id, values]) => ({ id, values }));
@@ -121,7 +123,12 @@ export const masterValues = (key: string) => getCollection<MasterRec>(COL.master
 
 /* ------------------------------------------------------------------ types */
 export interface LogItem { when: string; title: string; detail?: string; by: string; tone?: 'green' | 'amber' | 'red' | 'blue' | 'grey' }
-export interface Assignment { assetId: string; deliveryId: string; start: string; stop?: string; state: 'On Hire' | 'Hold' | 'Returned' | 'Replaced' | 'Sold' }
+/** Lump sum billed for days outside the rental run: before the Invoice Start Date (delivery) or after the Invoice End Date (return). */
+export interface AdditionalCharge { from: string; to: string; days: number; amount: number; note?: string }
+/** A saved earlier version of a Sales Order, kept when the order is extended (revision). */
+export interface OrderRevision { rev: number; date: string; by: string; note: string; contractEnd?: string; lpo?: string; lpoExpiry?: string; lines: { id: string; item: string; end?: string; price: number }[] }
+/** `extendedTo` and `extRev`: the unit is still out after an extension of the order (8 Oct call), so it can be shown as Extended while returned units stay Returned. */
+export interface Assignment { assetId: string; deliveryId: string; start: string; stop?: string; state: 'On Hire' | 'Hold' | 'Returned' | 'Replaced' | 'Sold'; extendedTo?: string; extRev?: number }
 /**
  * One line. `activity` is the line kind: on a Rental document it is Rental, Service or Fuel Trading; elsewhere it equals the header Activity Type.
  * `group` holds the Category (e.g. Generator) and `category` the Subcategory (e.g. 500 KVA).
@@ -134,6 +141,8 @@ export interface Line {
   /** existing item-table columns */
   shipDate?: string; location?: string; department?: string; narration?: string; replacementCost?: number; discountedItem?: boolean;
   assigned: Assignment[]; fulfilment?: string; fulfilmentRef?: string; crossHire: string[];
+  /** Earlier rates of the line (8 Oct call): `price` was `price` up to and including `until`; the current `price` applies after the last `until` (the extension period). */
+  rateHistory?: { until: string; price: number }[];
 }
 /** Header commercial fields shared by Quotation and Sales Order (decision 2: Contract Type and End Date sit in the header). */
 export interface Commercial {
@@ -192,6 +201,8 @@ export interface SalesOrder extends Commercial {
   damageCharges: { assetId: string; amount: number; note: string; date: string; invoiceId?: string }[]; logisticsCost: number;
   /** Rental only (Billing section, as in the existing Rental Order): the cycle the Rental invoicing run follows, and whether the run is started by hand or automatically. */
   billingCycle?: string; invoicingType?: string; visitPlan?: Visit[]; deliveryDate?: string; poExpiry?: string;
+  /** Extension is a revision of the same order (8 Oct call): the number of the current revision and the earlier versions. */
+  revision?: number; revisions?: OrderRevision[];
 }
 export interface DoItem { lineId: string; qty: number; assetIds: string[]; deliveredSub?: string; package?: string }
 export interface Delivery {
@@ -199,6 +210,8 @@ export interface Delivery {
   transport: string; extCost: number; conditionFiles: string[]; signature: string; foc: boolean; status: string; closed: boolean; driver?: string; vehicle?: string; narration?: string; supplierDoNo?: string;
   /** Rental (invoice) Start Date, defaults to the delivery date (decision 7). */
   rentalStart: string; startReason?: string; startBy?: string; waitingCharge?: number;
+  /** 8 Oct call: lump sum invoiced for the days before the Invoice Start Date, and the replacement this delivery was created for. */
+  additional?: AdditionalCharge; additionalInvoiceId?: string; replacementId?: string;
   requestedSub?: string; deliveredSub?: string; serviceLineIds?: string[]; project?: string;
   /** existing Delivery Order form fields; items = one row per Sales Order line delivered */
   items?: DoItem[]; reference?: string; poNumber?: string; poDate?: string; location?: string; operationType?: string; transportedBy?: string; vehicleNumber?: string; iqama?: string; mobile?: string; department?: string; salesperson?: string;
@@ -210,7 +223,7 @@ export interface Delivery {
 }
 /** Customer Return (RMA) of the existing ERP: header, items, approval, then a Goods Receipt (GRN) that is validated. Rental additions are marked NEW on the screens. */
 export const RMA_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Pending Receipt', 'Pending Credit', 'Return Completed', 'Rejected'];
-export interface ReturnItem { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string }
+export interface ReturnItem { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string; files?: string[] }
 /** One asset on a Goods Receipt: where it arrived, its serial confirmed (Track Details) and the yard inspection (Operations Return Checklist). */
 export interface ReturnGrnItem {
   itemId: string; assetId: string; yard: string; reachedYard: string; tracked: boolean; inspection: 'Pending Inspection' | 'Passed' | 'Damage Found'; yardChecklist: string[];
@@ -223,12 +236,16 @@ export interface ReturnEntry {
   salesperson: string; entity: string; reference?: string; currency: string; exchangeRate: number; narration?: string; location: string; department?: string; attachments: string[];
   status: string; items: ReturnItem[]; approver?: string; grns: ReturnGrn[]; log: LogItem[];
   /** rental: how it comes back, when billing stops, the site check and photos, the collection transport and a failed collection */
+  /** Invoice End Date (Off-Hire, 8 Oct call) and the lump sum invoiced for the days between it and the return date. */
+  offHireDate?: string; additional?: AdditionalCharge; additionalInvoiceId?: string;
   method: string; timestamp: string; siteChecklist: string[]; photos: string[]; fuelNote: string; transport?: ReturnTransport; collected?: string; collection?: { by: string; amount: number; note: string };
 }
 export interface Replacement {
   id: string; number: string; soId: string; lineId: string; oldAssetId: string; newAssetId: string; reason: string; priceAdjust: number; notified: boolean; date: string; crossHireId?: string; by: string;
+  /** 8 Oct call: the Delivery Order created for the new unit, and the Category and Subcategory it was chosen from. */
+  deliveryId?: string; group?: string; category?: string;
 }
-export interface Extension { id: string; number: string; soId: string; lineId?: string; kind: 'Extension' | 'Early Termination'; oldEnd: string; newEnd: string; date: string; note: string; status: string; clientConfirmedBy: string }
+export interface Extension { id: string; number: string; soId: string; lineId?: string; kind: 'Extension'; oldEnd: string; newEnd: string; date: string; note: string; status: string; clientConfirmedBy: string; revision?: number; changes?: string }
 export interface CrossHire {
   id: string; number: string; soId: string; soNumber: string; lineId: string; group: string; category: string; supplierId: string; supplier: string; rate: number; stage: number; assetId?: string;
   history: LogItem[]; condition?: { notes: string; files: string[]; checks?: string[] }; reissueRef?: string; reissueSoId?: string; supplierInvoice?: string; dispute?: number; revenue: number; date: string;
@@ -239,6 +256,8 @@ export interface CrossHire {
   grns?: CrossHireGrn[]; form?: Record<string, any>; approvedBy?: string;
   /** One entry per received asset (1 fixed asset = 1 unit). The order is Category and Subcategory with a number of units; the assets are defined on the Goods Receipt. */
   units?: CrossUnit[];
+  /** Sales Order context carried to the order (8 Oct call). */
+  project?: string; customerId?: string; site?: string;
   /** Items of the order, one per Category and Subcategory with its units and rate per unit. Group, Category, quantity and rate above are the first item and the totals. */
   items?: CrossHireItem[];
 }
@@ -265,7 +284,7 @@ export function costForSo(c: CrossHire, soId: string): number {
 /** Goods Receipt Note of a Cross Hire Order. The unit is traced on it (serial number), and Validate puts the unit on the Fixed Asset Register. */
 export interface CrossHireGrn {
   id: string; number: string; date: string; receivedBy: string; narration: string; transportedBy: string; driver: string; driverId: string; vehicle: string; location: string; department: string;
-  attachments: string[]; qty: number; traces: { serial: string; group: string; category: string; condition?: 'OK' | 'Damaged' | 'Needs check'; photo?: string; remarks?: string }[]; validated: boolean; address?: Record<string, string>;
+  attachments: string[]; qty: number; traces: { serial: string; group: string; category: string; condition?: 'OK' | 'Damaged' | 'Needs check'; photo?: string; remarks?: string; brand?: string; model?: string; hours?: string }[]; validated: boolean; address?: Record<string, string>;
 }
 export interface RfqItem { id: string; group: string; category: string; uom: string; description: string; specification: string; duration: string; qty: number; estYear: number; location: string; department: string; narration: string; orderNumber?: string }
 /** One Category and Subcategory of a Cross Hire Request (a request holds one item per equipment line selected on the Sales Order). */
@@ -289,6 +308,8 @@ export const reqItems = (r: CrossHireRequest): CrossHireReqItem[] => r.items ?? 
 export const CH_REQUEST_STATUSES = ['Draft', 'Pending', 'In Progress', 'Completed', 'Rejected'];
 export const CH_RFQ_STATUSES = ['Draft', 'Open', 'RFQ Sent', 'Response Received', 'Pending Order', 'Order', 'Cancelled'];
 export const CH_ORDER_STATUSES = ['Draft', 'Pending', 'Pending Approval', 'Approved', 'Received', 'Billed', 'Rejected', 'Cancelled', 'Closed'];
+/** Price of a rental line for one day (Monthly price / 30, Weekly / 7, Daily / 1), used for the default of an additional invoice. */
+export const dayRate = (l: Pick<Line, 'price' | 'frequency'>) => l.price / (l.frequency === 'Weekly' ? 7 : l.frequency === 'Daily' ? 1 : 30);
 export const RENTAL_DURATIONS = ['Daily', 'Hourly', '3 Hours', 'Weekly', '2 Weeks', 'Monthly', '2 Months', 'Half Yearly', 'Yearly'];
 export const CH_TYPES = ['Inventory', 'Dropship'];
 /** Roles that hold the permission to initiate a cross-hire request. Primarily the Operational Desk; an admin can grant it to any other user. */
@@ -367,7 +388,21 @@ export function periods(freq?: string, start?: string, end?: string): number {
 }
 export const isPeriodic = (l: Line) => l.activity === 'Rental' || (l.activity === 'Service' && l.billing === 'Recurring');
 export const linePeriods = (l: Line) => (isPeriodic(l) ? periods(l.frequency, l.start, l.end) : 1);
-export const lineGross = (l: Line) => (l.foc ? 0 : l.qty * l.price * linePeriods(l));
+/** Price of a rental or recurring service line on a day: an earlier rate up to its `until` date, else the current price. */
+export const rateOn = (l: Pick<Line, 'price' | 'rateHistory'>, date: string) => (l.rateHistory ?? []).find((h) => date <= h.until)?.price ?? l.price;
+const rawPeriods = (freq: string | undefined, start: string, end: string) => {
+  const a = dayjs(start); const b = dayjs(end);
+  return freq === 'Daily' ? b.diff(a, 'day') : freq === 'Weekly' ? b.diff(a, 'week', true) : b.diff(a, 'month', true) / (MONTHS[freq ?? ''] ?? 1);
+};
+/** Amount of one unit over the line's whole term: each rate counts for the part of the term it covered (the new rate only for the extension period). */
+const termAmount = (l: Line) => {
+  const hist = l.rateHistory ?? [];
+  if (!hist.length || !l.start || !l.end) return l.price * linePeriods(l);
+  let from = l.start; let sum = 0;
+  for (const h of hist) { if (h.until >= from) { sum += h.price * Math.max(0, rawPeriods(l.frequency, from, h.until)); from = h.until; } }
+  return sum + l.price * Math.max(0, rawPeriods(l.frequency, from, l.end));
+};
+export const lineGross = (l: Line) => (l.foc ? 0 : l.qty * (isPeriodic(l) && l.rateHistory?.length ? Math.max(termAmount(l), l.price) : l.price * linePeriods(l)));
 export const lineTaxable = (l: Line) => lineGross(l) * (1 - (l.discount ?? 0) / 100);
 export const lineVat = (l: Line, vatType: string) => (vatType.startsWith('Export') ? 0 : lineTaxable(l) * 0.05);
 export const lineTotal = lineTaxable;
@@ -436,6 +471,17 @@ export function fleetRows(): HeavyRec[] {
 export const assetById = (id: string) => fleetRows().find((a) => a.id === id);
 export const assetByAssetId = (assetId: string) => fleetRows().find((a) => a.assetId === assetId);
 export const assetLabel = (a?: HeavyRec) => (a ? `${a.assetId} - ${a.name}` : '-');
+/** Who holds an asset now (8 Oct call, Asset Dashboard): the customer, project and Sales Order whose line has the asset On Hire or on Hold. */
+export function holderOf(assetId: string): { customer: string; project: string; soId: string; soNumber: string; since: string } | undefined {
+  const rows = getCollection<SalesOrder>(COL.orders);
+  for (const o of rows.length ? rows : orderSeed) {
+    for (const l of o.lines) {
+      const a = l.assigned.find((x) => x.assetId === assetId && (x.state === 'On Hire' || x.state === 'Hold'));
+      if (a) return { customer: custName(o.customerId), project: o.costCentre, soId: o.id, soNumber: o.number, since: a.start };
+    }
+  }
+  return undefined;
+}
 export const isLive = (a: HeavyRec) => a.status === 'Active' && a.assetStatus !== 'Disposed';
 /** Units that can go out on a delivery: Ready for Hire units of the Category + Subcategory (owned fleet and received cross-hired units). */
 export function availability(group?: string, category?: string, rows: HeavyRec[] = fleetRows()) {
@@ -684,7 +730,7 @@ export const deliverySeed: Delivery[] = [
 ];
 
 /** One return per stage: collection pending, in the yard waiting for inspection, damage charged, damage covered by a waiver. */
-const rt = (id: string, number: string, s: SalesOrder, lineId: string, deliveryId: string, assetId: string, method: string, timestamp: string, over: Partial<ReturnEntry> = {}): ReturnEntry => ({
+const rt = (id: string, number: string, s: SalesOrder, lineId: string, deliveryId: string, assetId: string, method: string, timestamp: string, over: Partial<ReturnEntry> & Record<string, unknown> = {}): ReturnEntry => ({
   id, number, date: timestamp.slice(0, 10), customerId: s.customerId, soId: s.id, soNumber: s.number, source: 'sales order', shippingAddress: s.site, operationType: 'Return', salesperson: s.owner, entity: ENT, currency: 'AED', exchangeRate: 1, location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [],
   status: 'Pending Receipt', items: [{ id: `${id}-i1`, lineId, deliveryId, assetId }], approver: 'Ahmed Al Khouri', grns: [], method, timestamp, siteChecklist: MASTER_SEED.siteChecklist, photos: [`site-${number}.jpg`], fuelNote: 'Tank at about one quarter',
   log: [lg(`${timestamp.replace('T', ' ')}`, 'Return entry raised', 'Bilal Ahmed', 'Off-Hire. Billing stopped', 'amber'), lg(`${timestamp.replace('T', ' ')}`, 'Site check completed', 'Bilal Ahmed', '4 of 4 checks'), lg(`${timestamp.replace('T', ' ')}`, method === 'Company Collection' ? 'Collection arranged' : 'Client self-return', 'Bilal Ahmed'), lg(`${timestamp.replace('T', ' ')}`, 'Approved (Quick Approval)', 'Ahmed Al Khouri', undefined, 'green')], ...over,
@@ -1048,7 +1094,7 @@ chRfqSeed.push({ id: 'rfq2', number: 'RFQ-26-00013', date: '2026-09-30', request
       lpo: 'LPO-EIL-1744', lpoDate: '2026-03-29', lpoExpiry: '2027-04-30', site: 'Al Maktoum Airport Expansion', costCentre: 'SO-26-00044 Al Maktoum Airport Expansion', billingCycle: 'Quarterly', invoicingType: 'Manual', paymentTerms: '45 days', contactPerson: 'Rashid Al Mansoori',
       damageCharges: [{ assetId: 'he73', amount: 900, note: 'Failed collection: site security refused to release the drum, our vehicle waited 3 hours', date: '2026-09-09' }],
       lines: withAsg(l24, { so24a: [asg('he73', 'dl30', '2026-04-03', { state: 'Returned', stop: '2026-09-09' })] }),
-      log: [lg('2026-09-10 09:00', 'Early Termination EX-26-00010 requested', 'Omar Farouk', 'Finance decides the commercial adjustment manually (full committed amount or pro-rated)', 'amber'), lg('2026-09-09 14:00', 'Collection failed', 'Bilal Ahmed', 'Client charged AED 900. Site security refused to release the drum', 'red'),
+      log: [lg('2026-09-09 14:00', 'Collection failed', 'Bilal Ahmed', 'Client charged AED 900. Site security refused to release the drum', 'red'),
         lg('2026-09-09 11:00', 'Return CN-26-00118: AST-1073 off hire', 'Bilal Ahmed', 'Company collection arranged. Billing stopped', 'amber'), lg('2026-04-03 09:00', 'Delivery DO-26-00148: AST-1073 on hire', 'Bilal Ahmed', undefined, 'green'), lg('2026-03-30 10:00', 'Sales Order created', 'Omar Farouk')] }),
     so({ id: 'so25', number: 'SO-26-00068', date: '2026-02-25', customerId: 'c4', owner: 'Leena Thomas', title: 'Rent 40 ft POD for the resort kitchen refurbishment', reference: 'LPO-DPH-3688', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-03-04', contractEnd: '2026-09-30',
       lpo: 'LPO-DPH-3688', lpoDate: '2026-02-24', lpoExpiry: '2026-10-31', site: 'Desert Pearl Resort, Sharjah', costCentre: 'Sharjah Branch', billingCycle: 'Quarterly', invoicingType: 'Manual', paymentTerms: '60 days', contactPerson: 'Imran Qureshi',
@@ -1207,9 +1253,49 @@ chRfqSeed.push({ id: 'rfq2', number: 'RFQ-26-00013', date: '2026-09-30', request
   extensionSeed.push(
     { id: 'ex2', number: 'EX-26-00008', soId: 'so19', lineId: 'so19a', kind: 'Extension', oldEnd: '2026-10-19', newEnd: '2027-01-19', date: '2026-09-25', note: 'Client extended the hire by three months because the Station 7 fit-out is delayed', status: 'Applied', clientConfirmedBy: 'Sergei Petrov' },
     { id: 'ex3', number: 'EX-26-00009', soId: 'so18', lineId: 'so18a', kind: 'Extension', oldEnd: '2026-09-15', newEnd: '2026-12-15', date: '2026-09-25', note: 'Client wants the 500 KVA and the trolley until mid December, the new LPO is not received yet', status: 'Pending Client LPO', clientConfirmedBy: 'Hassan Ali' },
-    { id: 'ex4', number: 'EX-26-00010', soId: 'so24', lineId: 'so24a', kind: 'Early Termination', oldEnd: '2027-04-02', newEnd: '2026-09-09', date: '2026-09-10', note: 'Terminal 3 feeder was energised from the grid, the cable is no longer needed', status: 'Pending Finance Adjustment', clientConfirmedBy: 'Rashid Al Mansoori' },
     { id: 'ex5', number: 'EX-26-00011', soId: 'so26', lineId: 'so26a', kind: 'Extension', oldEnd: '2026-09-05', newEnd: '2026-09-12', date: '2026-08-28', note: 'Crusher line commissioning took one more week', status: 'Applied', clientConfirmedBy: 'Jassim Al Nuaimi' },
   );
+  /* ---------------------------------------------------------------- demo flow: Renewals and Replacement Orders (8 Oct call) */
+  // SO-26-00088: four 200 KVA units on hire, three already returned and one still running, contract and LPO ending in 4 days. Open it from Rental, Renewals and Expiry, Extend only the unit
+  // that is still out (new end date and rate), then replace it from the order. The three returned units are Ready for Hire again and can be the replacement.
+  const l45 = [R('so45a', 'Generator', '200 KVA', 29500, '2026-07-05', '2026-10-04', { qty: 4, desc: 'Generator 200 KVA, rental, monthly billing, events season' })];
+  orderSeed.push(
+    so({ id: 'so45', number: 'SO-26-00088', date: '2026-06-28', customerId: 'c11', owner: 'Leena Thomas', title: 'Rent four 200 KVA generators for the Marina hotels events season', reference: 'LPO-EHG-6431', status: 'Fully Delivered', activity: 'Rental', contractType: 'Closed', contractStart: '2026-07-05', contractEnd: '2026-10-04',
+      lpo: 'LPO-EHG-6431', lpoDate: '2026-06-27', lpoExpiry: '2026-10-04', site: 'Dubai Marina Promenade, Dubai', costCentre: 'Dubai Branch', billingCycle: 'Monthly', invoicingType: 'Manual', paymentTerms: '30 days', contactPerson: 'Nadia Farouk',
+      lines: withAsg(l45, { so45a: [asg('he90', 'dl43', '2026-07-05'), asg('he91', 'dl43', '2026-07-05', { state: 'Returned', stop: '2026-09-22' }), asg('he92', 'dl43', '2026-07-05', { state: 'Returned', stop: '2026-09-25' }), asg('he93', 'dl43', '2026-07-05', { state: 'Returned', stop: '2026-09-28' })] }),
+      log: [lg('2026-09-29 11:00', 'Client asked to keep one unit until the end of October', 'Leena Thomas', 'Three units are back, AST-1090 is still running. Extend only that unit', 'amber'), lg('2026-09-28 10:00', 'Return RMA-26-00126: AST-1093 off hire', 'Bilal Ahmed', 'Client self-return. Billing stopped', 'amber'),
+        lg('2026-09-25 10:00', 'Return RMA-26-00125: AST-1092 off hire', 'Bilal Ahmed', 'Client self-return. Billing stopped', 'amber'), lg('2026-09-22 10:00', 'Return RMA-26-00124: AST-1091 off hire', 'Bilal Ahmed', 'Client self-return. Billing stopped', 'amber'),
+        lg('2026-07-05 09:00', 'Delivery DO-26-00161: 4 unit(s) on hire', 'Bilal Ahmed', 'AST-1090, AST-1091, AST-1092, AST-1093', 'green'), lg('2026-06-28 10:00', 'Sales Order created', 'Leena Thomas')] }),
+  );
+  deliverySeed.push(
+    D('dl43', 161, 'so45', 'so45a', ['he90', 'he91', 'he92', 'he93'], '2026-07-05', { ...V_DXB_LB, type: 'Full', narration: 'Four 200 KVA units for the Marina hotels events season' }),
+  );
+  const ret45 = (id: string, no: number, grn: number, assetId: string, ts: string, yardAt: string, done: string): ReturnEntry => withLog(
+    rt(id, `RMA-26-${String(no).padStart(5, '0')}`, sx('so45'), 'so45a', 'dl43', assetId, 'Self-Return', ts, { status: 'Return Completed', fuelNote: 'Tank at about half',
+      grns: [rgrn(`rg${no}`, `GRN-26-${String(grn).padStart(5, '0')}`, ts.slice(0, 10), 'Validated', { itemId: `${id}-i1`, assetId, reachedYard: yardAt, yardChecklist: MASTER_SEED.yardChecklist, inspection: 'Passed', outcome: 'Routine Maintenance' })] }),
+    lg(yardAt, 'Asset reached the yard', 'Sanjay Kumar', 'Jebel Ali Main Yard'), lg(done, 'Inspection passed', 'Sanjay Kumar', 'Sent for Routine Maintenance, completed and Ready for Hire again', 'green'));
+  returnSeed.push(
+    ret45('rt12', 124, 104, 'he91', '2026-09-22T10:00', '2026-09-22 11:30', '2026-09-23 10:00'),
+    ret45('rt13', 125, 105, 'he92', '2026-09-25T10:00', '2026-09-25 11:30', '2026-09-26 10:00'),
+    ret45('rt14', 126, 106, 'he93', '2026-09-28T10:00', '2026-09-28 11:30', '2026-09-29 10:00'),
+  );
+  // Replacements already done keep the Delivery Order of the unit that came in (the old flow reused the Delivery Order of the line), so the list shows it.
+  replacementSeed.forEach((r) => {
+    const l = sx(r.soId).lines.find((x) => x.id === r.lineId);
+    const a = l?.assigned.find((x) => x.assetId === r.newAssetId);
+    if (a) r.deliveryId = a.deliveryId;
+    if (l) { r.group = l.group; r.category = l.category; }
+  });
+  // Extensions already applied are the earlier revision of their order: the Revisions tab shows the version before, and the units still out are marked Extended.
+  extensionSeed.filter((e) => e.kind === 'Extension' && e.status === 'Applied' && e.soId !== 'so26').forEach((e) => {
+    const o = sx(e.soId);
+    const hit = (l: Line) => !e.lineId || l.id === e.lineId;
+    e.revision = 1; e.changes = `end ${e.oldEnd} to ${e.newEnd}`;
+    o.revision = 1;
+    o.revisions = [{ rev: 0, date: e.date, by: o.owner, note: e.note, contractEnd: e.oldEnd, lpo: o.lpo, lpoExpiry: o.lpoExpiry,
+      lines: o.lines.filter((l) => l.activity === 'Rental' || (l.activity === 'Service' && l.billing === 'Recurring')).map((l) => ({ id: l.id, item: l.item, end: hit(l) && l.end === e.newEnd ? e.oldEnd : l.end, price: l.price })) }];
+    o.lines.filter((l) => l.activity === 'Rental' && hit(l)).forEach((l) => l.assigned.forEach((a) => { if (a.state === 'On Hire' || a.state === 'Hold') { a.extendedTo = e.newEnd; a.extRev = 1; } }));
+  });
 }
 // ==== END SALES FLOW SEED ====
 

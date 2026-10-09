@@ -17,12 +17,13 @@ import { reqItems, CH_RFQ_STATUSES, DEPARTMENTS, RENTAL_DURATIONS, TODAY, catego
 import { addChResponse, awardChRfq, cancelChRfq, createChRfq, deleteChResponse, deleteChRfq, saveChRfq, sendChRfq } from '@/modules/crm/flow';
 import { Section, SpecForm, SpecView, type Spec } from '@/modules/crm/FormKit';
 import { addressSpecs, useAddressAutofill, type AddressCfg } from '@/modules/crm/addressKit';
-import { aed, useChRequests, useChRfqs, useCrossHire } from '@/modules/crm/shared';
+import { R8, aed, useChRequests, useChRfqs, useCrossHire } from '@/modules/crm/shared';
 import { neutral } from '@/theme/color';
 
 const HIRE_SUPPLIERS = suppliers.filter((s) => s.type === 'Cross-Hire Company');
 const supOpts = HIRE_SUPPLIERS.map((s) => ({ value: s.id, label: s.name }));
 const R_CH = 'Existing ERP Cross Hire Request for Quote; Procurement > Cross-Hire Suppliers';
+const R_SEP = R8('Category and Subcategory shown separately, as on the Sales Order');
 const BASE = '/rental/cross-hire-rfq';
 
 /** Items of an RFQ: the ones typed in the form, else derived from the requests it was raised from. */
@@ -87,7 +88,7 @@ function ItemsTable({ items, onEdit, onDelete, awarded }: { items: RfqItem[]; on
   return (
     <DataTable hideToolbar rows={items} emptyText="No item" columns={[
       ...(awarded !== undefined ? [{ key: 'aw', label: 'Awarded', render: () => <StatusChip status={awarded ? 'Awarded' : 'Not awarded'} tone={awarded ? 'green' : 'grey'} /> }] : []),
-      { key: 'item', label: 'Item', render: (i: RfqItem) => `${i.group} ${i.category}` }, { key: 'uom', label: 'UoM' }, { key: 'description', label: 'Description' }, { key: 'specification', label: 'Specification', render: (i: RfqItem) => i.specification || '-' },
+      { key: 'grp', label: 'Category', change: 'changed', req: R_SEP, render: (i: RfqItem) => i.group }, { key: 'cat', label: 'Subcategory', change: 'changed', req: R_SEP, render: (i: RfqItem) => i.category }, { key: 'uom', label: 'UoM' }, { key: 'description', label: 'Description' }, { key: 'specification', label: 'Specification', render: (i: RfqItem) => i.specification || '-' },
       { key: 'duration', label: 'Requested Rental Duration' }, { key: 'qty', label: 'Requested Quantity', align: 'right' }, { key: 'estYear', label: 'Estimated Order Quantity Per Year', align: 'right' },
       { key: 'location', label: 'Location' }, { key: 'department', label: 'Department' }, { key: 'narration', label: 'Narration', render: (i: RfqItem) => i.narration || '-' },
       ...(onEdit ? [{ key: 'x', label: '', render: (i: RfqItem) => <><IconButton size="small" onClick={() => onEdit(i)}><EditOutlinedIcon fontSize="small" /></IconButton><IconButton size="small" onClick={() => onDelete?.(i)}><DeleteOutlineIcon fontSize="small" /></IconButton></> }] : []),
@@ -305,7 +306,7 @@ export function ChResponseForm() {
         <Section title="Basic Detail"><SpecForm specs={responseSpecs(supOpts.filter((o) => r.vendorIds.includes(o.value)), !!x0)} f={view} set={set} err={err} /></Section>
         <Section title="Items">
           <DataTable hideToolbar rows={items} columns={[
-            { key: 'item', label: 'Item', render: (i) => `${i.group} ${i.category}` }, { key: 'u', label: 'Requested UoM', render: (i) => i.uom }, { key: 'd', label: 'Requested Rental Duration', render: (i) => i.duration },
+            { key: 'grp', label: 'Category', change: 'changed', req: R_SEP, render: (i) => i.group }, { key: 'cat', label: 'Subcategory', change: 'changed', req: R_SEP, render: (i) => i.category }, { key: 'u', label: 'Requested UoM', render: (i) => i.uom }, { key: 'd', label: 'Requested Rental Duration', render: (i) => i.duration },
             { key: 'q', label: 'Requested Quantity', align: 'right', render: (i) => i.qty }, { key: 'e', label: 'Estimated Order Quantity Per Year', align: 'right', render: (i) => i.estYear },
           ]} />
           <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Vendor response</Text>
@@ -338,7 +339,7 @@ export function ChResponseView() {
         </ValueGrid>
         <Section title="Items">
           <DataTable hideToolbar rows={[{ id: 'r' }]} columns={[
-            { key: 'aw', label: 'Awarded', render: () => <StatusChip status={r.awardedVendorId === x.vendorId ? 'Awarded' : 'Not awarded'} tone={r.awardedVendorId === x.vendorId ? 'green' : 'grey'} /> }, { key: 'i', label: 'Item', render: () => `${r.group} ${r.category}` },
+            { key: 'aw', label: 'Awarded', render: () => <StatusChip status={r.awardedVendorId === x.vendorId ? 'Awarded' : 'Not awarded'} tone={r.awardedVendorId === x.vendorId ? 'green' : 'grey'} /> }, { key: 'g', label: 'Category', change: 'changed', req: R_SEP, render: () => r.group }, { key: 'i', label: 'Subcategory', change: 'changed', req: R_SEP, render: () => r.category },
             { key: 'vu', label: 'Vendor UoM', render: () => x.vendorUom ?? 'Nos' }, { key: 'vd', label: 'Vendor Rental Duration Type', render: () => x.vendorDuration ?? 'Monthly' }, { key: 'c', label: 'Condition', render: () => x.condition ?? '-' },
             { key: 'rate', label: 'Rate', align: 'right', render: () => aed(x.rate) }, { key: 'q', label: 'Requested Quantity', align: 'right', render: () => r.qty }, { key: 'm', label: 'Minimum Order Quantity', align: 'right', render: () => x.moq },
           ]} />

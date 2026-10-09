@@ -12,7 +12,7 @@ export const EDITABLE: ApprovalStatus[] = ['Draft', 'Pending', 'Rejected'];
 export type SourceType = 'Sales Order' | 'Rental Cycle' | 'Job Card' | 'Damage Charge' | 'Asset Disposal' | 'Manual' | 'Cross Hire' | 'Trip';
 export interface SourceRef { type: SourceType; id: string; number: string; soId?: string; lineIds?: string[] }
 
-export type LineTag = 'rental' | 'recurring-service' | 'one-time-service' | 'waiting-charge' | 'damage' | 'visit' | 'material' | 'service' | 'goods' | 'asset-sale' | 'cross-hire' | 'transport' | 'manual';
+export type LineTag = 'rental' | 'recurring-service' | 'one-time-service' | 'waiting-charge' | 'additional' | 'damage' | 'visit' | 'material' | 'service' | 'goods' | 'asset-sale' | 'cross-hire' | 'transport' | 'manual';
 export interface InvLine {
   id: string; item: string; desc: string; account: string;
   qty: number; unit: string; rate: number; discountPct: number; vatPct: number;

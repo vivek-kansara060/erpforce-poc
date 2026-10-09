@@ -40,7 +40,7 @@ export const mobileOf = (name?: string) => employees.find((e) => e.name === name
 export const transporterOptions = () => suppliers.filter((x) => x.type === 'Service Provider' && x.active).map((x) => x.name);
 const vehicleLabel = (a?: HeavyRec) => (a ? `${a.plateNumber ?? a.assetId} - ${a.name}` : '-');
 const fleetTone = (s: FleetStatus) => (s === 'Unavailable' ? ('grey' as const) : undefined);
-const docPath = (t: Trip) => (t.kind === 'Delivery' ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : '/rental/replacements');
+const docPath = (t: Trip) => (t.kind === 'Delivery' ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : '/crm/replacements');
 const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as const;
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */

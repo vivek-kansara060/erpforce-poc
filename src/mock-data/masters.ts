@@ -9,7 +9,8 @@ export const CURRENCY = 'AED';
 
 /** Unified Asset Status master (Rental + Inventory & Fixed Assets share one list, admin-extendable). */
 /** "In Service" is for own delivery vehicles (Fleet Management, 6 Oct): they are never Ready for Hire / On Hire. */
-export const ASSET_STATUSES = ['Ready for Hire', 'On Hire', 'Off Hire', 'Breakdown', 'Under Maintenance', 'Disposed', 'Yard', 'Hold', 'In Service'] as const;
+/** 8 Oct call: "Off Hire - In Transit" (off hired, not yet at the yard) and "Yard Inspection" (at the yard, being inspected) so Sales can see what is available. */
+export const ASSET_STATUSES = ['Ready for Hire', 'On Hire', 'Off Hire', 'Off Hire - In Transit', 'Breakdown', 'Under Maintenance', 'Disposed', 'Yard', 'Yard Inspection', 'Hold', 'In Service'] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
 export const ACTIVITY_TYPES = ['Rental', 'Trading', 'Fuel Trading', 'AMC', 'Other'] as const;

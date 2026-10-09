@@ -5,6 +5,7 @@ import { FullscreenLayout, ModuleLayout } from '@/shell/Shell';
 import { Launcher } from '@/pages/Launcher';
 import { ChangeRegister } from '@/pages/ChangeRegister';
 import { Changelog } from '@/pages/Changelog';
+import { ErrorPanelHost } from '@/components/ErrorPanel';
 import { modules } from '@/modules';
 import { renderRoutes } from '@/routes/renderRoutes';
 import { processAutomatic } from '@/modules/accounting/schedule';
@@ -22,6 +23,7 @@ export default function App() {
   }, []);
   return (
     <Suspense fallback={<Loader />}>
+      <ErrorPanelHost />
       <Routes>
         <Route path="/" element={<FullscreenLayout><Launcher /></FullscreenLayout>} />
         <Route path="/change-register" element={<FullscreenLayout><ChangeRegister /></FullscreenLayout>} />

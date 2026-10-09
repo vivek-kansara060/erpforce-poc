@@ -4,13 +4,14 @@ import type { ChangeEntry, ModuleDef } from '@/types';
 import { LeadForm, LeadList, LeadView } from './LeadPages';
 import { OpportunityForm, OpportunityList, OpportunityView } from './OpportunityPages';
 import { QuotationForm, QuotationList, QuotationView } from './QuotationPages';
-import { SalesOrderForm, SalesOrderList, SalesOrderView } from './SalesOrderPages';
+import { SalesOrderCrossHireBill, SalesOrderExtend, SalesOrderForm, SalesOrderList, SalesOrderView } from './SalesOrderPages';
 import { DeliveryForm, DeliveryList, DeliveryView } from './DeliveryPages';
 import { ReturnForm, ReturnGrnForm, ReturnGrnList, ReturnGrnView, ReturnList, ReturnView } from './ReturnPages';
 import { liveRoutes } from './reports';
 import { AmcList, AmcView, JobCardForm, JobCardView } from './AmcPages';
 import { MasterView, MastersIndex } from './MasterPages';
 import { FleetBoard, TripList, TripView } from '@/modules/rental/FleetPages';
+import { RenewalsPage, ReplacementForm, ReplacementList, ReplacementView } from '@/modules/rental/RentalPages';
 
 const M = 'CRM / Sales';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -32,6 +33,8 @@ const mod: ModuleDef = {
         { label: 'Delivery Orders', path: '/crm/delivery-orders', change: 'changed' },
         { label: 'AMC Orders', path: '/crm/amc-orders', change: 'new' },
         { label: 'Customer Returns', path: '/crm/customer-returns', change: 'changed' },
+        { label: 'Replacement Orders', path: '/crm/replacements', change: 'changed' },
+        { label: 'Renewals and Expiry', path: '/crm/renewals', change: 'new' },
       ],
     },
     { label: 'Fleet Management', change: 'new', children: [
@@ -46,16 +49,37 @@ const mod: ModuleDef = {
     { path: 'leads', element: <LeadList /> }, { path: 'leads/add', element: <LeadForm /> }, { path: 'leads/:id', element: <LeadView /> }, { path: 'leads/:id/edit', element: <LeadForm /> },
     { path: 'opportunities', element: <OpportunityList /> }, { path: 'opportunities/add', element: <OpportunityForm /> }, { path: 'opportunities/:id', element: <OpportunityView /> }, { path: 'opportunities/:id/edit', element: <OpportunityForm /> },
     { path: 'quotations', element: <QuotationList /> }, { path: 'quotations/add', element: <QuotationForm /> }, { path: 'quotations/:id', element: <QuotationView /> }, { path: 'quotations/:id/edit', element: <QuotationForm /> },
-    { path: 'sales-orders', element: <SalesOrderList /> }, { path: 'sales-orders/:id', element: <SalesOrderView /> }, { path: 'sales-orders/:id/edit', element: <SalesOrderForm /> },
+    { path: 'sales-orders', element: <SalesOrderList /> }, { path: 'sales-orders/:id', element: <SalesOrderView /> }, { path: 'sales-orders/:id/edit', element: <SalesOrderForm /> }, { path: 'sales-orders/:id/cross-hire-bill', element: <SalesOrderCrossHireBill /> }, { path: 'sales-orders/:id/extend', element: <SalesOrderExtend /> },
     { path: 'delivery-orders', element: <DeliveryList /> }, { path: 'delivery-orders/add', element: <DeliveryForm /> }, { path: 'delivery-orders/:id', element: <DeliveryView /> },
     { path: 'customer-returns', element: <ReturnList /> }, { path: 'customer-returns/add', element: <ReturnForm /> }, { path: 'customer-returns/:id', element: <ReturnView /> }, { path: 'customer-returns/:id/edit', element: <ReturnForm /> },
     { path: 'customer-returns/:id/grn', element: <ReturnGrnList /> }, { path: 'customer-returns/:id/grn/add', element: <ReturnGrnForm /> }, { path: 'customer-returns/:id/grn/:gid', element: <ReturnGrnView /> }, { path: 'customer-returns/:id/grn/:gid/edit', element: <ReturnGrnForm /> },
     { path: 'amc-orders', element: <AmcList /> }, { path: 'amc-orders/:id', element: <AmcView /> }, { path: 'job-cards/add', element: <JobCardForm /> }, { path: 'job-cards/:id', element: <JobCardView /> }, { path: 'job-cards/:id/edit', element: <JobCardForm /> },
+    { path: 'replacements', element: <ReplacementList /> }, { path: 'replacements/add', element: <ReplacementForm /> }, { path: 'replacements/:id', element: <ReplacementView /> },
+    { path: 'renewals', element: <RenewalsPage /> },
     { path: 'fleet', element: <FleetBoard /> }, { path: 'trips', element: <TripList /> }, { path: 'trips/:id', element: <TripView /> },
     { path: 'masters', element: <MastersIndex /> }, { path: 'masters/:key', element: <MasterView /> },
     ...liveRoutes('crm'),
   ],
   changes: [
+    c('Replacement Orders: view and list', 'EXISTING WITH CHANGE', 'A list that the search could not read, no view page, a Delivery Status to choose', 'View page, working search, filters (Reason, Customer, Delivery Status), links to the Sales Order and the Delivery Order, Delivery Order always Packed; the Sales Order has a Replacements tab, a View menu entry and a replaced marker on the line', 'Client feedback 9 Oct', '/crm/replacements'),
+    c('Renewals and Expiry: Expiry column', 'EXISTING WITH CHANGE', 'A Days left column with a bare number, overdue shown as "15 overdue"', 'An Expiry column that reads "In 8 days", "Ends today" or "15 days overdue", also on the Renewal & Overdue dashboard and the expiry reports', 'Client feedback 9 Oct', '/crm/renewals'),
+    c('Replacement Orders', 'EXISTING WITH CHANGE', 'Started from here or from the Sales Order, same Category and Subcategory only, no Delivery Order', 'Started from the Sales Order only; Category and Subcategory can be chosen; the replacement unit gets its own Delivery Order, shown in the list', 'Client call 8 Oct (57:35 to 1:00:43)', '/crm/replacements'),
+    c('Renewals and Expiry', 'EXISTING WITH CHANGE', 'Contracts list and requests with no link to the order', 'A row opens the Sales Order; the requests show the revision and what changed', 'Client call 8 Oct (49:00, 1:03:21)', '/crm/renewals'),
+    c('Replacement Orders', 'EXISTING WITH CHANGE', 'Replacement Orders list and replacement quotation', 'Asset-in / asset-out transaction started from the order: same-category check, Cross-Hire fallback, reason, price adjustment, old asset to Under Maintenance, billing not paused. Transport section added: own vehicle from Fleet Availability or an external transporter, creating one Replacement trip', 'Rental > Replacement Processing', '/crm/replacements'),
+    c('Renewals and Expiry', 'NEW', 'Upcoming Expiry report only', 'Notification, client confirmation, Extend the existing Sales Order (as a revision) or Proceed to Return, overdue fault attribution and escalation; a row opens the Sales Order', 'Rental > Overdue On-Hire & Contract Expiry', '/crm/renewals'),
+    c('Replacement Orders and Renewals and Expiry moved to CRM', 'EXISTING WITH CHANGE', 'Both screens were in the Rental side menu', 'Both are in CRM / Sales > Orders, next to the Sales Order they start from; the old Rental addresses redirect', 'Client feedback 9 Oct', '/crm/replacements'),
+    c('Service orders', 'EXISTING WITH CHANGE', 'A Service order had one planned visit and a job card, like AMC', 'A Service order has Service charge lines only: no visit, no job card, no AMC dates; each line is charged and invoiced from the order, delivery is not offered', 'Client call 8 Oct (7:42 to 8:00)', '/crm/sales-orders'),
+    c('Delivery Order: invoice schedule', 'EXISTING WITH CHANGE', 'The schedule started where the billing cycle said (first delivery, order creation or a fixed date)', 'The schedule of the order starts on the Invoice Start Date entered on the Delivery Order', 'Client call 8 Oct (31:58)', '/crm/delivery-orders'),
+    { ...c('Form validation (global)', 'EXISTING WITH CHANGE', 'A single toast after a failed Save; a field error on another tab was not visible', 'One error panel at the side lists every field to fix, a click goes to the field (switching tab when needed), tabs show a red error count. Applies to every form of every module', 'Client call 8 Oct (35:10 to 36:11)'), module: 'All modules' },
+    c('Sales Order: Cross-Hire Bill', 'NEW', 'A Bill button on the Cross-Hire order that bills one period at the agreed rate', 'Create > Cross-Hire Bill on the Sales Order: choose the cross-hire order, enter the supplier invoice, a billing period and the days and amount of each cross-hired asset. One Pending bill per period, entered by hand, no schedule', 'Client call 8 Oct (39:48 to 45:15)', '/crm/sales-orders'),
+    c('Sales Order: Cross Hire tab', 'EXISTING WITH CHANGE', 'Requests and orders with their cost', 'New table of the cross-hired units delivered on the order with Return to Supplier and Re-Issue; a Supplier bills table; Category and Subcategory in separate columns', 'Client call 8 Oct (39:00 to 40:00, 10:32 to 11:13)', '/crm/sales-orders'),
+    c('Delivery Order: Invoice Start Date', 'EXISTING WITH CHANGE', 'Rental Start Date with a reason and an optional waiting-period lump sum billed on the first rental invoice', 'Invoice Start Date; when it is after the delivery date a Yes or No question raises an additional invoice for those days (amount defaults to units x day rate x days, editable)', 'Client call 8 Oct (29:58 to 31:58)', '/crm/delivery-orders'),
+    c('Customer Returns: Invoice End Date', 'EXISTING WITH CHANGE', 'One Return Entry Timestamp that records the return and stops the billing', 'Return Date & Time and a separate Invoice End Date (Off-Hire); when the end date is before the return date a question raises an additional invoice; assets go Off Hire - In Transit', 'Client call 8 Oct (29:58 to 31:58)', '/crm/customer-returns'),
+    c('Customer Returns: attachment per item', 'EXISTING WITH CHANGE', 'One attachment section for the whole return', 'An Attachments column on every returned item, besides the header attachment; Category and Subcategory in separate columns', 'Client call 8 Oct (28:00)', '/crm/customer-returns'),
+    c('Customer Returns: yard inspection outcome', 'EXISTING WITH CHANGE', 'A passed inspection made the asset Ready for Hire', 'On receipt the asset is Yard Inspection; after validation an owned asset goes to Routine Maintenance (Critical if damaged), a cross-hired asset stays idle at the yard for Return to Supplier', 'Client call 8 Oct (32:52 to 34:12)', '/crm/customer-returns'),
+    c('Sales Order: Extend (revision)', 'NEW', 'Extend / Terminate dialog that changed the end date in place', 'Extend page: the same order as a revision, with a new end date and a new rate (for the extension period only) for each line still out, a Revisions tab with the previous version, Rev shown next to the number; units still out show as Extended on the Sales Order and on the Delivery Order; Early Termination removed', 'Client call 8 Oct (1:03:21 to 1:06:44)', '/crm/sales-orders'),
+    c('Sales Order: allocated, returned, pending', 'EXISTING WITH CHANGE', 'A status chip per rental line', 'Under the chip: units out, returned and still to deliver', 'Client call 8 Oct (59:07, 1:00:03)', '/crm/sales-orders'),
+    c('Sales Order: Invoicing Type default', 'EXISTING WITH CHANGE', 'Manual by default', 'Automatic by default for a new Sales Order; seeded orders keep their value', 'Client call 8 Oct (22:xx to 23:07)', '/crm/sales-orders'),
     c('Fleet Availability', 'NEW', 'No screen for the own delivery vehicles (a placeholder fleet dashboard was removed on 2 Oct)', 'Dispatcher board of the own delivery vehicles with a status per vehicle (Free, Assigned, En Route, Stuck-Delayed, Unavailable), counts, filters by Vehicle Type and status, and the row actions of the trip. The same screen opens as a picker (Free vehicles only) from the Delivery Order, Return and Replacement', 'Rental > Delivery & Fleet Logistics; calls 17 Sep, 30 Sep, 5 Oct', '/crm/fleet'),
     c('Trips', 'NEW', 'No trip record; a free-text driver and vehicle number on the Delivery Order', 'One trip per delivery, collection or replacement, by own vehicle or external transporter, with expenses (Salik, fuel, transporter charge) posted to the Sales Order logistics cost, a status log and Stuck-Delayed with a mandatory reason. Always created from its document. Design choice, not named in the requirement document', 'Rental > Delivery & Fleet Logistics; calls 18 Sep, 5 Oct', '/crm/trips'),
     c('Lead', 'EXISTING WITH CHANGE', 'Lead list and form (Basic Details, Address, Contact; Owner Details, Follow Up, Classifications), statuses, Communication Log, Convert', 'Form and flow kept as is. Added: Activity Type (single), Lost Reason, Next Follow-Up Date, Tags; Source, Lost Reason, Industry and Company are masters with "+ Add new". Duplicate check is not on the Lead (moved to the Opportunity)', 'CRM > Lead; meeting 22 Sep', '/crm/leads'),

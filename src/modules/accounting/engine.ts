@@ -5,7 +5,7 @@
  */
 import { getCollection, setCollection } from '@/store/store';
 import { customers, suppliers } from '@/mock-data/masters';
-import { ACTOR, COL, TODAY, assetById, assetLabel, cust, custName, hasWaiver, log, type Delivery, type JobCard, type SalesOrder, type Trip, type TripExpense } from '@/modules/crm/data';
+import { ACTOR, COL, TODAY, assetById, assetLabel, cust, custName, hasWaiver, log, type AdditionalCharge, type Delivery, type JobCard, type SalesOrder, type Trip, type TripExpense } from '@/modules/crm/data';
 import { advanceJournal, buildRentalLines, headerFromOrder, lid, linesFromJobCard, linesFromOrder, nextPeriodFor, noteJournal, paymentJournal, purchaseJournal, salesJournal, type RentalBuild } from './billing';
 import {
   ACC, COLA, EDITABLE, dueDateFor, expenseAccountFor, tripExpenseAccount, nextBillNo, nextCreditNo, nextDebitNo, nextInvoiceNo, nextJournalNo, nextPaymentNo, nextRunNo, payStatusOf, round2, totalsOf, uid, vatPctOf,
@@ -340,6 +340,16 @@ export function invoiceFromDamage(soId: string, idx: number): { ok: boolean; mes
     narration: `Charge on ${o.number}`, source: { type: 'Damage Charge', id: `${o.id}#${idx}`, number: o.number, soId: o.id } });
   return { ok: true, message: `${invoice.number} raised`, invoice };
 }
+/**
+ * Additional invoice (8 Oct call): the Invoice Start Date is after the delivery, or the Invoice End Date is before the return, and the user chose to bill those days.
+ * One Pending lump-sum invoice (D4) for the days outside the rental run.
+ */
+export function invoiceAdditionalCharge(soId: string, i: { kind: 'Delivery' | 'Return'; docId: string; docNumber: string } & AdditionalCharge): SalesInvoice {
+  const o = orderOf(soId)!;
+  return createInvoice({ ...headerFromOrder(o), date: TODAY, lines: [{ id: lid(), item: i.kind === 'Delivery' ? 'Additional charge, before invoice start' : 'Additional charge, after invoice end', desc: `${i.docNumber}: ${i.from} to ${i.to} (${i.days} day(s))${i.note ? `, ${i.note}` : ''}`,
+    account: '410500', qty: 1, unit: 'Lump sum', rate: i.amount, discountPct: 0, vatPct: vatPctOf(o.vatType), activity: 'Rental', costCentre: o.costCentre, periodFrom: i.from, periodTo: i.to, tag: 'additional' }],
+    narration: `Additional charge for ${i.docNumber} on ${o.number}`, source: { type: 'Sales Order', id: o.id, number: o.number, soId: o.id } });
+}
 export function invoiceFromDisposal(i: { disposalId: string; number: string; assetId: string; assetName?: string; method: string; buyer: string; customerId?: string; amount: number; date: string }): SalesInvoice {
   return createInvoice({ customerId: i.customerId, partyName: i.buyer, paymentTerms: 'Immediate', date: i.date, activity: 'Fixed Asset Trading',
     lines: [{ id: lid(), item: i.method === 'Scrap' ? 'Scrap sale' : 'Sale of fixed asset', desc: `${i.assetId}${i.assetName ? ` - ${i.assetName}` : ''}, disposal ${i.number}`, account: '410700', qty: 1, unit: 'Nos', rate: i.amount, discountPct: 0, vatPct: 5, activity: 'Fixed Asset Trading', tag: 'asset-sale' }],
@@ -358,6 +368,19 @@ export function billFromCrossHire(ch: CrossHireLike, supplierInvoiceNo: string, 
     lines: (ch.items ?? [{ group: ch.group, category: ch.category, qty: ch.qty ?? 1, rate: ch.rate / (ch.qty ?? 1) }]).map((it) => ({ id: lid(), item: `Cross-hire ${it.group} ${it.category}`, desc: `${ch.number} for ${ch.soNumber}`, account: '510100', qty: it.qty, unit: 'Nos', rate: it.rate, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre, tag: 'cross-hire' as const })),
     expenses: (ch.expenses ?? []).map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || e.account, amount: e.amount, vatPct: 5, costCentre: o?.costCentre })),
     narration: `Cross-hire order ${ch.number}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } });
+}
+/**
+ * A supplier's bill for one period of a cross-hire (8 Oct call): entered by hand from the Sales Order, there is no schedule. One Pending bill (D4), a line for each
+ * cross-hired asset with its own days and amount, and optionally the order's expenses.
+ */
+export function billCrossHirePeriod(ch: CrossHireLike, i: { soId: string; soNumber: string; supplierInvoiceNo: string; supplierInvoiceDate: string; from: string; to: string; final: boolean;
+  lines: { assetId?: string; group: string; category: string; days: number; rate: number; amount: number }[]; expenses: { account: string; amount: number; note: string }[] }): Bill {
+  const o = orderOf(i.soId);
+  return createBill({ supplierId: ch.supplierId, supplierName: ch.supplier, supplierInvoiceNo: i.supplierInvoiceNo, supplierInvoiceDate: i.supplierInvoiceDate, date: TODAY, orderRef: ch.number, activity: 'Rental', costCentre: o?.costCentre, paymentTerms: ch.paymentTerms,
+    lines: i.lines.map((l) => ({ id: lid(), item: `Cross-hire ${l.group} ${l.category}`, desc: `${ch.number} for ${i.soNumber}${l.assetId ? `, ${assetLabelLive(l.assetId)}` : ''}, ${i.from} to ${i.to} (${l.days} days)`, account: '510100', qty: 1, unit: 'Period', rate: l.amount, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre,
+      periodFrom: i.from, periodTo: i.to, days: l.days, assetId: l.assetId, tag: 'cross-hire' as const })),
+    expenses: i.expenses.map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || e.account, amount: e.amount, vatPct: 5, costCentre: o?.costCentre })),
+    narration: `Cross-hire ${i.final ? 'final' : 'periodic'} bill, ${ch.number}, ${i.from} to ${i.to}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: i.soId } });
 }
 export function billDisputeCharge(ch: CrossHireLike, amount: number): Bill {
   const o = orderOf(ch.soId);

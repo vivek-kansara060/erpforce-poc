@@ -41,7 +41,7 @@ export function AmcList() {
   const rows = orders.rows.filter((o) => AMC_LIKE.includes(o.activity));
   return (
     <Page>
-      <PageTitle title="AMC Orders" subtitle="AMC and Service Sales Orders. Each planned visit has a Job Card (a Service order is one-time and has exactly one); an AMC or Service order is a project (cost centre)." change="new" req={R_AMC} />
+      <PageTitle title="AMC Orders" subtitle="AMC Sales Orders. Each planned visit has a Job Card; an AMC order is a project (cost centre). A Service order has no visit and no job card: it is executed and invoiced from the Sales Order." change="new" req={R_AMC} />
       <DataTable<SalesOrder> rows={rows} searchPlaceholder="Search AMC orders..." onAdd={() => nav('/crm/quotations/add?activity=AMC')} addLabel="Add AMC Order" onRowClick={(r) => nav(`/crm/amc-orders/${r.id}`)}
         columns={[
           { key: 'number', label: 'ID' }, { key: 'customerId', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'project', label: 'Project', change: 'new', req: R_AMC, render: (r) => r.costCentre || '-' }, { key: 'item', label: 'Scope', render: (r) => (r.amcScope || r.lines[0]?.desc || '-') },

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Box, Tab, Tabs } from '@mui/material';
 import { Text } from './Text';
 import { ChangeTag } from './ChangeTag';
@@ -97,17 +97,40 @@ export function Progress({ value, color = primaryGreen[800] }: { value: number; 
   );
 }
 
-/** Tab strip + panels helper: <TabPanels tabs={[{label, content, change}]} /> */
+/**
+ * Tab strip + panels helper: <TabPanels tabs={[{label, content, change}]} />
+ * Every tab stays mounted (8 Oct call, global error panel) so a field error on another tab is found; the inactive ones are hidden.
+ * A tab whose panel holds fields in error shows a red count, and the error panel can switch to it (erp:reveal-field).
+ */
 export function TabPanels({ tabs, initial = 0 }: { tabs: { label: string; content: ReactNode; change?: ChangeKind; req?: string; hidden?: boolean }[]; initial?: number }) {
   const [v, setV] = useState(initial);
+  const [counts, setCounts] = useState<number[]>([]);
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
   const list = tabs.filter((t) => !t.hidden);
   const idx = Math.min(v, list.length - 1);
+  useEffect(() => {
+    const count = () => {
+      const next = list.map((_, i) => refs.current[i]?.querySelectorAll('[data-field-error]').length ?? 0);
+      setCounts((prev) => (prev.length === next.length && prev.every((n, i) => n === next[i]) ? prev : next));
+    };
+    const reveal = (e: Event) => {
+      const el = (e as CustomEvent<Element>).detail;
+      const at = refs.current.findIndex((p) => p?.contains(el));
+      if (at >= 0) setV(at);
+    };
+    window.addEventListener('erp:errors-changed', count);
+    window.addEventListener('erp:reveal-field', reveal);
+    count();
+    return () => { window.removeEventListener('erp:errors-changed', count); window.removeEventListener('erp:reveal-field', reveal); };
+  }, [list.length]);
   return (
     <Box>
       <Tabs value={idx} onChange={(_, n) => setV(n)} variant="scrollable" scrollButtons="auto">
-        {list.map((t, i) => <Tab key={t.label} value={i} label={<span>{t.label}<ChangeTag kind={t.change} req={t.req} /></span>} />)}
+        {list.map((t, i) => (
+          <Tab key={t.label} value={i} label={<span>{t.label}<ChangeTag kind={t.change} req={t.req} />{!!counts[i] && <Box component="span" sx={{ ml: 0.75, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 16, height: 16, px: 0.5, borderRadius: '8px', bgcolor: '#C64D4D', color: '#fff', fontSize: 11, fontWeight: 600, lineHeight: 1 }}>{counts[i]}</Box>}</span>} />
+        ))}
       </Tabs>
-      <Box sx={{ pt: 2.5 }}>{list[idx]?.content}</Box>
+      {list.map((t, i) => <Box key={t.label} ref={(el: HTMLDivElement | null) => { refs.current[i] = el; }} data-tab-panel={i} sx={{ pt: 2.5, display: i === idx ? 'block' : 'none' }}>{t.content}</Box>)}
     </Box>
   );
 }

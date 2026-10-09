@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Box, Checkbox } from '@mui/material';
 import { Text } from '@/components/Text';
@@ -8,39 +8,24 @@ import { suppliers } from '@/mock-data/masters';
 import { AppDialog, useToast } from '@/components/Dialogs';
 import { DateInput, FileInput, FormGrid, NumberInput, SelectInput, TextInput } from '@/components/Form';
 import { TODAY, cust, log, type Line, type LogItem } from './data';
-import { NEXT_STEP, applyExtension, fulfilLine, getLine, getOrder, invoiceOrderLines, raiseCrossHire } from './flow';
+import { NEXT_STEP, fulfilLine, getLine, getOrder, invoiceOrderLines, raiseCrossHire } from './flow';
 import { MasterSelect, R, TO_CONFIRM, aed } from './shared';
 
-/** Expiry decision for the whole order (decision 2): Extend the SAME Sales Order, Early Termination, or Proceed to Return. */
+/** Expiry decision for the whole order (decision 2): Extend the SAME Sales Order (on its Extend page, as a revision), or Proceed to Return. */
 export function ExpiryDialog({ open, onClose, soId }: { open: boolean; onClose: () => void; soId?: string; lineId?: string }) {
   const nav = useNavigate();
-  const toast = useToast();
   const [choice, setChoice] = useState('Extend the existing Sales Order');
-  const [by, setBy] = useState('');
-  const [end, setEnd] = useState('');
-  const [note, setNote] = useState('');
+  useEffect(() => { if (open) setChoice('Extend the existing Sales Order'); }, [open]);
   const so = getOrder(soId);
   if (!so) return null;
-  const cur = so.contractEnd ?? '';
-  const ext = choice.startsWith('Extend');
   const ret = choice.startsWith('Proceed');
-  const valid = by.trim() && (ret || ext || note.trim()) && (!ext || (end && end > cur));
-  const go = () => {
-    if (ret) { onClose(); nav(`/crm/customer-returns/add?so=${so.id}`); return; }
-    applyExtension({ soId: so.id, kind: ext ? 'Extension' : 'Early Termination', newEnd: ext ? end : cur, note, confirmedBy: by });
-    toast(ext ? `Sales Order ${so.number} revised, new end date ${end}` : 'Early Termination recorded, Finance decides the adjustment');
-    onClose();
-  };
+  const go = () => { onClose(); nav(ret ? `/crm/customer-returns/add?so=${so.id}` : `/crm/sales-orders/${so.id}/extend`); };
   return (
-    <AppDialog open={open} title={`Client confirmation: ${so.number}`} onClose={onClose} confirmLabel={ret ? 'Proceed to Return' : 'Save'} confirmDisabled={!valid} onConfirm={go}>
+    <AppDialog open={open} title={`Client confirmation: ${so.number}`} onClose={onClose} confirmLabel={ret ? 'Proceed to Return' : 'Open Extend page'} onConfirm={go}>
       <FormGrid cols={1}>
-        <SelectInput label="Client decision" required change="new" req={R.exp} value={choice} options={['Extend the existing Sales Order', 'Early Termination', 'Proceed to Return']} onChange={setChoice} />
-        <TextInput label="Confirmed by (client contact)" required value={by} onChange={setBy} />
-        {ext && <DateInput label="New Contract End Date" required value={end} onChange={setEnd} error={end && end <= cur ? `Must be after the current end date ${cur}` : undefined} hint={`Current end date ${cur}; the LPO expiry moves with it when earlier`} />}
-        {!ret && <TextInput label={ext ? 'Note' : 'Reason'} required={!ext} multiline rows={2} value={note} onChange={setNote} />}
+        <SelectInput label="Client decision" required change="new" req={R.exp} value={choice} options={['Extend the existing Sales Order', 'Proceed to Return']} onChange={setChoice} />
       </FormGrid>
-      {ext && <Alert severity="info" sx={{ mt: 2 }}>The existing Sales Order is revised. No new order is created and every change is audited.</Alert>}
-      {choice === 'Early Termination' && <Alert severity="warning" sx={{ mt: 2 }}>Early termination follows the normal return process. Finance manually decides the adjustment: full committed amount or pro-rated by days used. {TO_CONFIRM}.</Alert>}
+      {!ret && <Alert severity="info" sx={{ mt: 2 }}>The existing Sales Order is revised on its Extend page: change the dates and rates there, and the previous version is kept under Revisions. No new order is created.</Alert>}
     </AppDialog>
   );
 }

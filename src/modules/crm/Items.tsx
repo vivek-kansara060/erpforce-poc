@@ -69,7 +69,7 @@ const cellSx = { px: 1, py: 0.75, fontSize: 13, whiteSpace: 'nowrap' } as const;
 /** The existing ERP item table (same column names and order, column chooser, Add / edit through a dialog) plus the new rental columns. */
 export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pricing, mode, extra, contract, rowActions, selectable, selected = [], onSelect }: {
   lines: Line[]; onChange?: (l: Line[]) => void; header: ActivityType | string; vatType: string; locked?: boolean; fleet?: HeavyRec[]; pricing: PricingRec[]; mode: Mode; contract?: { start?: string; end?: string };
-  extra?: { label: string; render: (l: Line) => ReactNode };
+  extra?: { label: string; render: (l: Line) => ReactNode; change?: 'new' | 'changed'; req?: string };
   /** Actions for a line, all shown in the three-dots menu together with Edit and Delete when the table is editable */
   rowActions?: (l: Line) => RowMenuItem[];
   selectable?: boolean; selected?: string[]; onSelect?: (ids: string[]) => void;
@@ -103,7 +103,7 @@ export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pr
           <TableHead>
             <TableRow sx={{ bgcolor: neutral[100] }}>
               {selectable && <TableCell padding="checkbox"><Checkbox size="small" checked={lines.length > 0 && selected.length === lines.length} indeterminate={selected.length > 0 && selected.length < lines.length} onChange={(e) => onSelect?.(e.target.checked ? lines.map((x) => x.id) : [])} /></TableCell>}
-              {extra && <TableCell sx={{ ...cellSx, fontWeight: 500 }}>{extra.label}<ChangeTag kind="new" req={R.so} /></TableCell>}
+              {extra && <TableCell sx={{ ...cellSx, fontWeight: 500 }}>{extra.label}<ChangeTag kind={extra.change ?? 'new'} req={extra.req ?? R.so} /></TableCell>}
               {vis.map((c) => <TableCell key={c.id} align={c.right ? 'right' : 'left'} sx={{ ...cellSx, fontWeight: 500 }}>{c.label}<ChangeTag kind={c.change} req={R.meet} /></TableCell>)}
               {((!locked && onChange) || rowActions) && <TableCell sx={{ ...cellSx, fontWeight: 500, width: 48 }} />}
             </TableRow>

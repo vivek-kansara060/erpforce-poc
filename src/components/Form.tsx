@@ -28,7 +28,7 @@ export function HelpTip({ hint }: { hint?: ReactNode }) {
 
 export function FieldShell({ label, required, hint, change, req, full, error, children }: Base & { children: ReactNode }) {
   return (
-    <Box sx={{ gridColumn: full ? '1 / -1' : undefined, minWidth: 0 }}>
+    <Box data-field-error={error ? label : undefined} data-field-msg={error || undefined} sx={{ gridColumn: full ? '1 / -1' : undefined, minWidth: 0 }}>
       <Text type="s5" weight="medium" color={error ? '#C64D4D' : 'theme.secondary.800'} sx={{ mb: 0.5 }}>
         {label}{required && <span style={{ color: '#C64D4D' }}> *</span>}
         <ChangeTag kind={change} req={req} />
@@ -38,6 +38,12 @@ export function FieldShell({ label, required, hint, change, req, full, error, ch
       {error && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5 }}>{error}</Text>}
     </Box>
   );
+}
+
+/** An error not tied to one input (an items table, a checklist). Listed by the error panel like a field error. */
+export function FieldError({ label, error }: { label: string; error?: string }) {
+  if (!error) return null;
+  return <Text type="s5" color="#C64D4D" data-field-error={label} data-field-msg={error} sx={{ mt: 0.5 }}>{error}</Text>;
 }
 
 type Opt = string | { value: string; label: string };

@@ -59,7 +59,7 @@ export const contractSpecs: Spec[] = [
   { key: 'billingStructure', label: 'Billing Structure', type: 'select', options: BILLING_STRUCTURES, required: true, show: (f) => f.activity === 'Rental' && f.contractType === 'Project', hint: 'Feature that drives this to be confirmed with client' },
   { key: 'amcStart', label: 'Start Date', type: 'date', required: true, show: (f) => AMC_LIKE.includes(f.activity) },
   { key: 'amcEnd', label: 'End Date', type: 'date', required: true, show: (f) => AMC_LIKE.includes(f.activity), hint: 'Start + 1 year by default, editable' },
-  { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order. A Service contract is one-time and always has exactly one visit' },
+  { key: 'visits', label: 'Number of Visits', type: 'number', required: true, show: (f) => f.activity === 'AMC', hint: 'Planned visit dates are generated on the Sales Order' },
   { key: 'amcValue', label: 'Contract Value (AED, before VAT)', type: 'readonly', change: 'new', req: R.meet, show: (f) => AMC_LIKE.includes(f.activity), value: (f) => aed(docTotals((f.lines as Line[]) ?? [], 0, f.vatType || VAT_TYPES[0]).sub), hint: 'Computed from the service lines below, not typed directly. For AMC it is split evenly across the planned visits' },
   { key: 'amcScope', label: 'Scope of Work', type: 'textarea', change: 'new', req: R.meet, show: (f) => AMC_LIKE.includes(f.activity), full: true, hint: 'Overall narration of what the contract covers, printed on the quotation; kept separate from the service lines below' },
 ];

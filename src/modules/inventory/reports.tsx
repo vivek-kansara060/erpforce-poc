@@ -1,7 +1,12 @@
 import dayjs from 'dayjs';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 import { Text } from '@/components/Text';
+import { DataTable } from '@/components/DataTable';
+import { StatusChip } from '@/components/StatusChip';
+import { ASSET_STATUSES } from '@/mock-data/masters';
+import { holderOf } from '@/modules/crm/data';
+import { R8 } from '@/modules/crm/shared';
 import type { DashboardDef } from '@/components/ReportsAndDashboards';
 import { getCollection } from '@/store/store';
 import type { InvReportDef } from './ReportPages';
@@ -85,8 +90,24 @@ export const reports: InvReportDef[] = [
 
 /* ------------------------------------------------------------------ dashboards (2 Oct call: only what the source screens really hold, with a way into the records) */
 const REQ_DASH = 'Dashboards (2 Oct call: built from source-screen data only, drill into the records)';
-const groupOf = (h: HeavyRec) => (h.assetStatus === 'Disposed' ? 'Disposed' : h.assetStatus === 'On Hire' ? 'On Hire' : ['Under Maintenance', 'Breakdown'].includes(h.assetStatus) ? 'Under Maintenance' : 'Available');
-const STATUS_GROUPS = ['Available', 'On Hire', 'Under Maintenance', 'Disposed'];
+/** 8 Oct call: assets coming back (Off Hire - In Transit, Yard Inspection) are neither on hire nor available yet. */
+const groupOf = (h: HeavyRec) => (h.assetStatus === 'Disposed' ? 'Disposed' : h.assetStatus === 'On Hire' ? 'On Hire' : ['Off Hire - In Transit', 'Yard Inspection'].includes(h.assetStatus) ? 'Returning' : ['Under Maintenance', 'Breakdown'].includes(h.assetStatus) ? 'Under Maintenance' : 'Available');
+const STATUS_GROUPS = ['Available', 'On Hire', 'Returning', 'Under Maintenance', 'Disposed'];
+const R_ASSETS = R8('Asset Dashboard: category, subcategory, asset, current customer, status');
+/** Asset Dashboard (8 Oct call): every asset with its category, subcategory, status and the customer holding it now. */
+function AssetsNow() {
+  const nav = useNavigate();
+  const rows = liveFleet().filter((h) => !h.deliveryFleet).map((h) => { const w = holderOf(h.id); return { id: h.id, category: h.category, sub: h.subCategory, assetId: h.assetId, name: h.name, ownership: h.ownership, status: h.assetStatus, customer: w?.customer ?? '-', project: w?.project || '-', soId: w?.soId, soNumber: w?.soNumber ?? '-', loc: currentLocation(h) }; });
+  return (
+    <DataTable hideToolbar={false} searchPlaceholder="Search assets..." filter={{ key: 'status', options: [...ASSET_STATUSES] }} pageSize={10} rows={rows} onRowClick={(r) => nav(`/inventory/items/heavy/${r.id}`)} emptyText="No asset"
+      columns={[
+        { key: 'category', label: 'Category' }, { key: 'sub', label: 'Subcategory' }, { key: 'assetId', label: 'Asset ID' }, { key: 'name', label: 'Asset Name' }, { key: 'ownership', label: 'Ownership' },
+        { key: 'status', label: 'Status', render: (r) => <StatusChip status={r.status} /> }, { key: 'customer', label: 'Current Customer' }, { key: 'project', label: 'Project' },
+        { key: 'soNumber', label: 'Sales Order', render: (r) => (r.soId ? <Box component="span" sx={{ textDecoration: 'underline' }} onClick={(e) => { e.stopPropagation(); nav(`/crm/sales-orders/${r.soId}`); }}>{r.soNumber}</Box> : '-') },
+        { key: 'loc', label: 'Current Location' },
+      ]} />
+  );
+}
 /** Links from a dashboard to the records behind its numbers. */
 const records = (links: { label: string; to: string }[]) => ({
   type: 'custom' as const, title: 'Underlying records', span: 2, change: 'new' as const, req: REQ_DASH,
@@ -99,7 +120,7 @@ const records = (links: { label: string; to: string }[]) => ({
 });
 
 export const dashboards: DashboardDef[] = [
-  { slug: 'fleet-status', title: 'Fleet Status Dashboard', purpose: 'Live counts of Available / On-Hire / Under-Maintenance / Disposed, by category.', change: 'new', req: REQ + 'Dashboards',
+  { slug: 'fleet-status', title: 'Fleet Status Dashboard', purpose: 'Live counts of Available / On-Hire / Returning / Under-Maintenance / Disposed, by category, and where every asset is now.', change: 'new', req: REQ + 'Dashboards',
     get kpis() { const f = liveFleet().filter((h) => !h.deliveryFleet); return STATUS_GROUPS.map((g) => ({ title: g, value: f.filter((h) => groupOf(h) === g).length })); },
     get widgets() {
       const f = liveFleet().filter((h) => !h.deliveryFleet);
@@ -107,6 +128,7 @@ export const dashboards: DashboardDef[] = [
       return [
         { type: 'donut' as const, title: 'Fleet by status', data: STATUS_GROUPS.map((g) => ({ label: g, value: f.filter((h) => groupOf(h) === g).length })), centerLabel: 'Units' },
         { type: 'heat' as const, title: 'Status by category', rows: cats, cols: STATUS_GROUPS, values: cats.map((c) => STATUS_GROUPS.map((g) => f.filter((h) => h.category === c && groupOf(h) === g).length)) },
+        { type: 'custom' as const, title: 'Assets: where they are now', span: 2, change: 'new' as const, req: R_ASSETS, node: <AssetsNow /> },
         records([{ label: 'Heavy Equipment Fixed Assets', to: '/inventory/items' }, { label: 'Owned vs. Cross-Hire vs. Spare-Standby Report', to: '/inventory/reports/owned-vs-cross-hire-vs-spare' }, { label: 'Asset Disposal Report', to: '/inventory/reports/asset-disposal-write-off' }]),
       ];
     } },
