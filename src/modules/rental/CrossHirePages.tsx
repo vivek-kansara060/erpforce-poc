@@ -14,12 +14,13 @@ import { suppliers } from '@/mock-data/masters';
 import {
   COL, custName, reqItems, chItems, itemReceived, CH_ORDER_STATUSES, ownedEquivalent, unitsOf, CH_REQUEST_STATUSES, CH_TYPES, CROSS_STAGES, DEPARTMENTS, TODAY, stockLocations, assetById, availability, fleetRows, isLive, masterValues, type CrossHire, type CrossHireRequest, type CrossHireRfq, type RfqResponse,
 } from '@/modules/crm/data';
-import { addChExpense, billCrossHire, createChRfq, createHireOrder, decideChOrder, deleteChOrder, markChShipped, raiseCrossHire, reissueCrossHire, setChOrderStatus, submitChOrder, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
+import { addChExpense, chExpenseBill, removeChExpense, updateChExpense, billCrossHire, createChRfq, createHireOrder, decideChOrder, deleteChOrder, markChShipped, raiseCrossHire, reissueCrossHire, setChOrderStatus, submitChOrder, returnToSupplier, returnToUs, sendChRfq, submitChRequest, saveChRequest } from '@/modules/crm/flow';
 import { SpecForm, type Spec } from '@/modules/crm/FormKit';
 import { R, R8, aed, useChRequests, useChRfqs, useCrossHire, useMaster, useOrders } from '@/modules/crm/shared';
 import { getCollection } from '@/store/store';
 import { billTotal, billsOfSource } from '@/modules/accounting/engine';
 import { useBills } from '@/modules/accounting/shared';
+import { ExpenseTable } from './FleetPages';
 
 const HIRE_SUPPLIERS = suppliers.filter((s) => s.type === 'Cross-Hire Company');
 const supOpts = HIRE_SUPPLIERS.map((s) => ({ value: s.id, label: s.name }));
@@ -240,7 +241,7 @@ export function ChOrderView() {
   const orders = useOrders();
   useBills();
   const c = all.get(id);
-  const [dlg, setDlg] = useState<'return' | 'supplier' | 'expense' | 'reissue' | null>(null);
+  const [dlg, setDlg] = useState<'return' | 'supplier' | 'reissue' | null>(null);
   const [tgt, setTgt] = useState('');
   const [ask, setAsk] = useState<'accept' | 'reject' | 'cancel' | 'close' | 'delete' | null>(null);
   const yardChecklist = useMaster('yardChecklist').values;
@@ -273,7 +274,6 @@ export function ChOrderView() {
           {st === 'Pending' && <MenuButton label="Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
           {st === 'Pending Approval' && <MenuButton label="Accept" variant="contained" items={[{ label: 'Accept', onClick: () => setAsk('accept') }, { label: 'Reject', onClick: () => setAsk('reject') }]} />}
           {st === 'Rejected' && <MenuButton label="Re-Submit" variant="contained" items={[{ label: 'Submit for Approval', onClick: () => { submitChOrder(c.id, false); toast('Order has been submitted for approval'); } }, { label: 'Quick Approval', onClick: () => { submitChOrder(c.id, true); toast('Order has been approved successfully.'); } }]} />}
-          {live && c.stage < 4 && <Button variant="outlined" onClick={() => setDlg('expense')}>Add Expense</Button>}
           {live && billing !== 'Fully Billed' && <Button variant="outlined" onClick={() => nav(c.soId ? `/crm/sales-orders/${c.soId}/cross-hire-bill?ch=${c.id}` : `/accounting/bills/add?crossHire=${c.id}`)}>Bill</Button>}
           {['Approved', 'Received', 'Billed'].includes(st) && !dropship && units.length < nUnits && <Button variant="contained" onClick={() => nav(`${base}/grns/add`)}>Receive</Button>}
           {st === 'Approved' && c.stage === 0 && dropship && <Button variant="contained" onClick={() => { markChShipped(c); toast('Marked shipped to the client site'); }}>Mark Shipped</Button>}
@@ -322,7 +322,13 @@ export function ChOrderView() {
                   ]} />
                 <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The order is by Category and Subcategory. Each asset received is one unit and moves through the lifecycle on its own; it is bound to a Sales Order at the Delivery Order.</Text>
               </>) },
-            { label: 'Expenses', content: <DataTable hideToolbar rows={(c.expenses ?? []).map((e, i) => ({ id: String(i), ...e }))} emptyText="No expenses" columns={[{ key: 'account', label: 'Account' }, { key: 'note', label: 'Narration' }, { key: 'amount', label: 'Total Amount', align: 'right', render: (x) => aed(x.amount) }]} /> },
+            { label: 'Expenses', change: 'changed', req: 'Client feedback 12 Oct: expenses are edited inline in the table as in the existing ERP, the Expense Account is chosen on every line', content: (
+              <>
+                <ExpenseTable rows={c.expenses ?? []} locked={!(live && c.stage < 4)} rowLocked={(e) => !!chExpenseBill(c, e)} noteLabel="Narration"
+                  onAdd={(e) => addChExpense(c.id, e)} onUpdate={(i, e) => updateChExpense(c.id, i, e)} onRemove={(i) => removeChExpense(c.id, i)}
+                  accounting={(e) => { const b = chExpenseBill(c, e); return b ? `In bill ${b}` : 'Not billed yet'; }} empty="No expenses. Use Add for transport, loading or other costs of this hire" />
+                <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Expenses go into the supplier's bill (Bill, or Cross-Hire Bill on the Sales Order). A line already in a bill cannot be changed.</Text>
+              </>) },
             { label: 'Bills', change: 'new', req: R.cross, content: <DataTable hideToolbar rows={myBills} emptyText={dropship ? 'No bill yet. Create, Bill when the supplier invoice arrives' : 'The bill is created when the unit is received'} onRowClick={(b) => nav(`/accounting/bills/${b.id}`)} columns={[{ key: 'number', label: 'Bill' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice' }, { key: 'date', label: 'Date' }, { key: 'period', label: 'Period', change: 'new', req: R_BILL, render: (b) => (b.lines[0]?.periodFrom ? `${b.lines[0].periodFrom} to ${b.lines[0].periodTo}` : '-') }, { key: 't', label: 'Total (incl. VAT)', align: 'right', render: (b) => aed(billTotal(b)) }, { key: 'a', label: 'Status', render: (b) => <StatusChip status={b.approval} /> }, { key: 'p', label: 'Payment', render: (b) => (b.approval === 'Approved' ? <StatusChip status={b.payStatus} /> : '-') }]} /> },
             { label: 'Stage history', content: <Timeline items={[...c.history].reverse()} /> },
           ]} />
@@ -340,9 +346,6 @@ export function ChOrderView() {
       </AppDialog>
       <ReissueDialog ch={c} assetId={tgt || undefined} open={dlg === 'reissue'} onClose={() => setDlg(null)} />
       <ReturnToSupplierDialog ch={c} assetId={tgt || undefined} open={dlg === 'supplier'} onClose={() => setDlg(null)} />
-      <AppDialog open={dlg === 'expense'} title="Expense Entry" onClose={() => setDlg(null)} confirmLabel="Add" confirmDisabled={!v.account || !Number(v.amount)} onConfirm={() => { addChExpense(c.id, { account: v.account, amount: Number(v.amount), note: v.note }); toast('Expense added'); setV({ ...v, account: '', amount: '', note: '' }); setDlg(null); }}>
-        <FormGrid cols={1}><SelectInput label="Account" required value={v.account} options={['Transportation Expense', 'Loading and Unloading', 'Fuel Expense', 'Insurance Expense', 'Other Direct Expense']} onChange={(x) => setV({ ...v, account: x })} /><NumberInput label="Total Amount (AED)" required value={v.amount} onChange={(x) => setV({ ...v, amount: x })} /><TextInput label="Narration" value={v.note} onChange={(x) => setV({ ...v, note: x })} /></FormGrid>
-      </AppDialog>
     </>
   );
 }

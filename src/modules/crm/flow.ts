@@ -2,11 +2,12 @@ import dayjs from 'dayjs';
 import { getCollection, nextNumber, seedCollection, setCollection } from '@/store/store';
 import { customers } from '@/mock-data/masters';
 import { currentLocation, heavySeed, itemSeed, locationStockSeed, type ItemRec, type LocationStock } from '@/modules/inventory/data';
-import { billCrossHirePeriod, billDisputeCharge, invoiceAdditionalCharge, billFromCrossHire, billTripCharge, postDeliveryExpense, postTripExpense, reverseJournal, voidTripBill, invoiceFromDamage, invoiceAccumulated, invoiceFromJobCard, invoiceFromOrderLines, invoiceRentalPeriod } from '@/modules/accounting/engine';
+import { billsOfSource, billCrossHirePeriod, billDisputeCharge, invoiceAdditionalCharge, billFromCrossHire, billTripCharge, postDeliveryExpense, postTripExpense, reverseJournal, voidTripBill, invoiceFromDamage, invoiceAccumulated, invoiceFromJobCard, invoiceFromOrderLines, invoiceRentalPeriod } from '@/modules/accounting/engine';
+import { expenseName } from '@/modules/accounting/data';
 import {
   ACTOR, COL, TODAY, vanLocationsFor, assetById, availability, custName, fleetRows, isRentalLine, log, mkLine, nowStamp, patchAsset,
   AMC_LIKE, amcLine, docTotals, expenseGross, hasWaiver, isPeriodic, masterValues, planVisits, plusYear, yearEnd, type ActivityType, TRIP_SEED_N, vehicleFreeOn, isOpenTrip, tripTotal, type Trip, type TripExpense, type TripKind,
-  type AdditionalCharge, type ReplacementOutcome, type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
+  type AdditionalCharge, type ReplacementOutcome, type ChExpense, type ReturnItem, type ReturnGrn, type ReturnGrnItem, type CrossHireReqItem, reqItems, chItems, type CrossHire, type CrossUnit, unitsOf, type CrossHireGrn, type RfqItem, type CrossHireRequest, type CrossHireRfq, type RfqResponse, type Delivery, type DoItem, type JobCard, type Extension, type HeavyRec, type Lead, type Line, type LogItem, type Opportunity, type Quotation, type Replacement, type ReturnEntry, type SalesOrder,
 } from './data';
 
 /* Small collection helpers (modules share the same in-memory collections through the store). */
@@ -168,9 +169,9 @@ export function linkOrderLinesToInvoice(soId: string, lineIds: string[], inv: { 
   }));
 }
 /** A bill typed on the Accounting bill form from a Cross Hire Order: the order records the supplier invoice and is Billed. */
-export function linkCrossHireBill(chId: string, bill: { number: string; supplierInvoiceNo: string }) {
-  patch<CrossHire>(COL.crossHire, chId, (c) => ({ ...c, supplierInvoice: bill.supplierInvoiceNo || c.supplierInvoice, billing: 'Fully Billed', status: c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status,
-    history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${bill.supplierInvoiceNo || 'not entered yet'}. Pending approval in Accounting`, 'blue')] }));
+export function linkCrossHireBill(chId: string, bill: { number: string; supplierInvoiceNo: string; expenses?: unknown[] }) {
+  patch<CrossHire>(COL.crossHire, chId, (c0) => { const c = bill.expenses?.length ? markChExpensesBilled(c0, bill.number) : c0; return { ...c, supplierInvoice: bill.supplierInvoiceNo || c.supplierInvoice, billing: 'Fully Billed', status: c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status,
+    history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${bill.supplierInvoiceNo || 'not entered yet'}. Pending approval in Accounting`, 'blue')] }; });
 }
 /** Rental run (Rental > Invoicing Rental Order): one invoice for the period; first and final one-time services are marked invoiced on the order. */
 export function runRentalInvoice(soId: string, from: string, to: string): { number?: string; invoiceId?: string; message: string } {
@@ -419,7 +420,19 @@ export function createChOrderFromForm(i: { supplierId: string; supplier: string;
   if (o) addLog(o.id, log(`Cross-hire order ${number}`, `${i.supplier}, ${i.type}`, 'blue'));
   return id;
 }
-export function addChExpense(id: string, e: { account: string; amount: number; note: string }) { patch<CrossHire>(COL.crossHire, id, (c) => ({ ...c, expenses: [...(c.expenses ?? []), e], history: [...c.history, log(`Expense added: ${e.account}`, `AED ${e.amount}`)] })); }
+export function addChExpense(id: string, e: Omit<ChExpense, 'date' | 'billNumber'>) { patch<CrossHire>(COL.crossHire, id, (c) => ({ ...c, expenses: [...(c.expenses ?? []), { ...e, date: TODAY }], history: [...c.history, log(`Expense added: ${expenseName(e)}`, `AED ${e.amount}`)] })); }
+/** Inline table (12 Oct): a line not yet carried into a bill can be changed or removed. */
+export function updateChExpense(id: string, idx: number, e: Omit<ChExpense, 'date' | 'billNumber'>) {
+  patch<CrossHire>(COL.crossHire, id, (c) => { const old = c.expenses?.[idx]; if (!old || chExpenseBill(c, old)) return c; return { ...c, expenses: (c.expenses ?? []).map((y, k) => (k === idx ? { ...e, date: old.date } : y)), history: [...c.history, log(`Expense changed: ${expenseName(e)}`, `AED ${old.amount} to AED ${e.amount}`)] }; });
+}
+export function removeChExpense(id: string, idx: number) {
+  patch<CrossHire>(COL.crossHire, id, (c) => { const old = c.expenses?.[idx]; if (!old || chExpenseBill(c, old)) return c; return { ...c, expenses: (c.expenses ?? []).filter((_, k) => k !== idx), history: [...c.history, log(`Expense removed: ${expenseName(old)}`, `AED ${old.amount}`, 'amber')] }; });
+}
+/** The bill a cross-hire expense line went into. A line from before 12 Oct (no date) on an order that already has a supplier invoice was taken by that bill. */
+export const chExpenseBill = (c: CrossHire, e: ChExpense): string | undefined => e.billNumber ?? (!e.date && c.supplierInvoice ? billsOfSource('Cross Hire', c.id)[0]?.number ?? 'the order bill' : undefined);
+/** The expense lines of a cross-hire order not yet carried into a bill. */
+export const unbilledChExpenses = (c?: CrossHire) => (c ? (c.expenses ?? []).filter((e) => !chExpenseBill(c, e)) : []);
+const markChExpensesBilled = (c: CrossHire, billNumber: string): CrossHire => ({ ...c, expenses: (c.expenses ?? []).map((e) => ({ ...e, billNumber: chExpenseBill(c, e) ?? billNumber })) });
 /** Dropship: the supplier ships straight to the client site, so there is no goods receipt and no register entry. */
 export function markChShipped(ch: CrossHire) { patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, stage: 2, status: 'Shipped', receiving: 'Not applicable (Dropship)', history: [...c.history, log('Marked shipped to the client site', 'Dropship: no goods receipt, no register entry', 'blue')] })); }
 /** Goods Receipt Note created from the approved order (Receive). It is a separate form; the assets received are traced on it and Validate puts them on the register. */
@@ -461,17 +474,17 @@ export function receiveCrossHire(ch: CrossHire, supplierInvoice: string, supplie
 /** Dropship (or a bill not raised on receipt): the supplier invoice is entered here and a Pending bill is created. */
 export function billCrossHire(ch: CrossHire, supplierInvoice: string, supplierInvoiceDate: string = TODAY): string {
   const bill = billFromCrossHire(ch, supplierInvoice, supplierInvoiceDate);
-  patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, supplierInvoice, billing: 'Fully Billed', status: c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status, history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${supplierInvoice}. Pending approval in Accounting`, 'blue')] }));
+  patch<CrossHire>(COL.crossHire, ch.id, (c0) => { const c = bill.expenses.length ? markChExpensesBilled(c0, bill.number) : c0; return { ...c, supplierInvoice, billing: 'Fully Billed', status: c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status, history: [...c.history, log(`Bill ${bill.number} raised`, `Supplier invoice ${supplierInvoice}. Pending approval in Accounting`, 'blue')] }; });
   return bill.number;
 }
 /** Cross-Hire Bill from the Sales Order (8 Oct call): the supplier's bill for one period is entered by hand, one Pending bill per period. The order is Partially Billed until the final bill. */
 export function billCrossHireFromOrder(i: { chId: string; soId: string; supplierInvoiceNo: string; supplierInvoiceDate: string; from: string; to: string; final: boolean;
-  lines: { assetId?: string; group: string; category: string; days: number; rate: number; amount: number }[]; expenses: { account: string; amount: number; note: string }[] }): { number: string; id: string } {
+  lines: { assetId?: string; group: string; category: string; days: number; rate: number; amount: number }[]; expenses: ChExpense[] }): { number: string; id: string } {
   const ch = all<CrossHire>(COL.crossHire).find((c) => c.id === i.chId)!;
   const o = getOrder(i.soId)!;
   const bill = billCrossHirePeriod(ch, { ...i, soNumber: o.number });
-  patch<CrossHire>(COL.crossHire, ch.id, (c) => ({ ...c, supplierInvoice: i.supplierInvoiceNo, billing: i.final ? 'Fully Billed' : 'Partially Billed', status: i.final && c.stage >= 1 && c.status === 'Received' ? 'Billed' : c.status,
-    history: [...c.history, log(`Bill ${bill.number} raised`, `${i.final ? 'Final' : 'Periodic'} bill, ${i.from} to ${i.to}, supplier invoice ${i.supplierInvoiceNo}. Pending approval in Accounting`, 'blue')] }));
+  patch<CrossHire>(COL.crossHire, ch.id, (c0) => ({ ...(i.expenses.length ? markChExpensesBilled(c0, bill.number) : c0), supplierInvoice: i.supplierInvoiceNo, billing: i.final ? 'Fully Billed' : 'Partially Billed', status: i.final && c0.stage >= 1 && c0.status === 'Received' ? 'Billed' : c0.status,
+    history: [...c0.history, log(`Bill ${bill.number} raised`, `${i.final ? 'Final' : 'Periodic'} bill, ${i.from} to ${i.to}, supplier invoice ${i.supplierInvoiceNo}. Pending approval in Accounting`, 'blue')] }));
   addLog(o.id, log(`Cross-hire bill ${bill.number} for ${ch.number}, ${i.from} to ${i.to}`, 'Pending approval', 'blue'));
   return { number: bill.number, id: bill.id };
 }
@@ -776,11 +789,11 @@ export function transportError(i: TransportInput, date: string, exceptTripId?: s
 const assertTransport = (i: TransportInput, date: string) => { const e = transportError(i, date); if (e) throw new Error(e); };
 
 /**
- * A new expense in Accounting. An own-fleet cost (Salik, fuel...) goes to the ledger now (Dr expense, Cr Accrued Trip Expenses). An external transporter's
- * Transport Charge is billed to the transporter: when the trip is completed, or at once if the trip is already completed.
+ * A new expense in Accounting. An own-fleet cost (Salik, fuel...) goes to the ledger now (Dr expense, Cr Accrued Trip Expenses). On an external transporter's trip
+ * every expense line is billed to the transporter (client decision 12 Oct, Option A): when the trip is completed, or at once if the trip is already completed.
  */
 const postExpense = (t: Trip, e: TripExpense): TripExpense => {
-  if (t.transport === 'External Transporter' && e.type === 'Transport Charge') return t.status === 'Completed' ? { ...e, billId: billTripCharge(t, e).id } : e;
+  if (t.transport === 'External Transporter') return t.status === 'Completed' ? { ...e, billId: billTripCharge(t, e).id } : e;
   return { ...e, journalId: postTripExpense(t, e) };
 };
 /** Takes an expense back out of Accounting: its journal is reversed, its bill is voided (or debit-noted when already approved). */
@@ -790,13 +803,13 @@ const unpostExpense = (e: TripExpense, why: string): string[] => {
   if (e.billId) notes.push(voidTripBill(e.billId, why).message);
   return notes;
 };
-/** Raises the bill for every Transport Charge of a completed external trip that is not billed yet. */
+/** Raises the bill for every expense line of a completed external trip that is not billed yet. */
 function billDueCharges(id: string) {
   const t = getTrip(id);
   if (!t || t.transport !== 'External Transporter' || t.status !== 'Completed') return;
   const raised: string[] = [];
   const expenses = t.expenses.map((e) => {
-    if (e.type !== 'Transport Charge' || e.billId || !(e.amount > 0)) return e;
+    if (e.billId || e.journalId || !(e.amount > 0)) return e;
     const b = billTripCharge(t, e);
     raised.push(`${b.number} AED ${e.amount}`);
     return { ...e, billId: b.id };
@@ -813,7 +826,7 @@ export function createTrip(i: { kind: TripKind; doc: { id: string; number: strin
   const t: Trip = {
     id: uid('tr'), number: tripNo(), date: i.date, kind: i.kind, docId: i.doc.id, docNumber: i.doc.number, soId: o.id, soNumber: o.number, customerId: o.customerId, site: o.site, costCentre: o.costCentre,
     transport: i.transport, vehicleId: own ? i.vehicleId : undefined, plate: own ? v?.plateNumber : undefined, driver: own ? i.driver : undefined, mobile: own ? i.mobile : undefined, transporter: own ? undefined : i.transporter,
-    status: 'Assigned', since: stamp(), expenses: charge ? [{ type: 'Transport Charge', amount: charge, date: TODAY, note: `Entered on ${i.doc.number}` }] : [], log: [],
+    status: 'Assigned', since: stamp(), expenses: charge ? [{ type: 'Transport Charge', account: '510300', amount: charge, date: TODAY, note: `Entered on ${i.doc.number}` }] : [], log: [],
   };
   t.log = [log('Trip created', own ? `${v?.plateNumber ?? '-'}${i.driver ? `, ${i.driver}` : ''} for ${i.doc.number}, planned ${i.date.replace('T', ' ')}` : `External transporter ${i.transporter ?? '-'} for ${i.doc.number}${charge ? `, Transport Charge AED ${charge}` : ''}`)];
   put(COL.trips, t);
@@ -849,15 +862,26 @@ export function addTripExpense(t: Trip, e: Omit<TripExpense, 'date'> & { date?: 
   const cur = getTrip(t.id) ?? t;
   if (cur.status === 'Cancelled') return;
   const exp = postExpense(cur, { ...e, date: e.date ?? TODAY });
-  saveTrip(t.id, (x) => ({ ...x, expenses: [...x.expenses, exp], log: tlog(x, `Expense added: ${exp.type}`, `AED ${exp.amount}${exp.note ? `, ${exp.note}` : ''}${exp.journalId ? '. Posted to the ledger' : exp.billId ? '. Billed to the transporter' : ''}`) }));
-  bookCost(t.soId, expenseGross(exp), `Trip ${t.number}: ${exp.type} AED ${exp.amount}`, 'Added to the order logistics cost');
+  saveTrip(t.id, (x) => ({ ...x, expenses: [...x.expenses, exp], log: tlog(x, `Expense added: ${expenseName(exp)}`, `AED ${exp.amount}${exp.note ? `, ${exp.note}` : ''}${exp.journalId ? '. Posted to the ledger' : exp.billId ? '. Billed to the transporter' : ''}`) }));
+  bookCost(t.soId, expenseGross(exp), `Trip ${t.number}: ${expenseName(exp)} AED ${exp.amount}`, 'Added to the order logistics cost');
+}
+/** Edit an expense line in place (inline table, 12 Oct): the old posting is taken back, the new one is posted, and the logistics cost moves by the difference. */
+export function updateTripExpense(t: Trip, idx: number, e: Omit<TripExpense, 'date'>) {
+  const cur = getTrip(t.id) ?? t;
+  const old = cur.expenses[idx];
+  if (!old || cur.status === 'Cancelled') return;
+  const notes = unpostExpense(old, `${cur.number}: ${expenseName(old)} changed`);
+  const exp = postExpense(cur, { ...e, date: old.date });
+  saveTrip(t.id, (x) => ({ ...x, expenses: x.expenses.map((y, k) => (k === idx ? exp : y)), log: tlog(x, `Expense changed: ${expenseName(exp)}`, [`AED ${old.amount} to AED ${exp.amount}`, ...notes].join('. ')) }));
+  const delta = expenseGross(exp) - expenseGross(old);
+  if (delta) bookCost(t.soId, delta, `Trip ${t.number}: ${expenseName(exp)} changed`, `Logistics cost ${delta > 0 ? 'up' : 'down'} by AED ${Math.abs(delta)}`);
 }
 export function removeTripExpense(t: Trip, idx: number) {
   const exp = t.expenses[idx];
   if (!exp) return;
-  const notes = unpostExpense(exp, `${t.number}: ${exp.type} removed`);
-  saveTrip(t.id, (x) => ({ ...x, expenses: x.expenses.filter((_, k) => k !== idx), log: tlog(x, `Expense removed: ${exp.type}`, [`AED ${exp.amount}`, ...notes].join('. '), 'amber') }));
-  bookCost(t.soId, -expenseGross(exp), `Trip ${t.number}: ${exp.type} AED ${exp.amount} removed`, 'Taken off the order logistics cost', 'amber');
+  const notes = unpostExpense(exp, `${t.number}: ${expenseName(exp)} removed`);
+  saveTrip(t.id, (x) => ({ ...x, expenses: x.expenses.filter((_, k) => k !== idx), log: tlog(x, `Expense removed: ${expenseName(exp)}`, [`AED ${exp.amount}`, ...notes].join('. '), 'amber') }));
+  bookCost(t.soId, -expenseGross(exp), `Trip ${t.number}: ${expenseName(exp)} AED ${exp.amount} removed`, 'Taken off the order logistics cost', 'amber');
 }
 /**
  * A trip-style expense charged directly against a Delivery Order (client review 8 Oct: an "Add Expense" that does not need an active trip, for example a
@@ -870,16 +894,29 @@ export function addDeliveryExpense(deliveryId: string, e: Omit<TripExpense, 'dat
   const exp: TripExpense = { ...e, date: e.date ?? TODAY };
   const posted: TripExpense = { ...exp, journalId: postDeliveryExpense(d, o?.costCentre, exp, o?.activity, o?.entity) };
   patch<Delivery>(COL.deliveries, d.id, (x) => ({ ...x, expenses: [...(x.expenses ?? []), posted] }));
-  if (o) bookCost(o.id, expenseGross(posted), `${d.number}: ${posted.type} AED ${posted.amount}`, 'Added to the order logistics cost, no active trip required');
+  if (o) bookCost(o.id, expenseGross(posted), `${d.number}: ${expenseName(posted)} AED ${posted.amount}`, 'Added to the order logistics cost, no active trip required');
+}
+/** Edit a Delivery Order expense line in place: reverse the old journal, post the new one, move the logistics cost by the difference. */
+export function updateDeliveryExpense(deliveryId: string, idx: number, e: Omit<TripExpense, 'date'>) {
+  const d = all<Delivery>(COL.deliveries).find((x) => x.id === deliveryId);
+  const old = d?.expenses?.[idx];
+  if (!d || !old) return;
+  const o = getOrder(d.soId);
+  unpostExpense(old, `${d.number}: ${expenseName(old)} changed`);
+  const exp: TripExpense = { ...e, date: old.date };
+  const posted: TripExpense = { ...exp, journalId: postDeliveryExpense(d, o?.costCentre, exp, o?.activity, o?.entity) };
+  patch<Delivery>(COL.deliveries, d.id, (x) => ({ ...x, expenses: (x.expenses ?? []).map((y, k) => (k === idx ? posted : y)) }));
+  const delta = expenseGross(posted) - expenseGross(old);
+  if (o && delta) bookCost(o.id, delta, `${d.number}: ${expenseName(posted)} changed`, `Logistics cost ${delta > 0 ? 'up' : 'down'} by AED ${Math.abs(delta)}`);
 }
 export function removeDeliveryExpense(deliveryId: string, idx: number) {
   const d = all<Delivery>(COL.deliveries).find((x) => x.id === deliveryId);
   const exp = d?.expenses?.[idx];
   if (!d || !exp) return;
-  const notes = unpostExpense(exp, `${d.number}: ${exp.type} removed`);
+  const notes = unpostExpense(exp, `${d.number}: ${expenseName(exp)} removed`);
   patch<Delivery>(COL.deliveries, d.id, (x) => ({ ...x, expenses: (x.expenses ?? []).filter((_, k) => k !== idx) }));
   const o = getOrder(d.soId);
-  if (o) bookCost(o.id, -expenseGross(exp), `${d.number}: ${exp.type} AED ${exp.amount} removed`, notes.join('. ') || 'Taken off the order logistics cost', 'amber');
+  if (o) bookCost(o.id, -expenseGross(exp), `${d.number}: ${expenseName(exp)} AED ${exp.amount} removed`, notes.join('. ') || 'Taken off the order logistics cost', 'amber');
 }
 /**
  * Complete frees the vehicle (it goes back to where it left from) and closes the loop with the document: a Delivery Order becomes Delivered, a Collection puts the asset in the yard.
@@ -887,11 +924,11 @@ export function removeDeliveryExpense(deliveryId: string, idx: number) {
  */
 export function completeTrip(t: Trip, expenses: Omit<TripExpense, 'date'>[] = []) {
   const cur = getTrip(t.id) ?? t;
-  const add = expenses.filter((e) => e.type && e.amount > 0).map((e) => postExpense(cur, { ...e, date: TODAY }));
+  const add = expenses.filter((e) => (e.account || e.type) && e.amount > 0).map((e) => postExpense(cur, { ...e, date: TODAY }));
   const total = add.reduce((s, e) => s + expenseGross(e), 0);
-  saveTrip(t.id, (x) => ({ ...x, status: 'Completed', since: stamp(), stuck: undefined, expenses: [...x.expenses, ...add], log: tlog(x, 'Trip completed', add.length ? add.map((e) => `${e.type} AED ${e.amount}`).join(', ') : undefined, 'green') }));
-  if (total) bookCost(t.soId, total, `Trip ${t.number} completed`, `${add.map((e) => `${e.type} AED ${e.amount}`).join(', ')} added to the logistics cost`);
-  // An external transporter bills us: each Transport Charge becomes a Pending bill to the transporter (a supplier).
+  saveTrip(t.id, (x) => ({ ...x, status: 'Completed', since: stamp(), stuck: undefined, expenses: [...x.expenses, ...add], log: tlog(x, 'Trip completed', add.length ? add.map((e) => `${expenseName(e)} AED ${e.amount}`).join(', ') : undefined, 'green') }));
+  if (total) bookCost(t.soId, total, `Trip ${t.number} completed`, `${add.map((e) => `${expenseName(e)} AED ${e.amount}`).join(', ')} added to the logistics cost`);
+  // An external transporter bills us: each expense line becomes a Pending bill to the transporter (a supplier).
   billDueCharges(t.id);
   const v = cur.vehicleId ? assetById(cur.vehicleId) : undefined;
   if (v && cur.origin) patchAsset(v.id, {}, { title: 'Trip completed', detail: `${cur.number} for ${cur.docNumber}` }, { type: 'Trip', from: whereIs(v.id), to: cur.origin, reference: cur.number, customer: custName(cur.customerId), project: cur.costCentre });

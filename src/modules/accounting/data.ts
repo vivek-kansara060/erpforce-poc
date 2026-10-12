@@ -131,6 +131,8 @@ export const COA: Account[] = [
 export const ACC = { cash: '110100', bank1: '110200', bank2: '110300', ar: '130100', inputVat: '130200', ap: '210100', outputVat: '210300', advances: '210400', tripAccrual: '210500', discount: '410900', roundOff: '590100' } as const;
 export const accName = (code?: string) => COA.find((a) => a.code === code)?.name ?? code ?? '-';
 export const accLabel = (code?: string) => (code ? `${code} ${accName(code)}` : '-');
+/** What an expense line is called in logs and memos: its Expense Account (older lines without one fall back to their old type). */
+export const expenseName = (e: { account?: string; type?: string }) => (e.account ? accName(e.account) : e.type ?? 'Expense');
 export const incomeAccounts = COA.filter((a) => a.type === 'Income' && a.code !== ACC.discount);
 export const expenseAccounts = COA.filter((a) => a.type === 'Expense' && a.code !== ACC.roundOff);
 export function incomeAccountFor(kind?: string): string {
@@ -145,6 +147,8 @@ export function incomeAccountFor(kind?: string): string {
 }
 /** The expense accounts named on the Cross Hire order Expense Entry. */
 export function expenseAccountFor(name?: string): string {
+  // 12 Oct: expense lines carry the account code chosen from the Chart of Accounts; older cross-hire lines carry a name.
+  if (/^\d{6}$/.test(name ?? '')) return name!;
   const m: Record<string, string> = { 'Transportation Expense': '510300', 'Loading and Unloading': '510310', 'Fuel Expense': '510320', 'Insurance Expense': '520100', 'Other Direct Expense': '510500' };
   return m[name ?? ''] ?? '510500';
 }

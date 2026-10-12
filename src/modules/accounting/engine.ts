@@ -8,7 +8,7 @@ import { customers, suppliers } from '@/mock-data/masters';
 import { ACTOR, COL, TODAY, assetById, assetLabel, cust, custName, hasWaiver, log, type AdditionalCharge, type Delivery, type JobCard, type SalesOrder, type Trip, type TripExpense } from '@/modules/crm/data';
 import { advanceJournal, buildRentalLines, headerFromOrder, lid, linesFromJobCard, linesFromOrder, nextPeriodFor, noteJournal, paymentJournal, purchaseJournal, salesJournal, type RentalBuild } from './billing';
 import {
-  ACC, COLA, EDITABLE, dueDateFor, expenseAccountFor, tripExpenseAccount, nextBillNo, nextCreditNo, nextDebitNo, nextInvoiceNo, nextJournalNo, nextPaymentNo, nextRunNo, payStatusOf, round2, totalsOf, uid, vatPctOf,
+  ACC, COLA, EDITABLE, accName, dueDateFor, expenseAccountFor, expenseName, tripExpenseAccount, nextBillNo, nextCreditNo, nextDebitNo, nextInvoiceNo, nextJournalNo, nextPaymentNo, nextRunNo, payStatusOf, round2, totalsOf, uid, vatPctOf,
   type Allocation, type Bill, type InvLine, type Journal, type JournalLine, type JournalType, type NoteDoc, type PaymentEntry, type RentalRun, type SalesInvoice, type SourceRef,
 } from './data';
 import { seedAccounting } from './seed';
@@ -361,12 +361,12 @@ export function advanceCollection(i: { soId: string; amount: number; method: Pay
   if (!o) return undefined;
   return createPayment({ direction: 'Receive', partyType: 'Customer', partyId: o.customerId, partyName: custName(o.customerId), method: i.method, bankAccount: i.bankAccount, reference: i.reference, amount: i.amount, isAdvance: true, soId: o.id, soNumber: o.number, allocations: [], date: i.date, narration: `Advance against ${o.number}` });
 }
-interface CrossHireLike { id: string; number: string; soId: string; soNumber: string; group: string; category: string; supplierId: string; supplier: string; rate: number; qty?: number; items?: { group: string; category: string; qty: number; rate: number }[]; startDate?: string; endDate?: string; paymentTerms?: string; expenses?: { account: string; amount: number; note: string }[] }
+interface CrossHireLike { id: string; number: string; soId: string; soNumber: string; group: string; category: string; supplierId: string; supplier: string; rate: number; qty?: number; items?: { group: string; category: string; qty: number; rate: number }[]; startDate?: string; endDate?: string; paymentTerms?: string; expenses?: { account: string; amount: number; note?: string; vatPct?: number; billNumber?: string }[] }
 export function billFromCrossHire(ch: CrossHireLike, supplierInvoiceNo: string, supplierInvoiceDate: string): Bill {
   const o = orderOf(ch.soId);
   return createBill({ supplierId: ch.supplierId, supplierName: ch.supplier, supplierInvoiceNo, supplierInvoiceDate, date: TODAY, orderRef: ch.number, activity: 'Rental', costCentre: o?.costCentre, paymentTerms: ch.paymentTerms,
     lines: (ch.items ?? [{ group: ch.group, category: ch.category, qty: ch.qty ?? 1, rate: ch.rate / (ch.qty ?? 1) }]).map((it) => ({ id: lid(), item: `Cross-hire ${it.group} ${it.category}`, desc: `${ch.number} for ${ch.soNumber}`, account: '510100', qty: it.qty, unit: 'Nos', rate: it.rate, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre, tag: 'cross-hire' as const })),
-    expenses: (ch.expenses ?? []).map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || e.account, amount: e.amount, vatPct: 5, costCentre: o?.costCentre })),
+    expenses: (ch.expenses ?? []).filter((e) => !e.billNumber).map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || accName(expenseAccountFor(e.account)), amount: e.amount, vatPct: e.vatPct ?? 5, costCentre: o?.costCentre })),
     narration: `Cross-hire order ${ch.number}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: ch.soId } });
 }
 /**
@@ -374,12 +374,12 @@ export function billFromCrossHire(ch: CrossHireLike, supplierInvoiceNo: string, 
  * cross-hired asset with its own days and amount, and optionally the order's expenses.
  */
 export function billCrossHirePeriod(ch: CrossHireLike, i: { soId: string; soNumber: string; supplierInvoiceNo: string; supplierInvoiceDate: string; from: string; to: string; final: boolean;
-  lines: { assetId?: string; group: string; category: string; days: number; rate: number; amount: number }[]; expenses: { account: string; amount: number; note: string }[] }): Bill {
+  lines: { assetId?: string; group: string; category: string; days: number; rate: number; amount: number }[]; expenses: { account: string; amount: number; note?: string; vatPct?: number }[] }): Bill {
   const o = orderOf(i.soId);
   return createBill({ supplierId: ch.supplierId, supplierName: ch.supplier, supplierInvoiceNo: i.supplierInvoiceNo, supplierInvoiceDate: i.supplierInvoiceDate, date: TODAY, orderRef: ch.number, activity: 'Rental', costCentre: o?.costCentre, paymentTerms: ch.paymentTerms,
     lines: i.lines.map((l) => ({ id: lid(), item: `Cross-hire ${l.group} ${l.category}`, desc: `${ch.number} for ${i.soNumber}${l.assetId ? `, ${assetLabelLive(l.assetId)}` : ''}, ${i.from} to ${i.to} (${l.days} days)`, account: '510100', qty: 1, unit: 'Period', rate: l.amount, discountPct: 0, vatPct: 5, activity: 'Rental', costCentre: o?.costCentre,
       periodFrom: i.from, periodTo: i.to, days: l.days, assetId: l.assetId, tag: 'cross-hire' as const })),
-    expenses: i.expenses.map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || e.account, amount: e.amount, vatPct: 5, costCentre: o?.costCentre })),
+    expenses: i.expenses.map((e) => ({ id: lid(), account: expenseAccountFor(e.account), desc: e.note || accName(expenseAccountFor(e.account)), amount: e.amount, vatPct: e.vatPct ?? 5, costCentre: o?.costCentre })),
     narration: `Cross-hire ${i.final ? 'final' : 'periodic'} bill, ${ch.number}, ${i.from} to ${i.to}`, source: { type: 'Cross Hire', id: ch.id, number: ch.number, soId: i.soId } });
 }
 export function billDisputeCharge(ch: CrossHireLike, amount: number): Bill {
@@ -392,18 +392,18 @@ export function billDisputeCharge(ch: CrossHireLike, amount: number): Bill {
 export function billTripCharge(t: Trip, e: Pick<TripExpense, 'amount' | 'note' | 'vatPct' | 'account'>): Bill {
   const sup = suppliers.find((s) => s.name === t.transporter);
   return createBill({ supplierId: sup?.id, supplierName: t.transporter ?? 'External transporter', supplierInvoiceNo: '', supplierInvoiceDate: TODAY, date: TODAY, orderRef: t.number, costCentre: t.costCentre,
-    lines: [{ id: lid(), item: `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: e.account || tripExpenseAccount('Transport Charge'), qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: e.vatPct ?? 5, costCentre: t.costCentre, tag: 'transport' as const }],
+    lines: [{ id: lid(), item: e.account && e.account !== '510300' ? `${expenseName(e)}, ${t.kind.toLowerCase()}` : `Transport charge, ${t.kind.toLowerCase()}`, desc: `${t.number} for ${t.docNumber}${e.note ? `, ${e.note}` : ''}`, account: e.account || tripExpenseAccount('Transport Charge'), qty: 1, unit: 'Trip', rate: e.amount, discountPct: 0, vatPct: e.vatPct ?? 5, costCentre: t.costCentre, tag: 'transport' as const }],
     expenses: [], narration: `Trip ${t.number}`, source: { type: 'Trip', id: t.id, number: t.number, soId: t.soId } });
 }
 /** Own-fleet cost (Salik, fuel, parking...) posted to the ledger when it is added: Dr the expense account (an explicit Expense Head, defaulting to the Trip Expense
  * Type's account), Dr Input VAT Recoverable for its VAT %, Cr Accrued Trip Expenses for the full (gross) amount, all on the order's cost centre. */
 function postExpenseJournal(ref: { id: string; number: string; docNumber: string; costCentre?: string; activity?: string; entity?: string }, e: Pick<TripExpense, 'type' | 'amount' | 'vatPct' | 'note' | 'account'>): string {
-  const memo = `${ref.number}: ${e.type}${e.note ? `, ${e.note}` : ''}`;
+  const memo = `${ref.number}: ${expenseName(e)}${e.note ? `, ${e.note}` : ''}`;
   const vat = round2((e.amount * (e.vatPct ?? 0)) / 100);
   const lines: JournalLine[] = [{ account: e.account || tripExpenseAccount(e.type), debit: e.amount, credit: 0, costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo }];
   if (vat) lines.push({ account: ACC.inputVat, debit: vat, credit: 0, costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo: `${memo} (VAT)` });
   lines.push({ account: ACC.tripAccrual, debit: 0, credit: round2(e.amount + vat), costCentre: ref.costCentre, activity: ref.activity, entity: ref.entity, memo });
-  return postJournal('Trip Expense', 'Trip', ref.id, ref.number, `Trip expense ${ref.number} for ${ref.docNumber}, ${e.type}`, lines);
+  return postJournal('Trip Expense', 'Trip', ref.id, ref.number, `Trip expense ${ref.number} for ${ref.docNumber}, ${expenseName(e)}`, lines);
 }
 export function postTripExpense(t: Trip, e: Pick<TripExpense, 'type' | 'amount' | 'vatPct' | 'note' | 'account'>): string {
   const o = orderOf(t.soId);

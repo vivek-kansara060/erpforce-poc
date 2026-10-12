@@ -14,7 +14,7 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { certStatus } from '@/modules/inventory/AssetPages';
 import { AMC_LIKE, CROSS_STAGES, chItemRate, chItems, costForSo, reqItems, unitsOf, LPO_NOTICE_DAYS, SO_STATUSES, TODAY, cust, log, assetById, availability, custName, docTotals, lineTotal, periods, type CrossHire, type Line, type OrderRevision, type SalesOrder } from './data';
-import { NEXT_STEP, billCrossHireFromOrder, extendOrder, crossHireGap, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
+import { NEXT_STEP, unbilledChExpenses, billCrossHireFromOrder, extendOrder, crossHireGap, jobCardsOf, closeOrder, confirmOrder, days, deliveredQty, invoiceDamage, lineState, outstanding, releaseDueHolds, releaseHold } from './flow';
 import { billTotal, billsOfSource, invoiceByRef, invoiceDue, invoiceTotal, invoicesOfOrder, nextRentalPeriod, advanceLeft } from '@/modules/accounting/engine';
 import { lineGross as accLineGross, lineVat as accLineVat } from '@/modules/accounting/data';
 import { useBills, useInvoices, usePayments } from '@/modules/accounting/shared';
@@ -489,8 +489,9 @@ export function SalesOrderCrossHireBill() {
   const chosen = rows.filter((r) => selIds.includes(r.id));
   const total = chosen.reduce((n, r) => n + amountOf(r), 0);
   const hasBill = !!c && billsOfSource('Cross Hire', c.id).length > 0;
-  const withExp = exp ?? !hasBill;
-  const expTotal = (c?.expenses ?? []).reduce((n, e) => n + e.amount, 0);
+  const openExp = unbilledChExpenses(c);
+  const expTotal = openExp.reduce((n, e) => n + e.amount, 0);
+  const withExp = exp ?? expTotal > 0;
   const specs: Spec[] = [
     { key: 'soNumber', label: 'Sales Order', type: 'readonly' }, { key: 'project', label: 'Project (Cost Centre)', type: 'readonly' },
     { key: 'chId', label: 'Cross Hire Order', type: 'select', required: true, options: eligible.map((x) => ({ value: x.id, label: `${x.number} - ${x.supplier}` })), hint: 'Orders of this Sales Order that are not Fully Billed yet' },
@@ -508,7 +509,7 @@ export function SalesOrderCrossHireBill() {
     setErr(e);
     if (Object.keys(e).length || !c) { toast('Please complete the mandatory fields', 'error'); return; }
     const b = billCrossHireFromOrder({ chId: c.id, soId: so.id, supplierInvoiceNo: f.supplierInvoiceNo.trim(), supplierInvoiceDate: f.supplierInvoiceDate, from: f.from, to: f.to, final: f.billType === 'Final',
-      lines: chosen.map((r) => ({ assetId: r.assetId, group: r.group, category: r.category, days: daysOf(r), rate: r.rate, amount: amountOf(r) })), expenses: withExp ? (c.expenses ?? []) : [] });
+      lines: chosen.map((r) => ({ assetId: r.assetId, group: r.group, category: r.category, days: daysOf(r), rate: r.rate, amount: amountOf(r) })), expenses: withExp ? openExp : [] });
     toast(`${b.number} created, pending approval`);
     nav(`/accounting/bills/${b.id}`);
   };
@@ -534,7 +535,7 @@ export function SalesOrderCrossHireBill() {
           <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Total before VAT: {aed(total + (withExp ? expTotal : 0))}</Text>
         </Section>
         <Section title="Expenses" change="new" req={R_BILL}>
-          <CheckInput label={`Add this order's expenses (${aed(expTotal)}) to this bill`} checked={withExp} disabled={!expTotal} onChange={setExp} hint={hasBill ? 'A bill already exists for this order, so the expenses are not added again by default' : undefined} />
+          <CheckInput label={`Add this order's expenses (${aed(expTotal)}) to this bill`} checked={withExp} disabled={!expTotal} onChange={setExp} hint={hasBill ? 'Only the expenses not yet in a bill of this order' : undefined} />
         </Section>
       </Page>
     </>

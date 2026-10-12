@@ -12,6 +12,18 @@ This is a plain-language log of every change made to the ERPForce POC (the Heavy
 
 ---
 
+### 12 Oct, around 11:00 AM: Expenses are entered in the table, with an Expense Account and no Expense Type
+**Where:** CRM / Sales > Fleet Management > Trips
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Where:** Rental > Cross Hire > Orders
+**Where:** Accounting > Bills
+**Type:** EXISTING WITH CHANGE
+
+*What was asked.* No pop-up for Add Expense: edit the expenses inline in the table, as in the existing ERP. No Expense Type; the user selects the expense account from a dropdown every time, with no default. On an external transporter trip every expense line is billed to the transporter (Option A).
+*What we did.* The Expenses table of a trip and the Additional Expenses table of a Delivery Order are edited in place, following the existing ERP inline table: a click on a row opens it for editing, the tick saves, the cross or Esc cancels, the bin deletes, and Add opens an empty row at the bottom (after it is saved the next empty row opens). Columns: S.No, Expense Account (searchable list of the expense accounts of the Chart of Accounts, nothing preselected), Amount (AED), VAT %, Note, Date and Accounting. Changing a saved line reverses its posting and posts it again, and the logistics cost moves by the difference. Complete Trip uses the same table for the costs entered at the end of the trip. The Expense Type field and the Trip Expense Types master are removed; the Actions menu entry Add Expense opens the trip with an empty row. On an external transporter trip every expense line now becomes part of the bill to the transporter when the trip is completed (before, only a line of type Transport Charge did); own-fleet lines still post to the ledger.
+The same table is used on the Expenses tab of a Cross-Hire Order (the Expense Entry pop-up and the Add Expense button are gone; the Account list is now the Chart of Accounts with VAT %, and a line already carried into a supplier bill shows "In bill BILL-..." and is locked) and in the Expenses section of the Accounting bill form (no account is filled in for a new line any more; a bill from a cross-hire order takes only the expenses not yet in a bill, as does Cross-Hire Bill on the Sales Order).
+*Be aware.* Expenses recorded earlier show the account they were booked to. A line on an external trip that our own staff paid would now also be billed to the transporter; enter such a cost on the Delivery Order instead.
+
 ### 9 Oct, around 10:30 PM: Replacement brings the faulty unit back: a delivery and a collection
 **Where:** CRM / Sales > Orders > Replacement Orders
 **Where:** CRM / Sales > Orders > Customer Returns

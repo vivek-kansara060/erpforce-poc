@@ -16,13 +16,13 @@ import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
 import { dayRate, stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, isOpenTrip, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
-import { addFocLines, completeTrip, createDelivery, deliveredQty, getOrder, removeDeliveryExpense, startTrip } from './flow';
+import { addDeliveryExpense, addFocLines, completeTrip, createDelivery, deliveredQty, getOrder, removeDeliveryExpense, startTrip, updateDeliveryExpense } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
 import { R, R8, TO_CONFIRM, RowMenu, aed, useDeliveries, useFleet, useOrders, useTrips } from './shared';
 import { accLabel } from '@/modules/accounting/data';
 import { invoiceByRef } from '@/modules/accounting/engine';
 import { ValueField, ValueGrid } from '@/components/Form';
-import { ArrangeTransportDialog, DeliveryExpenseDialog, TransportSection, TripsTable, blankTransport, driverAppOf, toTransportInput, useFleetSettings, validateTransport } from '@/modules/rental/FleetPages';
+import { ArrangeTransportDialog, ExpenseTable, TransportSection, TripsTable, blankTransport, driverAppOf, toTransportInput, useFleetSettings, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
@@ -296,7 +296,6 @@ export function DeliveryView() {
   const nav = useNavigate();
   const toast = useToast();
   const [printOpen, setPrintOpen] = useState(false);
-  const [addExpense, setAddExpense] = useState(false);
   const dels = useDeliveries();
   const orders = useOrders();
   const trips = useTrips();
@@ -349,11 +348,8 @@ export function DeliveryView() {
               </Section>
               <Section title="Transportation" change="changed" req={R.fleet} hint="The trip carries the transport cost to the Sales Order. Open it to start, complete or add expenses such as Salik and fuel."><DeliveryTransport d={d} f={f} /></Section>
               <Section title="Additional Expenses" change="new" req="Fleet review 8 Oct: an expense can be charged to the Delivery Order even with no active trip" hint="Charge a cost (Salik, fuel, a waiting charge...) to this delivery directly, whether or not a trip is currently open.">
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setAddExpense(true)}>Add Expense</Button></Box>
-                <DataTable hideToolbar rows={(d.expenses ?? []).map((e, i) => ({ id: String(i), i, ...e }))} emptyText="No additional expenses"
-                  actions={[{ label: 'Remove', danger: true, onClick: (r) => removeDeliveryExpense(d.id, r.i) }]}
-                  columns={[{ key: 'type', label: 'Type' }, { key: 'amount', label: 'Amount', align: 'right', render: (r) => aed(r.amount) }, { key: 'vatPct', label: 'VAT %', align: 'right', render: (r) => (r.vatPct ? `${r.vatPct}%` : '-') },
-                    { key: 'account', label: 'Expense Head', render: (r) => (r.account ? accLabel(r.account) : '-') }, { key: 'date', label: 'Date' }, { key: 'note', label: 'Note', render: (r) => r.note ?? '-' }]} />
+                <ExpenseTable rows={d.expenses ?? []} onAdd={(e) => addDeliveryExpense(d.id, e)} onUpdate={(i, e) => updateDeliveryExpense(d.id, i, e)} onRemove={(i) => removeDeliveryExpense(d.id, i)} empty="No additional expenses. Use Add to charge a cost to this delivery"
+                  accounting={(r) => (r.journalId ? 'Posted to ledger' : '-')} />
               </Section>
               <Section title="Rental Start" change="new" req={R.meet}>
                 <SpecView f={{ rentalStart: start, later: d.startReason ? `${d.startReason} (${d.startBy})${d.waitingCharge ? `, waiting charge ${aed(d.waitingCharge)}` : ''}` : '-', billing: `Starts ${start}`, closure: d.closed ? 'Closed automatically on return' : 'Open' }}
@@ -380,7 +376,6 @@ export function DeliveryView() {
         <Text type="s4" sx={{ mb: 1 }}>A Delivery Order cannot be completed without a customer e-signature or a manual confirmation record.</Text>
         <SignaturePad onChange={(ok) => setSign({ open: true, ok })} />
       </AppDialog>
-      {addExpense && <DeliveryExpenseDialog delivery={d} onClose={() => setAddExpense(false)} />}
     </>
   );
 }

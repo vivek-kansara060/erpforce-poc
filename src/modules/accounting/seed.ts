@@ -600,8 +600,8 @@ export function buildAccountingSeed(): Built {
 
   /* -------- bills from completed trips of an external transporter that carry a Transport Charge */
   let tripIdx = 0;
-  tripSeed.filter((t) => t.status === 'Completed' && t.transport === 'External Transporter' && t.expenses.some((e) => e.type === 'Transport Charge' && e.amount > 0)).forEach((t) => {
-    t.expenses.filter((e) => e.type === 'Transport Charge' && e.amount > 0).forEach((e) => {
+  tripSeed.filter((t) => t.status === 'Completed' && t.transport === 'External Transporter' && t.expenses.some((e) => e.amount > 0)).forEach((t) => {
+    t.expenses.filter((e) => e.amount > 0).forEach((e) => {
       const sup = suppliers.find((s) => s.name === t.transporter);
       const date = minDate(ASOF, (t.since ?? t.date).slice(0, 10));
       const k = tripIdx % 3;

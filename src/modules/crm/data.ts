@@ -114,7 +114,6 @@ export const MASTER_SEED: Record<string, string[]> = {
   yardChecklist: ['Engine and alternator visual check', 'Fluid levels and leaks', 'Control panel and breakers', 'Fuel tank and day tank', 'Body and canopy condition', 'Accessories reconciled with delivery'],
   replacementReason: ['Breakdown', 'Customer request', 'Upgrade'],
   industry: ['Construction', 'Utilities', 'Hospitality', 'Oil & Gas', 'Events', 'Logistics', 'Manufacturing', 'Real Estate'],
-  tripExpenseTypes: ['Transport Charge', 'Salik', 'Fuel', 'Driver Allowance', 'Parking', 'Other'],
   maintenanceRoutine: ['Wash and clean the unit', 'Check oil, coolant and filters', 'Battery and charging check', 'Load test', 'Canopy and paint touch-up'],
   maintenanceCritical: ['Fault diagnosed and recorded', 'Parts replaced and recorded', 'Load test after repair', 'Workshop supervisor sign-off'],
 };
@@ -245,6 +244,8 @@ export interface ReturnEntry {
 }
 export const REPLACEMENT_OUTCOMES = ['Under Maintenance - Routine', 'Under Maintenance - Critical', 'Ready for Hire'] as const;
 export type ReplacementOutcome = (typeof REPLACEMENT_OUTCOMES)[number];
+/** A cost of a cross-hire order (transport, loading...) carried into the supplier's bill. account: the Expense Account code (older lines carry a name); billNumber once a bill took it. */
+export interface ChExpense { account: string; amount: number; note?: string; vatPct?: number; date?: string; billNumber?: string }
 export interface Replacement {
   id: string; number: string; soId: string; lineId: string; oldAssetId: string; newAssetId: string; reason: string; priceAdjust: number; notified: boolean; date: string; crossHireId?: string; by: string;
   /** 8 Oct call: the Delivery Order created for the new unit, and the Category and Subcategory it was chosen from. */
@@ -258,7 +259,7 @@ export interface CrossHire {
   history: LogItem[]; condition?: { notes: string; files: string[]; checks?: string[] }; reissueRef?: string; reissueSoId?: string; supplierInvoice?: string; dispute?: number; revenue: number; date: string;
   /** Cross Hire Order (Hire Order) fields of the existing ERP; the record above is the order, the five stages are tracked on it */
   type?: 'Inventory' | 'Dropship'; requestIds?: string[]; rfqId?: string; confirmationDate?: string; expectedReceipt?: string; paymentTerms?: string; startDate?: string; endDate?: string;
-  status?: string; receiving?: string; billing?: string; expenses?: { account: string; amount: number; note: string }[]; qty?: number;
+  status?: string; receiving?: string; billing?: string; expenses?: ChExpense[]; qty?: number;
   /** Goods Receipt Notes of the order (a separate form, created from the approved order) and the other order form fields of the existing ERP. */
   grns?: CrossHireGrn[]; form?: Record<string, any>; approvedBy?: string;
   /** One entry per received asset (1 fixed asset = 1 unit). The order is Category and Subcategory with a number of units; the assets are defined on the Goods Receipt. */
@@ -350,7 +351,7 @@ export const FLEET_STATUSES: FleetStatus[] = ['Free', 'Assigned', 'En Route', 'S
  * vatPct: VAT on the expense (client review: trip expenses need an explicit VAT %). account: the GL account it posts to (Expense Head), shown and overridable
  * instead of being derived silently; defaults to tripExpenseAccount(type) when left blank.
  */
-export interface TripExpense { type: string; amount: number; vatPct?: number; account?: string; note?: string; date: string; journalId?: string; billId?: string }
+export interface TripExpense { /** Only on expenses recorded before 12 Oct; the Expense Account replaced it (client feedback 12 Oct). */ type?: string; amount: number; vatPct?: number; account?: string; note?: string; date: string; journalId?: string; billId?: string }
 /** The expense inclusive of its VAT: what actually lands on the Sales Order logistics cost and the ledger. */
 export const expenseGross = (e: Pick<TripExpense, 'amount' | 'vatPct'>) => e.amount + (e.amount * (e.vatPct ?? 0)) / 100;
 /** One movement of a vehicle (or of an external transporter) for a Delivery Order, a Collection or a Replacement. Always created from its document, so it is always tied to a project. */
@@ -761,7 +762,9 @@ export const replacementSeed: Replacement[] = [
  * The collection of RMA-26-00123 shows a first attempt that is stuck and a second trip with the crane truck.
  */
 export const TRIP_SEED_N = 32;
-const tx = (type: string, amount: number, date: string, note?: string): TripExpense => ({ type, amount, date, note });
+/** Seed expense: the Expense Account it was booked to (fuel 510320, allowance and other 510500, the rest 510300). */
+const TX_ACC: Record<string, string> = { Fuel: '510320', 'Driver Allowance': '510500', Other: '510500' };
+const tx = (type: string, amount: number, date: string, note?: string): TripExpense => ({ type, account: TX_ACC[type] ?? '510300', amount, date, note });
 const tr = (id: string, n: number, s: SalesOrder, kind: TripKind, doc: { id: string; number: string }, over: Partial<Trip> & Pick<Trip, 'date' | 'status' | 'since'>): Trip => ({
   id, number: `TRP-26-${String(n).padStart(5, '0')}`, kind, docId: doc.id, docNumber: doc.number, soId: s.id, soNumber: s.number, customerId: s.customerId, site: s.site, costCentre: s.costCentre,
   transport: 'Own Fleet', expenses: [], log: [], ...over,

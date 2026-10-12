@@ -22,7 +22,6 @@ export const MASTER_LABELS: Record<string, { label: string; used: string }> = {
   replacementReason: { label: 'Replacement Reason', used: 'Rental, Replacement Orders' },
   maintenanceRoutine: { label: 'Routine Maintenance Checklist', used: 'Heavy Equipment Fixed Asset: Complete Maintenance' },
   maintenanceCritical: { label: 'Critical Maintenance Checklist', used: 'Heavy Equipment Fixed Asset: Complete Maintenance' },
-  tripExpenseTypes: { label: 'Trip Expense Types', used: 'Rental, Fleet Management: Trips (Complete Trip, Add Expense)' },
 };
 
 function MasterRows({ k }: { k: string }) {
