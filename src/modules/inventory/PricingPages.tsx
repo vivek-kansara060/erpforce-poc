@@ -122,7 +122,6 @@ export function PricingForm() {
           <FormGrid>
             <SelectInput label="Activity Type" required change="changed" req={REQ_PRICING} value={f.activity} options={[...PRICING_ACTIVITIES]} disabled={!!existing || !!from} error={err.activity}
               onChange={(v) => setF({ ...f, activity: v })} hint="Rental has one record per billing frequency; Fixed Asset Trading is a single sales price" />
-            <Box />
             <CategorySelect value={f.category} req={REQ_PRICING} onChange={(v) => setF({ ...f, category: v, subCategory: '' })} error={err.category} disabled={!!from} />
             <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_PRICING} onChange={(v) => setF({ ...f, subCategory: v })} disabled={!!from} />
             {rental && <SelectInput label="Billing Frequency" required change="changed" req={REQ_ALL} value={f.frequency} options={FREQUENCIES} onChange={(v) => setF({ ...f, frequency: v })} error={err.frequency} />}
