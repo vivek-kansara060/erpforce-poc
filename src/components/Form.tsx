@@ -15,7 +15,7 @@ interface Base {
   /** requirement reference shown in the badge tooltip */
   req?: string;
   disabled?: boolean;
-  /** span both columns in a FormGrid */
+  /** span every column of the FormGrid */
   full?: boolean;
   error?: string;
 }
@@ -114,8 +114,12 @@ export function FileInput({ label, value, onChange, multiple, ...b }: Base & { v
   );
 }
 
-/** Two-column form grid (existing FormParser layout: 2 columns, 1rem gap). */
-export function FormGrid({ children, cols = 2 }: { children: ReactNode; cols?: 1 | 2 | 3 | 4 }) {
+/** Column counts for the whole app: forms are 3 columns, view (detail) pages are 4. Narrow dialogs pass `cols` explicitly. */
+export const FORM_COLS = 3;
+export const VIEW_COLS = 4;
+
+/** Form grid: 3 columns by default, 1rem gap, collapsing to 1 column below `md`. */
+export function FormGrid({ children, cols = FORM_COLS }: { children: ReactNode; cols?: 1 | 2 | 3 | 4 }) {
   return <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 2, alignItems: 'start' }}>{children}</Box>;
 }
 
@@ -142,7 +146,8 @@ export function ValueField({ label, value, change, req }: { label: string; value
   );
 }
 
-export function ValueGrid({ children, cols = 4 }: { children: ReactNode; cols?: number }) {
+/** View-page grid: 4 columns by default, 2 on small screens. */
+export function ValueGrid({ children, cols = VIEW_COLS }: { children: ReactNode; cols?: number }) {
   return <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 3 }}>{children}</Box>;
 }
 

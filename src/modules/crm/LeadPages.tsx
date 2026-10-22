@@ -159,9 +159,9 @@ export function LeadView() {
           { label: 'Basic Details', content: (
             <>
               <SpecView specs={basic.filter((s) => s.key !== 'number').concat({ key: 'number', label: 'ID', type: 'readonly' })} f={f} />
-              <Section title="Lead Owner Details"><SpecView specs={owner} f={f} cols={3} /></Section>
+              <Section title="Lead Owner Details"><SpecView specs={owner} f={f} /></Section>
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={l.followUps ?? []} locked blank={blankFollow} empty="No follow ups" /></Section>
-              <Section title="Classifications"><SpecView specs={classification} f={f} cols={3} /></Section>
+              <Section title="Classifications"><SpecView specs={classification} f={f} /></Section>
               <FormSection title="Communication Log">{l.comms.length ? <Timeline items={l.comms.map((c) => ({ ...c, tone: 'blue' as const }))} /> : <span>No entries yet</span>}</FormSection>
             </>) },
           { label: 'Address', content: <RowsEditor cols={addrCols} rows={l.addresses ?? []} locked blank={blankAddr} empty="No addresses" /> },

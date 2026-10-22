@@ -154,7 +154,7 @@ function TransferInDialog({ to, onClose }: { to: LocationRec; onClose: () => voi
   };
   return (
     <AppDialog open title={`Transfer stock in: ${to.name}`} onClose={onClose} confirmLabel="Transfer" onConfirm={confirm}>
-      <FormGrid>
+      <FormGrid cols={2}>
         <SelectInput label="From Location" required value={from} options={sources} onChange={(v) => { setFrom(v); setItemId(''); }} error={errors.from} />
         <SelectInput label="Item" required value={itemId} options={avail.map((r) => ({ value: r.itemId, label: `${items.get(r.itemId)?.name} (${qtyWithUnit(r.qty, items.get(r.itemId)?.unit ?? 'Nos')} available)` }))} onChange={setItemId} error={errors.itemId} />
         <NumberInput label={`Quantity${it ? ` (${it.unit})` : ''}`} required value={qty} onChange={setQty} error={errors.qty} />

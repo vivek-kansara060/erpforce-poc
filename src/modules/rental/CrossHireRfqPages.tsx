@@ -143,7 +143,7 @@ export function ChRfqForm() {
           { label: 'Basic Details', content: (
             <>
               <SpecForm specs={basicSpecs} f={f} set={set} err={err} />
-              <Section title="Rental Period"><SpecForm specs={periodSpecs} f={f} set={set} cols={3} /></Section>
+              <Section title="Rental Period"><SpecForm specs={periodSpecs} f={f} set={set} /></Section>
               <Section title="Items">
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setItem(blankItem())}>Add</Button></Box>
                 {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
@@ -216,7 +216,7 @@ export function ChRfqView() {
             <>
               <SpecView specs={basicSpecs.filter((s) => s.key !== 'narration').map((s) => (s.key === 'number' ? { ...s, type: 'text' as const } : s))} f={f} />
               <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>Narration: {r.narration || '-'}</Text>
-              <Section title="Rental Period"><SpecView specs={periodSpecs} f={f} cols={3} /></Section>
+              <Section title="Rental Period"><SpecView specs={periodSpecs} f={f} /></Section>
               <Section title="Items"><ItemsTable items={items} awarded={!!r.awardedVendorId} />{awardedName && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Awarded to {awardedName}{r.awardComment ? `: ${r.awardComment}` : ''}</Text>}</Section>
               <Section title="Call For Tender">
                 {['RFQ Sent', 'Response Received', 'Pending Order', 'Order', 'Cancelled'].includes(st) && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="contained" onClick={() => nav(`${BASE}/${r.id}/analyze`)}>Analyze & Award</Button></Box>}
@@ -309,7 +309,7 @@ export function ChResponseForm() {
             { key: 'q', label: 'Requested Quantity', align: 'right', render: (i) => i.qty }, { key: 'e', label: 'Estimated Order Quantity Per Year', align: 'right', render: (i) => i.estYear },
           ]} />
           <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Vendor response</Text>
-          <SpecForm specs={respItemSpecs} f={f} set={set} err={err} cols={3} />
+          <SpecForm specs={respItemSpecs} f={f} set={set} err={err} />
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The rate, minimum order quantity and lead time apply to the items of this RFQ.</Text>
         </Section>
         <Section title="Attachment"><FileInput label="Attachment" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>

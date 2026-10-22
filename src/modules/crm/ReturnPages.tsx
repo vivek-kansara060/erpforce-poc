@@ -188,7 +188,7 @@ export function ReturnForm() {
             </Section>
             <Section title="Classification"><SpecForm specs={[{ key: 'location', label: 'Location', type: 'select', options: yards(), required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }]} f={f} set={set} err={err} /></Section>
             <Section title="Rental Return" change="new" req={R.ret} hint="Added to the existing Customer Return for rental assets: how it comes back, when billing stops, the site check and the photos">
-              <SpecForm specs={rental} f={f} set={set} err={err} cols={3} />
+              <SpecForm specs={rental} f={f} set={set} err={err} />
               <Text type="s3" weight="medium" sx={{ mt: 2 }}>Pre-Return Site Checklist</Text>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 {SITE.map((c) => <FormControlLabel key={c} control={<Checkbox size="small" disabled={locked} checked={f.checks.includes(c)} onChange={(e) => set('checks', e.target.checked ? [...f.checks, c] : f.checks.filter((x: string) => x !== c))} />} label={<Text type="s3">{c}</Text>} />)}
@@ -296,10 +296,10 @@ export function ReturnView() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: { xl: 'none' } }}><Section title="Summary"><SummaryRows f={r} /></Section></Box>
-            <Section title="Basic Details"><SpecView specs={specs} f={view} cols={4} /></Section>
+            <Section title="Basic Details"><SpecView specs={specs} f={view} /></Section>
             <Section title="Classification"><ValueGrid cols={4}><ValueField label="Location" value={r.location} /><ValueField label="Department" value={r.department} /></ValueGrid></Section>
             <Section title="Rental Return" change="new" req={R.ret}>
-              <SpecView specs={rentalSpecs} f={r} cols={4} />
+              <SpecView specs={rentalSpecs} f={r} />
               <Box sx={{ mt: 2 }}>
                 <TabPanels tabs={[
                   { label: 'Checklists', content: <Box><Text type="s3" weight="medium">Pre-Return Site Checklist</Text>{r.siteChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>)}{grnItems.map((g) => (<Box key={g.itemId} sx={{ mt: 2 }}><Text type="s3" weight="medium">Operations Return Checklist (Yard), {assetById(g.assetId)?.assetId}</Text>{g.yardChecklist.length ? g.yardChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>) : <Text type="s4">Pending inspection</Text>}</Box>))}</Box> },

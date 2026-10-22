@@ -115,13 +115,13 @@ export function InvoiceView() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecView cols={4} specs={viewSpecs} f={{ ...i, sourceText: <SourceLink s={i.source} />, period: i.periodFrom ? `${i.periodFrom} to ${i.periodTo}` : '-' }} />
-              <Section title="Classification"><SpecView cols={4} specs={[{ key: 'location', label: 'Location' }, { key: 'department', label: 'Department' }]} f={i} /></Section>
+              <SpecView specs={viewSpecs} f={{ ...i, sourceText: <SourceLink s={i.source} />, period: i.periodFrom ? `${i.periodFrom} to ${i.periodTo}` : '-' }} />
+              <Section title="Classification"><SpecView specs={[{ key: 'location', label: 'Location' }, { key: 'department', label: 'Department' }]} f={i} /></Section>
               <Section title="Items"><LinesTable lines={i.lines} showPeriod={i.isRental} /></Section>
-              <Section title="Discounts"><SpecView cols={4} specs={[{ key: 'discountOn', label: 'Additional Discount On' }, { key: 'discountPct', label: 'Additional Discount %' }, { key: 'roundOff', label: 'Round Off', type: 'check' }]} f={i} /></Section>
+              <Section title="Discounts"><SpecView specs={[{ key: 'discountOn', label: 'Additional Discount On' }, { key: 'discountPct', label: 'Additional Discount %' }, { key: 'roundOff', label: 'Round Off', type: 'check' }]} f={i} /></Section>
               <TotalsBox doc={i} paid={i.amountPaid} />
             </>) },
-          { label: 'Address and Contact', content: <SpecView cols={4} specs={[{ key: 'contactPerson', label: 'Contact Person' }, { key: 'billingAddress', label: 'Billing Address' }, { key: 'shippingAddress', label: 'Shipping Address' }, { key: 'placeOfSupply', label: 'Place of Supply' }]} f={i} /> },
+          { label: 'Address and Contact', content: <SpecView specs={[{ key: 'contactPerson', label: 'Contact Person' }, { key: 'billingAddress', label: 'Billing Address' }, { key: 'shippingAddress', label: 'Shipping Address' }, { key: 'placeOfSupply', label: 'Place of Supply' }]} f={i} /> },
           { label: 'Payments', change: 'new', req: R_ACC.pay, content: (
             <>
               <DataTable hideToolbar rows={payRows} emptyText="No collection yet" onRowClick={(p) => nav(`/accounting/payment-entries/${p.id}`)} columns={[
@@ -239,7 +239,7 @@ export function InvoiceForm() {
                   { key: 'discountPct', label: 'Discount %', width: 80 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }, { key: 'account', label: 'Income Account', type: 'select', options: accOpts, width: 240 }]}
                   rows={rows} onChange={setRows} blank={{ item: '', desc: '', qty: 1, unit: 'Nos', rate: 0, discountPct: 0, vatPct: String(vatPctOf(f.vatType)), account: accOpts.find((a) => a.startsWith('410500'))! }} addLabel="Add Item" empty="No items yet" />
               </Section>
-              <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} cols={3} /></Section>
+              <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} /></Section>
               <TotalsBox doc={{ lines, discountOn: f.discountOn, discountPct: Number(f.discountPct) || 0, roundOff: !!f.roundOff, currency: f.currency }} />
             </>) },
           { label: 'Address and Contact', content: <SpecForm specs={addrSpecs} f={f} set={set} /> },

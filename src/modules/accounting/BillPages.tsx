@@ -83,7 +83,7 @@ export function BillView() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecView cols={4} specs={viewSpecs} f={{ ...b, sourceText: <SourceLink s={b.source} /> }} />
+              <SpecView specs={viewSpecs} f={{ ...b, sourceText: <SourceLink s={b.source} /> }} />
               <Section title="Items"><LinesTable lines={b.lines} /></Section>
               <Section title="Expenses"><ExpensesTable rows={b.expenses} /></Section>
               <TotalsBox doc={b} paid={b.amountPaid} />
@@ -165,7 +165,7 @@ export function BillForm() {
           <RowsEditor<ExRow> cols={[{ key: 'account', label: 'Account', type: 'select', options: itemAcc, width: 260 }, { key: 'desc', label: 'Narration', width: 260 }, { key: 'amount', label: 'Amount', width: 120 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }]}
             rows={ex} onChange={setEx} blank={{ account: accText('510300'), desc: '', amount: 0, vatPct: '5' }} addLabel="Add Expense" empty="No expenses" />
         </Section>
-        <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} cols={3} /></Section>
+        <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} /></Section>
         <TotalsBox doc={{ lines, expenses, discountOn: f.discountOn, discountPct: Number(f.discountPct) || 0, roundOff: !!f.roundOff }} />
       </Page>
     </>

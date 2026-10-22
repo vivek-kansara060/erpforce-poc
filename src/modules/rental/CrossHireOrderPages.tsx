@@ -133,9 +133,9 @@ export function ChOrderForm() {
           { label: 'Basic Details', content: (
             <>
               <SpecForm specs={orderSpecs(rentals.map((o) => ({ value: o.id, label: o.number })), !!rfq && !!so0)} f={f} set={set} err={err} />
-              <Section title="Rental Period"><SpecForm specs={rentalPeriodSpecs} f={f} set={set} err={err} cols={3} /></Section>
+              <Section title="Rental Period"><SpecForm specs={rentalPeriodSpecs} f={f} set={set} err={err} /></Section>
               <Section title="Items" change="changed" req={R_CH}>
-                <SpecForm specs={itemSpecs} f={f} set={set} err={err} cols={3} />
+                <SpecForm specs={itemSpecs} f={f} set={set} err={err} />
                 {err.items && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>{err.items}</Text>}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', my: 1 }}><Button size="small" variant="outlined" onClick={() => setItems([...items, { id: `i${Date.now().toString(36)}${items.length}`, group: '', category: '', qty: 1, rate: '' }])}>+ Add</Button></Box>
                 <TableContainer sx={{ border: '1px solid #E4E5E7', borderRadius: '8px', maxWidth: '100%' }}>
@@ -245,7 +245,7 @@ export function ChGrnForm() {
                 ]} />
                 <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The assets received are added on the Goods Receipt page with Track Details, one serial number for each unit.</Text>
               </Section>
-              <Section title="Transportation"><SpecForm specs={transportSpecs} f={f} set={set} cols={4} /></Section>
+              <Section title="Transportation"><SpecForm specs={transportSpecs} f={f} set={set} /></Section>
               <Section title="Classification"><SpecForm specs={grnClass} f={f} set={set} /></Section>
               <Section title="Attachment"><FileInput label="Attachment" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>
             </>) },

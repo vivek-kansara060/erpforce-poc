@@ -124,7 +124,7 @@ export function AmcView() {
           <KpiCard title="Profit to date" value={aed(st.revenue - st.cost)} sub="Invoiced less cost" />
         </KpiRow>
         <Panel title="Project Details" change="new" req={R_AMC}>
-          <SpecView cols={4} f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
+          <SpecView f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
         </Panel>
         <Alert severity="info" sx={{ mt: 2 }}>Value split: {aed(value)} over {months} month(s) is {aed(value / months)} a month. With {o.visits} planned visit(s) each visit is billed {aed(value / (o.visits || 1))}, so every Job Card invoice carries its visit value, unless the visit is marked FOC on its job card.</Alert>
         <Box sx={{ mt: 3 }}>
@@ -217,7 +217,7 @@ export function JobCardView() {
       <Page sx={{ pt: 2 }}>
         {jc.status === 'Invoiced' && <Alert severity="info" sx={{ mb: 2 }}>This job card is invoiced ({jc.invoiceRef}, payment {pay}) and cannot be changed.</Alert>}
         {short.length > 0 && <Alert severity="warning" sx={{ mb: 2 }}>More than the van holds: {short.map((m) => m.item).join(', ')}. Edit the job card before completing the visit.</Alert>}
-        <SpecView cols={4} specs={jcSpecs(jc, false)} f={jcView(jc)} />
+        <SpecView specs={jcSpecs(jc, false)} f={jcView(jc)} />
         {jc.signedCopy && jc.signedCopy.length > 0 && <Alert severity="success" sx={{ mt: 2 }}>Signed copy uploaded: {jc.signedCopy.join(', ')}</Alert>}
         <Section title="Materials consumed (optional)" change="new" req={R_AMC}>
           <DataTable hideToolbar rows={jc.materials.map((m, i) => ({ id: String(i), ...m }))} emptyText="No materials" columns={[{ key: 'item', label: 'Material' }, { key: 'qty', label: 'Quantity', align: 'right' }, { key: 'unit', label: 'UoM' }, { key: 'price', label: 'Billed price', align: 'right', render: (m) => aed(m.price) }, { key: 'foc', label: 'FOC', render: (m) => (m.foc ? 'Yes' : 'No') }, { key: 'cost', label: 'Cost', align: 'right', render: (m) => aed(m.cost ?? Math.round(m.price * 0.7 * 100) / 100) }]} />

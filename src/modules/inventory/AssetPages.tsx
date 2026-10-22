@@ -103,7 +103,7 @@ function CertificateDialog({ open, assetId, rec, approvalOn, onClose }: { open: 
   };
   return (
     <AppDialog open={open} title={rec ? `Edit ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
-      <FormGrid>
+      <FormGrid cols={2}>
         <CertTypeSelect value={f.type} onChange={set('type')} error={errors.type} req={REQ_CERT} hint="Create New adds a new document type to the master" />
         <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} />
         <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} />
@@ -177,7 +177,7 @@ function ReadingDialog({ open, assetId, rec, onClose }: { open: boolean; assetId
   };
   return (
     <AppDialog open={open} title={rec ? 'Edit Usage Reading' : 'Add Usage Reading'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
-      <FormGrid>
+      <FormGrid cols={2}>
         <DateInput label="Reading Date/Time" required change="new" req={REQ_USE} value={f.date} onChange={set('date')} error={errors.date} />
         <NumberInput label="Hour Meter Reading (hours)" required change="new" req={REQ_USE} value={f.hmr} onChange={set('hmr')} error={errors.hmr} />
         <SelectInput label="Recorded By" required change="new" req={REQ_USE} value={f.by} options={EMP} onChange={set('by')} error={errors.by} hint="Responsible role to be confirmed with client" />
@@ -688,7 +688,7 @@ export function DisposalView() {
       <ConfirmDialog open={reject} danger title="Reject disposal request" description="The asset stays active on the Fixed Asset Register." confirmLabel="Reject" onClose={() => setReject(false)} onConfirm={() => { push({ status: 'Rejected' }, 'Rejected'); toast('Request rejected'); }} />
       <AppDialog open={outDlg} title={`Create Invoice for ${sale ? 'Sale' : 'Scrap'}`} onClose={() => setOutDlg(false)} onConfirm={completeOutcome} confirmLabel="Create Invoice" maxWidth="md">
         <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>A {sale ? 'sale' : 'scrap'} always results in an amount, so an invoice is raised to the party taking the asset.</Text>
-        <FormGrid>
+        <FormGrid cols={2}>
           <TextInput label="Invoice Number" disabled change="changed" req={REQ_DSP_INV} value={o.invoiceRef} hint="The sales invoice is created in Accounting (Pending approval) when you save" />
           <DateInput label="Invoice Date" required change="new" req={REQ_DSP_INV} value={o.date} onChange={(v) => setO({ ...o, date: v })} error={oErr.date} />
           <SelectInput label="Invoice To Taken From" required change="new" req={REQ_DSP_INV} value={o.source} options={INVOICE_TO_SOURCES} onChange={(v) => setO({ ...o, source: v, buyer: '' })} hint="Whether the invoiced party is picked by the system or entered by hand is to be confirmed with client" />

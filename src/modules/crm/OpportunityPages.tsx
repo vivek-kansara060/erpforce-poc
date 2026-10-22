@@ -180,8 +180,8 @@ export function OpportunityView() {
           { label: 'Basic Details', content: (
             <>
               <SpecView specs={S.basic} f={f} />
-              <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} cols={3} /></Section>
-              <Section title="Classification"><SpecView specs={S.classification} f={f} cols={3} /></Section>
+              <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} /></Section>
+              <Section title="Classification"><SpecView specs={S.classification} f={f} /></Section>
               {o.activity !== 'AMC' && <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={o.followUps ?? []} locked blank={blankFollow} empty="No follow ups" /></Section>
             </>) },
