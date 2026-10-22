@@ -10,7 +10,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { SelectInput, TextInput } from '@/components/Form';
 import { SignaturePad } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -153,7 +153,7 @@ export function DeliveryForm() {
               <SpecForm specs={headerSpecs(soOptions)} f={view} set={set} err={err} />
               <Section title="Items" hint="Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.">
                 <ItemsGrid pending={pending} items={items} fleetRows={fleet.rows} onTrace={setTrace} onQty={(id, q) => set('items', { ...items, [id]: { ...(items[id] ?? { lineId: id, assetIds: [] }), qty: q } })} />
-                {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
+                {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
                 {so && <Box sx={{ mt: 1 }}><MenuButton label="+ Add Extra Item" variant="outlined" items={(so.activity === 'Fixed Asset Trading' ? ['Fixed Asset Trading', 'Trading'] : ['Rental', 'Trading']).map((k) => ({ label: kindLabel(k), onClick: () => setExtraLine(k === 'Rental' || k === 'Fixed Asset Trading' ? mkLine({ activity: k as Line['activity'], item: '', group: 'Generator', frequency: k === 'Rental' ? 'Monthly' : undefined, start: k === 'Rental' ? so.contractStart : undefined, end: k === 'Rental' ? so.contractEnd : undefined }) : mkLine({ activity: k as Line['activity'], item: '', unit: 'Nos' })) }))} /></Box>}
                 {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
               </Section>
@@ -169,7 +169,7 @@ export function DeliveryForm() {
                     { key: 'startBy', label: 'Delay is the responsibility of', type: 'select', options: FAULT_ATTRIBUTION, required: true, show: () => late, hint: 'Company: no penalty. Client: a waiting charge may apply' },
                     { key: 'waitingCharge', label: 'Lump sum for the waiting period (AED, optional)', type: 'number', show: () => late },
                   ]} f={f} set={set} err={err} />
-                  {err.late && <Text type="s5" color="#C64D4D">{err.late}</Text>}
+                  {err.late && <Text type="s5" color="#C2363A">{err.late}</Text>}
                 </Section>
               )}
               <Section title="Classification"><SpecForm specs={[{ key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }]} f={f} set={set} /></Section>
@@ -186,7 +186,7 @@ export function DeliveryForm() {
                   <Box><Text type="s5" weight="medium" sx={{ mb: 0.5 }}>E-signature (preferred)</Text><SignaturePad onChange={(s) => set('signed', s)} /></Box>
                   <SpecForm specs={[{ key: 'manual', label: 'Manual fallback: signed printed form', type: 'file', hint: 'Where an e-signature is not possible on site' }]} f={f} set={set} cols={1} />
                 </Box>
-                {err.signature && <Text type="s5" color="#C64D4D">{err.signature}</Text>}
+                {err.signature && <Text type="s5" color="#C2363A">{err.signature}</Text>}
               </Section>
             </>) },
           { label: 'Package', content: <Text type="s4">Packages are packed and labelled in the existing Package flow (unchanged).</Text> },
@@ -309,7 +309,7 @@ export function DeliveryView() {
   const start = d.rentalStart ?? d.date.slice(0, 10);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Delivery Orders', to: '/crm/delivery-orders' }, { label: d.number }]} status={<StatusChip status={d.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(d.customerId), d.soNumber, d.date]} />} crumbs={[{ label: 'Delivery Orders', to: '/crm/delivery-orders' }, { label: d.number }]} status={<StatusChip status={d.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${d.soId}`)}>View Sales Order</Button>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Delivery Order" /><Button variant="outlined" onClick={() => setPrintOpen(true)}>Print</Button>

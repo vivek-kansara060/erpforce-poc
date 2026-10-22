@@ -99,7 +99,7 @@ export function DataTable<T extends Record<string, any>>({
           </Box>
         </Box>
       )}
-      <TableContainer sx={{ border: '1px solid #efefef', borderRadius: '8px', maxHeight: 'calc(100vh - 260px)' }}>
+      <TableContainer sx={{ border: '1px solid #ECEDEF', borderRadius: '8px', maxHeight: 'calc(100vh - 260px)' }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
@@ -154,7 +154,7 @@ export function DataTable<T extends Record<string, any>>({
       </Box>
       <Menu anchorEl={menu?.el} open={!!menu} onClose={() => setMenu(null)}>
         {menu && visibleActions(menu.row).map((a) => (
-          <MenuItem key={a.label} sx={a.danger ? { color: '#C64D4D', '&:hover': { bgcolor: '#FEDFDF' } } : undefined} onClick={() => { const r = menu.row; setMenu(null); a.onClick(r); }}>{a.label}</MenuItem>
+          <MenuItem key={a.label} sx={a.danger ? { color: '#C2363A', '&:hover': { bgcolor: '#FBE3E5' } } : undefined} onClick={() => { const r = menu.row; setMenu(null); a.onClick(r); }}>{a.label}</MenuItem>
         ))}
       </Menu>
     </Box>

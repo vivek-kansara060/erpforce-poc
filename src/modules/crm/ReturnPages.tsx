@@ -9,7 +9,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -188,18 +188,18 @@ export function ReturnForm() {
             </Section>
             <Section title="Classification"><SpecForm specs={[{ key: 'location', label: 'Location', type: 'select', options: yards(), required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }]} f={f} set={set} err={err} /></Section>
             <Section title="Rental Return" change="new" req={R.ret} hint="Added to the existing Customer Return for rental assets: how it comes back, when billing stops, the site check and the photos">
-              <SpecForm specs={rental} f={f} set={set} err={err} cols={3} />
+              <SpecForm specs={rental} f={f} set={set} err={err} />
               <Text type="s3" weight="medium" sx={{ mt: 2 }}>Pre-Return Site Checklist</Text>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 {SITE.map((c) => <FormControlLabel key={c} control={<Checkbox size="small" disabled={locked} checked={f.checks.includes(c)} onChange={(e) => set('checks', e.target.checked ? [...f.checks, c] : f.checks.filter((x: string) => x !== c))} />} label={<Text type="s3">{c}</Text>} />)}
               </Box>
-              {err.checks && <Text type="s5" color="#C64D4D">{err.checks}</Text>}
+              {err.checks && <Text type="s5" color="#C2363A">{err.checks}</Text>}
               <Text type="s5" color="theme.secondary.700">Light check at the client site before Off-Hire. Checklist content {TO_CONFIRM.toLowerCase()}.</Text>
               <Box sx={{ mt: 2 }}><FileInput label="Return Photo Attachments" required change="new" req={R.rreturn} multiple value={f.photos} onChange={(v) => set('photos', v)} error={err.photos} disabled={locked} hint="Mandatory at Return (optional at Delivery)" /></Box>
               {f.method === 'Company Collection' && !locked && <Box sx={{ mt: 2 }}><Text type="s3" weight="medium" sx={{ mb: 1 }}>Collection Transport</Text><TransportSection value={tp} onChange={setTp} errors={err} date={f.timestamp} /></Box>}
             </Section>
             <Section title="Items">
-              {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
+              {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
               {!locked && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" disabled={!so || !pickOpts(null).length} onClick={() => setRows([...rows, { id: `ri${Date.now().toString(36)}${rows.length}`, lineId: '', deliveryId: '', assetId: '' }])}>+ Add</Button></Box>}
               {locked ? <DataTable hideToolbar rows={rows} columns={itemCols} /> : (
                 <TableContainer sx={{ border: `1px solid ${neutral[200]}`, borderRadius: '8px', maxWidth: '100%' }}>
@@ -279,7 +279,7 @@ export function ReturnView() {
   const l = (lineId: string) => orders.get(r.soId)?.lines.find((x) => x.id === lineId);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}` }]} status={<StatusChip status={r.status} tone={tone(r.status)} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(r.customerId), r.soNumber, r.date]} />} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}` }]} status={<StatusChip status={r.status} tone={tone(r.status)} />}
         actions={<>
           {r.status !== 'Return Completed' && EDITABLE.includes(r.status) && <MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`${BASE}/${r.id}/edit`) }, { label: 'Delete', disabled: r.status !== 'Draft', onClick: () => setAsk('delete') }, { label: 'Print Collection Note', onClick: () => setNoteOpen(true) }]} />}
           {(!EDITABLE.includes(r.status) || r.status === 'Return Completed') && <Button variant="outlined" onClick={() => setNoteOpen(true)}>Print Collection Note</Button>}
@@ -296,10 +296,10 @@ export function ReturnView() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: { xl: 'none' } }}><Section title="Summary"><SummaryRows f={r} /></Section></Box>
-            <Section title="Basic Details"><SpecView specs={specs} f={view} cols={4} /></Section>
+            <Section title="Basic Details"><SpecView specs={specs} f={view} /></Section>
             <Section title="Classification"><ValueGrid cols={4}><ValueField label="Location" value={r.location} /><ValueField label="Department" value={r.department} /></ValueGrid></Section>
             <Section title="Rental Return" change="new" req={R.ret}>
-              <SpecView specs={rentalSpecs} f={r} cols={4} />
+              <SpecView specs={rentalSpecs} f={r} />
               <Box sx={{ mt: 2 }}>
                 <TabPanels tabs={[
                   { label: 'Checklists', content: <Box><Text type="s3" weight="medium">Pre-Return Site Checklist</Text>{r.siteChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>)}{grnItems.map((g) => (<Box key={g.itemId} sx={{ mt: 2 }}><Text type="s3" weight="medium">Operations Return Checklist (Yard), {assetById(g.assetId)?.assetId}</Text>{g.yardChecklist.length ? g.yardChecklist.map((c) => <Text key={c} type="s4">- {c}</Text>) : <Text type="s4">Pending inspection</Text>}</Box>))}</Box> },
@@ -333,7 +333,7 @@ export function ReturnView() {
         </FormGrid>
       </AppDialog>
       <AppDialog open={noteOpen} title="Collection Note" onClose={() => setNoteOpen(false)} maxWidth="md" confirmLabel="Print" onConfirm={() => { window.print(); setNoteOpen(false); }}>
-        <Box sx={{ border: '1px solid #D3D3D4', borderRadius: '6px', p: 2 }}>
+        <Box sx={{ border: '1px solid #D2D5D9', borderRadius: '6px', p: 2 }}>
           <Text type="s2" weight="medium">Gulf Power Rentals LLC: Equipment Collection Note</Text>
           <Text type="s4" sx={{ mt: 1 }}>Customer Return: {r.number} &nbsp; Sales Order: {r.soNumber}</Text>
           <Text type="s4">Customer: {custName(r.customerId)}</Text>
@@ -387,7 +387,7 @@ export function ReturnGrnForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? `Edit ${g0.number}` : 'Add GRN' }]}
+      <FormHeader subtitle={g0 ? <HeaderMeta parts={[custName(r.customerId), g0.date]} /> : undefined} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? g0.number : 'Add GRN' }]}
         actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Section title="Customer Returns"><ValueGrid cols={4}><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Customer" value={custName(r.customerId)} /><ValueField label="Sales Order" value={r.soNumber} /><ValueField label="Entity" value={r.entity} /><ValueField label="Currency" value={r.currency} /><ValueField label="Return Method" change="new" req={R.ret} value={r.method} /><ValueField label="Return Entry Timestamp" change="new" req={R.ret} value={r.timestamp.replace('T', ' ')} /></ValueGrid></Section>
@@ -426,7 +426,7 @@ export function ReturnGrnView() {
   const okInspect = insp && insp.serial && (insp.res === 'Passed' ? insp.checks.length === YARD_CHECKLIST.length : (waiver || Number(insp.amount) > 0) && insp.note.trim());
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g.number }]} status={<StatusChip status={g.status} tone={tone(g.status)} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(r.customerId), g.date]} />} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g.number }]} status={<StatusChip status={g.status} tone={tone(g.status)} />}
         actions={<>
           {!done && <MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`${BASE}/${r.id}/grn/${g.id}/edit`) }, { label: 'Delete', onClick: () => setDel(true) }]} />}
           <Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>View RMA</Button>
@@ -447,7 +447,7 @@ export function ReturnGrnView() {
       <AppDialog open={!!insp} title="Yard inspection" onClose={() => setInsp(null)} maxWidth="md" confirmLabel="Save inspection" confirmDisabled={!okInspect}
         onConfirm={() => { if (!insp) return; upd(insp.itemId, { tracked: true, inspection: insp.res as 'Passed' | 'Damage Found', yardChecklist: insp.checks, damageCharge: insp.res === 'Damage Found' && !waiver ? Number(insp.amount) : undefined, damageNote: insp.res === 'Damage Found' ? insp.note : undefined }); setInsp(null); }}>
         {insp && <FormGrid cols={1}>
-          <FormControlLabel sx={{ display: 'flex', bgcolor: '#F6F8F7', borderRadius: '8px', px: 1, mr: 0 }} control={<Checkbox size="small" checked={insp.serial} onChange={(e) => setInsp({ ...insp, serial: e.target.checked })} />} label={<Text type="s3">Serial number <b>{inspAsset?.engineNo ?? '-'}</b> ({inspAsset?.assetId}) matches the nameplate of the unit received</Text>} />
+          <FormControlLabel sx={{ display: 'flex', bgcolor: '#F2F3F5', borderRadius: '8px', px: 1, mr: 0 }} control={<Checkbox size="small" checked={insp.serial} onChange={(e) => setInsp({ ...insp, serial: e.target.checked })} />} label={<Text type="s3">Serial number <b>{inspAsset?.engineNo ?? '-'}</b> ({inspAsset?.assetId}) matches the nameplate of the unit received</Text>} />
           <SelectInput label="Inspection Status" required value={insp.res} options={['Passed', 'Damage Found']} onChange={(v) => setInsp({ ...insp, res: v })} />
           <Box>{YARD_CHECKLIST.map((c) => <FormControlLabel key={c} sx={{ display: 'flex' }} control={<Checkbox size="small" checked={insp.checks.includes(c)} onChange={(e) => setInsp({ ...insp, checks: e.target.checked ? [...insp.checks, c] : insp.checks.filter((x) => x !== c) })} />} label={<Text type="s3">{c}</Text>} />)}
             <Text type="s5" color="theme.secondary.700">Operations Return Checklist, admin-configurable. {insp.res === 'Passed' ? 'Every item must be complete before the asset can become Ready for Hire.' : ''}</Text></Box>

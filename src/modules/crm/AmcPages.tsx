@@ -7,7 +7,7 @@ import { Timeline } from '@/components/Flow';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, SelectInput } from '@/components/Form';
 import { EmailDialog, PrintDialog } from './ActionDialogs';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
@@ -69,7 +69,7 @@ function JobCardInvoiceDialog({ candidates, onClose }: { candidates: JobCard[]; 
       {jc && (
         <Box sx={{ mt: 1 }}>
           {[['Visit value (contract split)', jc.visitFoc ? 0 : jc.visitAmount], ['Materials', jc.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', jc.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)]].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice amount before VAT</Text><Text type="s3" weight="medium">{aed(jobCardTotal(jc))}</Text></Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Invoice amount before VAT</Text><Text type="s3" weight="medium">{aed(jobCardTotal(jc))}</Text></Box>
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>FOC lines are not invoiced. The invoice is created Pending and is approved in Accounting before payment can be recorded.</Text>
         </Box>
       )}
@@ -98,7 +98,7 @@ export function AmcView() {
   const f = { ...o, customerName: custName(o.customerId), item: (o.amcScope || o.lines[0]?.desc || '-'), period: `${o.amcStart} to ${o.amcEnd}`, value: aed(value), project: o.costCentre || '-' };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(o.customerId), o.title, o.date]} />} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${o.id}/edit`)}>Edit</Button>
           {o.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(o); toast('AMC order confirmed'); }}>Confirm</Button>}
@@ -118,13 +118,13 @@ export function AmcView() {
       <Page sx={{ pt: 2 }}>
         <KpiRow>
           <KpiCard title="Contract value" value={aed(value)} sub={`${o.visits} visits, ${aed(value / (o.visits || 1))} each`} />
-          <KpiCard title="Invoiced" value={aed(st.revenue)} sub={`${st.invoiced.length} job card(s) invoiced`} tint="#E8F5F0" />
+          <KpiCard title="Invoiced" value={aed(st.revenue)} sub={`${st.invoiced.length} job card(s) invoiced`} tint="#F1FBF6" />
           <KpiCard title="Free of cost" value={aed(st.foc)} sub="FOC visits, materials and services (not billed)" />
-          <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FFF3CC" />
+          <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FEF1DD" />
           <KpiCard title="Profit to date" value={aed(st.revenue - st.cost)} sub="Invoiced less cost" />
         </KpiRow>
         <Panel title="Project Details" change="new" req={R_AMC}>
-          <SpecView cols={4} f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
+          <SpecView f={f} specs={[{ key: 'project', label: 'Project' }, { key: 'customerName', label: 'Customer' }, { key: 'item', label: 'Scope' }, { key: 'period', label: 'AMC Period' }, { key: 'lpo', label: 'LPO' }, { key: 'entity', label: 'Entity' }, { key: 'site', label: 'Site' }, { key: 'status', label: 'Order Status' }]} />
         </Panel>
         <Alert severity="info" sx={{ mt: 2 }}>Value split: {aed(value)} over {months} month(s) is {aed(value / months)} a month. With {o.visits} planned visit(s) each visit is billed {aed(value / (o.visits || 1))}, so every Job Card invoice carries its visit value, unless the visit is marked FOC on its job card.</Alert>
         <Box sx={{ mt: 3 }}>
@@ -169,7 +169,7 @@ function JcTotals({ f }: { f: JobCard }) {
   return (
     <Box sx={{ ml: 'auto', width: 340, mt: 2 }}>
       {[['Visit value (contract split)', f.visitFoc ? 0 : f.visitAmount], ['Materials', f.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', f.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)], ...(jobCardFoc(f) > 0 ? [['Free of cost (not billed)', jobCardFoc(f)]] : [])].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s5" color="theme.secondary.700">Cost of materials</Text><Text type="s5" color="theme.secondary.700">{aed(jobCardCost(f))}</Text></Box>
     </Box>
   );
@@ -201,7 +201,7 @@ export function JobCardView() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? jc.soNumber, to: `/crm/amc-orders/${jc.soId}` }, { label: jc.number }]}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(jc.customerId), jc.technician, jc.plannedDate]} />} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? jc.soNumber, to: `/crm/amc-orders/${jc.soId}` }, { label: jc.number }]}
         status={<Box sx={{ display: 'flex', gap: 1 }}><StatusChip status={jc.status} />{jc.status === 'Invoiced' && payChip(pay)}</Box>}
         actions={<>
           {jc.status === 'Open' && <Button variant="contained" onClick={complete}>Complete Visit</Button>}
@@ -217,7 +217,7 @@ export function JobCardView() {
       <Page sx={{ pt: 2 }}>
         {jc.status === 'Invoiced' && <Alert severity="info" sx={{ mb: 2 }}>This job card is invoiced ({jc.invoiceRef}, payment {pay}) and cannot be changed.</Alert>}
         {short.length > 0 && <Alert severity="warning" sx={{ mb: 2 }}>More than the van holds: {short.map((m) => m.item).join(', ')}. Edit the job card before completing the visit.</Alert>}
-        <SpecView cols={4} specs={jcSpecs(jc, false)} f={jcView(jc)} />
+        <SpecView specs={jcSpecs(jc, false)} f={jcView(jc)} />
         {jc.signedCopy && jc.signedCopy.length > 0 && <Alert severity="success" sx={{ mt: 2 }}>Signed copy uploaded: {jc.signedCopy.join(', ')}</Alert>}
         <Section title="Materials consumed (optional)" change="new" req={R_AMC}>
           <DataTable hideToolbar rows={jc.materials.map((m, i) => ({ id: String(i), ...m }))} emptyText="No materials" columns={[{ key: 'item', label: 'Material' }, { key: 'qty', label: 'Quantity', align: 'right' }, { key: 'unit', label: 'UoM' }, { key: 'price', label: 'Billed price', align: 'right', render: (m) => aed(m.price) }, { key: 'foc', label: 'FOC', render: (m) => (m.foc ? 'Yes' : 'No') }, { key: 'cost', label: 'Cost', align: 'right', render: (m) => aed(m.cost ?? Math.round(m.price * 0.7 * 100) / 100) }]} />
@@ -276,7 +276,7 @@ export function JobCardForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? f.soNumber, to: `/crm/amc-orders/${f.soId}` }, { label: id ? `Edit ${f.number}` : `New Job Card, visit ${f.visitIdx + 1}` }]}
+      <FormHeader subtitle={id ? <HeaderMeta parts={[custName(f.customerId), f.technician, f.plannedDate]} /> : undefined} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? f.soNumber, to: `/crm/amc-orders/${f.soId}` }, { label: id ? f.number : `New Job Card, visit ${f.visitIdx + 1}` }]}
         actions={<><Button variant="outlined" onClick={back}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <SpecForm specs={jcSpecs(f, true)} f={jcView(f)} set={set} />

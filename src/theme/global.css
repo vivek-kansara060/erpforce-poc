@@ -1,7 +1,21 @@
-:root { font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+/* ERPForce Design System v2.0 tokens (subset; source: project_design/styles/tokens.css) */
+:root {
+  --brand-green: #2EB273;
+  --surface-canvas: #FCFCFD; --surface-raised: #FFFFFF; --surface-sunken: #F7F8F9; --surface-muted: #F2F3F5; --surface-hover: #F2F3F5; --surface-active: #ECEDEF;
+  --border-subtle: #ECEDEF; --border-default: #E1E3E6; --border-strong: #D2D5D9; --border-focus: #2EB273;
+  --text-primary: #15171B; --text-secondary: #3D4046; --text-tertiary: #6D7178; --text-quaternary: #767B83; --text-disabled: #B6BABF; --text-brand: #146B43;
+  --color-action: #146B43; --color-action-hover: #0E4D31;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --tracking-tight: -0.018em; --tracking-snug: -0.011em; --tracking-normal: -0.003em;
+  --r-sm: 4px; --r-md: 6px; --r-lg: 8px;
+  --shadow-focus: 0 0 0 3px rgba(46,178,115,.18);
+}
+:root { font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 html, body, #root { height: 100%; margin: 0; }
+body { font-size: 13px; letter-spacing: var(--tracking-normal); color: var(--text-primary); background: var(--surface-canvas); font-feature-settings: 'cv11','ss01','ss03'; font-variant-numeric: tabular-nums; }
 ::selection { background: #2EB273; color: #fff; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: #BDBEBF; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #B6BABF; border-radius: 3px; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.main-wrapper { width: 100%; height: calc(100vh - 4.6875rem); overflow-y: auto; }
+.main-wrapper { width: 100%; height: calc(100vh - 44px); overflow-y: auto; }

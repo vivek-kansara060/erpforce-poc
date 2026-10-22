@@ -8,7 +8,7 @@ import { DataTable } from '@/components/DataTable';
 import { Timeline } from '@/components/Flow';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -135,7 +135,7 @@ export function ChRfqForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? `Edit ${src!.number}` : 'Add New' }]}
+      <FormHeader subtitle={editing ? <HeaderMeta parts={[src!.group, src!.category, src!.date]} /> : undefined} crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? src!.number : 'Add New' }]}
         actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button>{(!editing || src!.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((q) => q.number).join(', ')}. Add the suppliers in Call For Tender, then Save.</Alert>}
@@ -143,15 +143,15 @@ export function ChRfqForm() {
           { label: 'Basic Details', content: (
             <>
               <SpecForm specs={basicSpecs} f={f} set={set} err={err} />
-              <Section title="Rental Period"><SpecForm specs={periodSpecs} f={f} set={set} cols={3} /></Section>
+              <Section title="Rental Period"><SpecForm specs={periodSpecs} f={f} set={set} /></Section>
               <Section title="Items">
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setItem(blankItem())}>Add</Button></Box>
-                {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
+                {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
                 <ItemsTable items={items} onEdit={(i) => setItem(i)} onDelete={(i) => setItems(items.filter((x) => x.id !== i.id))} />
               </Section>
               <Section title="Call For Tender">
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setTender(vendors)}>Add</Button></Box>
-                {err.vendors && <Text type="s5" color="#C64D4D">{err.vendors}</Text>}
+                {err.vendors && <Text type="s5" color="#C2363A">{err.vendors}</Text>}
                 <DataTable hideToolbar rows={vendors.map((v) => ({ id: v, vendor: HIRE_SUPPLIERS.find((s) => s.id === v)?.name ?? v }))} emptyText="No vendor" columns={[{ key: 'vendor', label: 'Vendor' }, { key: 'x', label: '', render: (r) => <IconButton size="small" onClick={() => setVendors(vendors.filter((v) => v !== r.id))}><DeleteOutlineIcon fontSize="small" /></IconButton> }]} />
               </Section>
               <Section title="Attachment"><FileInput label="Attach your file here" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>
@@ -194,7 +194,7 @@ export function ChRfqView() {
   const st = r.status;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number }]} status={<StatusChip status={st} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.group, r.category, r.date]} />} crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number }]} status={<StatusChip status={st} />}
         actions={<>
           {['Open', 'Draft', 'Response Received', 'Cancelled', 'Pending Order', 'Order', 'RFQ Sent'].includes(st) && <MenuButton label="Actions" items={[
             { label: 'Edit', disabled: !EDITABLE.includes(st), onClick: () => nav(`${BASE}/${r.id}/edit`) },
@@ -216,7 +216,7 @@ export function ChRfqView() {
             <>
               <SpecView specs={basicSpecs.filter((s) => s.key !== 'narration').map((s) => (s.key === 'number' ? { ...s, type: 'text' as const } : s))} f={f} />
               <Text type="s5" color="theme.secondary.700" sx={{ mt: 2 }}>Narration: {r.narration || '-'}</Text>
-              <Section title="Rental Period"><SpecView specs={periodSpecs} f={f} cols={3} /></Section>
+              <Section title="Rental Period"><SpecView specs={periodSpecs} f={f} /></Section>
               <Section title="Items"><ItemsTable items={items} awarded={!!r.awardedVendorId} />{awardedName && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Awarded to {awardedName}{r.awardComment ? `: ${r.awardComment}` : ''}</Text>}</Section>
               <Section title="Call For Tender">
                 {['RFQ Sent', 'Response Received', 'Pending Order', 'Order', 'Cancelled'].includes(st) && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="contained" onClick={() => nav(`${BASE}/${r.id}/analyze`)}>Analyze & Award</Button></Box>}
@@ -309,7 +309,7 @@ export function ChResponseForm() {
             { key: 'q', label: 'Requested Quantity', align: 'right', render: (i) => i.qty }, { key: 'e', label: 'Estimated Order Quantity Per Year', align: 'right', render: (i) => i.estYear },
           ]} />
           <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Vendor response</Text>
-          <SpecForm specs={respItemSpecs} f={f} set={set} err={err} cols={3} />
+          <SpecForm specs={respItemSpecs} f={f} set={set} err={err} />
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The rate, minimum order quantity and lead time apply to the items of this RFQ.</Text>
         </Section>
         <Section title="Attachment"><FileInput label="Attachment" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>
@@ -404,7 +404,7 @@ export function ChRfqAnalyze() {
             </Box>
             {showItemFilter && <Box sx={{ mb: 1 }}><SelectInput label="Item" value={fItem} options={['', ...items.map((i) => `${i.group} ${i.category}`)]} onChange={setFItem} /></Box>}
             {shownItems.map((i) => (
-              <Box key={i.id} onClick={() => setSelItem(i.id)} sx={{ cursor: 'pointer', border: `1px solid ${cur?.id === i.id ? '#2EB273' : neutral[200]}`, bgcolor: cur?.id === i.id ? '#E8F5F0' : '#fff', borderRadius: '8px', p: 1.5, mb: 1 }}>
+              <Box key={i.id} onClick={() => setSelItem(i.id)} sx={{ cursor: 'pointer', border: `1px solid ${cur?.id === i.id ? '#2EB273' : neutral[200]}`, bgcolor: cur?.id === i.id ? '#F1FBF6' : '#fff', borderRadius: '8px', p: 1.5, mb: 1 }}>
                 <Text type="s3" weight="medium">{i.group} {i.category}</Text>
                 <Text type="s5" color="theme.secondary.700">Responses Received: {r.responses.length}</Text>
                 <Text type="s5" color="theme.secondary.700">Required Date: {r.expectedDate || '-'}</Text>

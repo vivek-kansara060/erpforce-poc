@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { COA, round2, type Journal } from './data';
 import { journalByRef } from './engine';
@@ -46,7 +46,7 @@ export function JournalView() {
   const to = refPath(j);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Journal Entry', to: '/accounting/journals' }, { label: j.number }]} status={<StatusChip status={j.status} tone="green" />}
+      <FormHeader subtitle={<HeaderMeta parts={[j.journalType, j.refNumber, j.postingDate]} />} crumbs={[{ label: 'Journal Entry', to: '/accounting/journals' }, { label: j.number }]} status={<StatusChip status={j.status} tone="green" />}
         actions={to ? <Button variant="outlined" onClick={() => nav(to)}>View {j.refType} {j.refNumber}</Button> : undefined} />
       <Page sx={{ pt: 2 }}>
         <ValueGrid>

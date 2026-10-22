@@ -136,9 +136,7 @@ export function commercialErrors(f: F): Record<string, string> {
  */
 export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral, belowGeneral }: { kind: Kind; f: F; set: (k: string, v: any) => void; err?: Record<string, string>; locked?: boolean; items: ReactNode; aboveGeneral?: ReactNode; belowGeneral?: ReactNode }) {
   useAddressAutofill(f, set, addressCfg, !locked);
-  const Fm = locked ? SpecView : SpecForm;
-  const g = (specs: Spec[], cols = 2) => (locked ? <SpecView specs={specs} f={f} cols={cols + 1} /> : <SpecForm specs={specs} f={f} set={set} err={err} cols={cols} />);
-  void Fm;
+  const g = (specs: Spec[]) => (locked ? <SpecView specs={specs} f={f} /> : <SpecForm specs={specs} f={f} set={set} err={err} />);
   const label = kind === 'quote' ? 'General Details' : 'Basic Details';
   return (
     <TabPanels tabs={[
@@ -146,15 +144,15 @@ export function CommercialTabs({ kind, f, set, err, locked, items, aboveGeneral,
         <>
           {aboveGeneral}
           {g(generalSpecs(kind))}
-          <Section title="Contract" change="new" req={R.meet}>{g(contractSpecs, 3)}</Section>
-          {kind === 'order' && f.activity === 'Rental' && <Section title="Billing" change="changed" req={R.rental} hint="Same section as the Billing section of the existing Rental Order, now on the Sales Order and only for the Rental Activity Type">{g(billingSpecs, 3)}</Section>}
-          {kind === 'quote' && <Section title="Prepared By" change="new" req={R.quote}>{g(preparedSpecs, 4)}</Section>}
+          <Section title="Contract" change="new" req={R.meet}>{g(contractSpecs)}</Section>
+          {kind === 'order' && f.activity === 'Rental' && <Section title="Billing" change="changed" req={R.rental} hint="Same section as the Billing section of the existing Rental Order, now on the Sales Order and only for the Rental Activity Type">{g(billingSpecs)}</Section>}
+          {kind === 'quote' && <Section title="Prepared By" change="new" req={R.quote}>{g(preparedSpecs)}</Section>}
           {belowGeneral}
           <Section title="Classification">{g(classification)}</Section>
           {f.activity === 'AMC'
             ? <Section title="Contract Value" change="new" req={R.meet} hint="An AMC has no item lines. The Contract Value is split across the planned visits; materials used on a visit are recorded on its job card and billed separately."><Totals lines={f.lines ?? []} discountPct={Number(f.discountPct) || 0} vatType={f.vatType} currency={f.currency} /></Section>
             : <Section title="Items" change="changed" req={R.meet}>{items}</Section>}
-          <Section title="Discounts">{g(discounts, 3)}</Section>
+          <Section title="Discounts">{g(discounts)}</Section>
           {!locked && <Section title="Attachment"><SpecForm specs={[{ key: 'attachments', label: 'Attachment', type: 'file' }]} f={f} set={set} /></Section>}
         </>) },
       { label: 'Address and Contact', content: g(address) },
@@ -176,7 +174,7 @@ export function Totals({ lines, discountPct, vatType, currency = 'AED', shipping
   return (
     <Box sx={{ ml: 'auto', width: 360, mt: 2 }}>
       {rows.map(([k, v]) => <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{typeof v === 'number' && k !== 'Total Quantity' ? aed(v || 0).replace('AED', currency) : v}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{aed(t.total + shipping).replace('AED', currency)}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{aed(t.total + shipping).replace('AED', currency)}</Text></Box>
     </Box>
   );
 }

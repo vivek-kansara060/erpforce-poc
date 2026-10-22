@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { MenuButton, useToast } from '@/components/Dialogs';
 import { SelectInput } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, HeaderMeta, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -78,7 +78,7 @@ export function QuotationForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: ex ? `Edit ${ex.number}` : 'Add Quotation' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/quotations')}>Discard</Button>{!locked && <Button variant="contained" onClick={save}>Save</Button>}</>} />
+      <FormHeader subtitle={ex ? <HeaderMeta parts={[custName(ex.customerId), ex.description, ex.date]} /> : undefined} crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: ex ? ex.number : 'Add Quotation' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/quotations')}>Discard</Button>{!locked && <Button variant="contained" onClick={save}>Save</Button>}</>} />
       <Page sx={{ pt: 2 }}>
         {locked && <Alert severity="info" sx={{ mb: 2 }}>This quotation is {ex!.status}. Use Create Revision on the view page to change it; the previous version is retained in full.</Alert>}
         {lineErr.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>{lineErr.map((m) => <div key={m}>{m}</div>)}</Alert>}
@@ -115,7 +115,7 @@ export function QuotationView() {
   const f = toForm(q, o?.number, o?.title);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: q.number }]} status={<StatusChip status={q.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(q.customerId), q.description, q.date]} />} crumbs={[{ label: 'Quotation', to: '/crm/quotations' }, { label: q.number }]} status={<StatusChip status={q.status} />}
         actions={<>
           {['Draft', 'Rejected'].includes(q.status) && <Button variant="outlined" onClick={() => nav(`/crm/quotations/${q.id}/edit`)}>Edit</Button>}
           {q.status === 'Draft' && <Button variant="outlined" onClick={() => setStatus('Submitted for Approval', 'Submitted for approval')}>Submit for Approval</Button>}

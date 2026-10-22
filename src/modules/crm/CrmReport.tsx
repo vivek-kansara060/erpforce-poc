@@ -61,7 +61,7 @@ export function CrmReportPage({ def }: { def: CrmReportDef }) {
             </TableBody>
             {hasTotals && (
               <TableFooter sx={{ position: 'sticky', bottom: 0, bgcolor: neutral[100] }}>
-                <TableRow>{def.columns.map((c, i) => <TableCell key={c.key} align={c.align} sx={{ fontWeight: 600, fontSize: 13, color: '#1F2125' }}>{i === 0 ? `Total (${rows.length} rows)` : c.total ? (c.money ? aed(rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0)) : rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0)) : ''}</TableCell>)}</TableRow>
+                <TableRow>{def.columns.map((c, i) => <TableCell key={c.key} align={c.align} sx={{ fontWeight: 600, fontSize: 13, color: '#15171B' }}>{i === 0 ? `Total (${rows.length} rows)` : c.total ? (c.money ? aed(rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0)) : rows.reduce((s, r) => s + (Number(r[c.key]) || 0), 0)) : ''}</TableCell>)}</TableRow>
               </TableFooter>
             )}
           </Table>

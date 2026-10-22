@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
 import { FormGrid, NumberInput, SelectInput } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { customers } from '@/mock-data/masters';
@@ -44,7 +44,7 @@ export function InvoiceList() {
           { key: 'approval', label: 'Status', render: (r) => <DocChips approval={r.approval} /> },
           { key: 'total', label: 'Total Invoice Value', align: 'right', render: (r) => money(invoiceTotal(r)) },
           { key: 'due', label: 'Amount Due', align: 'right', render: (r) => money(invoiceDue(r)) },
-          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C64D4D' : undefined}>{r.dueDate}</Text> },
+          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C2363A' : undefined}>{r.dueDate}</Text> },
           { key: 'currency', label: 'Currency' }, { key: 'entity', label: 'Company' },
         ]}
         actions={[
@@ -87,7 +87,7 @@ export function InvoiceView() {
   const notes = cns.filter((n) => n.againstId === i.id);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: i.number }]} status={<DocChips approval={i.approval} payStatus={i.payStatus} />}
+      <FormHeader subtitle={<HeaderMeta parts={[i.partyName, i.soNumber, i.date]} />} crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: i.number }]} status={<DocChips approval={i.approval} payStatus={i.payStatus} />}
         actions={<>
           {EDITABLE.includes(i.approval) && <Button variant="outlined" onClick={() => nav(`/accounting/invoices/${i.id}/edit`)}>Edit</Button>}
           <ApprovalButtons approval={i.approval} onSubmit={(a) => r(submitInvoice(i.id, a))} onApprove={(how) => r(approveInvoice(i.id, how))} onReject={(n) => r(rejectInvoice(i.id, n))} />
@@ -115,13 +115,13 @@ export function InvoiceView() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecView cols={4} specs={viewSpecs} f={{ ...i, sourceText: <SourceLink s={i.source} />, period: i.periodFrom ? `${i.periodFrom} to ${i.periodTo}` : '-' }} />
-              <Section title="Classification"><SpecView cols={4} specs={[{ key: 'location', label: 'Location' }, { key: 'department', label: 'Department' }]} f={i} /></Section>
+              <SpecView specs={viewSpecs} f={{ ...i, sourceText: <SourceLink s={i.source} />, period: i.periodFrom ? `${i.periodFrom} to ${i.periodTo}` : '-' }} />
+              <Section title="Classification"><SpecView specs={[{ key: 'location', label: 'Location' }, { key: 'department', label: 'Department' }]} f={i} /></Section>
               <Section title="Items"><LinesTable lines={i.lines} showPeriod={i.isRental} /></Section>
-              <Section title="Discounts"><SpecView cols={4} specs={[{ key: 'discountOn', label: 'Additional Discount On' }, { key: 'discountPct', label: 'Additional Discount %' }, { key: 'roundOff', label: 'Round Off', type: 'check' }]} f={i} /></Section>
+              <Section title="Discounts"><SpecView specs={[{ key: 'discountOn', label: 'Additional Discount On' }, { key: 'discountPct', label: 'Additional Discount %' }, { key: 'roundOff', label: 'Round Off', type: 'check' }]} f={i} /></Section>
               <TotalsBox doc={i} paid={i.amountPaid} />
             </>) },
-          { label: 'Address and Contact', content: <SpecView cols={4} specs={[{ key: 'contactPerson', label: 'Contact Person' }, { key: 'billingAddress', label: 'Billing Address' }, { key: 'shippingAddress', label: 'Shipping Address' }, { key: 'placeOfSupply', label: 'Place of Supply' }]} f={i} /> },
+          { label: 'Address and Contact', content: <SpecView specs={[{ key: 'contactPerson', label: 'Contact Person' }, { key: 'billingAddress', label: 'Billing Address' }, { key: 'shippingAddress', label: 'Shipping Address' }, { key: 'placeOfSupply', label: 'Place of Supply' }]} f={i} /> },
           { label: 'Payments', change: 'new', req: R_ACC.pay, content: (
             <>
               <DataTable hideToolbar rows={payRows} emptyText="No collection yet" onRowClick={(p) => nav(`/accounting/payment-entries/${p.id}`)} columns={[
@@ -224,7 +224,7 @@ export function InvoiceForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? `Edit ${existing.number}` : 'New Invoice' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.partyName, existing.soNumber, existing.date]} /> : undefined} crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? existing.number : 'New Invoice' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/invoices/${existing.id}` : '/accounting/invoices')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromSo && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromSo.number}: {soLines.length} line(s) at the Sales Order price. Remove a row to leave it out; saving marks the lines invoiced on the order.</Alert>}
@@ -239,7 +239,7 @@ export function InvoiceForm() {
                   { key: 'discountPct', label: 'Discount %', width: 80 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }, { key: 'account', label: 'Income Account', type: 'select', options: accOpts, width: 240 }]}
                   rows={rows} onChange={setRows} blank={{ item: '', desc: '', qty: 1, unit: 'Nos', rate: 0, discountPct: 0, vatPct: String(vatPctOf(f.vatType)), account: accOpts.find((a) => a.startsWith('410500'))! }} addLabel="Add Item" empty="No items yet" />
               </Section>
-              <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} cols={3} /></Section>
+              <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} /></Section>
               <TotalsBox doc={{ lines, discountOn: f.discountOn, discountPct: Number(f.discountPct) || 0, roundOff: !!f.roundOff, currency: f.currency }} />
             </>) },
           { label: 'Address and Contact', content: <SpecForm specs={addrSpecs} f={f} set={set} /> },

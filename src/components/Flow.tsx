@@ -13,12 +13,12 @@ export function LifecycleStepper({ steps, current }: { steps: string[]; current:
         return (
           <Box key={s} sx={{ display: 'flex', alignItems: 'center', flex: i < steps.length - 1 ? 1 : 'none', minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Box sx={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, bgcolor: done ? primaryGreen[800] : active ? primaryGreen[200] : neutral[200], color: done ? '#fff' : active ? primaryGreen[1000] : neutral[700], border: active ? `2px solid ${primaryGreen[800]}` : 'none' }}>
+              <Box sx={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, bgcolor: done ? primaryGreen[700] : active ? primaryGreen[200] : neutral[200], color: done ? '#fff' : active ? primaryGreen[1000] : neutral[700], border: active ? `2px solid ${primaryGreen[700]}` : 'none' }}>
                 {done ? <CheckIcon sx={{ fontSize: 15 }} /> : i + 1}
               </Box>
               <Text type="s4" weight={active ? 'medium' : 'normal'} color={active || done ? 'theme.secondary.1000' : 'theme.secondary.700'} sx={{ whiteSpace: 'nowrap' }}>{s}</Text>
             </Box>
-            {i < steps.length - 1 && <Box sx={{ flex: 1, height: 2, mx: 1.5, minWidth: 16, bgcolor: done ? primaryGreen[800] : neutral[300] }} />}
+            {i < steps.length - 1 && <Box sx={{ flex: 1, height: 2, mx: 1.5, minWidth: 16, bgcolor: done ? primaryGreen[700] : neutral[300] }} />}
           </Box>
         );
       })}
@@ -27,7 +27,7 @@ export function LifecycleStepper({ steps, current }: { steps: string[]; current:
 }
 
 export interface TimelineItem { when: string; title: string; detail?: ReactNode; by?: string; tone?: 'green' | 'amber' | 'red' | 'blue' | 'grey' }
-const DOT = { green: primaryGreen[800], amber: '#A6914D', red: '#C64D4D', blue: '#3E8193', grey: neutral[500] };
+const DOT = { green: primaryGreen[700], amber: '#B26B0F', red: '#C2363A', blue: '#2A6FDB', grey: neutral[500] };
 
 /** Vertical chronological log (audit trail, movement history, version history, status history). */
 export function Timeline({ items }: { items: TimelineItem[] }) {
@@ -56,7 +56,7 @@ export function SignaturePad({ onChange, height = 120 }: { onChange?: (signed: b
     c.width = c.offsetWidth;
     c.height = height;
     const ctx = c.getContext('2d')!;
-    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#1F2125';
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#15171B';
   }, [height]);
   const pos = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   return (

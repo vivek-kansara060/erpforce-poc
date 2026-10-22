@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { Link } from 'react-router-dom';
 import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, fleetStatus, isOpenTrip, tripSeed, type CrossHire, type Trip } from '@/modules/crm/data';
 import { VehicleTrips, driverOptions } from '@/modules/rental/FleetPages';
@@ -112,7 +112,7 @@ function qrCells(assetId: string): [number, number][] {
   for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (inFinder(x, y) ? finder(x, y) : bit(x, y)) out.push([x, y]);
   return out;
 }
-const qrSvg = (assetId: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${QR_N} ${QR_N}" width="180" height="180" fill="#1F2125" shape-rendering="crispEdges">${qrCells(assetId).map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('')}</svg>`;
+const qrSvg = (assetId: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${QR_N} ${QR_N}" width="180" height="180" fill="#15171B" shape-rendering="crispEdges">${qrCells(assetId).map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1"/>`).join('')}</svg>`;
 const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 /** Opens a print-ready label (QR, Serialized ID, asset name) in a new window and starts printing. */
 function printAssetLabel(assetId: string, name: string, onBlocked: () => void) {
@@ -126,7 +126,7 @@ function AssetTag({ assetId, name }: { assetId: string; name: string }) {
   return (
     <Box sx={{ textAlign: 'center' }}>
       <Box sx={{ width: 104, height: 104, p: 0.75, border: `1px solid ${neutral[200]}`, borderRadius: '8px', bgcolor: '#fff' }}>
-        <svg viewBox={`0 0 ${QR_N} ${QR_N}`} width="100%" height="100%" fill="#1F2125" shapeRendering="crispEdges">{qrCells(assetId).map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />)}</svg>
+        <svg viewBox={`0 0 ${QR_N} ${QR_N}`} width="100%" height="100%" fill="#15171B" shapeRendering="crispEdges">{qrCells(assetId).map(([x, y]) => <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} />)}</svg>
       </Box>
       <Text type="s5" weight="medium" sx={{ mt: 0.5 }}>{assetId}</Text>
       <Button size="small" variant="text" startIcon={<PrintOutlinedIcon sx={{ fontSize: 16 }} />} onClick={() => printAssetLabel(assetId, name, () => toast('Allow pop-ups for this site to print the QR label', 'error'))} sx={{ mt: 0.25, fontSize: 12 }}>Print QR</Button>
@@ -259,15 +259,14 @@ export function HeavyForm() {
       <FormGrid>
         <SelectInput label="Entity" required change="new" req={REQ_HE} value={f.entity} options={masterValues('entity')} onChange={set('entity')} error={errors.entity} hint="The company this asset belongs to, first field as agreed on the 5 Oct call" />
         <SelectInput label="Ownership Type" required change="changed" req={REQ_CH} value={f.ownership} options={OWNERSHIP} onChange={(v) => upd({ ownership: v, ...(v !== 'Cross-Hired' ? { crossHireId: '', supplier: '' } : {}) })} error={errors.ownership} hint="Owned and Spare-Standby units are depreciated; Cross-Hired units are not" />
-        {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : <Box />}
+        {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : null}
         {crossHired && chRec && <TextInput label="Cross-Hire Supplier" change="new" req={REQ_CH} value={chRec.supplier} disabled hint="From the cross-hire record" />}
         {crossHired && chRec && <TextInput label="Hire Period" change="new" req={REQ_CH} value={`${chRec.hireStart} to ${chRec.expectedReturn} (expected return)`} disabled hint="From the cross-hire record" />}
         <Box>
           <CheckInput label="Delivery fleet vehicle" change="new" req={REQ_FLEET} checked={!!f.deliveryFleet && f.ownership === 'Owned'} disabled={f.ownership !== 'Owned'} onChange={(v) => upd({ deliveryFleet: v })} hint="Used to deliver and collect equipment. It is not rented out and not counted in the rental fleet" />
-          {errors.deliveryFleet && <Text type="s5" color="#C64D4D">{errors.deliveryFleet}</Text>}
+          {errors.deliveryFleet && <Text type="s5" color="#C2363A">{errors.deliveryFleet}</Text>}
           {f.ownership !== 'Owned' && <Text type="s5" color="theme.secondary.700">Only an Owned asset can be a delivery vehicle. A cross-hired unit is rental equipment.</Text>}
         </Box>
-        <Box />
         {f.deliveryFleet && f.ownership === 'Owned' && <TextInput label="Plate Number" required change="new" req={REQ_FLEET} value={f.plateNumber} onChange={set('plateNumber')} error={errors.plateNumber} hint="Unique across all assets. Shown on the Fleet Availability board and filled into each trip" />}
         {f.deliveryFleet && f.ownership === 'Owned' && <SelectInput label="Default Driver" change="new" req={REQ_FLEET} value={f.defaultDriver} options={driverOptions()} onChange={set('defaultDriver')} hint="Filled into each trip; the dispatcher can change it" />}
         <AssetTypeSelect value={f.assetType} onChange={set('assetType')} error={errors.assetType} />
@@ -322,7 +321,7 @@ export function HeavyForm() {
     <>
       <FormGrid>
         <SelectInput label="Depreciation Method" required change="new" req={REQ_FA} value={f.method} options={DEPRECIATION_METHODS} onChange={set('method')} error={errors.method} hint={catDefault ? `Category override: ${catDefault}` : 'Default is Straight line'} />
-        {f.method === 'Declining' ? <NumberInput label="Declining Factor" required change="new" req={REQ_FA} value={f.decliningFactor} onChange={set('decliningFactor')} error={errors.decliningFactor} /> : <Box />}
+        {f.method === 'Declining' ? <NumberInput label="Declining Factor" required change="new" req={REQ_FA} value={f.decliningFactor} onChange={set('decliningFactor')} error={errors.decliningFactor} /> : null}
         <SelectInput label="Computation" required change="new" req={REQ_FA} value={f.computation} options={COMPUTATIONS} onChange={set('computation')} error={errors.computation} />
         <NumberInput label="Useful Life (Years)" required change="new" req={REQ_FA} value={f.usefulLifeYears} onChange={set('usefulLifeYears')} error={errors.usefulLifeYears} />
         <NumberInput label="Useful Life (Hours)" change="new" req={REQ_FA} value={f.usefulLifeHours} onChange={set('usefulLifeHours')} />
@@ -349,7 +348,7 @@ export function HeavyForm() {
       </FormGrid>
       <FormSection title="Insurance" change="new" req={REQ_FA} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => set('insurance')([...insurance, { amount: '', date: '', dueDate: '', account: ACCOUNTS.insurance[0] }])}>Add Entry</Button>}>
         {insurance.length === 0 && <Text type="s5" color="theme.secondary.700">No insurance entries added</Text>}
-        {errors.insurance && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{errors.insurance}</Text>}
+        {errors.insurance && <Text type="s5" color="#C2363A" sx={{ mb: 1 }}>{errors.insurance}</Text>}
         {insurance.map((x, i) => (
           <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1.4fr 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
             <NumberInput label="Amount (AED)" value={x.amount} onChange={(v) => setIns(i, { amount: v })} />
@@ -366,7 +365,7 @@ export function HeavyForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment Fixed Asset' }]}
+        subtitle={existing ? <HeaderMeta parts={[existing.name, existing.category, existing.brand]} /> : undefined} crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `ID: ${existing.assetId}` : 'Add Heavy Equipment Fixed Asset' }]}
         actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -378,7 +377,7 @@ export function HeavyForm() {
           { label: 'Compliance & Certificates', change: 'new', req: REQ_CERT_TAB, content: existing ? <AssetCertificates assetId={existing.assetId} /> : (
             <FormSection title="Compliance & Certificates" change="new" req={REQ_CERT_TAB} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => setNewCerts([...newCerts, { type: '', reference: '', expiry: '', leadDays: '30', file: [] }])}>Add Certificate</Button>}>
               <Note>Add the certificates that come with the purchase (insurance, warranty, registration, inspection). More can be added or edited later on the asset page.</Note>
-              {errors.certs && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{errors.certs}</Text>}
+              {errors.certs && <Text type="s5" color="#C2363A" sx={{ mb: 1 }}>{errors.certs}</Text>}
               {newCerts.length === 0 && <Text type="s5" color="theme.secondary.700">No certificates added</Text>}
               {newCerts.map((c, i) => (
                 <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 1fr 0.8fr 1.6fr 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
@@ -405,7 +404,7 @@ function CrossHirePanel({ ch, returned, onStage }: { ch?: CrossHireRec; returned
   if (!ch) return <Panel title="Cross-Hire" change="new" req={REQ_CH}><Text type="s5" color="theme.secondary.700">No cross-hire record is linked to this asset. Edit the asset and select the cross-hire record it came in on.</Text></Panel>;
   return (
     <>
-      {returned && <Panel sx={{ mb: 2, bgcolor: '#F4F5F7' }}><Text type="s4" weight="medium">Hire ended: returned to {ch.supplier} on {ch.returnedOn}.</Text><Text type="s5" color="theme.secondary.700">The unit is no longer in the active fleet. The record is kept for history.</Text></Panel>}
+      {returned && <Panel sx={{ mb: 2, bgcolor: '#F2F3F5' }}><Text type="s4" weight="medium">Hire ended: returned to {ch.supplier} on {ch.returnedOn}.</Text><Text type="s5" color="theme.secondary.700">The unit is no longer in the active fleet. The record is kept for history.</Text></Panel>}
       <Panel title="Cross-Hire Details" change="new" req={REQ_CH} right={!returned && (
         <Box sx={{ display: 'flex', gap: 1 }}>
           {ch.stage === 'On Hire' && <Button size="small" variant="outlined" onClick={() => onStage('Idle at Our Location')}>Returned to Us (Idle)</Button>}
@@ -478,6 +477,7 @@ export function HeavyView() {
   return (
     <>
       <FormHeader
+        subtitle={<HeaderMeta parts={[r.name, r.category, r.brand]} />}
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: `ID: ${r.assetId}` }]}
         status={<><StatusChip status={r.status} />{isFleet ? <StatusChip status="Delivery fleet" tone="blue" /> : <StatusChip status={stock} tone={tone(stock)} />}</>}
         actions={<>
@@ -505,7 +505,7 @@ export function HeavyView() {
               {isFleet && <ValueField label="Plate Number" value={r.plateNumber} change="new" req={REQ_FLEET} />}
               {isFleet && <ValueField label="Default Driver" value={r.defaultDriver || '-'} change="new" req={REQ_FLEET} />}
               {isFleet && <ValueField label="Fleet Status" change="new" req={REQ_FLEET} value={<StatusChip status={fleetNow ?? 'Free'} tone={fleetNow === 'Unavailable' ? 'grey' : undefined} />} />}
-              {isFleet && <ValueField label="Current Trip" change="new" req={REQ_FLEET} value={openTrip ? <Link to={`/crm/trips/${openTrip.id}`} style={{ color: '#0A6C3D', fontWeight: 500, textDecoration: 'none' }}>{openTrip.number} ({openTrip.kind}, {openTrip.docNumber})</Link> : '-'} />}
+              {isFleet && <ValueField label="Current Trip" change="new" req={REQ_FLEET} value={openTrip ? <Link to={`/crm/trips/${openTrip.id}`} style={{ color: '#146B43', fontWeight: 500, textDecoration: 'none' }}>{openTrip.number} ({openTrip.kind}, {openTrip.docNumber})</Link> : '-'} />}
             </ValueGrid>
           </Box>
           <AssetTag assetId={r.assetId} name={r.name} />

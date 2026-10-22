@@ -33,14 +33,14 @@ export function ChangeRegister() {
         <PageTitle title="Change Register" subtitle="Every screen or feature that differs from the existing ERP, mapped to the requirement document."
           right={<Button variant="outlined" onClick={() => nav('/change-register/changelog')}>View detailed changelog</Button>} />
         <KpiRow>
-          <KpiCard title="New" value={count('NEW')} tint="#E8F5F0" />
-          <KpiCard title="Existing with change" value={count('EXISTING WITH CHANGE')} tint="#FFF3CC" />
-          <KpiCard title="Removed" value={count('REMOVED')} tint="#FFEBEB" />
+          <KpiCard title="New" value={count('NEW')} tint="#F1FBF6" />
+          <KpiCard title="Existing with change" value={count('EXISTING WITH CHANGE')} tint="#FEF1DD" />
+          <KpiCard title="Removed" value={count('REMOVED')} tint="#FBE3E5" />
           <KpiCard title="Existing, unchanged" value={count('EXISTING')} />
         </KpiRow>
         <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
           {['All', ...modules.map((m) => m.label)].map((m) => (
-            <Box key={m} onClick={() => setSelMod(m)} sx={{ cursor: 'pointer', px: 1.25, py: 0.4, borderRadius: '1.5rem', fontSize: 12, fontWeight: 500, bgcolor: selMod === m ? '#B6E9D6' : '#EEEFF1', color: selMod === m ? '#279769' : '#656669' }}>{m}</Box>
+            <Box key={m} onClick={() => setSelMod(m)} sx={{ cursor: 'pointer', px: 1.25, py: 0.4, borderRadius: '1.5rem', fontSize: 12, fontWeight: 500, bgcolor: selMod === m ? '#C8EBD8' : '#ECEDEF', color: selMod === m ? '#1A8A56' : '#3D4046' }}>{m}</Box>
           ))}
         </Box>
         {rows.length === 0 && <Text type="s3">No entries yet.</Text>}

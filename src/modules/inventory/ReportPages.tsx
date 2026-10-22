@@ -71,7 +71,7 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
     const body = rows.map((r) => `<tr>${report.columns.map((c) => `<td style="text-align:${c.align ?? 'left'}">${esc(fmt(c, r[c.key]))}</td>`).join('')}</tr>`).join('');
     const foot = hasTotals ? `<tr class="t">${report.columns.map((c, i) => `<td style="text-align:${c.align ?? 'left'}">${i === 0 ? `Total (${rows.length} rows)` : totals[i] !== undefined ? esc(fmt(c, totals[i])) : ''}</td>`).join('')}</tr>` : '';
     const applied = [...Object.entries(fv).filter(([, v]) => v).map(([k, v]) => `${report.filters?.find((f) => f.key === k)?.label ?? k}: ${v}`), ...Object.entries(colQ).filter(([, v]) => v.trim()).map(([k, v]) => `${report.columns.find((c) => c.key === k)?.label ?? k} contains "${v}"`), ...(q.trim() ? [`Search: "${q}"`] : [])];
-    w.document.write(`<!doctype html><html><head><title>${esc(report.title)}</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:16px}h1{font-size:18px;margin:0 0 4px}p{color:#555;margin:0 0 8px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px}th{background:#f2f2f2}tr.t td{font-weight:bold;background:#f7f7f7}</style></head><body><h1>${esc(report.title)}</h1><p>${esc(report.purpose)}</p><p>Gulf Power Rentals LLC. ${rows.length} rows. ${applied.length ? `Filters: ${esc(applied.join('; '))}` : 'No filters applied'}</p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ''}</table><script>window.onload=function(){window.print()}<\/script></body></html>`);
+    w.document.write(`<!doctype html><html><head><title>${esc(report.title)}</title><style>body{font-family:Arial,sans-serif;font-size:12px;padding:16px}h1{font-size:18px;margin:0 0 4px}p{color:#555;margin:0 0 8px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:5px 7px}th{background:#F2F3F5}tr.t td{font-weight:bold;background:#F7F8F9}</style></head><body><h1>${esc(report.title)}</h1><p>${esc(report.purpose)}</p><p>Gulf Power Rentals LLC. ${rows.length} rows. ${applied.length ? `Filters: ${esc(applied.join('; '))}` : 'No filters applied'}</p><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ''}</table><script>window.onload=function(){window.print()}<\/script></body></html>`);
     w.document.close();
   };
   const cell = (c: InvReportColumn, r: Record<string, any>) => {
@@ -91,7 +91,7 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
             <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />} onClick={() => toast(`${report.title} exported (POC: no file generated)`, 'info')}>Export</Button>
           </Box>} />
         {showFilters && (
-          <Box sx={{ p: 1.5, mb: 1.5, border: `1px solid ${neutral[200]}`, borderRadius: '8px', bgcolor: '#FBFBFB' }}>
+          <Box sx={{ p: 1.5, mb: 1.5, border: `1px solid ${neutral[200]}`, borderRadius: '8px', bgcolor: '#F7F8F9' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Text type="s4" weight="medium">Filters<ChangeTag kind="new" req={REQ_REPORT} /></Text>
               {active > 0 && <Button size="small" variant="text" onClick={clear}>Clear all filters</Button>}
@@ -111,7 +111,7 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
             <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Search inside any column using the boxes under the column headings.</Text>
           </Box>
         )}
-        <TableContainer sx={{ border: '1px solid #efefef', borderRadius: '8px', maxHeight: 'calc(100vh - 330px)' }}>
+        <TableContainer sx={{ border: '1px solid #ECEDEF', borderRadius: '8px', maxHeight: 'calc(100vh - 330px)' }}>
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
@@ -142,7 +142,7 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
             <TableFooter>
               <TableRow>
                 {report.columns.map((c, i) => (
-                  <TableCell key={c.key} align={c.align} sx={{ position: 'sticky', bottom: 0, bgcolor: '#F4F5F7', fontWeight: 600, color: '#1F2125', fontSize: 13, borderTop: `2px solid ${neutral[300]}` }}>
+                  <TableCell key={c.key} align={c.align} sx={{ position: 'sticky', bottom: 0, bgcolor: '#F2F3F5', fontWeight: 600, color: '#15171B', fontSize: 13, borderTop: `2px solid ${neutral[300]}` }}>
                     {i === 0 ? `Total (${rows.length} row${rows.length === 1 ? '' : 's'})` : totals[i] !== undefined ? fmt(c, totals[i]) : ''}
                   </TableCell>
                 ))}

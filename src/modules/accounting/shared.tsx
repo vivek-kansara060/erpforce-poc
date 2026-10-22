@@ -95,7 +95,7 @@ export function TotalsBox({ doc, paid, extra }: { doc: { lines: InvLine[]; expen
   return (
     <Box sx={{ ml: 'auto', width: 380, mt: 2 }}>
       {rows.map(([k, v]) => <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{v.replace('AED', cur)}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{money(t.total).replace('AED', cur)}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{money(t.total).replace('AED', cur)}</Text></Box>
       {paid !== undefined && <>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">Amount Paid and Settled</Text><Text type="s4">{money(paid)}</Text></Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s3" weight="medium">Amount Due</Text><Text type="s3" weight="medium">{money(t.total - paid)}</Text></Box>
@@ -175,7 +175,7 @@ export function PaymentDialog({ open, onClose, doc, kind }: { open: boolean; onC
         {f.method === 'Cheque' && <><TextInput label="Cheque Number" value={f.chequeNo} onChange={(v) => setF({ ...f, chequeNo: v })} /><DateInput label="Cheque Date" value={f.chequeDate} onChange={(v) => setF({ ...f, chequeDate: v })} /></>}
         <TextInput label="Reference" value={f.ref} onChange={(v) => setF({ ...f, ref: v })} />
       </FormGrid>
-      <Text type="s5" color={blocked ? '#C64D4D' : 'theme.secondary.700'} sx={{ mt: 1.5 }}>{blocked ? `${blocked.number} is already pending approval for this invoice. Approve or reject it first.` : 'Saved as Pending. Approve it on its page (Accounting, Payment Entry) to post the journal and update the payment status.'}</Text>
+      <Text type="s5" color={blocked ? '#C2363A' : 'theme.secondary.700'} sx={{ mt: 1.5 }}>{blocked ? `${blocked.number} is already pending approval for this invoice. Approve or reject it first.` : 'Saved as Pending. Approve it on its page (Accounting, Payment Entry) to post the journal and update the payment status.'}</Text>
     </AppDialog>
   );
 }
