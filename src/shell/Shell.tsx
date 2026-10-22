@@ -12,6 +12,7 @@ import { ChangeTag, useReviewMode } from '@/components/ChangeTag';
 import type { MenuItem as Menu, ModuleDef } from '@/types';
 import { changedMenu, visibleModules } from '@/modules';
 import { NotificationBell } from './NotificationBell';
+import { menuIcon } from './menuIcons';
 
 // Dimensions follow ERPForce DS v2.0 (--sidebar-w 220, --sidebar-w-mini 56, --topbar-h 44)
 const DRAWER = 220;
@@ -127,9 +128,10 @@ function MenuNode({ item, depth, current, base, collapsed, forceOpen }: { item: 
   const [open, setOpen] = useState(active);
   const sel = isActive(item.path, current, base) && !item.children;
   const child = depth > 0;
+  const icon = menuIcon(item, depth, item.icon);
   const label = (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-      {item.icon ? <Box sx={{ display: 'flex', color: sel || (active && depth === 0) ? '#2EB273' : '#6D7178', '& svg': { fontSize: 15 } }}>{item.icon}</Box> : depth === 0 ? <ChevronRightIcon sx={{ fontSize: 15, color: '#6D7178' }} /> : null}
+      {icon ? <Box sx={{ display: 'flex', color: sel || (active && depth === 0) ? '#2EB273' : child ? '#767B83' : '#6D7178', '& svg': { fontSize: child ? 14 : 15 } }}>{icon}</Box> : depth === 0 ? <ChevronRightIcon sx={{ fontSize: 15, color: '#6D7178' }} /> : null}
       {!collapsed && (
         <Box component="span" sx={{ fontSize: child ? 12 : 13, fontWeight: sel ? 500 : 400, letterSpacing: '-0.003em', color: sel ? '#15171B' : child ? '#6D7178' : '#3D4046', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {item.label}<ChangeTag kind={item.change} req="Sidebar entry" />
