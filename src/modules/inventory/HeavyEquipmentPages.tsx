@@ -259,7 +259,7 @@ export function HeavyForm() {
       <FormGrid>
         <SelectInput label="Entity" required change="new" req={REQ_HE} value={f.entity} options={masterValues('entity')} onChange={set('entity')} error={errors.entity} hint="The company this asset belongs to, first field as agreed on the 5 Oct call" />
         <SelectInput label="Ownership Type" required change="changed" req={REQ_CH} value={f.ownership} options={OWNERSHIP} onChange={(v) => upd({ ownership: v, ...(v !== 'Cross-Hired' ? { crossHireId: '', supplier: '' } : {}) })} error={errors.ownership} hint="Owned and Spare-Standby units are depreciated; Cross-Hired units are not" />
-        {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : <Box />}
+        {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : null}
         {crossHired && chRec && <TextInput label="Cross-Hire Supplier" change="new" req={REQ_CH} value={chRec.supplier} disabled hint="From the cross-hire record" />}
         {crossHired && chRec && <TextInput label="Hire Period" change="new" req={REQ_CH} value={`${chRec.hireStart} to ${chRec.expectedReturn} (expected return)`} disabled hint="From the cross-hire record" />}
         <Box>
@@ -267,7 +267,6 @@ export function HeavyForm() {
           {errors.deliveryFleet && <Text type="s5" color="#C2363A">{errors.deliveryFleet}</Text>}
           {f.ownership !== 'Owned' && <Text type="s5" color="theme.secondary.700">Only an Owned asset can be a delivery vehicle. A cross-hired unit is rental equipment.</Text>}
         </Box>
-        <Box />
         {f.deliveryFleet && f.ownership === 'Owned' && <TextInput label="Plate Number" required change="new" req={REQ_FLEET} value={f.plateNumber} onChange={set('plateNumber')} error={errors.plateNumber} hint="Unique across all assets. Shown on the Fleet Availability board and filled into each trip" />}
         {f.deliveryFleet && f.ownership === 'Owned' && <SelectInput label="Default Driver" change="new" req={REQ_FLEET} value={f.defaultDriver} options={driverOptions()} onChange={set('defaultDriver')} hint="Filled into each trip; the dispatcher can change it" />}
         <AssetTypeSelect value={f.assetType} onChange={set('assetType')} error={errors.assetType} />
@@ -322,7 +321,7 @@ export function HeavyForm() {
     <>
       <FormGrid>
         <SelectInput label="Depreciation Method" required change="new" req={REQ_FA} value={f.method} options={DEPRECIATION_METHODS} onChange={set('method')} error={errors.method} hint={catDefault ? `Category override: ${catDefault}` : 'Default is Straight line'} />
-        {f.method === 'Declining' ? <NumberInput label="Declining Factor" required change="new" req={REQ_FA} value={f.decliningFactor} onChange={set('decliningFactor')} error={errors.decliningFactor} /> : <Box />}
+        {f.method === 'Declining' ? <NumberInput label="Declining Factor" required change="new" req={REQ_FA} value={f.decliningFactor} onChange={set('decliningFactor')} error={errors.decliningFactor} /> : null}
         <SelectInput label="Computation" required change="new" req={REQ_FA} value={f.computation} options={COMPUTATIONS} onChange={set('computation')} error={errors.computation} />
         <NumberInput label="Useful Life (Years)" required change="new" req={REQ_FA} value={f.usefulLifeYears} onChange={set('usefulLifeYears')} error={errors.usefulLifeYears} />
         <NumberInput label="Useful Life (Hours)" change="new" req={REQ_FA} value={f.usefulLifeHours} onChange={set('usefulLifeHours')} />

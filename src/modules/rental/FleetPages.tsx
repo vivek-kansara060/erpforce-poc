@@ -312,14 +312,12 @@ export function TransportSection({ value, onChange, errors = {}, hint, date }: {
     <>
       <FormGrid>
         <SelectInput label="Transport Type" required change="new" req={R.del} value={value.transport} options={['Own Fleet', 'External Transporter']} onChange={(t) => set({ transport: t })} />
-        <Box />
         {own ? (
           <>
             <Box>
               <TextInput label="Vehicle" required change="new" req={R.fleet} value={v ? vehicleLabel(v) : ''} disabled error={errors.vehicleId} placeholder="No vehicle selected" hint="Picked from Fleet Availability, vehicles Free on the document date only" />
               <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => setPicker(true)}>{v ? 'Change vehicle' : 'Select from fleet'}</Button>
             </Box>
-            <Box />
             {linked ? (
               <Box>
                 <TextInput label="Driver" change="changed" req={R.fleet} value={value.driver} disabled hint="The driver assigned to this vehicle (its Default Driver)" />
