@@ -346,7 +346,7 @@ export function SalesOrderView() {
                   <ValueGrid cols={4}>
                     <ValueField label="Quoted to customer (excl. VAT)" value={aed(quotedLogistics)} />
                     <ValueField label="Actual trip cost" value={aed(so.logisticsCost)} />
-                    <ValueField label={quotedLogistics - so.logisticsCost >= 0 ? 'Left after trip cost' : 'Absorbed by the company'} value={<span style={{ color: quotedLogistics - so.logisticsCost >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(Math.abs(quotedLogistics - so.logisticsCost))}</span>} />
+                    <ValueField label={quotedLogistics - so.logisticsCost >= 0 ? 'Left after trip cost' : 'Absorbed by the company'} value={<span style={{ color: quotedLogistics - so.logisticsCost >= 0 ? '#146B43' : '#C2363A', fontWeight: 600 }}>{aed(Math.abs(quotedLogistics - so.logisticsCost))}</span>} />
                     <ValueField label="Charge lines" value={quotedLines.map((l) => l.item).join(', ') || 'None quoted'} />
                   </ValueGrid>
                   <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Trip expenses are not added to the customer's invoice. Whether a client-caused delay or an overrun is re-billed is still to be confirmed with the client.</Text>

@@ -204,7 +204,7 @@ const REQ_PSV_ASSET = 'Physical Stock Verification > Fixed Assets count (2 Oct c
 const REQ_PSV_REASON = 'Physical Stock Verification > Reason (2 Oct call: one free-text reason for stock items; reason only for assets Not Found)';
 const REQ_PSV_LIST = 'Physical Stock Verification (2 Oct call: filters, Select All, inactive assets excluded, no paging)';
 const ASSET_COUNT_HINT = 'Counting individual fixed assets is not defined in the requirement document. Rule to be confirmed with client';
-const inputStyle = { padding: '6px 8px', border: '1px solid #D3D3D4', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
+const inputStyle = { padding: '6px 8px', border: '1px solid #D2D5D9', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
 /** Lists in a count show every row at once: they are already limited to one location, so paging only gets in the way. */
 const NoPaging = ({ children }: { children: React.ReactNode }) => <Box sx={{ '& .MuiPagination-root': { display: 'none' } }}>{children}</Box>;
 const ALL_ROWS = 100000;
@@ -337,10 +337,10 @@ export function CountForm() {
             hint="One reason for the whole count, needed only when a counted quantity differs from the system" />}
         </FormGrid>
         <FormSection title={isAssets ? 'Fixed Assets to Verify' : 'Items to Count'} change="new" req={isAssets ? REQ_PSV_ASSET : REQ_PSV}>
-          {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
+          {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
           {isAssets && assetLines.length > 0 && (
             <>
-              <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? `Mark each asset Found or Not Found. A reason is needed only for assets not found. ${found} found, ${notFound} not found, ${assetLines.length - found - notFound} not marked yet.`}</Text>
+              <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? `Mark each asset Found or Not Found. A reason is needed only for assets not found. ${found} found, ${notFound} not found, ${assetLines.length - found - notFound} not marked yet.`}</Text>
               <AssetCountFilters rows={assetLines} f={filters} onChange={(f) => { setFilters(f); setSelected([]); }} />
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
                 <Button size="small" variant="outlined" onClick={() => setSelected(shown.map((l) => l.assetId))}>Select All{Object.values(filters).some(Boolean) ? ' (filtered)' : ''}</Button>
@@ -363,10 +363,10 @@ export function CountForm() {
               </NoPaging>
             </>
           )}
-          {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
+          {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
           {!isAssets && lines.length > 0 && (
             <>
-            <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Enter the counted quantity for every item. If any quantity differs, enter one reason for the count above.'}</Text>
+            <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Enter the counted quantity for every item. If any quantity differs, enter one reason for the count above.'}</Text>
             <NoPaging>
               <DataTable<CountSession['lines'][number]> hideToolbar rowKey={(r) => r.itemId} rows={lines.map((l) => ({ ...l, id: l.itemId }))} pageSize={ALL_ROWS} columns={[
                 { key: 'code', label: 'Item Code' }, { key: 'name', label: 'Item' },
@@ -459,7 +459,7 @@ export function CountView() {
           {!assets && <ValueField label="Reason for Differences" value={s.reason} change="new" req={REQ_PSV_REASON} />}
         </ValueGrid>
         <KpiRow><Box sx={{ mt: 3, display: 'contents' }}>
-          <KpiCard title="Items Covered" value={coveredCount(s)} /><KpiCard title={assets ? 'Assets Not Found' : 'Lines with Variance'} value={vars.length} tint={vars.length ? '#FFFAF0' : undefined} />
+          <KpiCard title="Items Covered" value={coveredCount(s)} /><KpiCard title={assets ? 'Assets Not Found' : 'Lines with Variance'} value={vars.length} tint={vars.length ? '#FEF1DD' : undefined} />
           <KpiCard title="Stock Adjustment" value={s.adjustmentNo ?? '-'} sub={s.adjustmentStatus ? <>Approval: {s.adjustmentStatus}</> : vars.length ? 'Not raised yet' : 'Not required'} />
         </Box></KpiRow>
         {s.status === 'Completed' && vars.length > 0 && s.adjustmentStatus !== 'Approved' && s.adjustmentStatus !== 'Rejected' && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>System quantity is corrected only after the Stock Adjustment is approved. Approval thresholds and roles to be confirmed with client.</Text>}
@@ -652,7 +652,7 @@ export function DisposalView() {
       <Page sx={{ pt: 2 }}>
         <Panel sx={{ mb: 2 }}>
           <LifecycleStepper steps={disposalSteps(r)} current={disposalStep(r)} />
-          {r.status === 'Rejected' && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
+          {r.status === 'Rejected' && <Text type="s5" color="#C2363A" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
           {r.status === 'Approved' && !out && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The asset has been inactivated. Create the invoice for the {sale ? 'sale' : 'scrap'} to close the request.</Text>}
         </Panel>
         <ValueGrid cols={4}>

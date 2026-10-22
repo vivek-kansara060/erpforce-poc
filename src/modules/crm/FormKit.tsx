@@ -43,7 +43,7 @@ export function SpecForm({ specs, f, set, err = {}, locked, cols = FORM_COLS }: 
           case 'radio':
             return (
               <Box key={s.key} sx={{ gridColumn: s.full ? '1 / -1' : undefined }}>
-                <Text type="s5" weight="medium" color="theme.secondary.800">{s.label}{s.required && <span style={{ color: '#C64D4D' }}> *</span>}<ChangeTag kind={s.change} req={s.req} /></Text>
+                <Text type="s5" weight="medium" color="theme.secondary.800">{s.label}{s.required && <span style={{ color: '#C2363A' }}> *</span>}<ChangeTag kind={s.change} req={s.req} /></Text>
                 <RadioGroup row value={v ?? ''} onChange={(e) => on(e.target.value)}>
                   {optsOf(s, f).map((o) => { const ov = typeof o === 'string' ? o : o.value; return <FormControlLabel key={ov} value={ov} disabled={dis} control={<Radio size="small" />} label={<Text type="s3">{typeof o === 'string' ? o : o.label}</Text>} />; })}
                 </RadioGroup>

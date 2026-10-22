@@ -71,7 +71,7 @@ function AttributesEditor({ attributes, onChange, error, req }: { attributes: At
     <FormSection title="Attributes" change="changed" req={req} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => onChange([...attributes, { id: `at${Date.now()}`, name: '', type: 'Text', options: '', required: false }])}>Add Attribute</Button>}>
       <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Attributes defined here become extra fields on every item in this category, without a code change.</Text>
       {attributes.length === 0 && <Text type="s5" color="theme.secondary.700">No attributes added</Text>}
-      {error && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{error}</Text>}
+      {error && <Text type="s5" color="#C2363A" sx={{ mb: 1 }}>{error}</Text>}
       {attributes.map((a, i) => (
         <Box key={a.id} sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.6fr auto 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
           <TextInput label="Attribute Name" value={a.name} onChange={(v) => setAttr(i, { name: v })} />

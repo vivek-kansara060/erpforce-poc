@@ -44,7 +44,7 @@ export function InvoiceList() {
           { key: 'approval', label: 'Status', render: (r) => <DocChips approval={r.approval} /> },
           { key: 'total', label: 'Total Invoice Value', align: 'right', render: (r) => money(invoiceTotal(r)) },
           { key: 'due', label: 'Amount Due', align: 'right', render: (r) => money(invoiceDue(r)) },
-          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C64D4D' : undefined}>{r.dueDate}</Text> },
+          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C2363A' : undefined}>{r.dueDate}</Text> },
           { key: 'currency', label: 'Currency' }, { key: 'entity', label: 'Company' },
         ]}
         actions={[

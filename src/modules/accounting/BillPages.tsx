@@ -31,7 +31,7 @@ export function BillList() {
           { key: 'number', label: 'ID' }, { key: 'supplierName', label: 'Supplier' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice No' },
           { key: 'payStatus', label: 'Payment Status', render: (r) => (r.approval === 'Approved' ? <DocChips approval="" payStatus={r.payStatus} /> : '-') }, { key: 'approval', label: 'Status', render: (r) => <DocChips approval={r.approval} /> },
           { key: 'total', label: 'Total Invoice Value', align: 'right', render: (r) => money(billTotal(r)) }, { key: 'date', label: 'Invoice Date' },
-          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C64D4D' : undefined}>{r.dueDate}</Text> }, { key: 'amountPaid', label: 'Payment Amount', align: 'right', render: (r) => money(r.amountPaid) },
+          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C2363A' : undefined}>{r.dueDate}</Text> }, { key: 'amountPaid', label: 'Payment Amount', align: 'right', render: (r) => money(r.amountPaid) },
           { key: 'source', label: 'Source', change: 'new', req: R_ACC.bill, render: (r) => <SourceLink s={r.source} /> }, { key: 'costCentre', label: 'Cost Centre / Project', change: 'new', req: R_ACC.gl, render: (r) => r.costCentre ?? '-' }, { key: 'currency', label: 'Currency' },
         ]}
         actions={[

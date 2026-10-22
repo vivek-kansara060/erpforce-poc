@@ -69,7 +69,7 @@ function JobCardInvoiceDialog({ candidates, onClose }: { candidates: JobCard[]; 
       {jc && (
         <Box sx={{ mt: 1 }}>
           {[['Visit value (contract split)', jc.visitFoc ? 0 : jc.visitAmount], ['Materials', jc.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', jc.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)]].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.25 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice amount before VAT</Text><Text type="s3" weight="medium">{aed(jobCardTotal(jc))}</Text></Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Invoice amount before VAT</Text><Text type="s3" weight="medium">{aed(jobCardTotal(jc))}</Text></Box>
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>FOC lines are not invoiced. The invoice is created Pending and is approved in Accounting before payment can be recorded.</Text>
         </Box>
       )}
@@ -118,9 +118,9 @@ export function AmcView() {
       <Page sx={{ pt: 2 }}>
         <KpiRow>
           <KpiCard title="Contract value" value={aed(value)} sub={`${o.visits} visits, ${aed(value / (o.visits || 1))} each`} />
-          <KpiCard title="Invoiced" value={aed(st.revenue)} sub={`${st.invoiced.length} job card(s) invoiced`} tint="#E8F5F0" />
+          <KpiCard title="Invoiced" value={aed(st.revenue)} sub={`${st.invoiced.length} job card(s) invoiced`} tint="#F1FBF6" />
           <KpiCard title="Free of cost" value={aed(st.foc)} sub="FOC visits, materials and services (not billed)" />
-          <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FFF3CC" />
+          <KpiCard title="Consumables cost" value={aed(st.cost)} sub="Materials consumed on visits" tint="#FEF1DD" />
           <KpiCard title="Profit to date" value={aed(st.revenue - st.cost)} sub="Invoiced less cost" />
         </KpiRow>
         <Panel title="Project Details" change="new" req={R_AMC}>
@@ -169,7 +169,7 @@ function JcTotals({ f }: { f: JobCard }) {
   return (
     <Box sx={{ ml: 'auto', width: 340, mt: 2 }}>
       {[['Visit value (contract split)', f.visitFoc ? 0 : f.visitAmount], ['Materials', f.materials.reduce((s, m) => s + (m.foc ? 0 : m.qty * m.price), 0)], ['Services', f.services.reduce((s, m) => s + (m.foc ? 0 : m.amount), 0)], ...(jobCardFoc(f) > 0 ? [['Free of cost (not billed)', jobCardFoc(f)]] : [])].map(([k, v]) => <Box key={String(k)} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{aed(Number(v))}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Invoice total</Text><Text type="s3" weight="medium">{aed(jobCardTotal(f))}</Text></Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s5" color="theme.secondary.700">Cost of materials</Text><Text type="s5" color="theme.secondary.700">{aed(jobCardCost(f))}</Text></Box>
     </Box>
   );

@@ -111,7 +111,7 @@ export const dashboards: DashboardDef[] = [
       ];
     } },
   { slug: 'owned-vs-cross-hire', title: 'Owned vs. Cross-Hire Dashboard', purpose: "Distinguishes owned fleet from cross-hired units, including which cross-hired units are idle at the business's own location awaiting return to supplier.", change: 'new', req: REQ + 'Dashboards',
-    get kpis() { const f = activeFleet(); return [...['Owned', 'Cross-Hired', 'Spare-Standby'].map((o) => ({ title: o, value: f.filter((h) => h.ownership === o).length })), { title: 'Cross-Hire Idle at Our Location', value: f.filter((h) => h.crossHireIdle).length, tint: '#FFFAF0' }]; },
+    get kpis() { const f = activeFleet(); return [...['Owned', 'Cross-Hired', 'Spare-Standby'].map((o) => ({ title: o, value: f.filter((h) => h.ownership === o).length })), { title: 'Cross-Hire Idle at Our Location', value: f.filter((h) => h.crossHireIdle).length, tint: '#FEF1DD' }]; },
     get widgets() {
       const f = activeFleet();
       return [

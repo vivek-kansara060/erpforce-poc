@@ -37,7 +37,7 @@ export const transporterOptions = () => suppliers.filter((x) => x.type === 'Serv
 const vehicleLabel = (a?: HeavyRec) => (a ? `${a.plateNumber ?? a.assetId} - ${a.name}` : '-');
 const fleetTone = (s: FleetStatus) => (s === 'Unavailable' ? ('grey' as const) : undefined);
 const docPath = (t: Trip) => (t.kind === 'Delivery' ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : '/rental/replacements');
-const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as const;
+const RL = { color: '#146B43', textDecoration: 'none', fontWeight: 500 } as const;
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */
 type DlgKind = 'stuck' | 'complete' | 'expense' | 'reassign' | 'external' | 'cancel';
@@ -79,7 +79,7 @@ export function useTripMenu() {
 
 function TripSummary({ trip }: { trip: Trip }) {
   return (
-    <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F4F5F7', borderRadius: '6px' }}>
+    <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F2F3F5', borderRadius: '6px' }}>
       <Text type="s4" weight="medium">{trip.number} ({trip.kind}) for {trip.docNumber}</Text>
       <Text type="s5" color="theme.secondary.700">{trip.soNumber}, {custName(trip.customerId)}, {trip.site || '-'}. {trip.transport === 'Own Fleet' ? `${trip.plate ?? '-'}${trip.driver ? `, ${trip.driver}` : ''}` : trip.transporter}</Text>
     </Box>
@@ -125,7 +125,7 @@ function CompleteTripDialog({ trip, onClose }: { trip: Trip; onClose: () => void
       <TripSummary trip={trip} />
       <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Enter the costs of this trip (Salik, fuel and so on). They are added to the Sales Order logistics cost. Leave empty if there are none; expenses can also be added later on the trip.</Text>
       <ExpenseLines lines={lines} onChange={setLines} />
-      {bad && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>Each expense line needs a type and an amount greater than 0, or remove the line</Text>}
+      {bad && <Text type="s5" color="#C2363A" sx={{ mt: 1 }}>Each expense line needs a type and an amount greater than 0, or remove the line</Text>}
     </AppDialog>
   );
 }
@@ -232,7 +232,7 @@ export function FleetBoard() {
       <PageTitle title="Fleet Availability" subtitle="Own delivery vehicles and what they are doing now. Pick a Free vehicle for a delivery, collection or replacement" change="new" req={R.fleet} />
       <KpiRow>
         {FLEET_STATUSES.map((s) => (
-          <KpiCard key={s} title={s} value={count(s)} tint={status === s ? '#B6E9D6' : undefined} sub={status === s ? 'Filtered, click to clear' : 'Click to filter'} onClick={() => setStatus(status === s ? '' : s)} />
+          <KpiCard key={s} title={s} value={count(s)} tint={status === s ? '#C8EBD8' : undefined} sub={status === s ? 'Filtered, click to clear' : 'Click to filter'} onClick={() => setStatus(status === s ? '' : s)} />
         ))}
       </KpiRow>
       <DataTable<BoardRow> rows={view} searchPlaceholder="Search plate, vehicle or driver..." toolbarRight={<FleetFilters types={types} type={type} setType={setType} status={status} setStatus={setStatus} />}
@@ -244,7 +244,7 @@ export function FleetBoard() {
           { key: 'driver', label: 'Driver' },
           { key: 'status', label: 'Fleet Status', change: 'new', req: R.fleet, render: (r) => (
             <Box><StatusChip status={r.status} tone={fleetTone(r.status)} />
-              {r.status === 'Stuck-Delayed' && r.trip?.stuck && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5, maxWidth: 260 }}>{r.trip.stuck.reason} ({r.trip.stuck.responsible})</Text>}
+              {r.status === 'Stuck-Delayed' && r.trip?.stuck && <Text type="s5" color="#C2363A" sx={{ mt: 0.5, maxWidth: 260 }}>{r.trip.stuck.reason} ({r.trip.stuck.responsible})</Text>}
               {r.status === 'Unavailable' && <Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{r.asset.status === 'Inactive' ? 'Inactive' : r.asset.assetStatus}</Text>}
             </Box>
           ) },

@@ -114,7 +114,7 @@ export function RenewalsPage() {
       <TabPanels tabs={[
         { label: 'Contracts', content: (
           <DataTable hideToolbar rows={rows} pageSize={15} filter={{ key: 'state', options: ['Overdue', 'Expiring', 'Active'] }}
-            rowSx={(r) => (r.state === 'Overdue' ? { bgcolor: '#FFF5F5' } : undefined)}
+            rowSx={(r) => (r.state === 'Overdue' ? { bgcolor: '#FBE3E5' } : undefined)}
             columns={[
               { key: 'so', label: 'Sales Order', render: (r) => r.so.number }, { key: 'c', label: 'Customer', render: (r) => custName(r.so.customerId) }, { key: 'item', label: 'Line', render: (r) => r.line.item },
               { key: 'assets', label: 'Assets', render: (r) => outstanding(r.line).map((a) => assetById(a.assetId)?.assetId).join(', ') }, { key: 'end', label: 'Contract End', render: (r) => r.line.contractEnd },

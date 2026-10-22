@@ -16,8 +16,8 @@ export function ReviewModeProvider({ children }: { children: ReactNode }) {
 }
 
 const STYLES: Record<ChangeKind, { bg: string; color: string; label: string }> = {
-  new: { bg: '#B6E9D6', color: '#1F7C5E', label: 'NEW' },
-  changed: { bg: '#F7EAC0', color: '#82691A', label: 'CHANGED' },
+  new: { bg: '#C8EBD8', color: '#146B43', label: 'NEW' },
+  changed: { bg: '#FCDFB1', color: '#8A540B', label: 'CHANGED' },
 };
 
 /** Small inline badge. `req` is the requirement reference shown in the tooltip. */

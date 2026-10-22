@@ -13,7 +13,7 @@ import changelogSource from '../../CHANGELOG.md?raw';
 function inline(text: string): ReactNode[] {
   return text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g).filter(Boolean).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
-    if (part.startsWith('`') && part.endsWith('`')) return <Box key={i} component="code" sx={{ px: 0.5, py: 0.1, borderRadius: '4px', bgcolor: '#EEEFF1', fontSize: '0.9em' }}>{part.slice(1, -1)}</Box>;
+    if (part.startsWith('`') && part.endsWith('`')) return <Box key={i} component="code" sx={{ px: 0.5, py: 0.1, borderRadius: '4px', bgcolor: '#ECEDEF', fontSize: '0.9em' }}>{part.slice(1, -1)}</Box>;
     if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return <em key={i}>{part.slice(1, -1)}</em>;
     return <Fragment key={i}>{part}</Fragment>;
   });
@@ -24,7 +24,7 @@ function Markdown({ source }: { source: string }) {
   const blocks: ReactNode[] = [];
   let list: string[] = [];
   const flushList = () => {
-    if (list.length) { blocks.push(<Box key={`l${blocks.length}`} component="ul" sx={{ my: 1, pl: 3, lineHeight: 1.7, fontSize: 14.5, color: '#1F2125' }}>{list.map((t, i) => <li key={i}>{inline(t)}</li>)}</Box>); list = []; }
+    if (list.length) { blocks.push(<Box key={`l${blocks.length}`} component="ul" sx={{ my: 1, pl: 3, lineHeight: 1.7, fontSize: 14.5, color: '#15171B' }}>{list.map((t, i) => <li key={i}>{inline(t)}</li>)}</Box>); list = []; }
   };
   for (const raw of source.replace(/\r\n/g, '\n').split('\n')) {
     const line = raw.trimEnd();
@@ -35,14 +35,14 @@ function Markdown({ source }: { source: string }) {
       blocks.push(<Box key={`h${blocks.length}`} component={`h${level}` as 'h1'} sx={{ fontSize: level === 1 ? 26 : level === 2 ? 20 : 16, fontWeight: 600, mt: level === 1 ? 0 : 2, mb: 1 }}>{inline(h[2])}</Box>);
     } else if (/^---+$/.test(line)) {
       flushList();
-      blocks.push(<Box key={`r${blocks.length}`} component="hr" sx={{ my: 3, border: 0, borderTop: '1px solid #D3D3D4' }} />);
+      blocks.push(<Box key={`r${blocks.length}`} component="hr" sx={{ my: 3, border: 0, borderTop: '1px solid #D2D5D9' }} />);
     } else if (/^\s*[-*]\s+/.test(line)) {
       list.push(line.replace(/^\s*[-*]\s+/, ''));
     } else if (line.trim() === '') {
       flushList();
     } else {
       flushList();
-      blocks.push(<Box key={`p${blocks.length}`} component="p" sx={{ my: 1, lineHeight: 1.7, fontSize: 14.5, color: '#1F2125' }}>{inline(line.trim())}</Box>);
+      blocks.push(<Box key={`p${blocks.length}`} component="p" sx={{ my: 1, lineHeight: 1.7, fontSize: 14.5, color: '#15171B' }}>{inline(line.trim())}</Box>);
     }
   }
   flushList();
@@ -106,7 +106,7 @@ function whereLink(w: string[]): string {
 
 function Pill({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
   return (
-    <Box onClick={onClick} sx={{ cursor: 'pointer', px: 1.25, py: 0.4, borderRadius: '1.5rem', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', opacity: count === 0 && !active ? 0.55 : 1, bgcolor: active ? '#B6E9D6' : '#EEEFF1', color: active ? '#279769' : '#656669' }}>
+    <Box onClick={onClick} sx={{ cursor: 'pointer', px: 1.25, py: 0.4, borderRadius: '1.5rem', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', opacity: count === 0 && !active ? 0.55 : 1, bgcolor: active ? '#C8EBD8' : '#ECEDEF', color: active ? '#1A8A56' : '#3D4046' }}>
       {label} <Box component="span" sx={{ opacity: 0.8 }}>({count})</Box>
     </Box>
   );
@@ -115,7 +115,7 @@ function Pill({ label, count, active, onClick }: { label: string; count: number;
 function FilterRow({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-      <Box sx={{ width: 96, fontSize: 12, fontWeight: 600, color: '#656669' }}>{title}</Box>
+      <Box sx={{ width: 96, fontSize: 12, fontWeight: 600, color: '#3D4046' }}>{title}</Box>
       {children}
     </Box>
   );
@@ -139,7 +139,7 @@ export function Changelog() {
           <Box component="h1" sx={{ fontSize: 26, fontWeight: 600, mt: 0, mb: 0.5 }}>Detailed Changelog</Box>
           <Text type="s4" color="theme.secondary.700" sx={{ mb: 2 }}>What changed in this POC, on which screen, and why. Filter by module, side menu and change type.</Text>
 
-          <Box component="details" sx={{ mb: 2, p: 1.5, border: '1px solid #E3E4E6', borderRadius: '8px', bgcolor: '#FAFAFA' }}>
+          <Box component="details" sx={{ mb: 2, p: 1.5, border: '1px solid #E1E3E6', borderRadius: '8px', bgcolor: '#F7F8F9' }}>
             <Box component="summary" sx={{ cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>How to read this page</Box>
             <Markdown source={intro.replace(/^#\s+.*$/m, '')} />
           </Box>
@@ -165,22 +165,22 @@ export function Changelog() {
             {TYPES.map((t) => <Pill key={t} label={t} count={n({ type: t })} active={f.type === t} onClick={() => setF({ ...f, type: t })} />)}
           </FilterRow>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 2, fontSize: 13, color: '#656669' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, my: 2, fontSize: 13, color: '#3D4046' }}>
             <span>Showing {shown.length} of {entries.length} changes</span>
             {filtered && <Box component="span" onClick={() => setF({ mod: '', group: '', item: '', type: '' })} sx={{ cursor: 'pointer', color: '#2EB273', fontWeight: 500 }}>Clear filters</Box>}
           </Box>
 
           {shown.length === 0 && <Text type="s3" color="theme.secondary.700">No changes have been logged for this selection yet.</Text>}
           {shown.map((e) => (
-            <Box key={e.id} sx={{ border: '1px solid #E3E4E6', borderRadius: '8px', p: 2.5, mb: 2, bgcolor: '#fff' }}>
+            <Box key={e.id} sx={{ border: '1px solid #E1E3E6', borderRadius: '8px', p: 2.5, mb: 2, bgcolor: '#fff' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.75, flexWrap: 'wrap' }}>
-                {e.when && <Box sx={{ fontSize: 12, fontWeight: 500, color: '#656669' }}>{e.when}</Box>}
+                {e.when && <Box sx={{ fontSize: 12, fontWeight: 500, color: '#3D4046' }}>{e.when}</Box>}
                 <StatusChip status={e.type} tone={typeTone(e.type)} />
               </Box>
               <Box component="h3" sx={{ fontSize: 16, fontWeight: 600, m: 0, mb: 1 }}>{e.title}</Box>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                 {e.wheres.map((w, i) => (
-                  <Box key={i} component={Link} to={whereLink(w)} sx={{ px: 1, py: 0.25, borderRadius: '4px', bgcolor: '#E8F5F0', color: '#279769', fontSize: 12, fontWeight: 500, textDecoration: 'none' }}>{w.join(' › ')}</Box>
+                  <Box key={i} component={Link} to={whereLink(w)} sx={{ px: 1, py: 0.25, borderRadius: '4px', bgcolor: '#F1FBF6', color: '#1A8A56', fontSize: 12, fontWeight: 500, textDecoration: 'none' }}>{w.join(' › ')}</Box>
                 ))}
               </Box>
               <Markdown source={e.body} />

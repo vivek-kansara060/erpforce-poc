@@ -136,11 +136,11 @@ export function ChOrderForm() {
               <Section title="Rental Period"><SpecForm specs={rentalPeriodSpecs} f={f} set={set} err={err} /></Section>
               <Section title="Items" change="changed" req={R_CH}>
                 <SpecForm specs={itemSpecs} f={f} set={set} err={err} />
-                {err.items && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>{err.items}</Text>}
+                {err.items && <Text type="s5" color="#C2363A" sx={{ mt: 1 }}>{err.items}</Text>}
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', my: 1 }}><Button size="small" variant="outlined" onClick={() => setItems([...items, { id: `i${Date.now().toString(36)}${items.length}`, group: '', category: '', qty: 1, rate: '' }])}>+ Add</Button></Box>
-                <TableContainer sx={{ border: '1px solid #E4E5E7', borderRadius: '8px', maxWidth: '100%' }}>
+                <TableContainer sx={{ border: '1px solid #ECEDEF', borderRadius: '8px', maxWidth: '100%' }}>
                   <Table size="small">
-                    <TableHead><TableRow sx={{ bgcolor: '#F6F8F7' }}>{['Category', 'Subcategory', 'UoM', 'Units', 'Rate (per unit, AED)', 'Amount', ''].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</TableCell>)}</TableRow></TableHead>
+                    <TableHead><TableRow sx={{ bgcolor: '#F2F3F5' }}>{['Category', 'Subcategory', 'UoM', 'Units', 'Rate (per unit, AED)', 'Amount', ''].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</TableCell>)}</TableRow></TableHead>
                     <TableBody>
                       {items.length === 0 && <TableRow><TableCell colSpan={7}><Text type="s4" color="theme.secondary.700">No item left. Add a row.</Text></TableCell></TableRow>}
                       {items.map((it, i) => (
@@ -277,7 +277,7 @@ const traceIssues = (rows: Trace[], validated = false) => rows.map((r, i) => {
  * Track Details of one item of the Goods Receipt. A scan-first layout: progress against the units ordered at the top, one box to scan or type a serial number
  * (Enter adds it), and each asset as one compact line with its condition as a three-way switch, a photo, a note and a check. 1 fixed asset = 1 unit.
  */
-const COND_TONE: Record<string, string> = { OK: '#2EB273', 'Needs check': '#D9A400', Damaged: '#C64D4D' };
+const COND_TONE: Record<string, string> = { OK: '#2EB273', 'Needs check': '#D9A400', Damaged: '#C2363A' };
 function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHire; g: CrossHireGrn; itemId: string; all: Trace[]; room: number; onClose: () => void; onSave: (rows: Trace[]) => void }) {
   const items = chItems(c);
   const item = items.find((i) => i.id === itemId);
@@ -304,13 +304,13 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
   const ordered = item?.qty ?? 0;
   const got = item ? itemReceived(c, item) : 0;
   const pct = ordered ? Math.min(100, ((got + mine.length) / ordered) * 100) : 0;
-  const stat = (k: string, v: string | number, hot?: boolean) => <Box sx={{ flex: 1, minWidth: 90, p: 1.25, borderRadius: '10px', bgcolor: hot ? '#E8F5F0' : '#F6F8F7' }}><Text type="s5" color="theme.secondary.700">{k}</Text><Text type="s2" weight="medium">{v}</Text></Box>;
+  const stat = (k: string, v: string | number, hot?: boolean) => <Box sx={{ flex: 1, minWidth: 90, p: 1.25, borderRadius: '10px', bgcolor: hot ? '#F1FBF6' : '#F2F3F5' }}><Text type="s5" color="theme.secondary.700">{k}</Text><Text type="s2" weight="medium">{v}</Text></Box>;
   return (
     <AppDialog open title={`Track Details: ${item ? `${item.group} ${item.category}` : 'Not on the order'}`} onClose={onClose} maxWidth="md" confirmLabel={done ? undefined : 'Save'} confirmDisabled={bad} onConfirm={done ? undefined : () => onSave([...outside, ...mine.filter((r) => r.serial.trim()).map((r) => ({ ...r, serial: r.serial.trim() }))])}>
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
         {stat('Ordered', item ? ordered : '-')}{stat('Received so far', item ? got : '-')}{stat('On this receipt', mine.length, true)}{stat('Still to come', item ? Math.max(0, ordered - got - mine.length) : '-')}
       </Box>
-      {item && <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: 3, mb: 2, bgcolor: '#E4E5E7', '& .MuiLinearProgress-bar': { bgcolor: '#2EB273' } }} />}
+      {item && <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: 3, mb: 2, bgcolor: '#ECEDEF', '& .MuiLinearProgress-bar': { bgcolor: '#2EB273' } }} />}
       {!done && (
         <Box sx={{ mb: 2 }}>
           {!bulk ? (
@@ -337,7 +337,7 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
             const diff = !items.some((x) => x.group === r.group && x.category === r.category);
             const err = issues[i] && r.serial ? issues[i] : '';
             return (
-              <Box key={i} sx={{ border: '1px solid #E4E5E7', borderLeft: `4px solid ${err ? '#C64D4D' : COND_TONE[cond]}`, borderRadius: '10px', p: 1.25, bgcolor: cond === 'Damaged' ? '#FFF8F8' : '#fff' }}>
+              <Box key={i} sx={{ border: '1px solid #ECEDEF', borderLeft: `4px solid ${err ? '#C2363A' : COND_TONE[cond]}`, borderRadius: '10px', p: 1.25, bgcolor: cond === 'Damaged' ? '#FBE3E5' : '#fff' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   <Text type="s5" color="theme.secondary.700" sx={{ width: 20 }}>{i + 1}</Text>
                   <Box sx={{ width: 190 }}>{done ? <Text type="s3" weight="medium">{r.serial}</Text> : <TextField size="small" variant="standard" value={r.serial} error={!!err} onChange={(e) => set(i, { serial: e.target.value })} inputProps={{ style: { fontWeight: 600 } }} />}</Box>
@@ -349,10 +349,10 @@ function TraceDialog({ c, g, itemId, all, room, onClose, onSave }: { c: CrossHir
                   </ToggleButtonGroup>
                   <Tooltip title={r.photo ?? 'Add a photo'}><span><IconButton size="small" component="label" disabled={done} color={r.photo ? 'success' : 'default'}><PhotoCameraOutlinedIcon fontSize="small" /><input hidden type="file" accept="image/*" onChange={(e) => set(i, { photo: e.target.files?.[0]?.name })} /></IconButton></span></Tooltip>
                   <Tooltip title={r.remarks || 'Add a remark'}><IconButton size="small" color={r.remarks ? 'primary' : 'default'} onClick={() => setOpen(open === i ? null : i)}><NotesOutlinedIcon fontSize="small" /></IconButton></Tooltip>
-                  {done ? <StatusChip status={fleetRows().find((a) => a.engineNo === r.serial)?.assetId ?? 'Registered'} tone="green" /> : err ? <Tooltip title={err}><ErrorOutlineIcon fontSize="small" sx={{ color: '#C64D4D' }} /></Tooltip> : <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2EB273' }} />}
+                  {done ? <StatusChip status={fleetRows().find((a) => a.engineNo === r.serial)?.assetId ?? 'Registered'} tone="green" /> : err ? <Tooltip title={err}><ErrorOutlineIcon fontSize="small" sx={{ color: '#C2363A' }} /></Tooltip> : <CheckCircleOutlineIcon fontSize="small" sx={{ color: '#2EB273' }} />}
                   {!done && <IconButton size="small" onClick={() => { setMine(mine.filter((_, j) => j !== i)); setOpen(null); }}><DeleteOutlineIcon fontSize="small" /></IconButton>}
                 </Box>
-                {err && <Text type="s5" color="#C64D4D" sx={{ ml: 4, mt: 0.25 }}>{err}</Text>}
+                {err && <Text type="s5" color="#C2363A" sx={{ ml: 4, mt: 0.25 }}>{err}</Text>}
                 {(open === i || (done && r.remarks)) && <Box sx={{ ml: 4, mt: 1 }}>{done ? <Text type="s4">{r.remarks}</Text> : <TextField fullWidth size="small" placeholder="Remark on this asset" value={r.remarks ?? ''} onChange={(e) => set(i, { remarks: e.target.value })} />}</Box>}
               </Box>
             );

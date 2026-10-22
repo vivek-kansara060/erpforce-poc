@@ -34,10 +34,10 @@ export function Panel({ title, children, right, change, req, sx }: { title?: str
   );
 }
 
-export const CHART_COLORS = [primaryGreen[800], blue[800], olive[700], magenta[800], red[700], neutral[600], primaryGreen[400], blue[500]];
+export const CHART_COLORS = [primaryGreen[700], blue[800], olive[700], magenta[800], red[700], neutral[600], primaryGreen[400], blue[500]];
 
 /** Horizontal/vertical bar chart drawn with plain divs (no chart library). */
-export function BarChart({ data, height = 160, color = primaryGreen[800], format = (n: number) => String(n) }: { data: { label: string; value: number; color?: string }[]; height?: number; color?: string; format?: (n: number) => string }) {
+export function BarChart({ data, height = 160, color = primaryGreen[700], format = (n: number) => String(n) }: { data: { label: string; value: number; color?: string }[]; height?: number; color?: string; format?: (n: number) => string }) {
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height, pt: 2 }}>
@@ -88,7 +88,7 @@ export function DonutChart({ data, size = 140, centerLabel }: { data: { label: s
 }
 
 /** Simple progress bar (percentage). */
-export function Progress({ value, color = primaryGreen[800] }: { value: number; color?: string }) {
+export function Progress({ value, color = primaryGreen[700] }: { value: number; color?: string }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
       <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: neutral[200], overflow: 'hidden', minWidth: 60 }}><Box sx={{ width: `${Math.min(100, Math.max(0, value))}%`, height: '100%', bgcolor: color }} /></Box>

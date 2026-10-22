@@ -174,7 +174,7 @@ export function Totals({ lines, discountPct, vatType, currency = 'AED', shipping
   return (
     <Box sx={{ ml: 'auto', width: 360, mt: 2 }}>
       {rows.map(([k, v]) => <Box key={k} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}><Text type="s4">{k}</Text><Text type="s4">{typeof v === 'number' && k !== 'Total Quantity' ? aed(v || 0).replace('AED', currency) : v}</Text></Box>)}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D3D3D4' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{aed(t.total + shipping).replace('AED', currency)}</Text></Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5, borderTop: '1px solid #D2D5D9' }}><Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{aed(t.total + shipping).replace('AED', currency)}</Text></Box>
     </Box>
   );
 }

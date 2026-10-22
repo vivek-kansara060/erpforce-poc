@@ -146,12 +146,12 @@ export function ChRfqForm() {
               <Section title="Rental Period"><SpecForm specs={periodSpecs} f={f} set={set} /></Section>
               <Section title="Items">
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setItem(blankItem())}>Add</Button></Box>
-                {err.items && <Text type="s5" color="#C64D4D">{err.items}</Text>}
+                {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
                 <ItemsTable items={items} onEdit={(i) => setItem(i)} onDelete={(i) => setItems(items.filter((x) => x.id !== i.id))} />
               </Section>
               <Section title="Call For Tender">
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" onClick={() => setTender(vendors)}>Add</Button></Box>
-                {err.vendors && <Text type="s5" color="#C64D4D">{err.vendors}</Text>}
+                {err.vendors && <Text type="s5" color="#C2363A">{err.vendors}</Text>}
                 <DataTable hideToolbar rows={vendors.map((v) => ({ id: v, vendor: HIRE_SUPPLIERS.find((s) => s.id === v)?.name ?? v }))} emptyText="No vendor" columns={[{ key: 'vendor', label: 'Vendor' }, { key: 'x', label: '', render: (r) => <IconButton size="small" onClick={() => setVendors(vendors.filter((v) => v !== r.id))}><DeleteOutlineIcon fontSize="small" /></IconButton> }]} />
               </Section>
               <Section title="Attachment"><FileInput label="Attach your file here" multiple value={f.attachments ?? []} onChange={(v) => set('attachments', v)} /></Section>
@@ -404,7 +404,7 @@ export function ChRfqAnalyze() {
             </Box>
             {showItemFilter && <Box sx={{ mb: 1 }}><SelectInput label="Item" value={fItem} options={['', ...items.map((i) => `${i.group} ${i.category}`)]} onChange={setFItem} /></Box>}
             {shownItems.map((i) => (
-              <Box key={i.id} onClick={() => setSelItem(i.id)} sx={{ cursor: 'pointer', border: `1px solid ${cur?.id === i.id ? '#2EB273' : neutral[200]}`, bgcolor: cur?.id === i.id ? '#E8F5F0' : '#fff', borderRadius: '8px', p: 1.5, mb: 1 }}>
+              <Box key={i.id} onClick={() => setSelItem(i.id)} sx={{ cursor: 'pointer', border: `1px solid ${cur?.id === i.id ? '#2EB273' : neutral[200]}`, bgcolor: cur?.id === i.id ? '#F1FBF6' : '#fff', borderRadius: '8px', p: 1.5, mb: 1 }}>
                 <Text type="s3" weight="medium">{i.group} {i.category}</Text>
                 <Text type="s5" color="theme.secondary.700">Responses Received: {r.responses.length}</Text>
                 <Text type="s5" color="theme.secondary.700">Required Date: {r.expectedDate || '-'}</Text>

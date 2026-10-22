@@ -265,7 +265,7 @@ export function ChOrderView() {
           <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Buy vs hire (if the business owned an equivalent unit)<ChangeTag kind="new" req={R.cross} /></Text>
           {owned ? <ValueGrid>
             <ValueField label="Owned cost per month (estimate)" value={aed(owned.monthly)} /><ValueField label={`Owned cost for ${owned.months} month(s)`} value={aed(owned.cost)} />
-            <ValueField label="Margin if owned" value={aed(owned.margin)} /><ValueField label="Difference to cross-hire margin" value={<span style={{ color: owned.margin - margin >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(owned.margin - margin)}</span>} />
+            <ValueField label="Margin if owned" value={aed(owned.margin)} /><ValueField label="Difference to cross-hire margin" value={<span style={{ color: owned.margin - margin >= 0 ? '#146B43' : '#C2363A', fontWeight: 600 }}>{aed(owned.margin - margin)}</span>} />
           </ValueGrid> : <Text type="s5" color="theme.secondary.700">No owned unit of the ordered Categories on the register to compare with.</Text>}
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Estimate from the average purchase value of the owned units of this Category and Subcategory over their useful life, for the hire period of this order. It supports the decision to buy or keep cross-hiring; the exact method is to be confirmed with the client.</Text>
         </Panel>

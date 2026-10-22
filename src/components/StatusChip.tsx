@@ -1,16 +1,16 @@
 import { Box } from '@mui/material';
-import { primaryGreen, blue, olive, red, neutral, magenta, green } from '@/theme/color';
 
+// ERPForce DS v2.0 pills: semantic *-bg / *-fg-strong and tag tones (project_design/styles/components.css .pill)
 type Tone = { bg: string; color: string };
 const TONES: Record<string, Tone> = {
-  green: { bg: primaryGreen[200], color: primaryGreen[900] },
-  blue: { bg: blue[200], color: blue[900] },
-  amber: { bg: olive[200], color: olive[900] },
-  red: { bg: red[200], color: red[900] },
-  grey: { bg: neutral[200], color: neutral[900] },
-  magenta: { bg: magenta[300], color: magenta[1000] },
-  dark: { bg: neutral[800], color: neutral[100] },
-  teal: { bg: green[200], color: green[900] },
+  green: { bg: '#D8F3EB', color: '#07543F' },
+  blue: { bg: '#E6EEF9', color: '#133A7E' },
+  amber: { bg: '#FEF1DD', color: '#5C3604' },
+  red: { bg: '#FBE3E5', color: '#7A1A1F' },
+  grey: { bg: '#ECEDEF', color: '#3D4046' },
+  magenta: { bg: '#FBE4F1', color: '#9D2B6F' },
+  dark: { bg: '#25272C', color: '#FFFFFF' },
+  teal: { bg: '#DDF3F1', color: '#156B66' },
 };
 
 const RULES: [RegExp, keyof typeof TONES][] = [
@@ -29,7 +29,7 @@ export function toneFor(status: string): Tone {
 export function StatusChip({ status, tone }: { status: string; tone?: keyof typeof TONES }) {
   const t = tone ? TONES[tone] : toneFor(status);
   return (
-    <Box component="span" sx={{ display: 'inline-block', px: '8px', py: '2px', borderRadius: '4px', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', bgcolor: t.bg, color: t.color }}>
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: 22, px: '8px', borderRadius: '4px', fontSize: 12, fontWeight: 500, letterSpacing: 0, whiteSpace: 'nowrap', bgcolor: t.bg, color: t.color, '&::before': { content: '\"\"', width: 6, height: 6, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 } }}>
       {status}
     </Box>
   );

@@ -29,13 +29,13 @@ export function HelpTip({ hint }: { hint?: ReactNode }) {
 export function FieldShell({ label, required, hint, change, req, full, error, children }: Base & { children: ReactNode }) {
   return (
     <Box sx={{ gridColumn: full ? '1 / -1' : undefined, minWidth: 0 }}>
-      <Text type="s5" weight="medium" color={error ? '#C64D4D' : 'theme.secondary.800'} sx={{ mb: 0.5 }}>
-        {label}{required && <span style={{ color: '#C64D4D' }}> *</span>}
+      <Text type="s5" weight="medium" color={error ? '#C2363A' : 'theme.secondary.800'} sx={{ mb: 0.5 }}>
+        {label}{required && <span style={{ color: '#C2363A' }}> *</span>}
         <ChangeTag kind={change} req={req} />
         <HelpTip hint={hint} />
       </Text>
       {children}
-      {error && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5 }}>{error}</Text>}
+      {error && <Text type="s5" color="#C2363A" sx={{ mt: 0.5 }}>{error}</Text>}
     </Box>
   );
 }
@@ -72,7 +72,7 @@ export function MultiSelectInput({ value = [], onChange, options, ...b }: Base &
   return (
     <FieldShell {...b}>
       <Select multiple fullWidth size="small" displayEmpty value={value} disabled={b.disabled} input={<OutlinedInput />} onChange={(e) => onChange?.(e.target.value as string[])}
-        renderValue={(sel) => (sel.length === 0 ? <span style={{ color: neutral[700] }}>Select</span> : <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{sel.map((s) => <Chip key={s} size="small" label={lab(options.find((o) => val(o) === s) ?? s)} sx={{ bgcolor: '#B6E9D6', color: '#1F7C5E', height: 22 }} />)}</Box>)}>
+        renderValue={(sel) => (sel.length === 0 ? <span style={{ color: neutral[700] }}>Select</span> : <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>{sel.map((s) => <Chip key={s} size="small" label={lab(options.find((o) => val(o) === s) ?? s)} sx={{ bgcolor: '#C8EBD8', color: '#146B43', height: 22 }} />)}</Box>)}>
         {options.map((o) => <MenuItem key={val(o)} value={val(o)}><Checkbox size="small" checked={value.includes(val(o))} />{lab(o)}</MenuItem>)}
       </Select>
     </FieldShell>
