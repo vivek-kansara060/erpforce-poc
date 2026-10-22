@@ -12,7 +12,7 @@ import { neutral } from '@/theme/color';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -124,7 +124,7 @@ export function ChOrderForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: existing ? `Edit ${existing.number}` : 'Add New' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.supplier, existing.soNumber, existing.date]} /> : undefined} crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: existing ? existing.number : 'Add New' }]}
         actions={<><Button variant="text" onClick={() => nav(existing ? `/rental/cross-hire-orders/${existing.id}` : '/rental/cross-hire-orders')}>Discard</Button>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Save' : 'Submit'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((r) => r.number).join(', ')}: the items of the request, with their units. Delete the rows you do not want to order now (the request stays In Progress for them), then enter the supplier and the rate per unit.</Alert>}
@@ -231,7 +231,7 @@ export function ChGrnForm() {
   const view = { ...f, vendor: c.supplier, currency: c.form?.currency ?? 'AED', company: c.form?.company ?? masterValues('entity')[0] };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: `ID: ${c.number}`, to: `/rental/cross-hire-orders/${c.id}` }, { label: 'Goods Receipt', to: `/rental/cross-hire-orders/${c.id}/grns` }, { label: g0 ? `Edit ${g0.number}` : 'Add New' }]}
+      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: `ID: ${c.number}`, to: `/rental/cross-hire-orders/${c.id}` }, { label: 'Goods Receipt', to: `/rental/cross-hire-orders/${c.id}/grns` }, { label: g0 ? g0.number : 'Add New' }]}
         actions={<><Button variant="text" onClick={() => nav(`/rental/cross-hire-orders/${c.id}/grns`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[

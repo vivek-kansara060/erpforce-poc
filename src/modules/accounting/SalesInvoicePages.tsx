@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
 import { FormGrid, NumberInput, SelectInput } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { customers } from '@/mock-data/masters';
@@ -87,7 +87,7 @@ export function InvoiceView() {
   const notes = cns.filter((n) => n.againstId === i.id);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: i.number }]} status={<DocChips approval={i.approval} payStatus={i.payStatus} />}
+      <FormHeader subtitle={<HeaderMeta parts={[i.partyName, i.soNumber, i.date]} />} crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: i.number }]} status={<DocChips approval={i.approval} payStatus={i.payStatus} />}
         actions={<>
           {EDITABLE.includes(i.approval) && <Button variant="outlined" onClick={() => nav(`/accounting/invoices/${i.id}/edit`)}>Edit</Button>}
           <ApprovalButtons approval={i.approval} onSubmit={(a) => r(submitInvoice(i.id, a))} onApprove={(how) => r(approveInvoice(i.id, how))} onReject={(n) => r(rejectInvoice(i.id, n))} />
@@ -224,7 +224,7 @@ export function InvoiceForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? `Edit ${existing.number}` : 'New Invoice' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.partyName, existing.soNumber, existing.date]} /> : undefined} crumbs={[{ label: 'Invoices', to: '/accounting/invoices' }, { label: existing ? existing.number : 'New Invoice' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/invoices/${existing.id}` : '/accounting/invoices')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromSo && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromSo.number}: {soLines.length} line(s) at the Sales Order price. Remove a row to leave it out; saving marks the lines invoiced on the order.</Alert>}

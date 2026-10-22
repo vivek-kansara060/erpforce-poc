@@ -9,7 +9,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -279,7 +279,7 @@ export function ReturnView() {
   const l = (lineId: string) => orders.get(r.soId)?.lines.find((x) => x.id === lineId);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}` }]} status={<StatusChip status={r.status} tone={tone(r.status)} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(r.customerId), r.soNumber, r.date]} />} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}` }]} status={<StatusChip status={r.status} tone={tone(r.status)} />}
         actions={<>
           {r.status !== 'Return Completed' && EDITABLE.includes(r.status) && <MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`${BASE}/${r.id}/edit`) }, { label: 'Delete', disabled: r.status !== 'Draft', onClick: () => setAsk('delete') }, { label: 'Print Collection Note', onClick: () => setNoteOpen(true) }]} />}
           {(!EDITABLE.includes(r.status) || r.status === 'Return Completed') && <Button variant="outlined" onClick={() => setNoteOpen(true)}>Print Collection Note</Button>}
@@ -387,7 +387,7 @@ export function ReturnGrnForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? `Edit ${g0.number}` : 'Add GRN' }]}
+      <FormHeader subtitle={g0 ? <HeaderMeta parts={[custName(r.customerId), g0.date]} /> : undefined} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? g0.number : 'Add GRN' }]}
         actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Section title="Customer Returns"><ValueGrid cols={4}><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Customer" value={custName(r.customerId)} /><ValueField label="Sales Order" value={r.soNumber} /><ValueField label="Entity" value={r.entity} /><ValueField label="Currency" value={r.currency} /><ValueField label="Return Method" change="new" req={R.ret} value={r.method} /><ValueField label="Return Entry Timestamp" change="new" req={R.ret} value={r.timestamp.replace('T', ' ')} /></ValueGrid></Section>
@@ -426,7 +426,7 @@ export function ReturnGrnView() {
   const okInspect = insp && insp.serial && (insp.res === 'Passed' ? insp.checks.length === YARD_CHECKLIST.length : (waiver || Number(insp.amount) > 0) && insp.note.trim());
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g.number }]} status={<StatusChip status={g.status} tone={tone(g.status)} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(r.customerId), g.date]} />} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g.number }]} status={<StatusChip status={g.status} tone={tone(g.status)} />}
         actions={<>
           {!done && <MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`${BASE}/${r.id}/grn/${g.id}/edit`) }, { label: 'Delete', onClick: () => setDel(true) }]} />}
           <Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>View RMA</Button>

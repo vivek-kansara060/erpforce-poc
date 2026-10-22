@@ -10,10 +10,11 @@ export interface Crumb { label: string; to?: string }
 
 /** Meta line under the title: mono brand-coloured id (.est-eb-sub), then plain parts separated by a dot. */
 export function HeaderMeta({ id, parts }: { id?: string; parts?: (string | undefined)[] }) {
+  const rest = (parts ?? []).filter(Boolean) as string[];
   return (
     <>
       {id && <Box component="span" sx={{ fontFamily: 'var(--font-mono)', color: '#146B43' }}>{id}</Box>}
-      {parts?.filter(Boolean).map((x, i) => <span key={i}>{'· ' + x}</span>)}
+      {rest.map((x, i) => <span key={i}>{id || i > 0 ? '· ' : ''}{x}</span>)}
     </>
   );
 }
@@ -25,9 +26,11 @@ export function HeaderMeta({ id, parts }: { id?: string; parts?: (string | undef
 export function FormHeader({ crumbs, actions, status, subtitle }: { crumbs: Crumb[]; actions?: ReactNode; status?: ReactNode; subtitle?: ReactNode }) {
   const nav = useNavigate();
   const title = crumbs[crumbs.length - 1];
+  /** Add / New pages: just the small action text (no record to describe). */
+  const isAdd = !subtitle && /^(Add|New|Start)\b/i.test(title.label);
   const parent = crumbs.length > 1 ? crumbs[crumbs.length - 2] : undefined;
   return (
-    <Box component="header" sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: '#fff', px: '20px', py: '10px', minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ECEDEF', gap: 2 }}>
+    <Box component="header" sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: '#fff', px: '20px', py: '10px', minHeight: isAdd ? 44 : 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #ECEDEF', gap: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
         {parent && (
           <>
@@ -39,7 +42,7 @@ export function FormHeader({ crumbs, actions, status, subtitle }: { crumbs: Crum
           </>
         )}
         <Box sx={{ minWidth: 0 }}>
-          <Box aria-current="page" sx={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.011em', lineHeight: 1.25, color: '#15171B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title.label}</Box>
+          <Box aria-current="page" sx={{ fontSize: isAdd ? 13 : 15, fontWeight: 600, letterSpacing: '-0.011em', lineHeight: 1.3, color: '#15171B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title.label}</Box>
           {subtitle && <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 11, color: '#6D7178', mt: '1px', flexWrap: 'wrap' }}>{subtitle}</Box>}
         </Box>
       </Box>

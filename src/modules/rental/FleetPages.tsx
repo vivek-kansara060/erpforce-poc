@@ -7,7 +7,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
@@ -414,7 +414,7 @@ export function TripView() {
   const items = menu.items(t);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Trips', to: '/crm/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
+      <FormHeader subtitle={<HeaderMeta parts={[custName(t.customerId), t.soNumber, t.date]} />} crumbs={[{ label: 'Trips', to: '/crm/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
         <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${t.soId}`)}>View Sales Order</Button>
         <Button variant="outlined" onClick={() => nav(docPath(t))}>View {t.kind === 'Delivery' ? 'Delivery Order' : t.kind === 'Collection' ? 'Return' : 'Replacements'}</Button>
         {items.length > 0 && <MenuButton label="Actions" items={items.map((i) => ({ label: i.label, onClick: i.onClick }))} variant="contained" />}

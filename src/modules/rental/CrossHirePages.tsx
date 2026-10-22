@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { CheckInput, DateInput, FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { LifecycleStepper, Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -101,7 +101,7 @@ export function ChRequestView() {
   if (!r) return <Page><PageTitle title="Request not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire')}>Back</Button>} /></Page>;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Cross Hire Requests', to: '/rental/cross-hire' }, { label: r.number }]} status={<StatusChip status={r.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.vendor, r.soNumber, r.date]} />} crumbs={[{ label: 'Cross Hire Requests', to: '/rental/cross-hire' }, { label: r.number }]} status={<StatusChip status={r.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${r.soId}`)}>View Sales Order</Button>
           {(r.status === 'Draft' || r.status === 'Pending') && <Button variant="contained" onClick={() => { submitChRequest(r.id); toast('Request submitted and approved'); }}>Submit</Button>}
@@ -234,7 +234,7 @@ export function ChOrderView() {
   ];
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={st} />}
+      <FormHeader subtitle={<HeaderMeta parts={[c.supplier, c.soNumber, c.date]} />} crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={st} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${c.soId}`)}>View Sales Order</Button>
           <MenuButton label="Actions" items={actionItems} />

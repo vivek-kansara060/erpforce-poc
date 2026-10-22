@@ -8,7 +8,7 @@ import { DataTable } from '@/components/DataTable';
 import { Timeline } from '@/components/Flow';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -135,7 +135,7 @@ export function ChRfqForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? `Edit ${src!.number}` : 'Add New' }]}
+      <FormHeader subtitle={editing ? <HeaderMeta parts={[src!.group, src!.category, src!.date]} /> : undefined} crumbs={[{ label: 'Request for Quote', to: BASE }, { label: editing ? src!.number : 'Add New' }]}
         actions={<><Button variant="text" onClick={() => nav(BASE)}>Discard</Button>{(!editing || src!.status === 'Draft') && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         {fromReqs.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from {fromReqs.map((q) => q.number).join(', ')}. Add the suppliers in Call For Tender, then Save.</Alert>}
@@ -194,7 +194,7 @@ export function ChRfqView() {
   const st = r.status;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number }]} status={<StatusChip status={st} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.group, r.category, r.date]} />} crumbs={[{ label: 'Request for Quote', to: BASE }, { label: r.number }]} status={<StatusChip status={st} />}
         actions={<>
           {['Open', 'Draft', 'Response Received', 'Cancelled', 'Pending Order', 'Order', 'RFQ Sent'].includes(st) && <MenuButton label="Actions" items={[
             { label: 'Edit', disabled: !EDITABLE.includes(st), onClick: () => nav(`${BASE}/${r.id}/edit`) },

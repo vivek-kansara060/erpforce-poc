@@ -4,7 +4,7 @@ import { Alert, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
@@ -66,7 +66,7 @@ export function BillView() {
   const src = sourcePath(b.source);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: b.number }]} status={<DocChips approval={b.approval} payStatus={b.payStatus} />}
+      <FormHeader subtitle={<HeaderMeta parts={[b.supplierName, b.supplierInvoiceNo, b.date]} />} crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: b.number }]} status={<DocChips approval={b.approval} payStatus={b.payStatus} />}
         actions={<>
           {EDITABLE.includes(b.approval) && <Button variant="outlined" onClick={() => nav(`/accounting/bills/${b.id}/edit`)}>Edit</Button>}
           <ApprovalButtons approval={b.approval} onSubmit={(a) => r(submitBill(b.id, a))} onApprove={(how) => r(approveBill(b.id, how))} onReject={(n) => r(rejectBill(b.id, n))} />
@@ -152,7 +152,7 @@ export function BillForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? `Edit ${existing.number}` : 'New Bill' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.supplierName, existing.supplierInvoiceNo, existing.date]} /> : undefined} crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? existing.number : 'New Bill' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         {ch && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from cross-hire order {ch.number} ({ch.qty ?? 1} unit(s) in {chItems(ch).length} item(s) at the agreed rate per unit, and its expenses). Enter the supplier's invoice number and date; saving records the supplier invoice on the order.</Alert>}

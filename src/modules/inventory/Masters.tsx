@@ -171,7 +171,7 @@ export function CategoryForm({ sub: forceSub = false }: { sub?: boolean } = {}) 
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? `Edit ${existing.name}` : sub ? 'Add Sub-Category' : 'Add Category' }]}
+      <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? existing.name : sub ? 'Add Sub-Category' : 'Add Category' }]}
         actions={<><Button variant="outlined" onClick={() => nav(base)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>

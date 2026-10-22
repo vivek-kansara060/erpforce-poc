@@ -4,7 +4,7 @@ import { Alert, Box, Button, Tooltip } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { DateInput, FormGrid, MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TODAY, custName, type SalesOrder } from '@/modules/crm/data';
@@ -140,7 +140,7 @@ export function PreviousJobView() {
   const ord = (soId: string) => orders.get(soId);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Previous Jobs', to: '/rental/previous-jobs' }, { label: run.number }]} status={<StatusChip status={run.status} tone={jobStatusTone(run.status)} />} />
+      <FormHeader subtitle={<HeaderMeta parts={[run.title, run.mode, run.runAt]} />} crumbs={[{ label: 'Previous Jobs', to: '/rental/previous-jobs' }, { label: run.number }]} status={<StatusChip status={run.status} tone={jobStatusTone(run.status)} />} />
       <Page sx={{ pt: 2 }}>
         <Text type="s4" color="theme.secondary.700" sx={{ mb: 1 }}>Run {run.runAt} by {run.by}. {run.message}.{run.accumulated ? ` Accumulated on one invoice: ${run.title}.` : ''}</Text>
         <DataTable<JobLine & { id: string; idx: number }> rows={lines} searchPlaceholder="Search..." filter={{ key: 'status', options: ['processed', 'failed', 'queued', 'cancelled', 'pending'] }}

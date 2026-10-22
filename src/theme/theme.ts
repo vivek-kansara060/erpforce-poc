@@ -19,7 +19,7 @@ export const theme = createTheme({
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { textTransform: 'none', fontSize: 13, fontWeight: 500, padding: '0.25rem 0.75rem', lineHeight: '20px', letterSpacing: '-0.003em', borderRadius: '6px' },
+        root: { textTransform: 'none', fontSize: 12, fontWeight: 500, padding: '3px 10px', lineHeight: '18px', letterSpacing: '-0.003em', borderRadius: '6px' },
         containedPrimary: { backgroundColor: primaryGreen[700], color: '#fff', '&:hover': { backgroundColor: primaryGreen[800] } },
         outlined: { color: neutral[1000], backgroundColor: '#fff', border: 'none', boxShadow: '0 0 2px #E1E3E6, 0 1px 4px -2px rgba(24,39,75,.02), 0 4px 4px -2px rgba(24,39,75,.06)', '&:hover': { border: 'none', backgroundColor: '#fff' } },
         text: { color: neutral[1000], '&:hover': { color: primaryGreen[700], backgroundColor: 'transparent' } },
@@ -28,20 +28,22 @@ export const theme = createTheme({
     },
     MuiOutlinedInput: {
       styleOverrides: {
-        root: { fontSize: 13, borderRadius: '6px', '& fieldset': { borderColor: neutral[400] }, '&:hover fieldset': { borderColor: neutral[500] }, '&.Mui-focused fieldset': { borderColor: primaryGreen[700], borderWidth: 1 }, '&.Mui-disabled': { backgroundColor: neutral[200] } },
-        input: { padding: '8.5px 12px' },
+        root: { fontSize: 12, borderRadius: '6px', '& fieldset': { borderColor: neutral[400] }, '&:hover fieldset': { borderColor: neutral[500] }, '&.Mui-focused fieldset': { borderColor: primaryGreen[700], borderWidth: 1 }, '&.Mui-disabled': { backgroundColor: neutral[200] } },
+        input: { padding: '5px 10px', height: '1.5em' },
+        inputMultiline: { padding: 0, height: 'auto' },
+        multiline: { padding: '5px 10px' },
       },
     },
-    MuiSelect: { styleOverrides: { select: { '&.MuiSelect-select': { padding: '8.5px 14px', minHeight: '1.4375em' } } } },
+    MuiSelect: { styleOverrides: { select: { '&.MuiSelect-select': { padding: '5px 28px 5px 10px', minHeight: '1.5em', height: '1.5em' } } } },
     MuiMenu: { styleOverrides: { paper: { boxShadow: 'none', border: '1px solid #E1E3E6', borderRadius: 8, marginTop: 4 }, list: { padding: '0.25rem' } } },
-    MuiMenuItem: { styleOverrides: { root: { fontSize: 13, padding: '0.5rem 0.75rem', borderRadius: '0.5rem', marginTop: '0.125rem', marginBottom: '0.125rem', '&.Mui-selected': { color: primaryGreen[700], fontWeight: 500, backgroundColor: primaryGreen[100] } } } },
+    MuiMenuItem: { styleOverrides: { root: { fontSize: 12, padding: '6px 10px', borderRadius: '0.5rem', marginTop: '0.125rem', marginBottom: '0.125rem', '&.Mui-selected': { color: primaryGreen[700], fontWeight: 500, backgroundColor: primaryGreen[100] } } } },
     MuiDialog: { defaultProps: { transitionDuration: 250 }, styleOverrides: { paper: { borderRadius: '10px' } } },
     MuiDialogTitle: { styleOverrides: { root: { backgroundColor: neutral[100], borderBottom: `1px solid ${neutral[200]}`, padding: '10px 24px', fontSize: 15, fontWeight: 600, letterSpacing: '-0.011em' } } },
     MuiDialogActions: { styleOverrides: { root: { backgroundColor: neutral[200], padding: '8px 24px' } } },
-    MuiTabs: { styleOverrides: { root: { minHeight: '2.25rem', borderBottom: '1px solid #ECEDEF' }, indicator: { backgroundColor: primaryGreen[700] } } },
-    MuiTab: { styleOverrides: { root: { minHeight: '2.25rem', padding: '0.5rem 1rem', fontSize: 13, fontWeight: 500, textTransform: 'none', color: neutral[700], '&.Mui-selected': { color: neutral[900] }, '&:hover': { backgroundColor: '#F2F3F5' } } } },
+    MuiTabs: { styleOverrides: { root: { minHeight: 32, borderBottom: '1px solid #ECEDEF' }, indicator: { backgroundColor: primaryGreen[700] } } },
+    MuiTab: { styleOverrides: { root: { minHeight: 32, padding: '6px 14px', fontSize: 12, fontWeight: 500, textTransform: 'none', color: neutral[700], '&.Mui-selected': { color: neutral[900] }, '&:hover': { backgroundColor: '#F2F3F5' } } } },
     MuiTableCell: { styleOverrides: { root: { fontSize: 12, padding: '6px 10px', borderBottom: '1px solid #ECEDEF', borderRight: '1px solid #ECEDEF', '&:first-of-type': { borderLeft: '1px solid #ECEDEF' } }, head: { fontSize: 12, fontWeight: 600, backgroundColor: neutral[100], whiteSpace: 'nowrap' } } },
-    MuiChip: { styleOverrides: { root: { fontSize: 12, borderRadius: '0.25rem', height: 24 } } },
+    MuiChip: { styleOverrides: { root: { fontSize: 11, borderRadius: '4px', height: 22 } } },
     MuiAccordion: { styleOverrides: { root: { boxShadow: 'none', '&:before': { display: 'none' } } } },
   },
 });

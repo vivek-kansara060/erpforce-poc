@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Box, Button, FormControlLabel, Switch } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -441,7 +441,7 @@ export function CountView() {
   const assetRows = applyAssetFilters(s.assetLines ?? [], filters);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Physical Stock Verification', to: '/inventory/stock-verification' }, { label: s.number }]} status={<StatusChip status={sessionBadge(s)} tone={sessionBadge(s) === 'Variance' ? 'amber' : undefined} />}
+      <FormHeader subtitle={<HeaderMeta parts={[s.location, s.countedBy, s.date]} />} crumbs={[{ label: 'Physical Stock Verification', to: '/inventory/stock-verification' }, { label: s.number }]} status={<StatusChip status={sessionBadge(s)} tone={sessionBadge(s) === 'Variance' ? 'amber' : undefined} />}
         actions={<>
           {s.status === 'In Progress' && <Button variant="contained" onClick={() => nav(`/inventory/stock-verification/${s.id}/edit`)}>Continue Counting</Button>}
           {s.status === 'Completed' && vars.length > 0 && !s.adjustmentNo && <Button variant="contained" onClick={raise}>Raise Stock Adjustment</Button>}
@@ -643,7 +643,7 @@ export function DisposalView() {
   const gain = out ? (out.saleValue ?? 0) - out.nbvAtDisposal : 0;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: r.number }]} status={<StatusChip status={r.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.assetId, r.method, r.date]} />} crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: r.number }]} status={<StatusChip status={r.status} />}
         actions={<>
           {r.status === 'Draft' && <><Button variant="outlined" onClick={() => nav(`/inventory/disposals/${r.id}/edit`)}>Edit</Button><Button variant="contained" onClick={() => { push({ status: 'Pending Approval' }, 'Submitted for approval'); toast('Submitted for approval'); }}>Submit for Approval</Button></>}
           {r.status === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve</Button></>}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Box, Button } from '@mui/material';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable, type Column } from '@/components/DataTable';
 import { ChangeTag } from '@/components/ChangeTag';
 import { neutral, primaryGreen } from '@/theme/color';
@@ -177,7 +177,7 @@ export function ItemForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Item' }]}
+        subtitle={existing ? <HeaderMeta parts={[existing.name, existing.type, existing.sku]} /> : undefined} crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? existing.code : 'Add Item' }]}
         actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="outlined" onClick={() => save(true)}>Save as draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -221,7 +221,7 @@ export function ItemView() {
   const stockRows = locStock.rows.filter((x) => x.itemId === r.id);
   return (
     <>
-      <FormHeader
+      <FormHeader subtitle={<HeaderMeta parts={[r.name, r.type, r.sku]} />}
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: r.code }]}
         status={<StatusChip status={r.status} />}
         actions={<>

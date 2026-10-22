@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
@@ -148,7 +148,8 @@ export function PricingView() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: `${labelOf(r)} (${r.activity}${rental ? `, ${r.frequency}` : ''})` }]}
+        subtitle={<HeaderMeta parts={[r.activity, rental ? r.frequency : undefined, `AED ${r.price}`]} />}
+        crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: labelOf(r) }]}
         actions={<>
           {rental && <Button variant="outlined" onClick={() => nav(`${BASE}/add?from=${r.id}`)}>Add Frequency</Button>}
           <Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button>

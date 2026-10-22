@@ -6,7 +6,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FormSection, SelectInput, TextInput } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, HeaderMeta, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { TabPanels } from '@/components/Widgets';
 import { nextNumber } from '@/store/store';
@@ -108,7 +108,7 @@ export function LeadForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: ex ? `Edit ${ex.number}` : 'Add Lead' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/leads')}>Discard</Button><Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+      <FormHeader subtitle={ex ? <HeaderMeta parts={[ex.company, ex.contact, ex.owner]} /> : undefined} crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: ex ? ex.number : 'Add Lead' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/leads')}>Discard</Button><Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
@@ -148,7 +148,7 @@ export function LeadView() {
   const f = { ...l, probability: l.probability, entity: l.entity ?? 'Gulf Power Rentals LLC', currency: l.currency ?? 'AED' };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: l.number }]} status={<StatusChip status={l.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[l.company, l.contact, l.owner]} />} crumbs={[{ label: 'Lead', to: '/crm/leads' }, { label: l.number }]} status={<StatusChip status={l.status} />}
         actions={<>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Lead" /><MenuButton label="Actions" items={[{ label: 'Edit', onClick: () => nav(`/crm/leads/${l.id}/edit`) }, { label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Duplicate', onClick: () => toast('Lead duplicated as a draft', 'info') }, { label: 'Delete', onClick: () => { leads.remove(l.id); nav('/crm/leads'); } }]} />
           <Button variant="outlined" onClick={() => setCom({ ...com, open: true })}>Communication Log</Button>

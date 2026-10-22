@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { Link } from 'react-router-dom';
 import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, fleetStatus, isOpenTrip, tripSeed, type CrossHire, type Trip } from '@/modules/crm/data';
 import { VehicleTrips, driverOptions } from '@/modules/rental/FleetPages';
@@ -365,7 +365,7 @@ export function HeavyForm() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `Edit ${existing.code}` : 'Add Heavy Equipment Fixed Asset' }]}
+        subtitle={existing ? <HeaderMeta parts={[existing.name, existing.category, existing.brand]} /> : undefined} crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `ID: ${existing.assetId}` : 'Add Heavy Equipment Fixed Asset' }]}
         actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
       />
       <Page sx={{ pt: 2 }}>
@@ -477,6 +477,7 @@ export function HeavyView() {
   return (
     <>
       <FormHeader
+        subtitle={<HeaderMeta parts={[r.name, r.category, r.brand]} />}
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: `ID: ${r.assetId}` }]}
         status={<><StatusChip status={r.status} />{isFleet ? <StatusChip status="Delivery fleet" tone="blue" /> : <StatusChip status={stock} tone={tone(stock)} />}</>}
         actions={<>

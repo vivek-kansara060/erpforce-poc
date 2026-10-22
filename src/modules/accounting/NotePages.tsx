@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
 import { DateInput, FormGrid, SelectInput, ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { TabPanels } from '@/components/Widgets';
 import { TODAY } from '@/modules/crm/data';
 import { RowsEditor, Section } from '@/modules/crm/FormKit';
@@ -41,7 +41,7 @@ export function NoteView({ kind }: { kind: Kind }) {
   const r = (x: { ok: boolean; message: string }) => toast(x.message, x.ok ? 'success' : 'error');
   return (
     <>
-      <FormHeader crumbs={[{ label: title(kind), to: `/accounting/${base(kind)}` }, { label: n.number }]} status={<DocChips approval={n.approval} />}
+      <FormHeader subtitle={<HeaderMeta parts={[n.partyName, n.againstNumber, n.date]} />} crumbs={[{ label: title(kind), to: `/accounting/${base(kind)}` }, { label: n.number }]} status={<DocChips approval={n.approval} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/accounting/${kind === 'Credit' ? 'invoices' : 'bills'}/${n.againstId}`)}>View {kind === 'Credit' ? 'Invoice' : 'Bill'}</Button>
           <ApprovalButtons simple approval={n.approval} onApprove={() => r(approveNote(kind, n.id))} onReject={(note) => r(rejectNote(kind, n.id, note))} />

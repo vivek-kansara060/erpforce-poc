@@ -10,7 +10,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { SelectInput, TextInput } from '@/components/Form';
 import { SignaturePad } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -309,7 +309,7 @@ export function DeliveryView() {
   const start = d.rentalStart ?? d.date.slice(0, 10);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Delivery Orders', to: '/crm/delivery-orders' }, { label: d.number }]} status={<StatusChip status={d.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(d.customerId), d.soNumber, d.date]} />} crumbs={[{ label: 'Delivery Orders', to: '/crm/delivery-orders' }, { label: d.number }]} status={<StatusChip status={d.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${d.soId}`)}>View Sales Order</Button>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Delivery Order" /><Button variant="outlined" onClick={() => setPrintOpen(true)}>Print</Button>

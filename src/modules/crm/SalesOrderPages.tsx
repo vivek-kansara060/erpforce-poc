@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, FormGrid, SelectInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, HeaderMeta, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -99,7 +99,7 @@ export function SalesOrderForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: `Edit ${so.number}` }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>Price, quantity, Activity Type and Contract Type of confirmed items are frozen. Use Extend, Replacement or a formal revision to change them.</Alert>
         <CommercialTabs kind="order" f={f} set={set} err={err}
@@ -291,7 +291,7 @@ export function SalesOrderView() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number }]} status={<StatusChip status={so.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number }]} status={<StatusChip status={so.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}/edit`)}>Edit</Button>
           {so.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(so); toast('Sales Order confirmed'); }}>Confirm</Button>}

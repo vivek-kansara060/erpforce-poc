@@ -7,7 +7,7 @@ import { Timeline } from '@/components/Flow';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FileInput, SelectInput } from '@/components/Form';
 import { EmailDialog, PrintDialog } from './ActionDialogs';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel, TabPanels } from '@/components/Widgets';
@@ -98,7 +98,7 @@ export function AmcView() {
   const f = { ...o, customerName: custName(o.customerId), item: (o.amcScope || o.lines[0]?.desc || '-'), period: `${o.amcStart} to ${o.amcEnd}`, value: aed(value), project: o.costCentre || '-' };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(o.customerId), o.title, o.date]} />} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: o.number }]} status={<StatusChip status={o.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${o.id}/edit`)}>Edit</Button>
           {o.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(o); toast('AMC order confirmed'); }}>Confirm</Button>}
@@ -201,7 +201,7 @@ export function JobCardView() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? jc.soNumber, to: `/crm/amc-orders/${jc.soId}` }, { label: jc.number }]}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(jc.customerId), jc.technician, jc.plannedDate]} />} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? jc.soNumber, to: `/crm/amc-orders/${jc.soId}` }, { label: jc.number }]}
         status={<Box sx={{ display: 'flex', gap: 1 }}><StatusChip status={jc.status} />{jc.status === 'Invoiced' && payChip(pay)}</Box>}
         actions={<>
           {jc.status === 'Open' && <Button variant="contained" onClick={complete}>Complete Visit</Button>}
@@ -276,7 +276,7 @@ export function JobCardForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? f.soNumber, to: `/crm/amc-orders/${f.soId}` }, { label: id ? `Edit ${f.number}` : `New Job Card, visit ${f.visitIdx + 1}` }]}
+      <FormHeader subtitle={id ? <HeaderMeta parts={[custName(f.customerId), f.technician, f.plannedDate]} /> : undefined} crumbs={[{ label: 'AMC Orders', to: '/crm/amc-orders' }, { label: so?.number ?? f.soNumber, to: `/crm/amc-orders/${f.soId}` }, { label: id ? f.number : `New Job Card, visit ${f.visitIdx + 1}` }]}
         actions={<><Button variant="outlined" onClick={back}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <SpecForm specs={jcSpecs(f, true)} f={jcView(f)} set={set} />
