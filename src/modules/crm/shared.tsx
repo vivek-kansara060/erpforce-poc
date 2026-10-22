@@ -120,7 +120,7 @@ export function RowMenu({ items }: { items: RowMenuItem[] }) {
     <>
       <IconButton size="small" aria-label="Actions" onClick={(e) => setEl(e.currentTarget)}><MoreVertIcon fontSize="small" /></IconButton>
       <Menu anchorEl={el} open={!!el} onClose={() => setEl(null)}>
-        {items.map((i) => <MenuItem key={i.label} disabled={i.disabled} sx={i.danger ? { color: '#C64D4D' } : undefined} onClick={() => { setEl(null); i.onClick(); }}>{i.label}</MenuItem>)}
+        {items.map((i) => <MenuItem key={i.label} disabled={i.disabled} sx={i.danger ? { color: '#C2363A' } : undefined} onClick={() => { setEl(null); i.onClick(); }}>{i.label}</MenuItem>)}
       </Menu>
     </>
   );

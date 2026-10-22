@@ -5,7 +5,7 @@ import { Alert, Box, Button } from '@mui/material';
 import { customers } from '@/mock-data/masters';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
@@ -128,7 +128,7 @@ export function OpportunityForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: ex ? `Edit ${ex.number}` : 'Add Opportunity' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/opportunities')}>Discard</Button><Button variant="contained" onClick={save}>{ex ? 'Update' : 'Save'}</Button></>} />
+      <FormHeader subtitle={ex ? <HeaderMeta parts={[custName(ex.customerId), ex.title, ex.expectedClose]} /> : undefined} crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: ex ? ex.number : 'Add Opportunity' }]} actions={<><Button variant="outlined" onClick={() => nav('/crm/opportunities')}>Discard</Button><Button variant="contained" onClick={save}>{ex ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {zero.length > 0 && <Alert severity="info" sx={{ mb: 2 }}>No unit of {zero.map((l) => `${l.group} ${l.category}`).join(', ')} is available across the fleet. This is flagged for pipeline and procurement planning but does not block the Opportunity.</Alert>}
         <TabPanels tabs={[
@@ -169,7 +169,7 @@ export function OpportunityView() {
   const f = { ...o, entity: o.entity ?? 'Gulf Power Rentals LLC', currency: o.currency ?? 'AED', priority: o.priority ?? 'Medium' };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: o.number }]} status={<StatusChip status={o.stage} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(o.customerId), o.title, o.expectedClose]} />} crumbs={[{ label: 'Opportunity', to: '/crm/opportunities' }, { label: o.number }]} status={<StatusChip status={o.stage} />}
         actions={<>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} doc="Opportunity" /><MenuButton label="Actions" items={[{ label: 'Print', onClick: () => setPrintOpen(true) }, { label: 'Edit', disabled: !!qt || o.stage === 'Won', onClick: () => nav(`/crm/opportunities/${o.id}/edit`) }, { label: 'Duplicate', onClick: () => toast('Opportunity duplicated as a draft', 'info') }, { label: 'Delete', disabled: !!qt, onClick: () => { opps.remove(o.id); nav('/crm/opportunities'); } }]} />
           {o.leadId && <Button variant="outlined" onClick={() => nav(`/crm/leads/${o.leadId}`)}>View Lead</Button>}
@@ -180,8 +180,8 @@ export function OpportunityView() {
           { label: 'Basic Details', content: (
             <>
               <SpecView specs={S.basic} f={f} />
-              <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} cols={3} /></Section>
-              <Section title="Classification"><SpecView specs={S.classification} f={f} cols={3} /></Section>
+              <Section title="Opportunity Owner Detail"><SpecView specs={S.owner} f={f} /></Section>
+              <Section title="Classification"><SpecView specs={S.classification} f={f} /></Section>
               {o.activity !== 'AMC' && <Section title="Items" change="changed" req={R.meet}><ItemsTable lines={o.lines} header={o.activity} vatType="Standard (With VAT)" fleet={fleet.rows} pricing={pricing.rows} mode="opp" locked /></Section>}
               <Section title="Follow Up"><RowsEditor cols={followCols} rows={o.followUps ?? []} locked blank={blankFollow} empty="No follow ups" /></Section>
             </>) },

@@ -10,7 +10,7 @@ import { modules } from '@/modules';
 import { renderRoutes } from '@/routes/renderRoutes';
 import { processAutomatic } from '@/modules/accounting/schedule';
 
-const Loader = () => <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress size={50} sx={{ color: '#6FD3A6' }} /></Box>;
+const Loader = () => <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}><CircularProgress size={50} sx={{ color: '#6DCB9D' }} /></Box>;
 
 let schedulerStarted = false;
 

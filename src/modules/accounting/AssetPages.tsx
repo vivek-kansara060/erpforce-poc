@@ -201,7 +201,7 @@ export function AssetView() {
   const basic = (
     <>
       <Panel title="General Information">
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Asset ID" value={r.assetId} />
           <ValueField label="Asset Type" value={r.assetType} />
           <ValueField label="Asset Name" value={r.name} />
@@ -217,14 +217,14 @@ export function AssetView() {
       </Panel>
       {r.fleetVehicle && (
         <Panel title="Fleet Vehicle" change="new" req={REQ} sx={{ mt: 2 }}>
-          <ValueGrid cols={4}>
+          <ValueGrid>
             <ValueField label="Plate Number" value={r.plateNumber} />
             <ValueField label="Default Driver" value={r.defaultDriver || '-'} />
           </ValueGrid>
         </Panel>
       )}
       <Panel title="Depreciation" sx={{ mt: 2 }}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Asset Value" value={aed(r.assetValue)} />
           <ValueField label="Not Depreciable Value" value={aed(r.notDepreciable)} />
           <ValueField label="Book Value" value={aed(r.bookValue)} />
@@ -237,7 +237,7 @@ export function AssetView() {
         </ValueGrid>
       </Panel>
       <Panel title="Accounts" sx={{ mt: 2 }}>
-        <ValueGrid cols={3}>
+        <ValueGrid>
           <ValueField label="Fixed Asset Account" value={r.accFixedAsset} />
           <ValueField label="Depreciation Account" value={r.accDepreciation} />
           <ValueField label="Expense Account" value={r.accExpense} />

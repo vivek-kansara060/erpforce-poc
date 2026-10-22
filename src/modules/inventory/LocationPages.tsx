@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@mui/material';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { CheckInput, FormGrid, FormSection, MultiSelectInput, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -100,7 +100,7 @@ export function LocationForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Location', to: '/inventory/locations' }, { label: existing ? `Edit ${existing.name}` : 'Add Location' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.name, existing.type, existing.city]} /> : undefined} crumbs={[{ label: 'Location', to: '/inventory/locations' }, { label: existing ? existing.code : 'Add Location' }]}
         actions={<><Button variant="outlined" onClick={() => nav('/inventory/locations')}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <FormGrid>
@@ -154,7 +154,7 @@ function TransferInDialog({ to, onClose }: { to: LocationRec; onClose: () => voi
   };
   return (
     <AppDialog open title={`Transfer stock in: ${to.name}`} onClose={onClose} confirmLabel="Transfer" onConfirm={confirm}>
-      <FormGrid>
+      <FormGrid cols={2}>
         <SelectInput label="From Location" required value={from} options={sources} onChange={(v) => { setFrom(v); setItemId(''); }} error={errors.from} />
         <SelectInput label="Item" required value={itemId} options={avail.map((r) => ({ value: r.itemId, label: `${items.get(r.itemId)?.name} (${qtyWithUnit(r.qty, items.get(r.itemId)?.unit ?? 'Nos')} available)` }))} onChange={setItemId} error={errors.itemId} />
         <NumberInput label={`Quantity${it ? ` (${it.unit})` : ''}`} required value={qty} onChange={setQty} error={errors.qty} />
@@ -176,7 +176,7 @@ export function LocationView() {
   const status = r.status ?? 'Active';
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Location', to: '/inventory/locations' }, { label: r.code }]} status={<StatusChip status={status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.name, r.type, r.city]} />} crumbs={[{ label: 'Location', to: '/inventory/locations' }, { label: r.code }]} status={<StatusChip status={status} />}
         actions={<>{r.type === EMPLOYEE && status === 'Active' && <Button variant="outlined" onClick={() => setTransfer(true)}>Transfer stock in</Button>}<Button variant="outlined" onClick={() => { locs.update(r.id, { status: status === 'Active' ? 'Inactive' : 'Active' }); toast('Status updated'); }}>{status === 'Active' ? 'Deactivate' : 'Activate'}</Button><Button variant="contained" onClick={() => nav(`/inventory/locations/${r.id}/edit`)}>Edit</Button></>} />
       <Page sx={{ pt: 2 }}>
         <ValueGrid cols={4}>

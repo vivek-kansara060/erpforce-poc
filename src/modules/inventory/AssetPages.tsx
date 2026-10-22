@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Box, Button, FormControlLabel, Switch } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -103,7 +103,7 @@ function CertificateDialog({ open, assetId, rec, approvalOn, onClose }: { open: 
   };
   return (
     <AppDialog open={open} title={rec ? `Edit ${rec.type} Certificate` : 'Add Certificate'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
-      <FormGrid>
+      <FormGrid cols={2}>
         <CertTypeSelect value={f.type} onChange={set('type')} error={errors.type} req={REQ_CERT} hint="Create New adds a new document type to the master" />
         <TextInput label="Reference / Policy Number" change="new" req={REQ_CERT} value={f.reference} onChange={set('reference')} />
         <DateInput label="Expiry Date" required change="new" req={REQ_CERT} value={f.expiry} onChange={set('expiry')} error={errors.expiry} />
@@ -177,7 +177,7 @@ function ReadingDialog({ open, assetId, rec, onClose }: { open: boolean; assetId
   };
   return (
     <AppDialog open={open} title={rec ? 'Edit Usage Reading' : 'Add Usage Reading'} onClose={onClose} onConfirm={save} confirmLabel={rec ? 'Save' : 'Add'} maxWidth="md">
-      <FormGrid>
+      <FormGrid cols={2}>
         <DateInput label="Reading Date/Time" required change="new" req={REQ_USE} value={f.date} onChange={set('date')} error={errors.date} />
         <NumberInput label="Hour Meter Reading (hours)" required change="new" req={REQ_USE} value={f.hmr} onChange={set('hmr')} error={errors.hmr} />
         <SelectInput label="Recorded By" required change="new" req={REQ_USE} value={f.by} options={EMP} onChange={set('by')} error={errors.by} hint="Responsible role to be confirmed with client" />
@@ -204,7 +204,7 @@ const REQ_PSV_ASSET = 'Physical Stock Verification > Fixed Assets count (2 Oct c
 const REQ_PSV_REASON = 'Physical Stock Verification > Reason (2 Oct call: one free-text reason for stock items; reason only for assets Not Found)';
 const REQ_PSV_LIST = 'Physical Stock Verification (2 Oct call: filters, Select All, inactive assets excluded, no paging)';
 const ASSET_COUNT_HINT = 'Counting individual fixed assets is not defined in the requirement document. Rule to be confirmed with client';
-const inputStyle = { padding: '6px 8px', border: '1px solid #D3D3D4', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
+const inputStyle = { padding: '6px 8px', border: '1px solid #D2D5D9', borderRadius: 4, font: 'inherit', background: '#fff' } as const;
 /** Lists in a count show every row at once: they are already limited to one location, so paging only gets in the way. */
 const NoPaging = ({ children }: { children: React.ReactNode }) => <Box sx={{ '& .MuiPagination-root': { display: 'none' } }}>{children}</Box>;
 const ALL_ROWS = 100000;
@@ -337,10 +337,10 @@ export function CountForm() {
             hint="One reason for the whole count, needed only when a counted quantity differs from the system" />}
         </FormGrid>
         <FormSection title={isAssets ? 'Fixed Assets to Verify' : 'Items to Count'} change="new" req={isAssets ? REQ_PSV_ASSET : REQ_PSV}>
-          {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
+          {isAssets && assetLines.length === 0 && <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the expected fixed assets'}</Text>}
           {isAssets && assetLines.length > 0 && (
             <>
-              <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? `Mark each asset Found or Not Found. A reason is needed only for assets not found. ${found} found, ${notFound} not found, ${assetLines.length - found - notFound} not marked yet.`}</Text>
+              <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? `Mark each asset Found or Not Found. A reason is needed only for assets not found. ${found} found, ${notFound} not found, ${assetLines.length - found - notFound} not marked yet.`}</Text>
               <AssetCountFilters rows={assetLines} f={filters} onChange={(f) => { setFilters(f); setSelected([]); }} />
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
                 <Button size="small" variant="outlined" onClick={() => setSelected(shown.map((l) => l.assetId))}>Select All{Object.values(filters).some(Boolean) ? ' (filtered)' : ''}</Button>
@@ -363,10 +363,10 @@ export function CountForm() {
               </NoPaging>
             </>
           )}
-          {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
+          {!isAssets && lines.length === 0 && <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'}>{errors.lines ?? 'Select a location to load the items to count'}</Text>}
           {!isAssets && lines.length > 0 && (
             <>
-            <Text type="s5" color={errors.lines ? '#C64D4D' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Enter the counted quantity for every item. If any quantity differs, enter one reason for the count above.'}</Text>
+            <Text type="s5" color={errors.lines ? '#C2363A' : 'theme.secondary.700'} sx={{ mb: 1 }}>{errors.lines ?? 'Enter the counted quantity for every item. If any quantity differs, enter one reason for the count above.'}</Text>
             <NoPaging>
               <DataTable<CountSession['lines'][number]> hideToolbar rowKey={(r) => r.itemId} rows={lines.map((l) => ({ ...l, id: l.itemId }))} pageSize={ALL_ROWS} columns={[
                 { key: 'code', label: 'Item Code' }, { key: 'name', label: 'Item' },
@@ -441,14 +441,14 @@ export function CountView() {
   const assetRows = applyAssetFilters(s.assetLines ?? [], filters);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Physical Stock Verification', to: '/inventory/stock-verification' }, { label: s.number }]} status={<StatusChip status={sessionBadge(s)} tone={sessionBadge(s) === 'Variance' ? 'amber' : undefined} />}
+      <FormHeader subtitle={<HeaderMeta parts={[s.location, s.countedBy, s.date]} />} crumbs={[{ label: 'Physical Stock Verification', to: '/inventory/stock-verification' }, { label: s.number }]} status={<StatusChip status={sessionBadge(s)} tone={sessionBadge(s) === 'Variance' ? 'amber' : undefined} />}
         actions={<>
           {s.status === 'In Progress' && <Button variant="contained" onClick={() => nav(`/inventory/stock-verification/${s.id}/edit`)}>Continue Counting</Button>}
           {s.status === 'Completed' && vars.length > 0 && !s.adjustmentNo && <Button variant="contained" onClick={raise}>Raise Stock Adjustment</Button>}
           {s.adjustmentStatus === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve Adjustment</Button></>}
         </>} />
       <Page sx={{ pt: 2 }}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Stock Count Session" value={s.number} change="new" req={REQ_PSV} />
           <ValueField label="Count Type" value={s.type ?? 'Stock Items'} change="new" req={REQ_PSV_ASSET} />
           <ValueField label="Date" value={s.date} />
@@ -459,7 +459,7 @@ export function CountView() {
           {!assets && <ValueField label="Reason for Differences" value={s.reason} change="new" req={REQ_PSV_REASON} />}
         </ValueGrid>
         <KpiRow><Box sx={{ mt: 3, display: 'contents' }}>
-          <KpiCard title="Items Covered" value={coveredCount(s)} /><KpiCard title={assets ? 'Assets Not Found' : 'Lines with Variance'} value={vars.length} tint={vars.length ? '#FFFAF0' : undefined} />
+          <KpiCard title="Items Covered" value={coveredCount(s)} /><KpiCard title={assets ? 'Assets Not Found' : 'Lines with Variance'} value={vars.length} tint={vars.length ? '#FEF1DD' : undefined} />
           <KpiCard title="Stock Adjustment" value={s.adjustmentNo ?? '-'} sub={s.adjustmentStatus ? <>Approval: {s.adjustmentStatus}</> : vars.length ? 'Not raised yet' : 'Not required'} />
         </Box></KpiRow>
         {s.status === 'Completed' && vars.length > 0 && s.adjustmentStatus !== 'Approved' && s.adjustmentStatus !== 'Rejected' && <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>System quantity is corrected only after the Stock Adjustment is approved. Approval thresholds and roles to be confirmed with client.</Text>}
@@ -540,7 +540,7 @@ export function AssetHistoryPanel({ asset }: { asset?: HeavyRec }) {
   const repairs = asset.movements.filter((m) => m.type === 'Sent for Repair').length;
   return (
     <Panel title="Asset history and economics" change="new" req={REQ_DSP_FLOW} sx={{ mt: 2 }}>
-      <ValueGrid cols={4}>
+      <ValueGrid>
         <ValueField label="Income to date" value={aed(income)} /><ValueField label="Expenses to date" value={aed(expense)} />
         <ValueField label="Income vs Expenses ratio" value={<StatusChip status={`${ratio}`} tone={ratio >= 1.5 ? 'green' : ratio >= 1 ? 'amber' : 'red'} />} />
         <ValueField label="Net Book Value" value={aed(asset.nbv)} /><ValueField label="Utilization" value={`${asset.utilization}%`} /><ValueField label="Idle time" value={`${asset.idleDays} days`} /><ValueField label="Times sent for repair" value={String(repairs)} /><ValueField label="Current status" value={asset.assetStatus} />
@@ -643,7 +643,7 @@ export function DisposalView() {
   const gain = out ? (out.saleValue ?? 0) - out.nbvAtDisposal : 0;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: r.number }]} status={<StatusChip status={r.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.assetId, r.method, r.date]} />} crumbs={[{ label: 'Asset Disposal Requests', to: '/inventory/disposals' }, { label: r.number }]} status={<StatusChip status={r.status} />}
         actions={<>
           {r.status === 'Draft' && <><Button variant="outlined" onClick={() => nav(`/inventory/disposals/${r.id}/edit`)}>Edit</Button><Button variant="contained" onClick={() => { push({ status: 'Pending Approval' }, 'Submitted for approval'); toast('Submitted for approval'); }}>Submit for Approval</Button></>}
           {r.status === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve</Button></>}
@@ -652,10 +652,10 @@ export function DisposalView() {
       <Page sx={{ pt: 2 }}>
         <Panel sx={{ mb: 2 }}>
           <LifecycleStepper steps={disposalSteps(r)} current={disposalStep(r)} />
-          {r.status === 'Rejected' && <Text type="s5" color="#C64D4D" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
+          {r.status === 'Rejected' && <Text type="s5" color="#C2363A" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
           {r.status === 'Approved' && !out && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The asset has been inactivated. Create the invoice for the {sale ? 'sale' : 'scrap'} to close the request.</Text>}
         </Panel>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Disposal Request Number" value={r.number} change="new" req={REQ_DSP} />
           <ValueField label="Asset" value={asset ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/inventory/items/heavy/${asset.id}`)}>{r.assetId} - {asset.name}</Box> : r.assetId} change="new" req={REQ_DSP} />
           <ValueField label="Disposal Method" value={r.method} change="new" req={REQ_DSP} />
@@ -666,7 +666,7 @@ export function DisposalView() {
         </ValueGrid>
         {out && (
           <Panel title={sale ? 'Sale Invoice' : 'Scrap Invoice'} change="new" req={REQ_DSP_INV} sx={{ mt: 3 }}>
-            <ValueGrid cols={4}>
+            <ValueGrid>
               <ValueField label="Invoice Number" value={<Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${out.invoiceRef}`)}>{out.invoiceRef}</Box>} />
               <ValueField label="Invoice Date" value={out.date} />
               <ValueField label="Invoice To" value={out.buyer} />
@@ -688,7 +688,7 @@ export function DisposalView() {
       <ConfirmDialog open={reject} danger title="Reject disposal request" description="The asset stays active on the Fixed Asset Register." confirmLabel="Reject" onClose={() => setReject(false)} onConfirm={() => { push({ status: 'Rejected' }, 'Rejected'); toast('Request rejected'); }} />
       <AppDialog open={outDlg} title={`Create Invoice for ${sale ? 'Sale' : 'Scrap'}`} onClose={() => setOutDlg(false)} onConfirm={completeOutcome} confirmLabel="Create Invoice" maxWidth="md">
         <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>A {sale ? 'sale' : 'scrap'} always results in an amount, so an invoice is raised to the party taking the asset.</Text>
-        <FormGrid>
+        <FormGrid cols={2}>
           <TextInput label="Invoice Number" disabled change="changed" req={REQ_DSP_INV} value={o.invoiceRef} hint="The sales invoice is created in Accounting (Pending approval) when you save" />
           <DateInput label="Invoice Date" required change="new" req={REQ_DSP_INV} value={o.date} onChange={(v) => setO({ ...o, date: v })} error={oErr.date} />
           <SelectInput label="Invoice To Taken From" required change="new" req={REQ_DSP_INV} value={o.source} options={INVOICE_TO_SOURCES} onChange={(v) => setO({ ...o, source: v, buyer: '' })} hint="Whether the invoiced party is picked by the system or entered by hand is to be confirmed with client" />

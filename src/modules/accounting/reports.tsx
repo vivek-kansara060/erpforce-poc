@@ -130,10 +130,10 @@ export function AccountingDashboard() {
       <PageTitle title="Accounting & Finance" change="changed" req={R_ACC.meet} />
       <KpiRow>
         <KpiCard title="Receivables outstanding" value={money(ar)} sub="Approved invoices not yet paid" onClick={() => nav('/accounting/reports/aged-receivable')} />
-        <KpiCard title="Overdue receivables" value={money(overdue)} sub="Past the due date" tint="#FDECEC" onClick={() => nav('/accounting/reports/aged-receivable')} />
+        <KpiCard title="Overdue receivables" value={money(overdue)} sub="Past the due date" tint="#FBE3E5" onClick={() => nav('/accounting/reports/aged-receivable')} />
         <KpiCard title="Payables outstanding" value={money(ap)} sub="Approved bills not yet paid" onClick={() => nav('/accounting/reports/aged-payable')} />
-        <KpiCard title="Collected this month" value={money(collected)} sub="Approved collections" tint="#E8F5F0" onClick={() => nav('/accounting/collections')} />
-        <KpiCard title="Waiting for approval" value={String(pending)} sub="Invoices, bills and entries" tint="#FFF3CC" />
+        <KpiCard title="Collected this month" value={money(collected)} sub="Approved collections" tint="#F1FBF6" onClick={() => nav('/accounting/collections')} />
+        <KpiCard title="Waiting for approval" value={String(pending)} sub="Invoices, bills and entries" tint="#FEF1DD" />
       </KpiRow>
       <Panel title="Latest invoices" sx={{ mt: 3 }}>
         <DataTable hideToolbar rows={[...inv].sort((a, b) => (a.number < b.number ? 1 : -1)).slice(0, 8)} onRowClick={(r) => nav(`/accounting/invoices/${r.id}`)} columns={[{ key: 'number', label: 'Invoice' }, { key: 'date', label: 'Date' }, { key: 'partyName', label: 'Customer' }, { key: 'source', label: 'Source', render: (r) => r.source.type }, { key: 't', label: 'Total', align: 'right', render: (r) => money(invoiceTotal(r)) }, { key: 's', label: 'Status', render: (r) => <DocChips approval={r.approval} payStatus={r.payStatus} /> }]} />

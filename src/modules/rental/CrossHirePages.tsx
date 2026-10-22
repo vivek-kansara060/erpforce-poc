@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { CheckInput, DateInput, FileInput, FormGrid, MultiSelectInput, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { LifecycleStepper, Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -108,7 +108,7 @@ export function ChRequestView() {
   if (!r) return <Page><PageTitle title="Request not found" right={<Button variant="outlined" onClick={() => nav('/rental/cross-hire')}>Back</Button>} /></Page>;
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Cross Hire Requests', to: '/rental/cross-hire' }, { label: r.number }]} status={<StatusChip status={r.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[r.vendor, r.soNumber, r.date]} />} crumbs={[{ label: 'Cross Hire Requests', to: '/rental/cross-hire' }, { label: r.number }]} status={<StatusChip status={r.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${r.soId}`)}>View Sales Order</Button>
           {(r.status === 'Draft' || r.status === 'Pending') && <Button variant="contained" onClick={() => { submitChRequest(r.id); toast('Request submitted and approved'); }}>Submit</Button>}
@@ -119,7 +119,7 @@ export function ChRequestView() {
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
           <ValueField label="Entity" value={r.company} /><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Rental Order ID" value={r.soNumber} /><ValueField label="Project" change="new" req={R_CTX} value={orders.get(r.soId)?.costCentre} />
-          <ValueField label="Raised By" change="new" req={R_CH} value={r.raisedBy} /><ValueField label="Decision Right" change="new" req={R_CH} value={r.raisedRole ? `${r.raisedRole} (permission to initiate a cross-hire)` : undefined} /><ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
+          <ValueField label="Raised By" change="new" req={R_CH} value={r.raisedBy} /><ValueField label="Purchase Representative" value={r.representative} /><ValueField label="Vendor" value={r.vendor ?? 'Decided at RFQ or order'} /><ValueField label="Currency" value={r.currency} /><ValueField label="Narration" value={r.narration} />
         </ValueGrid>
         <Panel title="Items" sx={{ mt: 3 }}>
           <DataTable hideToolbar rows={reqItems(r).map((i) => ({ ...i, id: i.lineId }))} columns={[
@@ -267,7 +267,7 @@ export function ChOrderView() {
   ];
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={st} />}
+      <FormHeader subtitle={<HeaderMeta parts={[c.supplier, c.soNumber, c.date]} />} crumbs={[{ label: 'Orders', to: '/rental/cross-hire-orders' }, { label: c.number }]} status={<StatusChip status={st} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${c.soId}`)}>View Sales Order</Button>
           <MenuButton label="Actions" items={actionItems} />
@@ -298,7 +298,7 @@ export function ChOrderView() {
           <Text type="s4" weight="medium" sx={{ mt: 2, mb: 1 }}>Buy vs hire (if the business owned an equivalent unit)<ChangeTag kind="new" req={R.cross} /></Text>
           {owned ? <ValueGrid>
             <ValueField label="Owned cost per month (estimate)" value={aed(owned.monthly)} /><ValueField label={`Owned cost for ${owned.months} month(s)`} value={aed(owned.cost)} />
-            <ValueField label="Margin if owned" value={aed(owned.margin)} /><ValueField label="Difference to cross-hire margin" value={<span style={{ color: owned.margin - margin >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(owned.margin - margin)}</span>} />
+            <ValueField label="Margin if owned" value={aed(owned.margin)} /><ValueField label="Difference to cross-hire margin" value={<span style={{ color: owned.margin - margin >= 0 ? '#146B43' : '#C2363A', fontWeight: 600 }}>{aed(owned.margin - margin)}</span>} />
           </ValueGrid> : <Text type="s5" color="theme.secondary.700">No owned unit of the ordered Categories on the register to compare with.</Text>}
           <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Estimate from the average purchase value of the owned units of this Category and Subcategory over their useful life, for the hire period of this order. It supports the decision to buy or keep cross-hiring; the exact method is to be confirmed with the client.</Text>
         </Panel>

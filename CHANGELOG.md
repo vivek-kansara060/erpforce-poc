@@ -282,6 +282,19 @@ The same table is used on the Expenses tab of a Cross-Hire Order (the Expense En
 *What Ajin asked.* "Instead of [a pop-up], why can't we show something at the bottom or at the side, what is the error? And if I'm clicking that error, it should redirect me to that particular error point itself ... Maybe we can adopt it as a global one" (35:10 to 36:11).
 *What we did.* When a form fails to save, a panel at the side lists every field to fix, with its message. A click scrolls to the field, opens its tab when it is on another tab, focuses it and flashes it. A tab that holds errors shows a red count. The panel closes by itself when nothing is left, when it is closed, or when the page changes. A failure that is not about a field (for example "This charge is already invoiced") is still a toast. Tabs now stay loaded so an error on another tab is found; an items table or a checklist shows its error as one entry (Items, Customer Signature, Pre-Return Site Checklist, Reason and responsibility, Extension, Cross-hired assets).
 *Be aware.* The panel sits below the page header, not at the very top, so it never covers the Save or Submit button. This is the exception to the builder-guide rule on shared files: `src/components/Form.tsx`, `Widgets.tsx`, `Dialogs.tsx` and a new `ErrorPanel.tsx` are changed, because Ajin asked for a global behaviour.
+### 8 Oct, around 1:30 PM: Customer Return Goods Receipt: no Track Details, the serial is confirmed in the yard inspection
+**Where:** CRM / Sales > Orders > Customer Returns
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* A returned rental asset is already identified (it is picked from the assets out against the order, quantity 1), so the Track Details icon and dialog are removed from the Customer Return's Goods Receipt. The items table shows each asset's Serial Number instead, and the yard inspection has one required tick, "Serial number ... matches the nameplate of the unit received", before Passed or Damage Found can be saved. Validate needs every asset inspected with its serial confirmed.
+*Be aware.* The Cross Hire Goods Receipt keeps Track Details, because that is where a supplier's serial number is first entered.
+
+### 8 Oct, around 12:30 PM: Delivery Order: Add Extra Item (free or billable) and a searchable Trace Details picker
+**Where:** CRM / Sales > Orders > Delivery Orders
+**Type:** EXISTING WITH CHANGE
+
+*What we did.* (1) The button on the Delivery Order items is **+ Add Extra Item**, a menu of the kinds of item that can be delivered (Equipment or Asset, and Trading). It opens the same item dialog as the Quotation and the Sales Order (Category, Subcategory, Pricing or Item, Description, UOM, Quantity, FOC, Rate, Discount, amounts, Location, Cost Centre), so whether it is free of charge is decided there with the FOC checkbox; a priced extra is a billable line on the Sales Order. (2) In Trace Details the Assigned Asset(s) stays a dropdown, now with a search in it (asset ID, name, brand, model or serial), compact option lines with a checkbox and a Cross-Hired tag, an "x of y selected" counter in its label, chips for the selected units, and the options lock once the units to deliver are chosen.
+*Be aware.* The delivery's own Free of charge checkbox (for the whole delivery) is unchanged.
 
 ### 8 Oct, around 11:30 AM: Goods Receipt: assets traced on the view page, in a Track Details dialog
 **Where:** Rental > Cross Hire > Orders

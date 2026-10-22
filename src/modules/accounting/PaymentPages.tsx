@@ -5,7 +5,7 @@ import { DataTable } from '@/components/DataTable';
 import { MenuButton, useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
 import { CheckInput, DateInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { customers, suppliers } from '@/mock-data/masters';
@@ -50,7 +50,7 @@ export function PaymentEntryView() {
   const left = p.isAdvance ? advanceLeft(p) : 0;
   return (
     <>
-      <FormHeader crumbs={[{ label: recv ? 'Collection' : 'Payment', to: `/accounting/${base}` }, { label: p.number }]} status={<DocChips approval={p.approval} />}
+      <FormHeader subtitle={<HeaderMeta parts={[p.partyName, p.method, p.date]} />} crumbs={[{ label: recv ? 'Collection' : 'Payment', to: `/accounting/${base}` }, { label: p.number }]} status={<DocChips approval={p.approval} />}
         actions={<>
           <ApprovalButtons simple approval={p.approval} onApprove={() => r(approvePayment(p.id))} onReject={(n) => r(rejectPayment(p.id, n))} />
           <MenuButton label="Actions" items={[{ label: 'Print receipt', onClick: () => setPrint(true) }, ...(p.soId ? [{ label: 'View Sales Order', onClick: () => nav(`/crm/sales-orders/${p.soId}`) }] : [])]} />

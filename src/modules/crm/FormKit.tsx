@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Box, Button, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Checkbox } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import { CheckInput, DateInput, FileInput, HelpTip, MultiSelectInput, NumberInput, SelectInput, TextInput, ToggleInput, ValueField } from '@/components/Form';
+import { CheckInput, DateInput, FileInput, FORM_COLS, HelpTip, MultiSelectInput, NumberInput, SelectInput, TextInput, ToggleInput, VIEW_COLS, ValueField } from '@/components/Form';
 import { Text } from '@/components/Text';
 import { ChangeTag } from '@/components/ChangeTag';
 import { Marked } from '@/components/ChangeTag';
@@ -20,8 +20,8 @@ export interface Spec {
 }
 type F = Record<string, any>;
 
-/** Renders a list of field specs in the existing ERP two-column form layout. Existing fields carry no badge; new ones carry `change`. */
-export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs: Spec[]; f: F; set: (k: string, v: any) => void; err?: Record<string, string>; locked?: boolean; cols?: number }) {
+/** Renders a list of field specs in the 3-column form layout (`cols` overrides it, e.g. for dialogs). Existing fields carry no badge; new ones carry `change`. */
+export function SpecForm({ specs, f, set, err = {}, locked, cols = FORM_COLS }: { specs: Spec[]; f: F; set: (k: string, v: any) => void; err?: Record<string, string>; locked?: boolean; cols?: number }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 2, alignItems: 'start' }}>
       {specs.filter((s) => s.key !== 'number' && (!s.show || s.show(f))).map((s) => {
@@ -43,7 +43,7 @@ export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs:
           case 'radio':
             return (
               <Box key={s.key} sx={{ gridColumn: s.full ? '1 / -1' : undefined }}>
-                <Text type="s5" weight="medium" color="theme.secondary.800">{s.label}{s.required && <span style={{ color: '#C64D4D' }}> *</span>}<ChangeTag kind={s.change} req={s.req} /></Text>
+                <Text type="s5" weight="medium" color="theme.secondary.800">{s.label}{s.required && <span style={{ color: '#C2363A' }}> *</span>}<ChangeTag kind={s.change} req={s.req} /></Text>
                 <RadioGroup row value={v ?? ''} onChange={(e) => on(e.target.value)}>
                   {optsOf(s, f).map((o) => { const ov = typeof o === 'string' ? o : o.value; return <FormControlLabel key={ov} value={ov} disabled={dis} control={<Radio size="small" />} label={<Text type="s3">{typeof o === 'string' ? o : o.label}</Text>} />; })}
                 </RadioGroup>
@@ -58,7 +58,7 @@ export function SpecForm({ specs, f, set, err = {}, locked, cols = 2 }: { specs:
 }
 
 /** Read-only counterpart: label/value pairs for the view pages (same fields as the form). */
-export function SpecView({ specs, f, cols = 4 }: { specs: Spec[]; f: F; cols?: number }) {
+export function SpecView({ specs, f, cols = VIEW_COLS }: { specs: Spec[]; f: F; cols?: number }) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: `repeat(${cols}, minmax(0, 1fr))` }, gap: 3 }}>
       {specs.filter((s) => (!s.show || s.show(f)) && s.type !== 'file').map((s) => {

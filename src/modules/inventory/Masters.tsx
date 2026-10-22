@@ -71,7 +71,7 @@ function AttributesEditor({ attributes, onChange, error, req }: { attributes: At
     <FormSection title="Attributes" change="changed" req={req} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => onChange([...attributes, { id: `at${Date.now()}`, name: '', type: 'Text', options: '', required: false }])}>Add Attribute</Button>}>
       <Text type="s5" color="theme.secondary.700" sx={{ mb: 1.5 }}>Attributes defined here become extra fields on every item in this category, without a code change.</Text>
       {attributes.length === 0 && <Text type="s5" color="theme.secondary.700">No attributes added</Text>}
-      {error && <Text type="s5" color="#C64D4D" sx={{ mb: 1 }}>{error}</Text>}
+      {error && <Text type="s5" color="#C2363A" sx={{ mb: 1 }}>{error}</Text>}
       {attributes.map((a, i) => (
         <Box key={a.id} sx={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.6fr auto 40px', gap: 2, alignItems: 'end', mb: 1.5 }}>
           <TextInput label="Attribute Name" value={a.name} onChange={(v) => setAttr(i, { name: v })} />
@@ -171,7 +171,7 @@ export function CategoryForm({ sub: forceSub = false }: { sub?: boolean } = {}) 
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? `Edit ${existing.name}` : sub ? 'Add Sub-Category' : 'Add Category' }]}
+      <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? existing.name : sub ? 'Add Sub-Category' : 'Add Category' }]}
         actions={<><Button variant="outlined" onClick={() => nav(base)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
@@ -222,7 +222,7 @@ export function CategoryView() {
         </>}
       />
       <Page sx={{ pt: 2 }}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Category" value={top ? undefined : parent ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`${CAT_BASE}/${parent.id}`)}>{r.parent}</Box> : r.parent} />
           <ValueField label={top ? 'Category Name' : 'Sub-Category Name'} value={r.name} />
           <ValueField label="Description" value={r.description} />

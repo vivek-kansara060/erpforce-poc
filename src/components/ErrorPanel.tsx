@@ -69,7 +69,7 @@ export function ErrorPanelHost() {
       (el.querySelector('input, textarea, [role="combobox"], button') as HTMLElement | null)?.focus({ preventScroll: true });
       const box = el as HTMLElement;
       const prev = box.style.outline;
-      box.style.outline = '2px solid #C64D4D';
+      box.style.outline = '2px solid #C2363A';
       setTimeout(() => { box.style.outline = prev; }, 1200);
     }, 80);
   };
@@ -88,7 +88,7 @@ export function ErrorPanelHost() {
         {items.map((it, i) => (
           <Box key={`${it.label}-${i}`} onClick={() => go(it.el)} sx={{ px: 1.5, py: 1, cursor: 'pointer', '&:hover': { bgcolor: neutral[100] } }}>
             <Text type="s4" weight="medium">{it.label}</Text>
-            <Text type="s5" color="#C64D4D">{it.msg}</Text>
+            <Text type="s5" color="#C2363A">{it.msg}</Text>
           </Box>
         ))}
       </Box>

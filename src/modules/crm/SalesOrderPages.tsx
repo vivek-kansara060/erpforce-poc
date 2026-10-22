@@ -6,7 +6,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { CheckInput, FieldError, FileInput, FormGrid, HelpTip, SelectInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, HeaderMeta, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -108,7 +108,7 @@ export function SalesOrderForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: `Edit ${so.number}` }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Update</Button></>} />
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number }]} actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Update</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>Price, quantity, Activity Type and Contract Type of confirmed items are frozen. Use Extend, Replacement or a formal revision to change them.</Alert>
         <CommercialTabs kind="order" f={f} set={set} err={err}
@@ -350,7 +350,7 @@ export function SalesOrderView() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: (so.revision ?? 0) > 0 ? `${so.number} (Updated)` : so.number }]} status={<StatusChip status={so.status} />}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: (so.revision ?? 0) > 0 ? `${so.number} (Updated)` : so.number }]} status={<StatusChip status={so.status} />}
         actions={<>
           <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${so.id}/edit`)}>Edit</Button>
           {so.status === 'Pending' && <Button variant="outlined" onClick={() => { confirmOrder(so); toast('Sales Order confirmed'); }}>Confirm</Button>}
@@ -374,7 +374,7 @@ export function SalesOrderView() {
           </Alert>
         )}
         <CommercialTabs kind="order" f={soForm(so, opps.get(so.oppId)?.number, quotes.get(so.quoteId)?.number)} set={() => undefined} locked
-          belowGeneral={<Section title="Delivery"><SpecView specs={deliverySpecs} f={so} cols={4} /></Section>}
+          belowGeneral={<Section title="Delivery"><SpecView specs={deliverySpecs} f={so} /></Section>}
           items={<>
             {isRental && <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
               <Text type="s5" color="theme.secondary.700">{sel.length ? `${sel.length} line(s) selected` : 'Select lines for a bulk action. Each line also has its own actions in the three-dots menu.'}</Text>
@@ -406,10 +406,10 @@ export function SalesOrderView() {
                 <Text type="s4" weight="medium" sx={{ mt: 1.5 }}>Logistics cost of this order: {aed(so.logisticsCost)}</Text>
                 <Text type="s5" color="theme.secondary.700">The total of every trip expense (transporter charges, Salik, fuel and other vehicle costs). It feeds the Logistics Cost and Order Profitability reports.</Text>
                 <Panel title="Quoted vs actual" change="new" req="Fleet review 7 Oct: the customer is charged only the Delivery and Return Charge lines of the order. The real trip cost is our cost, so this shows what is left" sx={{ mt: 2 }}>
-                  <ValueGrid cols={4}>
+                  <ValueGrid>
                     <ValueField label="Quoted to customer (excl. VAT)" value={aed(quotedLogistics)} />
                     <ValueField label="Actual trip cost" value={aed(so.logisticsCost)} />
-                    <ValueField label={quotedLogistics - so.logisticsCost >= 0 ? 'Left after trip cost' : 'Absorbed by the company'} value={<span style={{ color: quotedLogistics - so.logisticsCost >= 0 ? '#0A6C3D' : '#C64D4D', fontWeight: 600 }}>{aed(Math.abs(quotedLogistics - so.logisticsCost))}</span>} />
+                    <ValueField label={quotedLogistics - so.logisticsCost >= 0 ? 'Left after trip cost' : 'Absorbed by the company'} value={<span style={{ color: quotedLogistics - so.logisticsCost >= 0 ? '#146B43' : '#C2363A', fontWeight: 600 }}>{aed(Math.abs(quotedLogistics - so.logisticsCost))}</span>} />
                     <ValueField label="Charge lines" value={quotedLines.map((l) => l.item).join(', ') || 'None quoted'} />
                   </ValueGrid>
                   <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Trip expenses are not added to the customer's invoice. Whether a client-caused delay or an overrun is re-billed is still to be confirmed with the client.</Text>
@@ -516,7 +516,7 @@ export function SalesOrderCrossHireBill() {
   const view = { ...f, soNumber: so.number, project: so.costCentre || '-', supplier: c?.supplier ?? '-' };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number, to: `/crm/sales-orders/${so.id}` }, { label: 'Cross-Hire Bill' }]}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number, to: `/crm/sales-orders/${so.id}` }, { label: 'Cross-Hire Bill' }]}
         actions={<><Button variant="text" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>Enter the supplier's bill when it arrives. There is no schedule and nothing is raised automatically.</Alert>
@@ -600,7 +600,7 @@ export function SalesOrderExtend() {
   ];
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number, to: `/crm/sales-orders/${so.id}` }, { label: 'Extend' }]}
+      <FormHeader subtitle={<HeaderMeta parts={[custName(so.customerId), so.title, so.date]} />} crumbs={[{ label: 'Sales Orders', to: '/crm/sales-orders' }, { label: so.number, to: `/crm/sales-orders/${so.id}` }, { label: 'Extend' }]}
         actions={<><Button variant="text" onClick={() => nav(`/crm/sales-orders/${so.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Update</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>Extending updates this Sales Order (Update {(so.revision ?? 0) + 1}). The previous version is kept under Update History. Only the lines that still have units out are extended; returned units stay returned.</Alert>
@@ -615,9 +615,9 @@ export function SalesOrderExtend() {
             </Section>
             <Section title="Extension" change="new" req={R_EXT}>
               <FieldError label="Extension" error={err.grid} />
-              <TableContainer sx={{ border: '1px solid #EEEFF1', borderRadius: '8px' }}>
+              <TableContainer sx={{ border: '1px solid #ECEDEF', borderRadius: '8px' }}>
                 <Table size="small">
-                  <TableHead><TableRow sx={{ bgcolor: '#FBFBFB' }}>{['S.No', 'Category', 'Subcategory', 'Item', 'Units out', 'Current End', 'New End', 'Current Rate', 'New Rate', 'Frequency', 'Amount per period', 'Extension amount'].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}{h === 'New Rate' && <HelpTip hint={`Applies to the extension period only, from the day after the current end. ${TO_CONFIRM}`} />}</TableCell>)}</TableRow></TableHead>
+                  <TableHead><TableRow sx={{ bgcolor: '#F7F8F9' }}>{['S.No', 'Category', 'Subcategory', 'Item', 'Units out', 'Current End', 'New End', 'Current Rate', 'New Rate', 'Frequency', 'Amount per period', 'Extension amount'].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}{h === 'New Rate' && <HelpTip hint={`Applies to the extension period only, from the day after the current end. ${TO_CONFIRM}`} />}</TableCell>)}</TableRow></TableHead>
                   <TableBody>
                     {rows.length === 0 && <TableRow><TableCell colSpan={12}><Text type="s4" color="theme.secondary.700">This order has no rental or recurring service line.</Text></TableCell></TableRow>}
                     {rows.map((l, idx) => {
@@ -637,12 +637,12 @@ export function SalesOrderExtend() {
                         </TableRow>
                       );
                     })}
-                    {live.length > 0 && <TableRow sx={{ bgcolor: '#FBFBFB' }}><TableCell colSpan={10} sx={{ fontSize: 13, fontWeight: 500 }}>Total (excl. VAT)<ChangeTag kind="new" req={R9('Extension amount per period and for the extension')} /></TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumPer)}</TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumExt)}</TableCell></TableRow>}
+                    {live.length > 0 && <TableRow sx={{ bgcolor: '#F7F8F9' }}><TableCell colSpan={10} sx={{ fontSize: 13, fontWeight: 500 }}>Total (excl. VAT)<ChangeTag kind="new" req={R9('Extension amount per period and for the extension')} /></TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumPer)}</TableCell><TableCell align="right" sx={{ fontSize: 13, fontWeight: 500 }}>{aed(sumExt)}</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </TableContainer>
               <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Amount per period is invoiced every period (units still out x New Rate) until the units are returned; Extension amount covers the new period only. New Rate applies to the extension period only, from the day after the current end; the periods before keep their rate. {TO_CONFIRM}.</Text>
-              <Box sx={{ mt: 2 }}><SpecForm specs={specs} f={f} set={set} err={err} cols={2} /></Box>
+              <Box sx={{ mt: 2 }}><SpecForm specs={specs} f={f} set={set} err={err} /></Box>
             </Section>
           </>} />
       </Page>

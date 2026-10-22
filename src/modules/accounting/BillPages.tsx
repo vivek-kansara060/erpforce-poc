@@ -4,7 +4,7 @@ import { Alert, Button } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
@@ -32,7 +32,7 @@ export function BillList() {
           { key: 'number', label: 'ID' }, { key: 'supplierName', label: 'Supplier' }, { key: 'supplierInvoiceNo', label: 'Supplier Invoice No' },
           { key: 'payStatus', label: 'Payment Status', render: (r) => (r.approval === 'Approved' ? <DocChips approval="" payStatus={r.payStatus} /> : '-') }, { key: 'approval', label: 'Status', render: (r) => <DocChips approval={r.approval} /> },
           { key: 'total', label: 'Total Invoice Value', align: 'right', render: (r) => money(billTotal(r)) }, { key: 'date', label: 'Invoice Date' },
-          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C64D4D' : undefined}>{r.dueDate}</Text> }, { key: 'amountPaid', label: 'Payment Amount', align: 'right', render: (r) => money(r.amountPaid) },
+          { key: 'dueDate', label: 'Due Date', render: (r) => <Text type="s4" color={isOverdue(r) ? '#C2363A' : undefined}>{r.dueDate}</Text> }, { key: 'amountPaid', label: 'Payment Amount', align: 'right', render: (r) => money(r.amountPaid) },
           { key: 'source', label: 'Source', change: 'new', req: R_ACC.bill, render: (r) => <SourceLink s={r.source} /> }, { key: 'costCentre', label: 'Cost Centre / Project', change: 'new', req: R_ACC.gl, render: (r) => r.costCentre ?? '-' }, { key: 'currency', label: 'Currency' },
         ]}
         actions={[
@@ -67,7 +67,7 @@ export function BillView() {
   const src = sourcePath(b.source);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: b.number }]} status={<DocChips approval={b.approval} payStatus={b.payStatus} />}
+      <FormHeader subtitle={<HeaderMeta parts={[b.supplierName, b.supplierInvoiceNo, b.date]} />} crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: b.number }]} status={<DocChips approval={b.approval} payStatus={b.payStatus} />}
         actions={<>
           {EDITABLE.includes(b.approval) && <Button variant="outlined" onClick={() => nav(`/accounting/bills/${b.id}/edit`)}>Edit</Button>}
           <ApprovalButtons approval={b.approval} onSubmit={(a) => r(submitBill(b.id, a))} onApprove={(how) => r(approveBill(b.id, how))} onReject={(n) => r(rejectBill(b.id, n))} />
@@ -84,7 +84,7 @@ export function BillView() {
         <TabPanels tabs={[
           { label: 'Basic Details', content: (
             <>
-              <SpecView cols={4} specs={viewSpecs} f={{ ...b, sourceText: <SourceLink s={b.source} /> }} />
+              <SpecView specs={viewSpecs} f={{ ...b, sourceText: <SourceLink s={b.source} /> }} />
               <Section title="Items"><LinesTable lines={b.lines} /></Section>
               <Section title="Expenses"><ExpensesTable rows={b.expenses} /></Section>
               <TotalsBox doc={b} paid={b.amountPaid} />
@@ -153,7 +153,7 @@ export function BillForm() {
   };
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? `Edit ${existing.number}` : 'New Bill' }]}
+      <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.supplierName, existing.supplierInvoiceNo, existing.date]} /> : undefined} crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? existing.number : 'New Bill' }]}
         actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {ch && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from cross-hire order {ch.number} ({ch.qty ?? 1} unit(s) in {chItems(ch).length} item(s) at the agreed rate per unit, and its expenses). Enter the supplier's invoice number and date; saving records the supplier invoice on the order.</Alert>}
@@ -165,7 +165,7 @@ export function BillForm() {
         <Section title="Expenses" change="changed" req={'Client feedback 12 Oct: expenses are edited inline in the table as in the existing ERP, the Expense Account is chosen on every line'} hint="GL expense lines without an item (existing bill form). Saved with the bill">
           <ExpenseTable rows={ex} hideDate noteLabel="Narration" onAdd={(e) => setEx((x) => [...x, e])} onUpdate={(i, e) => setEx((x) => x.map((y, k) => (k === i ? e : y)))} onRemove={(i) => setEx((x) => x.filter((_, k) => k !== i))} empty="No expenses" />
         </Section>
-        <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} cols={3} /></Section>
+        <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} /></Section>
         <TotalsBox doc={{ lines, expenses, discountOn: f.discountOn, discountPct: Number(f.discountPct) || 0, roundOff: !!f.roundOff }} />
       </Page>
     </>

@@ -133,7 +133,7 @@ function WidgetView({ w }: { w: Widget }) {
               {w.rows.map((r, ri) => (
                 <Box key={r} sx={{ display: 'contents' }}>
                   <Text type="s4">{r}</Text>
-                  {w.values[ri].map((v, ci) => <Box key={ci} sx={{ textAlign: 'center', py: 0.75, borderRadius: '3px', fontSize: 12, fontWeight: 500, bgcolor: `rgba(46,178,115,${0.08 + (v / max) * 0.8})`, color: v / max > 0.55 ? '#fff' : '#1F2125' }}>{v}</Box>)}
+                  {w.values[ri].map((v, ci) => <Box key={ci} sx={{ textAlign: 'center', py: 0.75, borderRadius: '3px', fontSize: 12, fontWeight: 500, bgcolor: `rgba(46,178,115,${0.08 + (v / max) * 0.8})`, color: v / max > 0.55 ? '#fff' : '#15171B' }}>{v}</Box>)}
                 </Box>
               ))}
             </Box>

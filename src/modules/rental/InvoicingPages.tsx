@@ -4,7 +4,7 @@ import { Alert, Box, Button, Tooltip } from '@mui/material';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
 import { DateInput, FormGrid, MultiSelectInput, SelectInput, TextInput } from '@/components/Form';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TODAY, custName, type SalesOrder } from '@/modules/crm/data';
@@ -62,7 +62,7 @@ export function RentalInvoicingList() {
           { key: 'inv', label: 'Invoice', change: 'new', req: R_ACC.rental, render: kindChip }, { key: 'from', label: 'Start Date' }, { key: 'to', label: 'End Date' }, { key: 'invoiceDate', label: 'Next Invoice Date' },
           { key: 'cycle', label: 'Billing Cycle' }, { key: 'mode', label: 'Invoicing Type', change: 'new', req: R_ACC.rental, render: (r) => <StatusChip status={r.mode} tone={r.mode === 'Automatic' ? 'blue' : 'grey'} /> },
           { key: 'amount', label: 'Next invoice (incl. VAT)', align: 'right', change: 'new', req: R_ACC.rental, render: (r) => (r.amount ? aed(r.amount) : '-') }, { key: 'currency', label: 'Currency' },
-          { key: 'narration', label: 'Narration', render: (r) => (r.error ? <Tooltip title={r.error}><span><Text type="s5" color="#C64D4D">Failed: {r.error.slice(0, 40)}...</Text></span></Tooltip> : `${(orders.get(r.soId) as SalesOrder | undefined)?.lines.reduce((n, l) => n + outstanding(l).length, 0) ?? 0} asset(s) out`) },
+          { key: 'narration', label: 'Narration', render: (r) => (r.error ? <Tooltip title={r.error}><span><Text type="s5" color="#C2363A">Failed: {r.error.slice(0, 40)}...</Text></span></Tooltip> : `${(orders.get(r.soId) as SalesOrder | undefined)?.lines.reduce((n, l) => n + outstanding(l).length, 0) ?? 0} asset(s) out`) },
         ]} />
       <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>{RENTAL_RULE} {TO_CONFIRM}.</Text>
       <ConfirmDialog open={ask} info title="Submit Orders" description={`Are you sure you want to proceed for ${chosen.length} order(s)? One invoice is raised for each order and period, Pending approval in Accounting, and the run is saved in Previous Jobs.`} confirmLabel="Proceed" onClose={() => setAsk(false)} onConfirm={submit} />
@@ -140,7 +140,7 @@ export function PreviousJobView() {
   const ord = (soId: string) => orders.get(soId);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Previous Jobs', to: '/rental/previous-jobs' }, { label: run.number }]} status={<StatusChip status={run.status} tone={jobStatusTone(run.status)} />} />
+      <FormHeader subtitle={<HeaderMeta parts={[run.title, run.mode, run.runAt]} />} crumbs={[{ label: 'Previous Jobs', to: '/rental/previous-jobs' }, { label: run.number }]} status={<StatusChip status={run.status} tone={jobStatusTone(run.status)} />} />
       <Page sx={{ pt: 2 }}>
         <Text type="s4" color="theme.secondary.700" sx={{ mb: 1 }}>Run {run.runAt} by {run.by}. {run.message}.{run.accumulated ? ` Accumulated on one invoice: ${run.title}.` : ''}</Text>
         <DataTable<JobLine & { id: string; idx: number }> rows={lines} searchPlaceholder="Search..." filter={{ key: 'status', options: ['processed', 'failed', 'queued', 'cancelled', 'pending'] }}

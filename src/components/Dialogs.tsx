@@ -35,11 +35,11 @@ export function ConfirmDialog({ open, title, description, onClose, onConfirm, co
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5 }}>
-        {info ? <InfoOutlinedIcon sx={{ color: '#3E8193' }} /> : <WarningAmberIcon sx={{ color: danger ? '#C64D4D' : '#A6914D' }} />}
+        {info ? <InfoOutlinedIcon sx={{ color: '#2A6FDB' }} /> : <WarningAmberIcon sx={{ color: danger ? '#C2363A' : '#B26B0F' }} />}
         <Text type="s3" weight="medium" sx={{ flex: 1 }}>{title}</Text>
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </Box>
-      <Box sx={{ px: 2.75, pb: 2.5, borderTop: '1px solid #EEEFF1', pt: 2 }}><Text type="s3" component="div">{description}</Text></Box>
+      <Box sx={{ px: 2.75, pb: 2.5, borderTop: '1px solid #ECEDEF', pt: 2 }}><Text type="s3" component="div">{description}</Text></Box>
       <DialogActions>
         <Button variant="text" onClick={onClose}>Cancel</Button>
         <Button variant="contained" color={danger ? 'error' : 'primary'} onClick={() => { onConfirm(); onClose(); }}>{confirmLabel}</Button>
@@ -52,12 +52,12 @@ export function ConfirmDialog({ open, title, description, onClose, onConfirm, co
 export function SideDrawer({ open, title, onClose, children, width = 520, actions }: { open: boolean; title: string; onClose: () => void; children: ReactNode; width?: number; actions?: ReactNode }) {
   return (
     <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width, maxWidth: '100vw' } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 1.5, bgcolor: '#FBFBFB', borderBottom: '1px solid #EEEFF1' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 1.5, bgcolor: '#F7F8F9', borderBottom: '1px solid #ECEDEF' }}>
         <Text type="s2" weight="medium">{title}</Text>
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </Box>
       <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>{children}</Box>
-      {actions && <Box sx={{ p: 1.5, px: 3, bgcolor: '#EEEFF1', display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>{actions}</Box>}
+      {actions && <Box sx={{ p: 1.5, px: 3, bgcolor: '#ECEDEF', display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>{actions}</Box>}
     </Drawer>
   );
 }

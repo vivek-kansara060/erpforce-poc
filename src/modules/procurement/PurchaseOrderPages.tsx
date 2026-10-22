@@ -67,14 +67,14 @@ export function PurchaseOrderView() {
       <Page sx={{ pt: 2 }}>
         {!approvalRequired() && <Alert severity="info" sx={{ mb: 2 }}>No approval workflow is configured in Procurement Settings, so this Purchase Order is not blocked on its way to GRN.</Alert>}
         {approvalRequired() && p.approval !== 'Approved' && <Alert severity="warning" sx={{ mb: 2 }}>An approval workflow is configured in Procurement Settings. GRN is not available until this Purchase Order is approved.</Alert>}
-        <SpecView cols={4} specs={viewSpecs} f={{ ...p, costCentreText: costCentres.find((c) => c.id === p.costCentre)?.name ?? '-' }} />
+        <SpecView specs={viewSpecs} f={{ ...p, costCentreText: costCentres.find((c) => c.id === p.costCentre)?.name ?? '-' }} />
         <Section title="Items">
           <DataTable hideToolbar rows={p.lines} emptyText="No items" columns={[
             { key: 'item', label: 'Item' }, { key: 'desc', label: 'Description' }, { key: 'qty', label: 'Quantity', align: 'right' }, { key: 'unit', label: 'UOM' },
             { key: 'rate', label: 'Rate', align: 'right', render: (l) => money(l.rate) }, { key: 'amount', label: 'Amount', align: 'right', render: (l) => money(lineAmount(l)) },
           ]} />
         </Section>
-        <Box sx={{ ml: 'auto', width: 320, mt: 2, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #D3D3D4', py: 0.5 }}>
+        <Box sx={{ ml: 'auto', width: 320, mt: 2, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #D2D5D9', py: 0.5 }}>
           <Text type="s3" weight="medium">Grand Total</Text><Text type="s3" weight="medium">{money(poTotal(p))}</Text>
         </Box>
         {p.receiptStatus === 'Received' && <Text type="s4" color="theme.secondary.800" sx={{ mt: 1.5 }}>Goods received on {p.receivedDate}.</Text>}

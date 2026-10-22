@@ -7,7 +7,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { CheckInput, DateInput, FieldError, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { LifecycleStepper, Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, HeaderMeta, Page, PageTitle } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Panel, TabPanels } from '@/components/Widgets';
 import { Text } from '@/components/Text';
@@ -139,7 +139,7 @@ export function ReplacementForm() {
       <Page sx={{ pt: 2 }}>
         <Alert severity="info" sx={{ mb: 2 }}>A replacement is a delivery and a collection. The new unit goes out on its own Delivery Order; the faulty unit comes back on a collection, like a customer return, and is inspected at the yard. Billing is not stopped: the line keeps billing through the new unit.</Alert>
         <FormSection title="Sales Order" change="new" req={R_CTX}>
-          <ValueGrid cols={4}>
+          <ValueGrid>
             <ValueField label="Sales Order" value={so ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/crm/sales-orders/${so.id}`)}>{so.number}</Box> : '-'} />
             <ValueField label="Customer" value={so ? custName(so.customerId) : '-'} /><ValueField label="Project / Cost Centre" value={so?.costCentre || '-'} /><ValueField label="Activity Type" value={so?.activity} />
             <ValueField label="Site" value={so?.site || '-'} /><ValueField label="LPO" value={so?.lpo || '-'} /><ValueField label="Contract End" value={so?.contractEnd ?? '-'} /><ValueField label="Salesperson" value={so?.owner} />
@@ -228,7 +228,7 @@ export function ReplacementView() {
   const assetRow = (kind: string, a: ReturnType<typeof assetById>) => ({ id: kind, kind, asset: a ? link(a.assetId, `/inventory/items/heavy/${a.id}`) : '-', name: a?.name ?? '-', sub: a ? `${a.category} ${a.subCategory}` : '-', own: a?.ownership ?? '-', status: a?.assetStatus ?? '-' });
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Replacement Orders', to: '/crm/replacements' }, { label: r.number }]} status={d ? <StatusChip status={d.status} /> : undefined}
+      <FormHeader subtitle={<HeaderMeta parts={[so ? custName(so.customerId) : undefined, so?.number, r.date]} />} crumbs={[{ label: 'Replacement Orders', to: '/crm/replacements' }, { label: r.number }]} status={d ? <StatusChip status={d.status} /> : undefined}
         actions={<><Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${r.soId}`)}>View Sales Order</Button>{d && <Button variant="outlined" onClick={() => nav(`/crm/delivery-orders/${d.id}`)}>View Delivery Order</Button>}</>} />
       <Page sx={{ pt: 2 }}>
         <ValueGrid>
@@ -285,7 +285,7 @@ export function RenewalsPage() {
           <DataTable hideToolbar={false} searchPlaceholder="Search orders, customers, assets..." rows={rows.map((r) => ({ ...r, soNumber: r.so.number, customer: custName(r.so.customerId) }))} pageSize={15} filter={{ key: 'state', options: ['Overdue', 'Expiring', 'Active'] }} onRowClick={(r) => nav(`/crm/sales-orders/${r.so.id}`)}
             emptyText="No contract ends in this window"
             toolbarRight={<Select size="small" value={win} onChange={(e) => setWin(String(e.target.value))} sx={{ minWidth: 170, bgcolor: neutral[200], borderRadius: '0.5rem', '& fieldset': { border: 'none' }, fontSize: 13 }}>{WINDOWS.map((w) => <MenuItem key={w.value} value={w.value}>{w.label}</MenuItem>)}</Select>}
-            rowSx={(r) => (r.state === 'Overdue' ? { bgcolor: '#FFF5F5' } : undefined)}
+            rowSx={(r) => (r.state === 'Overdue' ? { bgcolor: '#FBE3E5' } : undefined)}
             columns={[
               { key: 'soNumber', label: 'Sales Order' }, { key: 'customer', label: 'Customer' }, { key: 'item', label: 'Line', render: (r) => r.line.item },
               { key: 'assets', label: 'Assets', render: (r) => outstanding(r.line).map((a) => assetById(a.assetId)?.assetId).join(', ') }, { key: 'end', label: 'Contract End', render: (r) => r.line.contractEnd },

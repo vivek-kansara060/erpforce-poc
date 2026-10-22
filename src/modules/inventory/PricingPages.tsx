@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { Page, PageTitle, FormHeader } from '@/components/PageHeader';
+import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
 import { DataTable } from '@/components/DataTable';
 import { FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { AppDialog, ConfirmDialog, useToast } from '@/components/Dialogs';
@@ -122,7 +122,6 @@ export function PricingForm() {
           <FormGrid>
             <SelectInput label="Activity Type" required change="changed" req={REQ_PRICING} value={f.activity} options={[...PRICING_ACTIVITIES]} disabled={!!existing || !!from} error={err.activity}
               onChange={(v) => setF({ ...f, activity: v })} hint="Rental has one record per billing frequency; Fixed Asset Trading is a single sales price" />
-            <Box />
             <CategorySelect value={f.category} req={REQ_PRICING} onChange={(v) => setF({ ...f, category: v, subCategory: '' })} error={err.category} disabled={!!from} />
             <SubCategorySelect category={f.category} value={f.subCategory} req={REQ_PRICING} onChange={(v) => setF({ ...f, subCategory: v })} disabled={!!from} />
             {rental && <SelectInput label="Billing Frequency" required change="changed" req={REQ_ALL} value={f.frequency} options={FREQUENCIES} onChange={(v) => setF({ ...f, frequency: v })} error={err.frequency} />}
@@ -149,7 +148,8 @@ export function PricingView() {
   return (
     <>
       <FormHeader
-        crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: `${labelOf(r)} (${r.activity}${rental ? `, ${r.frequency}` : ''})` }]}
+        subtitle={<HeaderMeta parts={[r.activity, rental ? r.frequency : undefined, `AED ${r.price}`]} />}
+        crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: labelOf(r) }]}
         actions={<>
           {rental && <Button variant="outlined" onClick={() => nav(`${BASE}/add?from=${r.id}`)}>Add Frequency</Button>}
           <Button variant="outlined" color="error" onClick={() => setDel(true)}>Delete</Button>
@@ -158,7 +158,7 @@ export function PricingView() {
       />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
-          <ValueGrid cols={4}>
+          <ValueGrid>
             <ValueField label="Activity Type" value={r.activity} change="changed" req={REQ_PRICING} />
             <ValueField label="Category" value={r.category} change="new" req={REQ_PRICING} />
             <ValueField label="Sub-Category" value={r.subCategory || undefined} change="new" req={REQ_PRICING} />

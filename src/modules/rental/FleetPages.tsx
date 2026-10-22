@@ -14,7 +14,7 @@ import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
 import { FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
-import { FormHeader, Page, PageTitle } from '@/components/PageHeader';
+import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { KpiCard, KpiRow, Panel } from '@/components/Widgets';
@@ -49,7 +49,7 @@ const fleetTone = (s: FleetStatus) => (s === 'Unavailable' ? ('grey' as const) :
 const docPath = (t: Trip) => (t.kind === 'Delivery' || (t.kind === 'Replacement' && t.docNumber.startsWith('DO-')) ? `/crm/delivery-orders/${t.docId}` : t.kind === 'Collection' ? `/crm/customer-returns/${t.docId}` : t.docId.startsWith('rp') ? `/crm/replacements/${t.docId}` : '/crm/replacements');
 /** 9 Oct call: one replacement trip can deliver the new unit and collect the faulty one; both documents are shown. */
 const docText = (t: Trip) => (t.alsoDoc ? `${t.docNumber} and ${t.alsoDoc.number}` : t.docNumber);
-const RL = { color: '#0A6C3D', textDecoration: 'none', fontWeight: 500 } as const;
+const RL = { color: '#146B43', textDecoration: 'none', fontWeight: 500 } as const;
 
 /* ------------------------------------------------------------------ trip actions (shared by the board row menu and the trip page) */
 type DlgKind = 'stuck' | 'complete' | 'expense' | 'reassign' | 'external' | 'cancel';
@@ -96,7 +96,7 @@ export function useTripMenu() {
 
 function TripSummary({ trip }: { trip: Trip }) {
   return (
-    <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F4F5F7', borderRadius: '6px' }}>
+    <Box sx={{ mb: 2, p: 1.5, bgcolor: '#F2F3F5', borderRadius: '6px' }}>
       <Text type="s4" weight="medium">{trip.number} ({trip.kind}) for {docText(trip)}</Text>
       <Text type="s5" color="theme.secondary.700">{trip.soNumber}, {custName(trip.customerId)}, {trip.site || '-'}. {trip.transport === 'Own Fleet' ? `${trip.plate ?? '-'}${trip.driver ? `, ${trip.driver}` : ''}` : trip.transporter}</Text>
     </Box>
@@ -198,7 +198,7 @@ export function ExpenseTable<T extends { account?: string; type?: string; amount
           </TableBody>
         </Table>
       </TableContainer>
-      {bad && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5 }}>Select the Expense Account and enter an amount above 0</Text>}
+      {bad && <Text type="s5" color="#C2363A" sx={{ mt: 0.5 }}>Select the Expense Account and enter an amount above 0</Text>}
       {!locked && <Button size="small" variant="outlined" startIcon={<AddIcon />} sx={{ mt: 1 }} disabled={!!edit} onClick={() => setEdit({ idx: -1, v: blankDraft(), tried: false })}>Add</Button>}
     </Box>
   );
@@ -314,7 +314,7 @@ export function FleetBoard() {
           label={<Text type="s5" color="theme.secondary.800">Driver app enabled</Text>} />} />
       <KpiRow>
         {FLEET_STATUSES.map((s) => (
-          <KpiCard key={s} title={s} value={count(s)} tint={status === s ? '#B6E9D6' : undefined} sub={status === s ? 'Filtered, click to clear' : 'Click to filter'} onClick={() => setStatus(status === s ? '' : s)} />
+          <KpiCard key={s} title={s} value={count(s)} tint={status === s ? '#C8EBD8' : undefined} sub={status === s ? 'Filtered, click to clear' : 'Click to filter'} onClick={() => setStatus(status === s ? '' : s)} />
         ))}
       </KpiRow>
       <DataTable<BoardRow> rows={view} searchPlaceholder="Search plate, vehicle or driver..." toolbarRight={<FleetFilters types={types} type={type} setType={setType} status={status} setStatus={setStatus} />}
@@ -326,7 +326,7 @@ export function FleetBoard() {
           { key: 'driver', label: 'Driver' },
           { key: 'status', label: 'Fleet Status', change: 'new', req: R.fleet, render: (r) => (
             <Box><StatusChip status={r.status} tone={fleetTone(r.status)} />
-              {r.status === 'Stuck-Delayed' && r.trip?.stuck && <Text type="s5" color="#C64D4D" sx={{ mt: 0.5, maxWidth: 260 }}>{r.trip.stuck.reason} ({r.trip.stuck.responsible})</Text>}
+              {r.status === 'Stuck-Delayed' && r.trip?.stuck && <Text type="s5" color="#C2363A" sx={{ mt: 0.5, maxWidth: 260 }}>{r.trip.stuck.reason} ({r.trip.stuck.responsible})</Text>}
               {r.status === 'Unavailable' && <Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{r.asset.status === 'Inactive' ? 'Inactive' : r.asset.assetStatus}</Text>}
             </Box>
           ) },
@@ -394,14 +394,12 @@ export function TransportSection({ value, onChange, errors = {}, hint, date }: {
     <>
       <FormGrid>
         <SelectInput label="Transport Type" required change="new" req={R.del} value={value.transport} options={['Own Fleet', 'External Transporter']} onChange={(t) => set({ transport: t })} />
-        <Box />
         {own ? (
           <>
             <Box>
               <TextInput label="Vehicle" required change="new" req={R.fleet} value={v ? vehicleLabel(v) : ''} disabled error={errors.vehicleId} placeholder="No vehicle selected" hint="Picked from Fleet Availability, vehicles Free on the document date only" />
               <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => setPicker(true)}>{v ? 'Change vehicle' : 'Select from fleet'}</Button>
             </Box>
-            <Box />
             {linked ? (
               <Box>
                 <TextInput label="Driver" change="changed" req={R.fleet} value={value.driver} disabled hint="The driver assigned to this vehicle (its Default Driver)" />
@@ -499,7 +497,7 @@ export function TripView() {
   const items = menu.items(t);
   return (
     <>
-      <FormHeader crumbs={[{ label: 'Trips', to: '/crm/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
+      <FormHeader subtitle={<HeaderMeta parts={[custName(t.customerId), t.soNumber, t.date]} />} crumbs={[{ label: 'Trips', to: '/crm/trips' }, { label: t.number }]} status={<StatusChip status={t.status} />} actions={<>
         <Button variant="outlined" onClick={() => nav(`/crm/sales-orders/${t.soId}`)}>View Sales Order</Button>
         <Button variant="outlined" onClick={() => nav(docPath(t))}>View {t.kind === 'Delivery' ? 'Delivery Order' : t.kind === 'Collection' ? 'Return' : 'Replacements'}</Button>
         {items.length > 0 && <MenuButton label="Actions" items={items.map((i) => ({ label: i.label, onClick: i.onClick }))} variant="contained" />}
@@ -507,7 +505,7 @@ export function TripView() {
       <Page sx={{ pt: 2 }}>
         {t.status === 'Stuck-Delayed' && t.stuck && <Alert severity="error" sx={{ mb: 2 }}>Stuck-Delayed since {t.stuck.since.replace('T', ' ')}: {t.stuck.reason}. Responsible: {t.stuck.responsible}.</Alert>}
         <Panel title="Trip Details" change="new" req={R.trip}>
-          <ValueGrid cols={4}>
+          <ValueGrid>
             <ValueField label="Trip No." value={t.number} /><ValueField label="Kind" value={t.kind} /><ValueField label="Date" value={t.date.replace('T', ' ')} /><ValueField label="Status" value={<StatusChip status={t.status} />} />
             <ValueField label="Document" value={<><Link to={docPath(t)} style={RL}>{t.docNumber}</Link>{t.alsoDoc && <> and <Link to={`/crm/customer-returns/${t.alsoDoc.id}`} style={RL}>{t.alsoDoc.number}</Link> (collection)</>}</>} /><ValueField label="Sales Order" value={<Link to={`/crm/sales-orders/${t.soId}`} style={RL}>{t.soNumber}</Link>} />
             <ValueField label="Customer" value={custName(t.customerId)} /><ValueField label="Site" value={t.site || '-'} />
