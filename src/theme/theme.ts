@@ -42,7 +42,7 @@ export const theme = createTheme({
     MuiDialogActions: { styleOverrides: { root: { backgroundColor: neutral[200], padding: '8px 24px' } } },
     MuiTabs: { styleOverrides: { root: { minHeight: 32, borderBottom: '1px solid #ECEDEF' }, indicator: { backgroundColor: primaryGreen[700] } } },
     MuiTab: { styleOverrides: { root: { minHeight: 32, padding: '6px 14px', fontSize: 12, fontWeight: 500, textTransform: 'none', color: neutral[700], '&.Mui-selected': { color: neutral[900] }, '&:hover': { backgroundColor: '#F2F3F5' } } } },
-    MuiTableCell: { styleOverrides: { root: { fontSize: 12, padding: '6px 10px', borderBottom: '1px solid #ECEDEF', borderRight: '1px solid #ECEDEF', '&:first-of-type': { borderLeft: '1px solid #ECEDEF' } }, head: { fontSize: 12, fontWeight: 600, backgroundColor: neutral[100], whiteSpace: 'nowrap' } } },
+    MuiTableCell: { styleOverrides: { sizeSmall: { padding: '3px 8px', '&.MuiTableCell-paddingCheckbox': { padding: '0 0 0 4px' } }, root: { fontSize: 12, lineHeight: 1.4, padding: '3px 8px', '& .MuiCheckbox-root': { padding: '2px' }, '& .MuiIconButton-root': { padding: '2px' }, borderBottom: '1px solid #ECEDEF', borderRight: '1px solid #ECEDEF', '&:first-of-type': { borderLeft: '1px solid #ECEDEF' } }, head: { fontSize: 12, fontWeight: 600, lineHeight: 1.3, backgroundColor: neutral[100], whiteSpace: 'nowrap' } } },
     MuiChip: { styleOverrides: { root: { fontSize: 11, borderRadius: '4px', height: 22 } } },
     MuiAccordion: { styleOverrides: { root: { boxShadow: 'none', '&:before': { display: 'none' } } } },
   },

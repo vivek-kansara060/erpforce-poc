@@ -87,7 +87,7 @@ export function RowsEditor<T extends Record<string, any>>({ cols, rows, onChange
             {rows.map((r, i) => (
               <TableRow key={i}>
                 {cols.map((c) => (
-                  <TableCell key={c.key} sx={{ py: 0.5 }}>
+                  <TableCell key={c.key} sx={{ py: 0.25 }}>
                     {locked ? <Text type="s4">{c.type === 'check' ? (r[c.key] ? 'Yes' : 'No') : String(r[c.key] ?? '-') || '-'}</Text>
                       : c.type === 'select' ? <Select size="small" displayEmpty value={r[c.key] ?? ''} sx={{ width: c.width ?? 140, fontSize: 13 }} onChange={(e) => set(i, c.key, e.target.value)}>{(c.options ?? []).map((o) => <MenuItem key={o} value={o}>{o || 'None'}</MenuItem>)}</Select>
                       : c.type === 'check' ? <Checkbox size="small" checked={!!r[c.key]} onChange={(e) => set(i, c.key, e.target.checked)} />

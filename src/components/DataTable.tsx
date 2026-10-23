@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Box, IconButton, InputAdornment, Menu, MenuItem, Pagination, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Checkbox, Button, TableSortLabel } from '@mui/material';
+import { Box, IconButton, InputAdornment, Menu, MenuItem, Pagination, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Checkbox, Button, TableSortLabel, Tooltip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
@@ -42,6 +42,22 @@ interface Props<T> {
   hideToolbar?: boolean;
   /** highlight a row (e.g. overdue) */
   rowSx?: (row: T) => object | undefined;
+}
+
+/** ID / number / code / date columns never wrap (OP-26-00021 must stay on one line). */
+const noWrap = (c: { key: string; label: string }) => /^(number|code|id|date)$/i.test(c.key) || /(^|\s)(id|number|code|date)$/i.test(c.label.trim());
+
+const cellValue = <T,>(c: Column<T>, row: T): ReactNode => (c.render ? c.render(row) : ((row as any)[c.key] as ReactNode) ?? '-');
+
+/** One-line cell: long text is cut with an ellipsis and the full text shows as a tooltip on hover. */
+function Ellipsis({ children, max }: { children: ReactNode; max: number | string }) {
+  const [tip, setTip] = useState('');
+  return (
+    <Tooltip title={tip} placement="top" arrow disableInteractive>
+      <Box component="span" onMouseEnter={(e: React.MouseEvent<HTMLElement>) => { const el = e.currentTarget; setTip(el.scrollWidth > el.clientWidth ? el.textContent ?? '' : ''); }}
+        sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: max }}>{children}</Box>
+    </Tooltip>
+  );
 }
 
 /** List table in the existing ERP style (search + filter chips + row menu + footer pagination). */
@@ -105,11 +121,11 @@ export function DataTable<T extends Record<string, any>>({
             <TableRow>
               {selectable && (
                 <TableCell padding="checkbox" sx={{ width: 40 }}>
-                  <Checkbox size="small" checked={allIds.length > 0 && allIds.every((i) => selected.includes(i))} onChange={(e) => onSelect?.(e.target.checked ? Array.from(new Set([...selected, ...allIds])) : selected.filter((s) => !allIds.includes(s)))} />
+                  <Checkbox size="small" sx={{ p: '2px' }} checked={allIds.length > 0 && allIds.every((i) => selected.includes(i))} onChange={(e) => onSelect?.(e.target.checked ? Array.from(new Set([...selected, ...allIds])) : selected.filter((s) => !allIds.includes(s)))} />
                 </TableCell>
               )}
               {columns.map((c) => (
-                <TableCell key={c.key} align={c.align} sx={{ width: c.width }}>
+                <TableCell key={c.key} align={c.align} sx={{ width: c.width, ...(noWrap(c) ? { whiteSpace: 'nowrap' } : {}) }}>
                   {c.sortable === false ? c.label : (
                     <TableSortLabel active={sort?.key === c.key} direction={sort?.key === c.key ? sort.dir : 'asc'} onClick={() => setSort((s) => (s?.key === c.key && s.dir === 'asc' ? { key: c.key, dir: 'desc' } : { key: c.key, dir: 'asc' }))}>
                       {c.label}
@@ -131,15 +147,15 @@ export function DataTable<T extends Record<string, any>>({
                 <TableRow key={id} hover onClick={() => onRowClick?.(row)} selected={selected.includes(id)} sx={{ cursor: onRowClick ? 'pointer' : 'default', '&.Mui-selected': { bgcolor: primaryGreen[100] }, ...(rowSx?.(row) ?? {}) }}>
                   {selectable && (
                     <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox size="small" checked={selected.includes(id)} onChange={(e) => onSelect?.(e.target.checked ? [...selected, id] : selected.filter((s) => s !== id))} />
+                      <Checkbox size="small" sx={{ p: '2px' }} checked={selected.includes(id)} onChange={(e) => onSelect?.(e.target.checked ? [...selected, id] : selected.filter((s) => s !== id))} />
                     </TableCell>
                   )}
                   {columns.map((c) => (
-                    <TableCell key={c.key} align={c.align}>{c.render ? c.render(row) : (row[c.key] as ReactNode) ?? '-'}</TableCell>
+                    <TableCell key={c.key} align={c.align} sx={noWrap(c) ? { whiteSpace: 'nowrap' } : undefined}>{noWrap(c) ? cellValue(c, row) : <Ellipsis max={c.width ?? 260}>{cellValue(c, row)}</Ellipsis>}</TableCell>
                   ))}
                   {actions && (
                     <TableCell padding="none" onClick={(e) => e.stopPropagation()}>
-                      {visibleActions(row).length > 0 && <IconButton size="small" onClick={(e) => setMenu({ el: e.currentTarget, row })}><MoreVertIcon fontSize="small" /></IconButton>}
+                      {visibleActions(row).length > 0 && <IconButton size="small" sx={{ p: '1px' }} onClick={(e) => setMenu({ el: e.currentTarget, row })}><MoreVertIcon sx={{ fontSize: 16 }} /></IconButton>}
                     </TableCell>
                   )}
                 </TableRow>

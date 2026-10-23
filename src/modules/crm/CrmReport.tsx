@@ -41,7 +41,7 @@ export function CrmReportPage({ def }: { def: CrmReportDef }) {
               <TableRow>{def.columns.map((c) => <TableCell key={c.key} align={c.align} sx={{ fontWeight: 500, bgcolor: neutral[100], whiteSpace: 'nowrap' }}>{c.label}</TableCell>)}</TableRow>
               <TableRow>
                 {def.columns.map((c) => (
-                  <TableCell key={c.key} sx={{ bgcolor: '#fff', top: 37, py: 0.5 }}>
+                  <TableCell key={c.key} sx={{ bgcolor: '#fff', top: 37, py: 0.25 }}>
                     {c.filter
                       ? <Select size="small" displayEmpty fullWidth value={q[c.key] ?? ''} onChange={(e) => setQ({ ...q, [c.key]: e.target.value as string })} sx={{ fontSize: 12 }}>
                           <MenuItem value="">All</MenuItem>{Array.from(new Set(def.rows.map((r) => String(r[c.key])))).map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}

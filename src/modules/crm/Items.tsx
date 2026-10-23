@@ -66,7 +66,7 @@ const COLS: Col[] = [
   { id: 'narr', label: 'Narration', vis: false, render: (l) => l.narration ?? '-' },
 ];
 
-const cellSx = { px: 1, py: 0.75, fontSize: 13, whiteSpace: 'nowrap' } as const;
+const cellSx = { px: 1, py: 0.25, fontSize: 12, whiteSpace: 'nowrap' } as const;
 
 /** The existing ERP item table (same column names and order, column chooser, Add / edit through a dialog) plus the new rental columns. */
 export function ItemsTable({ lines, onChange, header, vatType, locked, fleet, pricing, mode, extra, contract, rowActions, selectable, selected = [], onSelect }: {

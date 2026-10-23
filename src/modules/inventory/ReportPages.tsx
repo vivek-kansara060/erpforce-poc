@@ -124,7 +124,7 @@ export function ReportView({ report, basePath }: { report: InvReportDef; basePat
               {showFilters && (
                 <TableRow>
                   {report.columns.map((c) => (
-                    <TableCell key={c.key} sx={{ top: 37, py: 0.5, bgcolor: '#fff' }}>
+                    <TableCell key={c.key} sx={{ top: 37, py: 0.25, bgcolor: '#fff' }}>
                       <TextField size="small" variant="standard" placeholder="Search" value={colQ[c.key] ?? ''} onChange={(e) => setColQ({ ...colQ, [c.key]: e.target.value })} inputProps={{ style: { fontSize: 12 } }} fullWidth />
                     </TableCell>
                   ))}

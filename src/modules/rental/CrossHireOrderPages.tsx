@@ -155,11 +155,11 @@ export function ChOrderForm() {
                       {items.length === 0 && <TableRow><TableCell colSpan={7}><Text type="s4" color="theme.secondary.700">No item left. Add a row.</Text></TableCell></TableRow>}
                       {items.map((it, i) => (
                         <TableRow key={it.id}>
-                          <TableCell sx={{ py: 0.5, minWidth: 170 }}><Select size="small" displayEmpty fullWidth value={it.group} sx={{ fontSize: 13 }} onChange={(e) => setItem(i, { group: e.target.value, category: '' })}><MenuItem value="" disabled>Category</MenuItem>{groupOptions().map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}</Select></TableCell>
-                          <TableCell sx={{ py: 0.5, minWidth: 170 }}><Select size="small" displayEmpty fullWidth value={it.category} sx={{ fontSize: 13 }} onChange={(e) => setItem(i, { category: e.target.value })}><MenuItem value="" disabled>Subcategory</MenuItem>{(it.group ? categoryOptions(it.group) : []).map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></TableCell>
+                          <TableCell sx={{ py: 0.25, minWidth: 170 }}><Select size="small" displayEmpty fullWidth value={it.group} sx={{ fontSize: 12 }} onChange={(e) => setItem(i, { group: e.target.value, category: '' })}><MenuItem value="" disabled>Category</MenuItem>{groupOptions().map((g) => <MenuItem key={g} value={g}>{g}</MenuItem>)}</Select></TableCell>
+                          <TableCell sx={{ py: 0.25, minWidth: 170 }}><Select size="small" displayEmpty fullWidth value={it.category} sx={{ fontSize: 12 }} onChange={(e) => setItem(i, { category: e.target.value })}><MenuItem value="" disabled>Subcategory</MenuItem>{(it.group ? categoryOptions(it.group) : []).map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}</Select></TableCell>
                           <TableCell>Nos</TableCell>
-                          <TableCell sx={{ py: 0.5 }}><TextField size="small" type="number" value={it.qty} onChange={(e) => setItem(i, { qty: e.target.value })} sx={{ width: 90 }} inputProps={{ min: 1 }} /></TableCell>
-                          <TableCell sx={{ py: 0.5 }}><TextField size="small" type="number" value={it.rate} onChange={(e) => setItem(i, { rate: e.target.value })} sx={{ width: 130 }} /></TableCell>
+                          <TableCell sx={{ py: 0.25 }}><TextField size="small" type="number" value={it.qty} onChange={(e) => setItem(i, { qty: e.target.value })} sx={{ width: 90 }} inputProps={{ min: 1 }} /></TableCell>
+                          <TableCell sx={{ py: 0.25 }}><TextField size="small" type="number" value={it.rate} onChange={(e) => setItem(i, { rate: e.target.value })} sx={{ width: 130 }} /></TableCell>
                           <TableCell align="right">{aed((Number(it.qty) || 0) * (Number(it.rate) || 0))}</TableCell>
                           <TableCell><IconButton size="small" onClick={() => setItems(items.filter((_, j) => j !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton></TableCell>
                         </TableRow>

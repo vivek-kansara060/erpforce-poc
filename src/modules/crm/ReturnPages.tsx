@@ -239,7 +239,7 @@ export function ReturnForm() {
                       {rows.map((r, i) => (
                         <TableRow key={r.id}>
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>{lineOf(r.lineId)?.group ?? '-'}</TableCell><TableCell sx={{ whiteSpace: 'nowrap' }}>{lineOf(r.lineId)?.category ?? '-'}</TableCell>
-                          <TableCell sx={{ py: 0.5, minWidth: 260 }}>
+                          <TableCell sx={{ py: 0.25, minWidth: 260 }}>
                             <Select size="small" displayEmpty fullWidth value={r.assetId ? `${r.lineId}|${r.assetId}|${r.deliveryId}` : ''} sx={{ fontSize: 13 }} error={!!err.items && !r.assetId}
                               onChange={(e) => { const [lineId, assetId, deliveryId] = String(e.target.value).split('|'); setRows(rows.map((x, j) => (j === i ? { ...x, lineId, assetId, deliveryId } : x))); }}>
                               <MenuItem value="" disabled>Select the asset</MenuItem>
@@ -248,11 +248,11 @@ export function ReturnForm() {
                           </TableCell>
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>{dels.get(r.deliveryId)?.number ?? '-'}</TableCell><TableCell>Nos</TableCell><TableCell align="right">1</TableCell>
                           <TableCell align="right">{r.assetId ? aed(amounts(r).rate) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).gross) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).tax) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).total) : '-'}</TableCell>
-                          <TableCell sx={{ py: 0.5, whiteSpace: 'nowrap' }}>
+                          <TableCell sx={{ py: 0.25, whiteSpace: 'nowrap' }}>
                             <Tooltip title={r.files?.length ? r.files.join(', ') : 'Attach a file to this item'}><IconButton size="small" component="label" color={r.files?.length ? 'primary' : 'default'}><AttachFileOutlinedIcon fontSize="small" /><input hidden type="file" multiple onChange={(e) => { const n = Array.from(e.target.files ?? []).map((x) => x.name); setRows(rows.map((x, j) => (j === i ? { ...x, files: [...(x.files ?? []), ...n] } : x))); }} /></IconButton></Tooltip>
                             {!!r.files?.length && <Tooltip title={r.files.join(', ')}><Chip size="small" label={r.files.length} /></Tooltip>}
                           </TableCell>
-                          <TableCell sx={{ py: 0.5 }}><TextField size="small" value={r.narration ?? ''} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, narration: e.target.value } : x)))} sx={{ width: 180 }} /></TableCell>
+                          <TableCell sx={{ py: 0.25 }}><TextField size="small" value={r.narration ?? ''} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, narration: e.target.value } : x)))} sx={{ width: 180 }} /></TableCell>
                           <TableCell><IconButton size="small" onClick={() => setRows(rows.filter((_, j) => j !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton></TableCell>
                         </TableRow>
                       ))}
