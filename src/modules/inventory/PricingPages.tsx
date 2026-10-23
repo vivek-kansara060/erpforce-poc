@@ -114,7 +114,7 @@ export function PricingForm() {
     <>
       <FormHeader
         crumbs={[{ label: 'Heavy Equipment Pricing', to: BASE }, { label: existing ? 'Edit Price' : from ? 'Add Frequency' : 'Add Price' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>}
+        actions={<><Button variant="outlined" onClick={() => nav(BASE)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
@@ -158,7 +158,7 @@ export function PricingView() {
       />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
-          <ValueGrid cols={4}>
+          <ValueGrid>
             <ValueField label="Activity Type" value={r.activity} change="changed" req={REQ_PRICING} />
             <ValueField label="Category" value={r.category} change="new" req={REQ_PRICING} />
             <ValueField label="Sub-Category" value={r.subCategory || undefined} change="new" req={REQ_PRICING} />

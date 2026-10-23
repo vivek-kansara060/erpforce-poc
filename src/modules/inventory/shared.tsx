@@ -147,7 +147,7 @@ export function SerializedFields({ f, upd, errors, req, withNotDepreciable, hide
 export function SerializedView({ r, req, hideValues }: { r: Record<string, any>; req: string; hideValues?: boolean }) {
   return (
     <>
-      <ValueGrid cols={4}>
+      <ValueGrid>
         <ValueField label="Brand" value={r.brand} change="new" req={req} />
         <ValueField label="Model" value={r.model} change="new" req={req} />
         <ValueField label="Engine Number" value={r.engineNo} change="new" req={req} />
@@ -155,7 +155,7 @@ export function SerializedView({ r, req, hideValues }: { r: Record<string, any>;
       </ValueGrid>
       {!hideValues && <Box sx={{ mt: 3 }}>
         <Text type="s3" weight="medium" sx={{ mb: 1.5 }}>Asset Value Details</Text>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Purchase Date" value={r.purchaseDate} change="new" req={req} />
           <ValueField label="Asset Value" value={aed(r.assetValue)} change="new" req={req} />
           {r.notDepreciable !== undefined && <ValueField label="Not Depreciable Value" value={aed(r.notDepreciable)} change="new" req={req} />}
@@ -251,7 +251,7 @@ export function validateAttrs(defs: AttributeDef[], values: Record<string, strin
 export function AttributeValues({ defs, values }: { defs: AttributeDef[]; values?: Record<string, string> }) {
   if (!defs.length) return null;
   return (
-    <ValueGrid cols={4}>
+    <ValueGrid>
       {defs.map((d) => <ValueField key={d.id} label={d.name} value={values?.[d.id]} change="new" req={REQ_ATTR} />)}
     </ValueGrid>
   );

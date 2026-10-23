@@ -448,7 +448,7 @@ export function CountView() {
           {s.adjustmentStatus === 'Pending Approval' && <><Button variant="outlined" color="error" onClick={() => setReject(true)}>Reject</Button><Button variant="contained" onClick={approve}>Approve Adjustment</Button></>}
         </>} />
       <Page sx={{ pt: 2 }}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Stock Count Session" value={s.number} change="new" req={REQ_PSV} />
           <ValueField label="Count Type" value={s.type ?? 'Stock Items'} change="new" req={REQ_PSV_ASSET} />
           <ValueField label="Date" value={s.date} />
@@ -540,7 +540,7 @@ export function AssetHistoryPanel({ asset }: { asset?: HeavyRec }) {
   const repairs = asset.movements.filter((m) => m.type === 'Sent for Repair').length;
   return (
     <Panel title="Asset history and economics" change="new" req={REQ_DSP_FLOW} sx={{ mt: 2 }}>
-      <ValueGrid cols={4}>
+      <ValueGrid>
         <ValueField label="Income to date" value={aed(income)} /><ValueField label="Expenses to date" value={aed(expense)} />
         <ValueField label="Income vs Expenses ratio" value={<StatusChip status={`${ratio}`} tone={ratio >= 1.5 ? 'green' : ratio >= 1 ? 'amber' : 'red'} />} />
         <ValueField label="Net Book Value" value={aed(asset.nbv)} /><ValueField label="Utilization" value={`${asset.utilization}%`} /><ValueField label="Idle time" value={`${asset.idleDays} days`} /><ValueField label="Times sent for repair" value={String(repairs)} /><ValueField label="Current status" value={asset.assetStatus} />
@@ -655,7 +655,7 @@ export function DisposalView() {
           {r.status === 'Rejected' && <Text type="s5" color="#C2363A" sx={{ mt: 1 }}>Rejected: the asset stays active on the Fixed Asset Register.</Text>}
           {r.status === 'Approved' && !out && <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>The asset has been inactivated. Create the invoice for the {sale ? 'sale' : 'scrap'} to close the request.</Text>}
         </Panel>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Disposal Request Number" value={r.number} change="new" req={REQ_DSP} />
           <ValueField label="Asset" value={asset ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/inventory/items/heavy/${asset.id}`)}>{r.assetId} - {asset.name}</Box> : r.assetId} change="new" req={REQ_DSP} />
           <ValueField label="Disposal Method" value={r.method} change="new" req={REQ_DSP} />
@@ -666,7 +666,7 @@ export function DisposalView() {
         </ValueGrid>
         {out && (
           <Panel title={sale ? 'Sale Invoice' : 'Scrap Invoice'} change="new" req={REQ_DSP_INV} sx={{ mt: 3 }}>
-            <ValueGrid cols={4}>
+            <ValueGrid>
               <ValueField label="Invoice Number" value={<Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${out.invoiceRef}`)}>{out.invoiceRef}</Box>} />
               <ValueField label="Invoice Date" value={out.date} />
               <ValueField label="Invoice To" value={out.buyer} />

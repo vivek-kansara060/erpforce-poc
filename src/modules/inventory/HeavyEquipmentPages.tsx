@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Box, Button, IconButton } from '@mui/material';
+import { Alert, Box, Button, IconButton } from '@mui/material';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { Page, PageTitle, FormHeader, HeaderMeta } from '@/components/PageHeader';
-import { Link } from 'react-router-dom';
-import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, fleetStatus, isOpenTrip, tripSeed, type CrossHire, type Trip } from '@/modules/crm/data';
-import { VehicleTrips, driverOptions } from '@/modules/rental/FleetPages';
+import { COL as CRM_COL, crossHireSeed as rentalCrossHireSeed, masterValues, type CrossHire } from '@/modules/crm/data';
 import { returnToSupplier, returnToUs } from '@/modules/crm/flow';
+import { R8, TO_CONFIRM } from '@/modules/crm/shared';
+import { employees } from '@/mock-data/masters';
 import { DataTable, type Column } from '@/components/DataTable';
 import { CheckInput, DateInput, FileInput, FormGrid, FormSection, NumberInput, SelectInput, TextInput, ToggleInput, ValueField, ValueGrid } from '@/components/Form';
 import { StatusChip } from '@/components/StatusChip';
@@ -37,6 +37,7 @@ const REQ_NAME = 'Fixed Asset > Asset Name (2 Oct call: suggested, editable by t
 const REQ_STATUS = 'Fixed Asset > Asset Status (2 Oct call: set by the system, manual change where needed)';
 /** Statuses an asset can be returned to the hire pool from with Mark Ready for Hire. */
 const READY_FROM = ['Yard', 'Off Hire', 'Under Maintenance', 'Breakdown', 'Hold'];
+const REQ_MAINT = R8('Returned owned assets go to maintenance with a routine or critical checklist');
 const useHeavy = () => useCollection<HeavyRec>('inventory.heavyEquipment', heavySeed);
 /**
  * One cross-hire record for the whole POC: the Rental > Cross Hire order. Inventory reads it through this view, so the asset page,
@@ -55,8 +56,6 @@ const useCrossHires = () => {
   // Dropship units go straight to the client and never enter the register.
   return { raw, rows: raw.rows.filter((c) => c.type !== 'Dropship').map((c) => toView(c, heavy.rows.find((h) => h.id === c.assetId))) };
 };
-const REQ_FLEET = 'Fleet Management (5 Oct call): own delivery vehicles are Fixed Assets, used for delivery only and never rented out';
-const useTrips = () => useCollection<Trip>(CRM_COL.trips, tripSeed);
 const REQ_CH = 'Cross-Hire Assets (2 Oct call: details fetched from the cross-hire record, status from the cross-hire workflow)';
 const chLabel = (c: CrossHireRec) => `${c.number} - ${c.supplier} - ${c.category} ${c.subCategory}`;
 const tone = (s: string) => (s === 'In Stock' ? 'green' : 'amber') as 'green' | 'amber';
@@ -141,7 +140,6 @@ const blank: Record<string, any> = {
   initialLocation: '', department: '', status: 'Active', assetStatus: 'Ready for Hire', image: undefined, attachments: [], attrs: {},
   method: 'Straight line', decliningFactor: '', computation: 'Constant periods', usefulLifeYears: '', usefulLifeHours: '', accFixedAsset: '', accDepreciation: '', accExpense: '', journal: ACCOUNTS.journals[0],
   ownership: 'Owned', supplier: '', crossHireIdle: false, insurance: [],
-  deliveryFleet: false, plateNumber: '', defaultDriver: '',
 };
 const BASIC_KEYS = ['name', 'category', 'assetType', 'brand', 'model', 'engineNo', 'capacity', 'purchaseDate', 'assetValue', 'nbv', 'deprPct', 'deprAmount', 'capex', 'initialLocation', 'putToUseDate', 'notDepreciable'];
 /** Suggested asset name built from the record's Category, Sub-Category, Brand and Model. */
@@ -158,7 +156,6 @@ export function HeavyForm() {
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const liveLocs = useCollection<LocationRec>('locations', locationSeed).rows.filter((l) => l.status === 'Active' && l.type !== 'Employee').map((l) => l.name);
   const crossHires = useCrossHires();
-  const tripRows = useTrips();
   const certs = useCollection<CertRec>('inventory.certificates', certSeed);
   const settings = useCollection<InventorySettings>('inventory.settings', settingsSeed);
   const [newCerts, setNewCerts] = useState<{ type: string; reference: string; expiry: string; leadDays: string; file: string[] }[]>([]);
@@ -200,13 +197,6 @@ export function HeavyForm() {
     if (dep && !e.usefulLifeYears && num(f.usefulLifeYears) <= 0) e.usefulLifeYears = 'Useful Life must be greater than 0';
     if (dep && f.method === 'Declining' && !(num(f.decliningFactor) > 0)) e.decliningFactor = 'Declining Factor is required';
     if (crossHired && !chId) e.crossHireId = 'Select the cross-hire record this unit came in on';
-    if (f.deliveryFleet && !crossHired) {
-      const plate = String(f.plateNumber ?? '').trim();
-      if (!plate) e.plateNumber = 'Plate Number is required for a delivery fleet vehicle';
-      else { const dup = heavy.rows.find((h) => h.id !== existing?.id && h.deliveryFleet && (h.plateNumber ?? '').trim().toLowerCase() === plate.toLowerCase()); if (dup) e.plateNumber = `This plate number is already used by ${dup.assetId}`; }
-      if (!existing?.deliveryFleet && existing && ['On Hire', 'Hold'].includes(existing.assetStatus)) e.deliveryFleet = 'This asset is On Hire or on Hold. Return the unit first, then mark it as a delivery fleet vehicle';
-    }
-    if (existing?.deliveryFleet && !f.deliveryFleet && tripRows.rows.some((t) => t.vehicleId === existing.id && isOpenTrip(t))) e.deliveryFleet = 'This vehicle has an open trip. Complete or cancel the trip before removing it from the delivery fleet';
     if (f.putToUseDate && f.purchaseDate && f.putToUseDate < f.purchaseDate) e.putToUseDate = 'Cannot be before Purchase Date';
     if (dep && num(f.notDepreciable) > num(f.assetValue)) e.notDepreciable = 'Cannot exceed Asset Value';
     if (newCerts.some((c) => !c.type || !c.expiry || !(num(c.leadDays) > 0))) e.certs = 'Complete every certificate (type, expiry date and a reminder lead time greater than 0), or remove it';
@@ -231,18 +221,13 @@ export function HeavyForm() {
     const audit: AuditEntry[] = existing
       ? changed.length ? [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Record updated', detail: changed.join('; '), by: 'Current User' }, ...existing.audit] : existing.audit
       : [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset record created', detail: `Asset ID ${assetId} generated`, by: 'Current User' }];
-    const isFleet = !!f.deliveryFleet && f.ownership === 'Owned';
-    // A delivery vehicle is never Ready for Hire: it starts In Service. Unticking the box puts the asset back in the hire pool as Ready for Hire.
-    const fleetStatusNow = !existing ? (isFleet ? 'In Service' : undefined) : isFleet && !existing.deliveryFleet ? (['Under Maintenance', 'Breakdown'].includes(existing.assetStatus) ? existing.assetStatus : 'In Service') : !isFleet && existing.deliveryFleet ? 'Ready for Hire' : undefined;
-    const fleetAudit: AuditEntry[] = fleetStatusNow && existing ? [{ when: `${TODAY} ${NOW.slice(11)}`, title: isFleet ? 'Marked as a delivery fleet vehicle' : 'Removed from the delivery fleet', detail: isFleet ? `Plate ${String(f.plateNumber).trim()}. Asset Status ${existing.assetStatus} to ${fleetStatusNow}; not rented out and not counted in the rental fleet` : `Asset Status ${existing.assetStatus} to ${fleetStatusNow}; back in the hire pool`, by: 'Current User' }, ...audit] : audit;
     const displayName = assetName.trim();
     const rec: HeavyRec = {
       id: existing?.id ?? `he${Date.now()}`, code, assetId, name: displayName, classification: 'Rental', tracking: 'Serialized', category: f.category, subCategory: f.subCategory, brand: f.brand, model: f.model, engineNo: f.engineNo, capacity: f.capacity,
       specification: f.specification, assetType: f.assetType, purchaseDate: f.purchaseDate, putToUseDate: f.putToUseDate, assetValue: n('assetValue') || 0, notDepreciable: n('notDepreciable') || 0, nbv: n('nbv') || 0, deprPct: n('deprPct') || 0, deprAmount: n('deprAmount') || 0, capex: n('capex') || 0,
-      department: f.department, company: f.entity || COMPANY, status: f.status, assetStatus: fleetStatusNow ?? existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire'), statusOverride: existing?.statusOverride, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
+      department: f.department, company: f.entity || COMPANY, status: f.status, assetStatus: existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire'), statusOverride: existing?.statusOverride, method: f.method, decliningFactor: n('decliningFactor') || 0, computation: f.computation, usefulLifeYears: n('usefulLifeYears') || 0, usefulLifeHours: f.usefulLifeHours === '' ? undefined : n('usefulLifeHours'),
       accFixedAsset: f.accFixedAsset, accDepreciation: f.accDepreciation, accExpense: f.accExpense, journal: f.journal, ownership: f.ownership, supplier: crossHired ? chRec?.supplier ?? f.supplier : '', crossHireIdle: crossHired && chRec?.stage === 'Idle at Our Location',
-      insurance: crossHired ? [] : insurance, movements: existing?.movements ?? [first], audit: fleetAudit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
-      deliveryFleet: isFleet, plateNumber: isFleet ? String(f.plateNumber).trim() : undefined, defaultDriver: isFleet ? f.defaultDriver || undefined : undefined,
+      insurance: crossHired ? [] : insurance, movements: existing?.movements ?? [first], audit, utilization: existing?.utilization ?? 0, idleDays: existing?.idleDays ?? 0, profitability: existing?.profitability ?? 0, attrs: f.attrs, image: f.image, attachments: f.attachments,
     };
     if (existing) heavy.update(existing.id, rec); else heavy.add(rec);
     // Certificates entered while creating the asset are stored against it.
@@ -262,13 +247,6 @@ export function HeavyForm() {
         {crossHired ? <SelectInput label="Cross-Hire Record" required change="new" req={REQ_CH} value={chId} options={chOptions} onChange={pickCrossHire} error={errors.crossHireId} disabled={!!linkedCh} hint={linkedCh ? 'Linked to this asset' : 'Details below are filled in from the cross-hire record'} /> : null}
         {crossHired && chRec && <TextInput label="Cross-Hire Supplier" change="new" req={REQ_CH} value={chRec.supplier} disabled hint="From the cross-hire record" />}
         {crossHired && chRec && <TextInput label="Hire Period" change="new" req={REQ_CH} value={`${chRec.hireStart} to ${chRec.expectedReturn} (expected return)`} disabled hint="From the cross-hire record" />}
-        <Box>
-          <CheckInput label="Delivery fleet vehicle" change="new" req={REQ_FLEET} checked={!!f.deliveryFleet && f.ownership === 'Owned'} disabled={f.ownership !== 'Owned'} onChange={(v) => upd({ deliveryFleet: v })} hint="Used to deliver and collect equipment. It is not rented out and not counted in the rental fleet" />
-          {errors.deliveryFleet && <Text type="s5" color="#C2363A">{errors.deliveryFleet}</Text>}
-          {f.ownership !== 'Owned' && <Text type="s5" color="theme.secondary.700">Only an Owned asset can be a delivery vehicle. A cross-hired unit is rental equipment.</Text>}
-        </Box>
-        {f.deliveryFleet && f.ownership === 'Owned' && <TextInput label="Plate Number" required change="new" req={REQ_FLEET} value={f.plateNumber} onChange={set('plateNumber')} error={errors.plateNumber} hint="Unique across all assets. Shown on the Fleet Availability board and filled into each trip" />}
-        {f.deliveryFleet && f.ownership === 'Owned' && <SelectInput label="Default Driver" change="new" req={REQ_FLEET} value={f.defaultDriver} options={driverOptions()} onChange={set('defaultDriver')} hint="Filled into each trip; the dispatcher can change it" />}
         <AssetTypeSelect value={f.assetType} onChange={set('assetType')} error={errors.assetType} />
         <CategorySelect value={f.category} error={errors.category} req={REQ_HE} disabled={crossHired && !!chRec}
           onChange={(v) => { const dm = cats.rows.find((c) => isTopCategory(c) && c.name === v)?.depMethod; upd({ category: v, subCategory: '', attrs: {}, ...(dm ? { method: dm } : {}) }); }} />
@@ -287,7 +265,7 @@ export function HeavyForm() {
       </FormSection>
       <FormSection title="Status and Location" change="new" req={REQ_FA}>
         <FormGrid>
-          <TextInput label="Asset Status" change="changed" req={REQ_STATUS} value={existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : f.deliveryFleet ? 'In Service' : 'Ready for Hire')} disabled hint={crossHired ? 'Follows the cross-hire stage' : f.deliveryFleet ? 'A delivery vehicle is In Service, never Ready for Hire. Its availability is on the Fleet Availability board' : existing ? 'Set by the system; use Change Status on the asset page when it must be changed by hand' : 'A new asset starts as Ready for Hire'} />
+          <TextInput label="Asset Status" change="changed" req={REQ_STATUS} value={existing?.assetStatus ?? (crossHired && chRec ? crossHireStatus[chRec.stage] : 'Ready for Hire')} disabled hint={crossHired ? 'Follows the cross-hire stage' : existing ? 'Set by the system; use Change Status on the asset page when it must be changed by hand' : 'A new asset starts as Ready for Hire'} />
           {existing
             ? <TextInput label="Current Location" change="new" req={REQ_MV} value={currentLocation(existing)} disabled hint="Derived from Movement History, add a movement to change it" />
             : <SelectInput label="Initial Location" required change="new" req={REQ_MV} value={f.initialLocation} options={liveLocs} onChange={set('initialLocation')} error={errors.initialLocation} disabled={crossHired && !!chRec} hint={crossHired && chRec ? 'Where the cross-hired unit was received, from the cross-hire record' : 'Creates the first Movement History entry'} />}
@@ -343,7 +321,7 @@ export function HeavyForm() {
     <>
       <FormGrid>
         <TextInput label="Depreciation Applicable" change="new" req={REQ_HE} value={dep ? 'Yes' : 'No'} disabled hint="System-derived" />
-        <TextInput label="Include in Available Fleet Count" change="new" req={REQ_HE} value={inFleetCount({ ownership: f.ownership, assetStatus: f.assetStatus, deliveryFleet: !!f.deliveryFleet }) ? 'Yes' : 'No'} disabled hint="System-derived" />
+        <TextInput label="Include in Available Fleet Count" change="new" req={REQ_HE} value={inFleetCount({ ownership: f.ownership, assetStatus: f.assetStatus }) ? 'Yes' : 'No'} disabled hint="System-derived" />
         {!dep && <TextInput label="Cost and Profitability Tracking" change="new" req={REQ_HE} value="Applicable, tracked against project allocation" disabled hint="Used in place of depreciation" full />}
       </FormGrid>
       <FormSection title="Insurance" change="new" req={REQ_FA} right={<Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => set('insurance')([...insurance, { amount: '', date: '', dueDate: '', account: ACCOUNTS.insurance[0] }])}>Add Entry</Button>}>
@@ -366,7 +344,7 @@ export function HeavyForm() {
     <>
       <FormHeader
         subtitle={existing ? <HeaderMeta parts={[existing.name, existing.category, existing.brand]} /> : undefined} crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? `ID: ${existing.assetId}` : 'Add Heavy Equipment Fixed Asset' }]}
-        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>Save</Button></>}
+        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <TabPanels key={tab.key} initial={tab.initial} tabs={[
@@ -411,7 +389,7 @@ function CrossHirePanel({ ch, returned, onStage }: { ch?: CrossHireRec; returned
           {ch.stage !== 'On Hire' && <Button size="small" variant="contained" onClick={() => setConfirm(true)}>Return to Supplier</Button>}
         </Box>
       )}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Cross-Hire Record" value={ch.number} />
           <ValueField label="Supplier" value={ch.supplier} />
           <ValueField label="Stage" value={<StatusChip status={ch.stage} tone={returned ? 'grey' : ch.stage === 'On Hire' ? 'blue' : ch.stage === 'Idle at Our Location' ? 'amber' : 'green'} />} />
@@ -437,30 +415,33 @@ export function HeavyView() {
   const cats = useCollection<CategoryRec>('inventory.categories', categorySeed);
   const r = heavy.get(id);
   const crossHires = useCrossHires();
-  const tripRows = useTrips();
   const [statusDlg, setStatusDlg] = useState(false);
-  const [sf, setSf] = useState({ to: '', reason: '' });
+  const [sf, setSf] = useState({ to: '', reason: '', mtype: '' });
+  const [mDlg, setMDlg] = useState(false);
+  const [mf, setMf] = useState<{ tech: string; date: string; notes: string; checks: string[] }>({ tech: '', date: TODAY, notes: '', checks: [] });
+  const [mErr, setMErr] = useState<Errors>({});
   const [sfErr, setSfErr] = useState<Errors>({});
   const board = useMemo(() => (r ? buildBoard({ start: r.putToUseDate || r.purchaseDate, assetValue: r.assetValue, notDepreciable: r.notDepreciable, months: r.usefulLifeYears * 12, method: r.method, factor: r.decliningFactor }) : []), [r]);
   if (!r) return <Page><PageTitle title="Heavy equipment fixed asset not found" right={<Button variant="outlined" onClick={() => nav('/inventory/items')}>Back to Items</Button>} /></Page>;
   const flip = r.status === 'Active' ? 'Inactive' : 'Active';
   const stock = stockStatusOf(r);
-  const setStatus = (to: string, reason: string) => {
+  const setStatus = (to: string, reason: string, extra: Partial<HeavyRec> = {}) => {
     const maint = ['Under Maintenance', 'Breakdown'];
     const back = to === 'Ready for Hire' || to === 'In Service';
     const mv: Movement | undefined = maint.includes(to) && !maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Sent for Repair', from: currentLocation(r), to: 'Workshop: Al Masaood Service Centre', reference: `Maintenance: ${reason}`, by: 'Current User' }
       : back && maint.includes(r.assetStatus) ? { id: `m${Date.now()}`, entryNo: nextMovementNo(300 + r.movements.length), date: NOW, type: 'Internal Transfer', from: currentLocation(r), to: 'Jebel Ali Main Yard', reference: `Maintenance completed: ${reason}`, by: 'Current User' } : undefined;
-    heavy.update(r.id, { ...(mv ? { movements: [...r.movements, mv] } : {}), assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
+    heavy.update(r.id, { ...(mv ? { movements: [...r.movements, mv] } : {}), ...(to !== 'Under Maintenance' ? { maintenanceType: undefined } : {}), ...extra, assetStatus: to, statusOverride: { by: 'Current User', when: `${TODAY} ${NOW.slice(11)}`, reason }, audit: [{ when: `${TODAY} ${NOW.slice(11)}`, title: 'Asset Status changed manually', detail: `${r.assetStatus} to ${to}: ${reason}`, by: 'Current User' }, ...r.audit] });
     toast(`Asset Status changed to ${to}`);
   };
   const crossHired = r.ownership === 'Cross-Hired';
   const ch = crossHires.rows.find((c) => c.heavyId === r.id);
   const returned = ch?.stage === 'Returned to Supplier';
-  const isFleet = !!r.deliveryFleet;
-  const fleetNow = isFleet ? fleetStatus(r, tripRows.rows) : undefined;
-  const openTrip = isFleet ? tripRows.rows.find((t) => t.vehicleId === r.id && isOpenTrip(t)) : undefined;
-  const canReady = !crossHired && !isFleet && r.status === 'Active' && READY_FROM.includes(r.assetStatus);
-  const canBackInService = isFleet && r.status === 'Active' && ['Under Maintenance', 'Breakdown'].includes(r.assetStatus);
+  const canReady = !crossHired && r.status === 'Active' && READY_FROM.includes(r.assetStatus);
+  // 8 Oct call: a unit under maintenance is completed against its Routine or Critical checklist, not with one click.
+  const underMaint = r.assetStatus === 'Under Maintenance';
+  const mType = r.maintenanceType ?? 'Critical';
+  const mList = masterValues(mType === 'Routine' ? 'maintenanceRoutine' : 'maintenanceCritical');
+  const closeMaint = () => { setMDlg(false); setMf({ tech: '', date: TODAY, notes: '', checks: [] }); setMErr({}); };
   /** Cross-hire stage changes drive the asset's status; returning to the supplier ends the hire and the unit leaves the active fleet. */
   const moveStage = (stage: CrossHireRec['stage']) => {
     const order = crossHires.raw.rows.find((c) => c.id === ch?.id);
@@ -472,20 +453,20 @@ export function HeavyView() {
   };
   const dep = depreciationApplicable(r.ownership);
   const attrDefs = attributesFor(cats.rows, r.category, r.subCategory);
-  const tabs = crossHired ? ['Basic Details', 'Cross-Hire', 'Compliance & Certificates', 'Usage Readings'] : ['Basic Details', 'Depreciation Board', 'Movement History', ...(isFleet ? ['Trips'] : []), 'Ownership', 'Compliance & Certificates', 'Usage Readings'];
+  const tabs = crossHired ? ['Basic Details', 'Cross-Hire', 'Compliance & Certificates', 'Usage Readings'] : ['Basic Details', 'Depreciation Board', 'Movement History', 'Ownership', 'Compliance & Certificates', 'Usage Readings'];
   const initial = Math.max(0, tabs.indexOf((loc.state as any)?.tab));
   return (
     <>
       <FormHeader
         subtitle={<HeaderMeta parts={[r.name, r.category, r.brand]} />}
         crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: `ID: ${r.assetId}` }]}
-        status={<><StatusChip status={r.status} />{isFleet ? <StatusChip status="Delivery fleet" tone="blue" /> : <StatusChip status={stock} tone={tone(stock)} />}</>}
+        status={<><StatusChip status={r.status} /><StatusChip status={stock} tone={tone(stock)} /></>}
         actions={<>
           <Button variant="outlined" onClick={() => { heavy.update(r.id, { status: flip }); toast(`Marked ${flip}`); }}>{r.status === 'Active' ? 'Deactivate' : 'Activate'}</Button>
           {!crossHired && r.assetStatus !== 'Disposed' && <Button variant="outlined" onClick={() => setStatusDlg(true)}>Change Status</Button>}
           {!crossHired && r.assetStatus !== 'Disposed' && r.status === 'Active' && <Button variant="outlined" onClick={() => nav(`/inventory/disposals/add?asset=${r.assetId}`)}>Disposal Request</Button>}
-          {canReady && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
-          {canBackInService && <Button variant="outlined" color="success" onClick={() => setStatus('In Service', 'Repaired and back in service')}>Back in Service</Button>}
+          {canReady && !underMaint && <Button variant="outlined" color="success" onClick={() => setStatus('Ready for Hire', 'Checked in the yard and ready for the next hire')}>Mark Ready for Hire</Button>}
+          {canReady && underMaint && <Button variant="outlined" color="success" onClick={() => setMDlg(true)}>Complete Maintenance</Button>}
           <Button variant="contained" onClick={() => nav(`${HEAVY_PATH}/${r.id}/edit`)}>Edit</Button>
         </>}
       />
@@ -494,18 +475,15 @@ export function HeavyView() {
           <PhotoBox src={r.image} size={132} />
           <Box sx={{ flex: 1 }}>
             <Text type="h3" weight="medium" sx={{ mb: 2 }}>{r.name}</Text>
-            <ValueGrid cols={4}>
+            <ValueGrid>
               <ValueField label="Serialized ID" value={r.assetId} change="new" req={REQ_FA} />
               <ValueField label="Asset Type" value={r.assetType} change="new" req={REQ_FA} />
               <ValueField label="Category" value={r.category} change="new" req={REQ_HE} />
               <ValueField label="Sub-Category" value={r.subCategory} change="new" req={REQ_HE} />
               <ValueField label="Entity" value={r.company} change="new" req={REQ_HE} />
               <ValueField label="Asset Status" change="changed" req={REQ_STATUS} value={<><StatusChip status={r.assetStatus} /><Text type="s5" color="theme.secondary.700" sx={{ mt: 0.5 }}>{crossHired ? 'Follows the cross-hire stage' : r.statusOverride ? `Set manually by ${r.statusOverride.by} on ${r.statusOverride.when}: ${r.statusOverride.reason}` : 'Set by the system (delivery, return, cross-hire, disposal)'}</Text></>} />
+              {underMaint && <ValueField label="Maintenance Type" value={mType} change="new" req={REQ_MAINT} />}
               <ValueField label="Current Location" value={currentLocation(r)} change="new" req={REQ_MV} />
-              {isFleet && <ValueField label="Plate Number" value={r.plateNumber} change="new" req={REQ_FLEET} />}
-              {isFleet && <ValueField label="Default Driver" value={r.defaultDriver || '-'} change="new" req={REQ_FLEET} />}
-              {isFleet && <ValueField label="Fleet Status" change="new" req={REQ_FLEET} value={<StatusChip status={fleetNow ?? 'Free'} tone={fleetNow === 'Unavailable' ? 'grey' : undefined} />} />}
-              {isFleet && <ValueField label="Current Trip" change="new" req={REQ_FLEET} value={openTrip ? <Link to={`/crm/trips/${openTrip.id}`} style={{ color: '#146B43', fontWeight: 500, textDecoration: 'none' }}>{openTrip.number} ({openTrip.kind}, {openTrip.docNumber})</Link> : '-'} />}
             </ValueGrid>
           </Box>
           <AssetTag assetId={r.assetId} name={r.name} />
@@ -517,7 +495,7 @@ export function HeavyView() {
               <Panel title="Equipment and Asset Details" change="new" req={REQ_HE}>
                 <SerializedView r={r} req={REQ_HE} hideValues={crossHired} />
                 <Box sx={{ mt: 3 }}>
-                  <ValueGrid cols={4}>
+                  <ValueGrid>
                     <ValueField label="Put to Use Date" value={r.putToUseDate} change="new" req={REQ_FA} />
                     <ValueField label="Department" value={r.department} change="new" req={REQ_FA} />
                     <ValueField label="Specification" value={r.specification} change="new" req={REQ_FA} />
@@ -525,7 +503,7 @@ export function HeavyView() {
                 </Box>
               </Panel>
               <Panel title="Asset Performance (calculated)" change="new" req={REQ_FA} sx={{ mt: 2 }}>
-                <ValueGrid cols={4}>
+                <ValueGrid>
                   <ValueField label="Utilization %" value={`${r.utilization}%`} />
                   <ValueField label="Idle Time" value={`${r.idleDays} days`} />
                   <ValueField label={dep ? 'Profitability (to date)' : 'Cost and Profitability (to date)'} value={aed(r.profitability)} />
@@ -549,7 +527,7 @@ export function HeavyView() {
                 <KpiCard title="Useful Life" value={`${r.usefulLifeYears} years`} sub={`${r.method}${r.usefulLifeHours ? `, ${r.usefulLifeHours.toLocaleString('en-US')} hours` : ''}`} />
               </KpiRow>
               <Panel title="Depreciation Settings" sx={{ mb: 2 }}>
-                <ValueGrid cols={4}>
+                <ValueGrid>
                   <ValueField label="Depreciation Method" value={r.method} change="new" req={REQ_FA} />
                   {r.method === 'Declining' && <ValueField label="Declining Factor" value={String(r.decliningFactor)} change="new" req={REQ_FA} />}
                   <ValueField label="Computation" value={r.computation} change="new" req={REQ_FA} />
@@ -571,10 +549,9 @@ export function HeavyView() {
               <MovementTable rows={r.movements} />
             </>
           ) },
-          { label: 'Trips', hidden: !isFleet, change: 'new', req: REQ_FLEET, content: <VehicleTrips vehicleId={r.id} /> },
           { label: 'Ownership', hidden: crossHired, content: (
             <>
-              <ValueGrid cols={4}>
+              <ValueGrid>
                 <ValueField label="Ownership Type" value={r.ownership} change="new" req={REQ_HE} />
                 {r.ownership === 'Cross-Hired' && <ValueField label="Cross-Hire Supplier" value={r.supplier} change="new" req={REQ_HE} />}
                 {r.ownership === 'Cross-Hired' && <ValueField label="Cross-Hire Idle" value={r.crossHireIdle ? <StatusChip status="Idle" /> : 'No'} change="new" req={REQ_HE} />}
@@ -589,22 +566,43 @@ export function HeavyView() {
           { label: 'Usage Readings', change: 'new', req: REQ_USE_TAB, content: <AssetReadings assetId={r.assetId} /> },
         ]} />
       </Page>
-      <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '' }); setSfErr({}); }} confirmLabel="Change Status"
+      <AppDialog open={statusDlg} title="Change Asset Status" onClose={() => { setStatusDlg(false); setSf({ to: '', reason: '', mtype: '' }); setSfErr({}); }} confirmLabel="Change Status"
         onConfirm={() => {
           const e: Errors = {};
           if (!sf.to) e.to = 'New Asset Status is required';
           else if (sf.to === r.assetStatus) e.to = 'The asset already has this status';
           if (!sf.reason.trim()) e.reason = 'Reason is required for a manual change';
+          if (sf.to === 'Under Maintenance' && !sf.mtype) e.mtype = 'Maintenance Type is required';
           setSfErr(e);
           if (Object.keys(e).length) return;
-          setStatus(sf.to, sf.reason.trim());
-          setStatusDlg(false); setSf({ to: '', reason: '' });
+          setStatus(sf.to, sf.reason.trim(), sf.to === 'Under Maintenance' ? { maintenanceType: sf.mtype as 'Routine' | 'Critical' } : {});
+          setStatusDlg(false); setSf({ to: '', reason: '', mtype: '' });
         }}>
         <Text type="s5" color="theme.secondary.700" sx={{ mb: 2 }}>Asset Status is normally set by the system from deliveries, returns, cross-hire and disposal. Use this only when the business process needs a manual change, for example after a yard check. Disposed is set only by an approved Disposal Request.</Text>
         <FormGrid cols={1}>
           <TextInput label="Current Asset Status" value={r.assetStatus} disabled />
-          <SelectInput label="New Asset Status" required change="new" req={REQ_STATUS} value={sf.to} options={isFleet ? ['In Service', 'Under Maintenance', 'Breakdown'] : ASSET_STATUSES.filter((s) => s !== 'Disposed' && s !== 'In Service')} onChange={(v) => setSf({ ...sf, to: v })} error={sfErr.to} />
+          <SelectInput label="New Asset Status" required change="new" req={REQ_STATUS} value={sf.to} options={ASSET_STATUSES.filter((s) => s !== 'Disposed' && s !== 'In Service')} onChange={(v) => setSf({ ...sf, to: v })} error={sfErr.to} />
+          {sf.to === 'Under Maintenance' && <SelectInput label="Maintenance Type" required change="new" req={REQ_MAINT} value={sf.mtype} options={['Routine', 'Critical']} onChange={(v) => setSf({ ...sf, mtype: v })} error={sfErr.mtype} hint="Decides the checklist used by Complete Maintenance" />}
           <TextInput label="Reason" required change="new" req={REQ_STATUS} value={sf.reason} onChange={(v) => setSf({ ...sf, reason: v })} error={sfErr.reason} multiline rows={2} />
+        </FormGrid>
+      </AppDialog>
+      <AppDialog open={mDlg} title="Complete Maintenance" onClose={closeMaint} confirmLabel="Complete Maintenance"
+        onConfirm={() => {
+          const e: Errors = {};
+          if (mf.checks.length < mList.length && !mf.notes.trim()) e.notes = 'Notes are required when a check is not ticked';
+          if (!mf.date) e.date = 'Completed On is required';
+          setMErr(e);
+          if (Object.keys(e).length) { toast('Please complete the mandatory fields', 'error'); return; }
+          setStatus('Ready for Hire', `Maintenance completed (${mType}): ${mf.checks.length} of ${mList.length} checks${mf.tech ? `, technician ${mf.tech}` : ''}${mf.notes.trim() ? `. ${mf.notes.trim()}` : ''}`, { maintenanceType: undefined, maintenanceRef: undefined });
+          closeMaint();
+        }}>
+        <Alert severity="info" sx={{ mb: 2 }}>{mType} maintenance{r.maintenanceRef ? ` after ${r.maintenanceRef}` : ''}. Tick every check that is done; the unit becomes Ready for Hire. Checklist content to be supplied by the client.</Alert>
+        <FormGrid cols={1}>
+          <TextInput label="Maintenance Type" change="new" req={REQ_MAINT} value={mType} disabled />
+          <Box>{mList.map((k) => <CheckInput key={k} label={k} checked={mf.checks.includes(k)} onChange={(on) => setMf({ ...mf, checks: on ? [...mf.checks, k] : mf.checks.filter((x) => x !== k) })} />)}</Box>
+          <SelectInput label="Technician" change="new" req={REQ_MAINT} value={mf.tech} options={employees.map((x) => x.name)} onChange={(v) => setMf({ ...mf, tech: v })} hint="Optional" />
+          <DateInput label="Completed On" required change="new" req={REQ_MAINT} value={mf.date} onChange={(v) => setMf({ ...mf, date: v })} error={mErr.date} />
+          <TextInput label="Notes" required={mf.checks.length < mList.length} change="new" req={REQ_MAINT} value={mf.notes} onChange={(v) => setMf({ ...mf, notes: v })} error={mErr.notes} multiline rows={2} hint={`Required when a check is not ticked. ${TO_CONFIRM}`} />
         </FormGrid>
       </AppDialog>
     </>

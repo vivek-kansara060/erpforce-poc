@@ -20,7 +20,8 @@ export const MASTER_LABELS: Record<string, { label: string; used: string }> = {
   siteChecklist: { label: 'Pre-Return Site Checklist', used: 'Customer Returns' },
   yardChecklist: { label: 'Yard Inspection Checklist', used: 'Customer Returns' },
   replacementReason: { label: 'Replacement Reason', used: 'Rental, Replacement Orders' },
-  tripExpenseTypes: { label: 'Trip Expense Types', used: 'Rental, Fleet Management: Trips (Complete Trip, Add Expense)' },
+  maintenanceRoutine: { label: 'Routine Maintenance Checklist', used: 'Heavy Equipment Fixed Asset: Complete Maintenance' },
+  maintenanceCritical: { label: 'Critical Maintenance Checklist', used: 'Heavy Equipment Fixed Asset: Complete Maintenance' },
 };
 
 function MasterRows({ k }: { k: string }) {
@@ -32,7 +33,7 @@ function MasterRows({ k }: { k: string }) {
     <>
       <DataTable searchPlaceholder="Search values..." rows={m.values.map((v, i) => ({ id: String(i), i, value: v }))} onAdd={() => setDlg({ idx: -1, value: '' })} addLabel="Add Value"
         columns={[{ key: 'value', label: MASTER_LABELS[k]?.label ?? k }]} actions={[{ label: 'Edit', onClick: (r) => setDlg({ idx: r.i, value: r.value }) }, { label: 'Delete', danger: true, onClick: (r) => setDel(r.i) }]} />
-      <AppDialog open={!!dlg} title={dlg && dlg.idx < 0 ? 'Add value' : 'Edit value'} onClose={() => setDlg(null)} confirmLabel="Save" confirmDisabled={!dlg?.value.trim()}
+      <AppDialog open={!!dlg} title={dlg && dlg.idx < 0 ? 'Add value' : 'Edit value'} onClose={() => setDlg(null)} confirmLabel={dlg && dlg.idx < 0 ? 'Save' : 'Update'} confirmDisabled={!dlg?.value.trim()}
         onConfirm={() => { if (!dlg) return; m.replace(dlg.idx < 0 ? [...m.values, dlg.value.trim()] : m.values.map((v, i) => (i === dlg.idx ? dlg.value.trim() : v))); toast('Master updated'); setDlg(null); }}>
         <TextInput label="Value" required value={dlg?.value} onChange={(v) => dlg && setDlg({ ...dlg, value: v })} />
       </AppDialog>

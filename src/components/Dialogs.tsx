@@ -78,5 +78,9 @@ export function MenuButton({ label, items, variant = 'outlined', startIcon }: { 
 /** Toast helper wrapping notistack: const toast = useToast(); toast('Saved'). */
 export function useToast() {
   const { enqueueSnackbar } = useSnackbar();
-  return (msg: string, variant: 'success' | 'error' | 'info' | 'warning' = 'success') => enqueueSnackbar(msg, { variant });
+  // Error toasts go to the global error panel (8 Oct call): it lists the fields in error, or falls back to a toast when none are shown.
+  return (msg: string, variant: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+    if (variant === 'error') window.dispatchEvent(new CustomEvent('erp:form-error', { detail: msg }));
+    else enqueueSnackbar(msg, { variant });
+  };
 }

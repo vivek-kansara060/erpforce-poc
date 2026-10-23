@@ -1,28 +1,31 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Alert, Box, Button, Checkbox, FormControlLabel, IconButton, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material';
+import { Alert, Box, Button, Checkbox, Chip, FormControlLabel, IconButton, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import dayjs from 'dayjs';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, ConfirmDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
+import { FieldError, FileInput, FormGrid, NumberInput, SelectInput, TextInput, ValueField, ValueGrid } from '@/components/Form';
 import { Timeline } from '@/components/Flow';
 import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { customers } from '@/mock-data/masters';
-import { DEPARTMENTS, FAULT_ATTRIBUTION, RETURN_METHODS, RMA_STATUSES, TODAY, assetById, custName, hasWaiver, lineTotal, masterValues, yards, type ReturnEntry, type ReturnGrn, type ReturnGrnItem, type ReturnItem } from './data';
+import { DEPARTMENTS, FAULT_ATTRIBUTION, RETURN_METHODS, dayRate, RMA_STATUSES, TODAY, assetById, custName, hasWaiver, lineTotal, masterValues, yards, type ReturnEntry, type ReturnGrn, type ReturnGrnItem, type ReturnItem } from './data';
 import { applyOffHire, createReturn, createReturnGrn, decideReturn, deleteReturn, deleteReturnGrn, failedCollection, getOrder, invoiceDamage, outstanding, saveReturn, saveReturnGrn, submitReturn, validateReturnGrn } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
+import { ChangeTag } from '@/components/ChangeTag';
 import { customerAddresses, useAddressAutofill, type AddressCfg } from './addressKit';
 import { invoiceByRef } from '@/modules/accounting/engine';
 import { useInvoices } from '@/modules/accounting/shared';
-import { R, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
+import { R, R8, R9, TO_CONFIRM, aed, useDeliveries, useMaster, useOrders, useReturns, useTrips } from './shared';
 import { TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
 import { neutral } from '@/theme/color';
+import { Tooltip } from '@mui/material';
 
 const BASE = '/crm/customer-returns';
 const EDITABLE = ['Draft', 'Pending', 'Rejected'];
@@ -53,7 +56,8 @@ export function ReturnList() {
         columns={[
           { key: 'number', label: 'ID' }, { key: 'date', label: 'Date' }, { key: 'customer', label: 'Customer', render: (r) => custName(r.customerId) }, { key: 'salesperson', label: 'Salesperson' }, { key: 'soNumber', label: 'Sales Order' }, { key: 'entity', label: 'Entity' },
           { key: 'status', label: 'RMA Status', render: (r) => <StatusChip status={r.status} tone={tone(r.status)} /> },
-          { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'timestamp', label: 'Return Entry Timestamp', change: 'new', req: R.ret, render: (r) => r.timestamp.replace('T', ' ') },
+          { key: 'operationType', label: 'Operation Type', change: 'new', req: R9('Replacement is a delivery and a collection: the faulty unit comes back like a return, billing is not stopped'), render: (r) => <StatusChip status={r.operationType} tone={r.operationType === 'Replacement' ? 'amber' : 'grey'} /> },
+          { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'timestamp', label: 'Return Date & Time', change: 'new', req: R.ret, render: (r) => r.timestamp.replace('T', ' ') },
           { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, render: (r) => <StatusChip status={inspectionOf(r)} tone={tone(inspectionOf(r))} /> },
         ]} />
       <ConfirmDialog open={!!del} title="Delete Customer Returns" description={`Delete Customer Returns: ${del?.number} ?`} danger confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { deleteReturn(del.id); toast('Deleted'); } setDel(null); }} />
@@ -62,7 +66,12 @@ export function ReturnList() {
 }
 
 /* ------------------------------------------------------------------ the existing form: Customer Returns, Classification, Items, Attachment, with the rental return added */
-type Row = { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string };
+type Row = { id: string; lineId: string; deliveryId: string; assetId: string; narration?: string; files?: string[] };
+const R_SEP = R8('Category and Subcategory shown separately, as on the Sales Order');
+const R_ATT = R8('Attachment per returned item');
+/** 9 Oct call: say who brings the asset back; the stored values stay the same. */
+export const METHOD_LABEL: Record<string, string> = { 'Company Collection': 'Company Collection (our fleet or an external transporter)', 'Self-Return': 'Customer Self-Return (the client brings it to our yard)' };
+const R_END = R8('Invoice end date on return');
 const mkRow = (lineId: string, deliveryId: string, assetId: string): Row => ({ id: `ri${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`, lineId, deliveryId, assetId });
 
 const summaryRows = (f: Record<string, any>): [string, any][] => [['ID', f.number ?? 'Auto-generated'], ['Date', f.date], ['Customer', f.customerId ? custName(f.customerId) : '-'], ['Shipping Address', f.shippingAddress], ['Operation Type', 'Return'], ['Salesperson', f.salesperson], ['Entity', f.entity], ['Reference Number', f.reference], ['Currency', f.currency], ['Exchange Rate', f.exchangeRate], ['Narration', f.narration]];
@@ -100,8 +109,8 @@ export function ReturnForm() {
   };
   const [f, setF] = useState<Record<string, any>>(() => ({
     date: TODAY, soId: so0?.id ?? '', customerId: so0?.customerId ?? '', shippingAddress: so0?.site ?? '', salesperson: so0?.owner ?? 'Ahmed Al Khouri', entity: so0?.entity ?? masterValues('entity')[0], reference: '', currency: so0?.currency ?? 'AED', exchangeRate: 1, narration: '',
-    location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], method: '', timestamp: `${TODAY}T${dayjs().format('HH:mm')}`, checks: [] as string[], photos: [] as string[], fuelNote: '', deliveryId: sp.get('delivery') ?? '',
-    ...(src ? { ...src, checks: src.siteChecklist, date: copy ? TODAY : src.date, timestamp: copy ? `${TODAY}T${dayjs().format('HH:mm')}` : src.timestamp, number: copy ? undefined : src.number } : {}),
+    location: 'Jebel Ali Main Yard', department: 'Operations', attachments: [], method: 'Company Collection', timestamp: `${TODAY}T${dayjs().format('HH:mm')}`, checks: [] as string[], photos: [] as string[], fuelNote: '', offHireDate: '', addInvoice: '', addAmount: '', addNote: '', deliveryId: sp.get('delivery') ?? '',
+    ...(src ? { ...src, checks: src.siteChecklist, date: copy ? TODAY : src.date, timestamp: copy ? `${TODAY}T${dayjs().format('HH:mm')}` : src.timestamp, offHireDate: copy ? '' : (src.offHireDate ?? ''), addInvoice: src.additional ? 'Yes' : '', addAmount: src.additional?.amount ?? '', addNote: src.additional?.note ?? '', number: copy ? undefined : src.number } : {}),
   }));
   const [rows, setRows] = useState<Row[]>(initialRows);
   const [err, setErr] = useState<Record<string, string>>({});
@@ -113,6 +122,12 @@ export function ReturnForm() {
   useAddressAutofill({ ...f, soSite: orders.get(f.soId)?.site }, set, retCfg, !locked);
   const so = orders.get(f.soId);
   const outs = soOutstanding(f.soId);
+  // 8 Oct call: Invoice End Date (Off-Hire) defaults to the return date; before it the days in between can be billed by an additional invoice (D3), after it the run bills until then.
+  const retDate = String(f.timestamp ?? '').slice(0, 10);
+  const endDate = f.offHireDate || retDate;
+  const gapDays = endDate < retDate ? Math.max(0, dayjs(retDate).diff(dayjs(endDate), 'day')) : 0;
+  const addDefault = Math.round(rows.reduce((s, r) => { const l = so?.lines.find((x) => x.id === r.lineId); return s + (l ? dayRate(l) * gapDays : 0); }, 0));
+  const addAmount = f.addAmount === '' ? addDefault : Number(f.addAmount);
   const customerOpts = [...new Map(orders.rows.filter((o) => o.activity === 'Rental').map((o) => [o.customerId, { value: o.customerId, label: custName(o.customerId) }])).values()];
   const soOpts = orders.rows.filter((o) => o.activity === 'Rental' && (!f.customerId || o.customerId === f.customerId) && o.lines.some((l) => outstanding(l).length)).map((o) => ({ value: o.id, label: `${o.number}${o.title ? ` - ${o.title}` : ''}` }));
   const pickOpts = (cur: Row | null) => outs.filter((x) => !rows.some((r) => r.assetId === x.a.assetId && r !== cur)).map((x) => ({ value: `${x.l.id}|${x.a.assetId}|${x.a.deliveryId}`, label: `${label(assetById(x.a.assetId))} (${x.l.group} ${x.l.category})` }));
@@ -130,8 +145,9 @@ export function ReturnForm() {
     { key: 'narration', label: 'Narration', type: 'textarea', full: true },
   ];
   const rental: Spec[] = [
-    { key: 'method', label: 'Return Method', type: 'select', options: RETURN_METHODS, required: true, change: 'new', req: R.ret, hint: 'Self-Return: the client brings it to our yard. Company Collection: we collect it from the site with a trip', disabled: locked },
-    { key: 'timestamp', label: 'Return Entry Timestamp (Off-Hire)', type: 'datetime', required: true, change: 'new', req: R.ret, hint: 'Saving the return stops the rental billing clock at this time. Can be set earlier or later than today', disabled: locked },
+    { key: 'method', label: 'Return Method', type: 'select', options: RETURN_METHODS.map((m) => ({ value: m, label: METHOD_LABEL[m] ?? m })), required: true, change: 'changed', req: R9('Return method made clear, Company Collection by default'), hint: 'Company Collection is the normal case: the collection is planned in Fleet like a delivery, with our vehicle or an external transporter', disabled: locked },
+    { key: 'timestamp', label: 'Return Date & Time', type: 'datetime', required: true, change: 'new', req: R_END, hint: 'When the asset is physically returned or collected. Can be set earlier or later than today', disabled: locked },
+    { key: 'offHireDate', label: 'Invoice End Date (Off-Hire)', type: 'date', required: true, change: 'new', req: R_END, hint: 'Rental is billed up to the day before this date, the same rule as today. Defaults to the return date', disabled: locked, value: (g) => g.offHireDate || String(g.timestamp ?? '').slice(0, 10) },
     { key: 'fuelNote', label: 'Fuel Note', change: 'new', req: R.ret, hint: 'Reference only. Fuel is never billed as part of rental', disabled: locked },
   ];
   const saveIt = (draft: boolean) => {
@@ -144,13 +160,16 @@ export function ReturnForm() {
         if (f.checks.length < SITE.length) e.checks = 'The Pre-Return Site Checklist must be completed before Off-Hire is confirmed';
         if (!f.photos.length) e.photos = 'Photos are mandatory at Return';
         if (f.method === 'Company Collection') Object.assign(e, validateTransport(tp, f.timestamp));
+        if (gapDays > 0 && !f.addInvoice) e.addInvoice = 'Answer Yes or No';
+        if (gapDays > 0 && f.addInvoice === 'Yes' && !(addAmount > 0)) e.addAmount = 'Enter the additional invoice amount';
       }
     }
     setErr(e);
     if (Object.keys(e).length) { toast(e.soId === 'Please fill atleast one field' ? e.soId : 'Please complete the mandatory fields highlighted on the form', 'error'); return; }
     const header = { date: f.date, shippingAddress: f.shippingAddress, salesperson: f.salesperson, entity: f.entity, reference: f.reference, currency: f.currency, exchangeRate: Number(f.exchangeRate) || 1, narration: f.narration, location: f.location, department: f.department, attachments: f.attachments ?? [] };
-    const rental2 = { method: f.method, timestamp: f.timestamp, siteChecklist: f.checks, photos: f.photos, fuelNote: f.fuelNote, transport: f.method === 'Company Collection' ? toTransportInput(tp) : undefined };
-    const items = rows.filter((r) => r.assetId).map((r) => ({ lineId: r.lineId, assetId: r.assetId, narration: r.narration }));
+    const additional = gapDays > 0 && f.addInvoice === 'Yes' ? { from: endDate, to: dayjs(retDate).subtract(1, 'day').format('YYYY-MM-DD'), days: gapDays, amount: addAmount, note: f.addNote || undefined } : undefined;
+    const rental2 = { method: f.method, timestamp: f.timestamp, offHireDate: endDate, additional, siteChecklist: f.checks, photos: f.photos, fuelNote: f.fuelNote, transport: f.method === 'Company Collection' ? toTransportInput(tp) : undefined };
+    const items = rows.filter((r) => r.assetId).map((r) => ({ lineId: r.lineId, assetId: r.assetId, narration: r.narration, files: r.files }));
     if (existing) {
       if (existing.status === 'Draft') {
         saveReturn(existing.id, { ...header, ...rental2, items: rows.filter((r) => r.assetId).map((r) => ({ ...r })) as ReturnItem[], status: draft ? 'Draft' : 'Pending' });
@@ -160,24 +179,24 @@ export function ReturnForm() {
       nav(`${BASE}/${existing.id}`); return;
     }
     const r = createReturn({ soId: f.soId, deliveryId: f.deliveryId || undefined, ...header, items, ...rental2, transport: rental2.transport, draft });
-    toast(draft ? 'Saved as draft' : `${r.number} saved. The assets are Off Hire and rental billing has stopped`);
+    toast(draft ? 'Saved as draft' : `${r.number} saved. The assets are Off Hire - In Transit and rental billing stops on ${endDate}${r.additionalInvoiceId ? '. Additional invoice raised, pending approval' : ''}`);
     nav(`${BASE}/${r.id}`);
   };
   const lineOf = (lineId: string) => so?.lines.find((l) => l.id === lineId);
   const amounts = (r: Row) => { const l = lineOf(r.lineId); const rate = l?.price ?? 0; const net = rate * (1 - (l?.discount ?? 0) / 100); return { rate, gross: rate, net, tax: net * 0.05, total: net * 1.05 }; };
   const itemCols = [
-    { key: 'item', label: 'Item', render: (r: Row) => { const l = lineOf(r.lineId); return l ? `${l.group} ${l.category}` : '-'; } },
+    { key: 'grp', label: 'Category', change: 'changed' as const, req: R_SEP, render: (r: Row) => lineOf(r.lineId)?.group ?? '-' }, { key: 'sub', label: 'Subcategory', change: 'changed' as const, req: R_SEP, render: (r: Row) => lineOf(r.lineId)?.category ?? '-' },
     { key: 'asset', label: 'Asset ID', change: 'new' as const, req: R.rreturn, render: (r: Row) => assetById(r.assetId)?.assetId },
     { key: 'do', label: 'Delivery Order', change: 'new' as const, req: R.meet, render: (r: Row) => dels.get(r.deliveryId)?.number ?? '-' },
     { key: 'uom', label: 'UoM', render: () => 'Nos' }, { key: 'desc', label: 'Description', render: (r: Row) => assetById(r.assetId)?.name }, { key: 'qty', label: 'Quantity', align: 'right' as const, render: () => 1 },
     { key: 'rate', label: 'Rate', align: 'right' as const, render: (r: Row) => aed(amounts(r).rate) }, { key: 'gross', label: 'Gross Amount', align: 'right' as const, render: (r: Row) => aed(amounts(r).gross) },
     { key: 'tax', label: 'Tax Amount', align: 'right' as const, render: (r: Row) => aed(amounts(r).tax) }, { key: 'total', label: 'Total Amount', align: 'right' as const, render: (r: Row) => aed(amounts(r).total) },
-    { key: 'loc', label: 'Location', render: () => f.location }, { key: 'dep', label: 'Department', render: () => f.department ?? '-' }, { key: 'nar', label: 'Narration', render: (r: Row) => r.narration || '-' },
+    { key: 'loc', label: 'Location', render: () => f.location }, { key: 'dep', label: 'Department', render: () => f.department ?? '-' }, { key: 'files', label: 'Attachments', change: 'new' as const, req: R_ATT, render: (r: Row) => r.files?.join(', ') || '-' }, { key: 'nar', label: 'Narration', render: (r: Row) => r.narration || '-' },
   ];
   return (
     <>
       <FormHeader crumbs={[{ label: 'Customer Returns', to: BASE }, { label: existing ? 'Edit Customer Return' : 'Add Customer Return' }]}
-        actions={<>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => saveIt(true)}>Save as Draft</Button>}<Button variant="outlined" onClick={() => nav(existing ? `${BASE}/${existing.id}` : BASE)}>Discard</Button><Button variant="contained" onClick={() => saveIt(false)}>Save</Button></>} />
+        actions={<>{(!existing || existing.status === 'Draft') && <Button variant="outlined" onClick={() => saveIt(true)}>Save as Draft</Button>}<Button variant="outlined" onClick={() => nav(existing ? `${BASE}/${existing.id}` : BASE)}>Discard</Button><Button variant="contained" onClick={() => saveIt(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {locked && <Alert severity="info" sx={{ mb: 2 }}>Billing has already stopped for this return, so its assets and return details are locked. Header details can still be edited.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
@@ -189,27 +208,37 @@ export function ReturnForm() {
             <Section title="Classification"><SpecForm specs={[{ key: 'location', label: 'Location', type: 'select', options: yards(), required: true }, { key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }]} f={f} set={set} err={err} /></Section>
             <Section title="Rental Return" change="new" req={R.ret} hint="Added to the existing Customer Return for rental assets: how it comes back, when billing stops, the site check and the photos">
               <SpecForm specs={rental} f={f} set={set} err={err} />
+              {!locked && gapDays > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <SpecForm f={f} set={set} err={err} specs={[
+                    { key: 'addInvoice', label: `Raise an additional invoice for the ${gapDays} day(s) between the Invoice End Date and the return date?`, type: 'select', options: ['Yes', 'No'], required: true, change: 'new', req: R_END, hint: `Those days are otherwise not billed. ${TO_CONFIRM}` },
+                    { key: 'addAmount', label: 'Additional invoice amount (AED)', type: 'number', required: true, show: (g) => g.addInvoice === 'Yes', value: () => addAmount, change: 'new', req: R_END, hint: `Default: day rate of the returned assets (Monthly price / 30, Weekly / 7, Daily / 1) x ${gapDays} day(s), editable. ${TO_CONFIRM}` },
+                    { key: 'addNote', label: 'Narration', show: (g) => g.addInvoice === 'Yes', change: 'new', req: R_END },
+                  ]} />
+                </Box>
+              )}
+              {!locked && endDate > retDate && <Alert severity="info" sx={{ mt: 2 }}>Billing continues until {endDate}.</Alert>}
               <Text type="s3" weight="medium" sx={{ mt: 2 }}>Pre-Return Site Checklist</Text>
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 {SITE.map((c) => <FormControlLabel key={c} control={<Checkbox size="small" disabled={locked} checked={f.checks.includes(c)} onChange={(e) => set('checks', e.target.checked ? [...f.checks, c] : f.checks.filter((x: string) => x !== c))} />} label={<Text type="s3">{c}</Text>} />)}
               </Box>
-              {err.checks && <Text type="s5" color="#C2363A">{err.checks}</Text>}
+              <FieldError label="Pre-Return Site Checklist" error={err.checks} />
               <Text type="s5" color="theme.secondary.700">Light check at the client site before Off-Hire. Checklist content {TO_CONFIRM.toLowerCase()}.</Text>
               <Box sx={{ mt: 2 }}><FileInput label="Return Photo Attachments" required change="new" req={R.rreturn} multiple value={f.photos} onChange={(v) => set('photos', v)} error={err.photos} disabled={locked} hint="Mandatory at Return (optional at Delivery)" /></Box>
               {f.method === 'Company Collection' && !locked && <Box sx={{ mt: 2 }}><Text type="s3" weight="medium" sx={{ mb: 1 }}>Collection Transport</Text><TransportSection value={tp} onChange={setTp} errors={err} date={f.timestamp} /></Box>}
             </Section>
             <Section title="Items">
-              {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
+              <FieldError label="Items" error={err.items} />
               {!locked && <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}><Button size="small" variant="outlined" disabled={!so || !pickOpts(null).length} onClick={() => setRows([...rows, { id: `ri${Date.now().toString(36)}${rows.length}`, lineId: '', deliveryId: '', assetId: '' }])}>+ Add</Button></Box>}
               {locked ? <DataTable hideToolbar rows={rows} columns={itemCols} /> : (
                 <TableContainer sx={{ border: `1px solid ${neutral[200]}`, borderRadius: '8px', maxWidth: '100%' }}>
                   <Table size="small">
-                    <TableHead><TableRow sx={{ bgcolor: neutral[100] }}>{['Item', 'Asset ID', 'Delivery Order', 'UoM', 'Quantity', 'Rate', 'Gross Amount', 'Tax Amount', 'Total Amount', 'Narration', ''].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}</TableCell>)}</TableRow></TableHead>
+                    <TableHead><TableRow sx={{ bgcolor: neutral[100] }}>{['Category', 'Subcategory', 'Asset ID', 'Delivery Order', 'UoM', 'Quantity', 'Rate', 'Gross Amount', 'Tax Amount', 'Total Amount', 'Attachments', 'Narration', ''].map((h) => <TableCell key={h} sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{h}{h === 'Attachments' && <ChangeTag kind="new" req={R_ATT} />}{(h === 'Category' || h === 'Subcategory') && <ChangeTag kind="changed" req={R_SEP} />}</TableCell>)}</TableRow></TableHead>
                     <TableBody>
-                      {rows.length === 0 && <TableRow><TableCell colSpan={11}><Text type="s4" color="theme.secondary.700">{so ? 'Please add atleast one Item' : 'Select the Sales Order first'}</Text></TableCell></TableRow>}
+                      {rows.length === 0 && <TableRow><TableCell colSpan={13}><Text type="s4" color="theme.secondary.700">{so ? 'Please add atleast one Item' : 'Select the Sales Order first'}</Text></TableCell></TableRow>}
                       {rows.map((r, i) => (
                         <TableRow key={r.id}>
-                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{lineOf(r.lineId) ? `${lineOf(r.lineId)!.group} ${lineOf(r.lineId)!.category}` : '-'}</TableCell>
+                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{lineOf(r.lineId)?.group ?? '-'}</TableCell><TableCell sx={{ whiteSpace: 'nowrap' }}>{lineOf(r.lineId)?.category ?? '-'}</TableCell>
                           <TableCell sx={{ py: 0.5, minWidth: 260 }}>
                             <Select size="small" displayEmpty fullWidth value={r.assetId ? `${r.lineId}|${r.assetId}|${r.deliveryId}` : ''} sx={{ fontSize: 13 }} error={!!err.items && !r.assetId}
                               onChange={(e) => { const [lineId, assetId, deliveryId] = String(e.target.value).split('|'); setRows(rows.map((x, j) => (j === i ? { ...x, lineId, assetId, deliveryId } : x))); }}>
@@ -219,6 +248,10 @@ export function ReturnForm() {
                           </TableCell>
                           <TableCell sx={{ whiteSpace: 'nowrap' }}>{dels.get(r.deliveryId)?.number ?? '-'}</TableCell><TableCell>Nos</TableCell><TableCell align="right">1</TableCell>
                           <TableCell align="right">{r.assetId ? aed(amounts(r).rate) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).gross) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).tax) : '-'}</TableCell><TableCell align="right">{r.assetId ? aed(amounts(r).total) : '-'}</TableCell>
+                          <TableCell sx={{ py: 0.5, whiteSpace: 'nowrap' }}>
+                            <Tooltip title={r.files?.length ? r.files.join(', ') : 'Attach a file to this item'}><IconButton size="small" component="label" color={r.files?.length ? 'primary' : 'default'}><AttachFileOutlinedIcon fontSize="small" /><input hidden type="file" multiple onChange={(e) => { const n = Array.from(e.target.files ?? []).map((x) => x.name); setRows(rows.map((x, j) => (j === i ? { ...x, files: [...(x.files ?? []), ...n] } : x))); }} /></IconButton></Tooltip>
+                            {!!r.files?.length && <Tooltip title={r.files.join(', ')}><Chip size="small" label={r.files.length} /></Tooltip>}
+                          </TableCell>
                           <TableCell sx={{ py: 0.5 }}><TextField size="small" value={r.narration ?? ''} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, narration: e.target.value } : x)))} sx={{ width: 180 }} /></TableCell>
                           <TableCell><IconButton size="small" onClick={() => setRows(rows.filter((_, j) => j !== i))}><DeleteOutlineIcon fontSize="small" /></IconButton></TableCell>
                         </TableRow>
@@ -254,7 +287,7 @@ export function ReturnView() {
   const [ask, setAsk] = useState<'accept' | 'reject' | 'delete' | null>(null);
   if (!r) return <Page><PageTitle title="Return not found" right={<Button variant="outlined" onClick={() => nav(BASE)}>Back</Button>} /></Page>;
   const waiver = hasWaiver(orders.get(r.soId)?.lines ?? []);
-  const rTrips = trips.rows.filter((t) => t.docId === r.id);
+  const rTrips = trips.rows.filter((t) => t.docId === r.id || t.alsoDoc?.id === r.id);
   const ct = rTrips.find((t) => t.status !== 'Cancelled');
   const received = new Set(r.grns.flatMap((g) => g.items.map((i) => i.itemId)));
   const toReceive = r.items.filter((i) => !received.has(i.id));
@@ -269,8 +302,10 @@ export function ReturnView() {
   ];
   const view = { ...r, customer: custName(r.customerId) };
   const rentalSpecs: Spec[] = [
-    { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'ts', label: 'Return Entry Timestamp', change: 'new', req: R.ret, value: () => r.timestamp.replace('T', ' ') },
-    { key: 'billing', label: 'Billing', change: 'new', req: R.ret, value: () => (r.status === 'Draft' ? 'Running (not yet saved as a return)' : `Stopped at ${r.timestamp.replace('T', ' ')}`) },
+    { key: 'method', label: 'Return Method', change: 'new', req: R.ret }, { key: 'ts', label: 'Return Date & Time', change: 'new', req: R_END, value: () => r.timestamp.replace('T', ' ') },
+    { key: 'end', label: 'Invoice End Date (Off-Hire)', change: 'new', req: R_END, value: () => r.offHireDate ?? r.timestamp.slice(0, 10) },
+    { key: 'billing', label: 'Billing', change: 'new', req: R.ret, value: () => (r.keepBilling ? 'Not stopped: the line keeps billing through the replacement unit' : r.status === 'Draft' ? 'Running (not yet saved as a return)' : `Stops at ${r.offHireDate ?? r.timestamp.slice(0, 10)}`) },
+    ...(r.additional ? [{ key: 'ainv', label: 'Additional Invoice', change: 'new' as const, req: R_END, value: () => (r.additionalInvoiceId ? `${invoiceByRef(r.additionalInvoiceId)?.number ?? '-'}, ${r.additional!.from} to ${r.additional!.to} (${r.additional!.days} day(s)), ${aed(r.additional!.amount)}` : '-') }] : []),
     { key: 'insp', label: 'Inspection Status', change: 'new', req: R.ret, value: () => inspectionOf(r) }, { key: 'fuel', label: 'Fuel Note', value: () => r.fuelNote || '-' }, { key: 'waiver', label: 'Damage Waiver on order', change: 'new', req: R.meet, value: () => (waiver ? 'Yes' : 'No') },
     { key: 'coll', label: 'Collection', value: () => (r.collection ? `Failed, ${r.collection.by === 'Client' ? `charged to client AED ${r.collection.amount}` : 'company loss'}` : r.collected ? `Collected ${r.collected}` : r.method === 'Company Collection' ? 'Pending' : 'Not applicable') },
     { key: 'dinv', label: 'Damage Invoice', change: 'new', req: R.meet, value: () => (chargeInv ? `${chargeInv.number} (${chargeInv.approval === 'Approved' ? chargeInv.payStatus : chargeInv.approval})` : '-') },
@@ -293,6 +328,7 @@ export function ReturnView() {
           {chargeInv && <Button variant="outlined" onClick={() => nav(`/accounting/invoices/${chargeInv.id}`)}>View Damage Invoice</Button>}
         </>} />
       <Page sx={{ pt: 2 }}>
+        {r.replacementId && <Alert severity="info" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => nav(`/crm/replacements/${r.replacementId}`)}>View Replacement</Button>}>Collection of the faulty unit for replacement {r.reference}. Billing was not stopped; after the yard inspection the unit goes to the status chosen on the replacement.</Alert>}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', xl: 'minmax(0, 1fr) 300px' }, gap: 3 }}>
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: { xl: 'none' } }}><Section title="Summary"><SummaryRows f={r} /></Section></Box>
@@ -310,10 +346,10 @@ export function ReturnView() {
             </Section>
             <Section title="Items">
               <DataTable hideToolbar rows={itemRows} columns={[
-                { key: 'item', label: 'Item', render: (i) => { const x = l(i.lineId); return x ? `${x.group} ${x.category}` : '-'; } }, { key: 'asset', label: 'Asset ID', change: 'new', req: R.rreturn, render: (i) => label(assetById(i.assetId)) },
+                { key: 'grp', label: 'Category', change: 'changed', req: R_SEP, render: (i) => l(i.lineId)?.group ?? '-' }, { key: 'sub', label: 'Subcategory', change: 'changed', req: R_SEP, render: (i) => l(i.lineId)?.category ?? '-' }, { key: 'asset', label: 'Asset ID', change: 'new', req: R.rreturn, render: (i) => label(assetById(i.assetId)) },
                 { key: 'do', label: 'Delivery Order', change: 'new', req: R.meet, render: (i) => dels.get(i.deliveryId)?.number ?? '-' }, { key: 'uom', label: 'Unit of Measurement', render: () => 'Nos' }, { key: 'qty', label: 'Quantity', align: 'right', render: () => 1 },
                 { key: 'rate', label: 'Rate', align: 'right', render: (i) => aed(l(i.lineId)?.price ?? 0) }, { key: 'status', label: 'Asset Status', render: (i) => <StatusChip status={assetById(i.assetId)?.assetStatus ?? '-'} /> },
-                { key: 'recv', label: 'Received', render: (i) => (received.has(i.id) ? 'Yes' : 'No') }, { key: 'nar', label: 'Narration', render: (i) => i.narration || '-' },
+                { key: 'recv', label: 'Received', render: (i) => (received.has(i.id) ? 'Yes' : 'No') }, { key: 'files', label: 'Attachments', change: 'new', req: R_ATT, render: (i) => i.files?.join(', ') || '-' }, { key: 'nar', label: 'Narration', render: (i) => i.narration || '-' },
               ]} />
             </Section>
             <Section title="Attachment"><Text type="s4">{r.attachments.join(', ') || 'No file attached'}</Text></Section>
@@ -388,7 +424,7 @@ export function ReturnGrnForm() {
   return (
     <>
       <FormHeader subtitle={g0 ? <HeaderMeta parts={[custName(r.customerId), g0.date]} /> : undefined} crumbs={[{ label: 'Customer Returns', to: BASE }, { label: `ID: ${r.number}`, to: `${BASE}/${r.id}` }, { label: 'Goods Receipt', to: `${BASE}/${r.id}/grn` }, { label: g0 ? g0.number : 'Add GRN' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(`${BASE}/${r.id}`)}>Discard</Button><Button variant="contained" onClick={save}>{g0 ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Section title="Customer Returns"><ValueGrid cols={4}><ValueField label="ID" value={r.number} /><ValueField label="Date" value={r.date} /><ValueField label="Customer" value={custName(r.customerId)} /><ValueField label="Sales Order" value={r.soNumber} /><ValueField label="Entity" value={r.entity} /><ValueField label="Currency" value={r.currency} /><ValueField label="Return Method" change="new" req={R.ret} value={r.method} /><ValueField label="Return Entry Timestamp" change="new" req={R.ret} value={r.timestamp.replace('T', ' ')} /></ValueGrid></Section>
         <Section title="Items">
@@ -397,7 +433,7 @@ export function ReturnGrnForm() {
             { key: 'yard', label: 'Yard', change: 'new', req: R.rreturn, render: (i) => <Box sx={{ width: 220 }}><SelectInput label="" value={val(i).yard} options={yards()} onChange={(v) => setYard({ ...yard, [i.id]: { ...val(i), yard: v } })} /></Box> },
             { key: 'reached', label: 'Reached Yard', change: 'new', req: R.rreturn, render: (i) => <TextField size="small" type="datetime-local" value={val(i).reached} onChange={(e) => setYard({ ...yard, [i.id]: { ...val(i), reached: e.target.value } })} InputLabelProps={{ shrink: true }} /> },
           ]} />
-          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Off-Hire assets go to the Yard first, never straight to Ready for Hire. Validate the receipt after inspecting each asset in the yard.</Text>
+          <Text type="s5" color="theme.secondary.700" sx={{ mt: 1 }}>Off-Hire assets arrive at the Yard for inspection, never straight to Ready for Hire. Validate the receipt after inspecting each asset: an owned asset then goes to Routine Maintenance (Critical if damaged), a cross-hired asset waits at the yard for Return to Supplier.</Text>
         </Section>
       </Page>
     </>
@@ -450,7 +486,7 @@ export function ReturnGrnView() {
           <FormControlLabel sx={{ display: 'flex', bgcolor: '#F2F3F5', borderRadius: '8px', px: 1, mr: 0 }} control={<Checkbox size="small" checked={insp.serial} onChange={(e) => setInsp({ ...insp, serial: e.target.checked })} />} label={<Text type="s3">Serial number <b>{inspAsset?.engineNo ?? '-'}</b> ({inspAsset?.assetId}) matches the nameplate of the unit received</Text>} />
           <SelectInput label="Inspection Status" required value={insp.res} options={['Passed', 'Damage Found']} onChange={(v) => setInsp({ ...insp, res: v })} />
           <Box>{YARD_CHECKLIST.map((c) => <FormControlLabel key={c} sx={{ display: 'flex' }} control={<Checkbox size="small" checked={insp.checks.includes(c)} onChange={(e) => setInsp({ ...insp, checks: e.target.checked ? [...insp.checks, c] : insp.checks.filter((x) => x !== c) })} />} label={<Text type="s3">{c}</Text>} />)}
-            <Text type="s5" color="theme.secondary.700">Operations Return Checklist, admin-configurable. {insp.res === 'Passed' ? 'Every item must be complete before the asset can become Ready for Hire.' : ''}</Text></Box>
+            <Text type="s5" color="theme.secondary.700">Operations Return Checklist, admin-configurable. {insp.res === 'Passed' ? 'Every item must be complete before the asset goes to Routine Maintenance (owned) or waits for Return to Supplier (cross-hired).' : ''}</Text></Box>
           {insp.res === 'Damage Found' && waiver && <Alert severity="info">The client paid a damage waiver on {r.soNumber}. A damage invoice is not allowed; the repair cost is borne by the company.</Alert>}
           {insp.res === 'Damage Found' && <>{!waiver && <NumberInput label="Damage Charge (AED)" required value={insp.amount} onChange={(v) => setInsp({ ...insp, amount: v })} hint="Decided manually by an authorised user" />}<TextInput label="Justification" required multiline rows={2} value={insp.note} onChange={(v) => setInsp({ ...insp, note: v })} hint="Retained permanently against the originating order" /></>}
         </FormGrid>}

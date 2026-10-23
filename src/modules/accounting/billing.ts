@@ -3,7 +3,7 @@
  * so seeded history and new invoices follow exactly the same rules.
  */
 import dayjs from 'dayjs';
-import { COL, cycleSeed, custName, cust, type CycleRec, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
+import { COL, cycleSeed, custName, cust, rateOn, type CycleRec, type Delivery, type JobCard, type Line, type SalesOrder } from '@/modules/crm/data';
 import { getCollection } from '@/store/store';
 import {
   ACC, addDays, bankAccountCode, daysBetween, incomeAccountFor, lineAmount, lineDisc, lineGross, lineVat, maxDate, minDate, round2, totalsOf, vatPctOf,
@@ -40,7 +40,7 @@ export function linesFromJobCard(jc: JobCard, o?: SalesOrder): InvLine[] {
   const cc = o?.costCentre;
   const out: InvLine[] = [];
   if (!jc.visitFoc && jc.visitAmount) out.push({ id: lid(), item: `AMC visit ${jc.visitIdx + 1}`, desc: `${o?.amcScope ? 'AMC visit' : jc.item}, ${jc.number}, contract value share`, account: '410400', qty: 1, unit: 'Visit', rate: jc.visitAmount, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'visit' });
-  jc.materials.filter((m) => !m.foc && m.item && m.qty > 0).forEach((m) => out.push({ id: lid(), item: m.item, desc: `${m.item}, consumed on ${jc.number}`, account: '410200', qty: m.qty, unit: m.unit, rate: m.price, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'material' }));
+  jc.materials.filter((m) => !m.foc && m.item && m.qty > 0).forEach((m) => out.push({ id: lid(), item: m.item, desc: `${m.item}, consumed on ${jc.number}`, account: '410200', qty: m.qty, unit: m.unit, rate: m.price, discountPct: 0, vatPct: m.vat ?? vat, activity: 'AMC', costCentre: cc, tag: 'material' }));
   jc.services.filter((s) => !s.foc && s.name).forEach((s) => out.push({ id: lid(), item: s.name, desc: `${s.name}, ${jc.number}`, account: '410400', qty: 1, unit: 'Job', rate: s.amount, discountPct: 0, vatPct: vat, activity: 'AMC', costCentre: cc, tag: 'service' }));
   return out;
 }
@@ -92,11 +92,22 @@ const fmt = (d: dayjs.Dayjs) => d.format('YYYY-MM-DD');
 /** Earliest Rental Start of any assignment on the order. */
 export const firstRentalStart = (o: SalesOrder) => o.lines.filter((l) => l.activity === 'Rental').flatMap((l) => l.assigned).map((a) => a.start).sort()[0];
 /** Where the schedule starts, as the Billing Cycle says: first delivery, order creation or a custom date. */
-export function invoiceAnchor(o: SalesOrder, c: CycleRec): string | undefined {
-  if (!firstRentalStart(o)) return undefined;
-  if (c.startOption === 'order_creation') return o.date;
-  if (c.startOption === 'custom' && c.customStart) return c.customStart;
+export function invoiceAnchor(o: SalesOrder, _c?: CycleRec): string | undefined {
+  // 8 Oct call: the schedule starts on the Invoice Start Date entered on the Delivery Order, not on a start option of the billing cycle.
   return firstRentalStart(o);
+}
+/** Splits a billed stretch where the rate of the line changed (a new rate applies to the extension period only). */
+function rateSegments(l: Line, start: string, end: string): { from: string; to: string; rate: number }[] {
+  const out: { from: string; to: string; rate: number }[] = [];
+  let cur = start;
+  for (const h of [...(l.rateHistory ?? [])].sort((a, b) => a.until.localeCompare(b.until))) {
+    if (h.until < cur) continue;
+    if (h.until >= end) break;
+    out.push({ from: cur, to: h.until, rate: h.price });
+    cur = addDays(h.until, 1);
+  }
+  out.push({ from: cur, to: end, rate: rateOn(l, cur) });
+  return out;
 }
 /** Last off-hire day once every asset is off hire (that day is not billed, so no period starts on it); undefined while any asset is still out. */
 function returnCap(o: SalesOrder): string | undefined {
@@ -183,14 +194,16 @@ export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: S
       if (done) start = maxDate(start, addDays(done, 1));
       const end = a.stop ? minDate(to, addDays(a.stop, -1)) : to;
       if (start > end) continue;
-      const days = daysBetween(start, end) + 1;
       if (!firstRentalFrom || start < firstRentalFrom) firstRentalFrom = start;
       if (end > lastRentalEnd) lastRentalEnd = end;
-      lines.push({
-        id: lid(), item: l.item, desc: `${assetLabel(a.assetId)} (${days} of ${periodDays} days)`, account: '410100', qty: qtyFor(l.frequency, days, periodDays, months), unit: unitFor(l.frequency),
-        rate: l.foc ? 0 : l.price, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Rental', costCentre: l.costCentre ?? o.costCentre,
-        periodFrom: start, periodTo: end, days, periodDays, assetId: a.assetId, deliveryId: a.deliveryId, soLineId: l.id, tag: 'rental',
-      });
+      for (const seg of rateSegments(l, start, end)) {
+        const days = daysBetween(seg.from, seg.to) + 1;
+        lines.push({
+          id: lid(), item: l.item, desc: `${assetLabel(a.assetId)} (${days} of ${periodDays} days)`, account: '410100', qty: qtyFor(l.frequency, days, periodDays, months), unit: unitFor(l.frequency),
+          rate: l.foc ? 0 : seg.rate, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Rental', costCentre: l.costCentre ?? o.costCentre,
+          periodFrom: seg.from, periodTo: seg.to, days, periodDays, assetId: a.assetId, deliveryId: a.deliveryId, soLineId: l.id, tag: 'rental',
+        });
+      }
     }
   }
   const oneTimeLineIds: string[] = [];
@@ -205,9 +218,11 @@ export function buildRentalLines(o: SalesOrder, deliveries: Delivery[], prior: S
         if (done) start = maxDate(start, addDays(done, 1));
         const end = minDate(minDate(to, l.end ?? to), lastRentalEnd);
         if (start > end) continue;
-        const days = daysBetween(start, end) + 1;
-        lines.push({ id: lid(), item: l.item, desc: `${l.desc || l.item} (${days} of ${periodDays} days)`, account: '410500', qty: round4(l.qty * qtyFor(l.frequency ?? 'Monthly', days, periodDays, months)), unit: unitFor(l.frequency ?? 'Monthly'),
-          rate: l.foc ? 0 : l.price, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Service', costCentre: l.costCentre ?? o.costCentre, periodFrom: start, periodTo: end, days, periodDays, soLineId: l.id, tag: 'recurring-service' });
+        for (const seg of rateSegments(l, start, end)) {
+          const days = daysBetween(seg.from, seg.to) + 1;
+          lines.push({ id: lid(), item: l.item, desc: `${l.desc || l.item} (${days} of ${periodDays} days)`, account: '410500', qty: round4(l.qty * qtyFor(l.frequency ?? 'Monthly', days, periodDays, months)), unit: unitFor(l.frequency ?? 'Monthly'),
+            rate: l.foc ? 0 : seg.rate, discountPct: l.discount ?? 0, vatPct: vat, activity: 'Service', costCentre: l.costCentre ?? o.costCentre, periodFrom: seg.from, periodTo: seg.to, days, periodDays, soLineId: l.id, tag: 'recurring-service' });
+        }
         continue;
       }
       if (l.foc || l.fulfilmentRef || priorLines.some((p) => p.soLineId === l.id)) continue;
@@ -239,10 +254,10 @@ export function salesJournal(inv: SalesInvoice): JournalLine[] {
   const t = totalsOf(inv);
   const p = inv.partyName;
   return balance([
-    { account: ACC.ar, party: p, debit: t.total, credit: 0, costCentre: inv.costCentre },
-    ...(t.itemDisc + t.addDisc ? [{ account: ACC.discount, party: p, debit: t.itemDisc + t.addDisc, credit: 0, costCentre: inv.costCentre }] : []),
-    ...inv.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineAmount(l), costCentre: l.costCentre ?? inv.costCentre, memo: l.item })),
-    { account: ACC.outputVat, party: p, debit: 0, credit: t.vat },
+    { account: ACC.ar, party: p, debit: t.total, credit: 0, costCentre: inv.costCentre, activity: inv.activity, entity: inv.entity },
+    ...(t.itemDisc + t.addDisc ? [{ account: ACC.discount, party: p, debit: t.itemDisc + t.addDisc, credit: 0, costCentre: inv.costCentre, activity: inv.activity, entity: inv.entity }] : []),
+    ...inv.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineAmount(l), costCentre: l.costCentre ?? inv.costCentre, activity: l.activity ?? inv.activity, entity: inv.entity, memo: l.item })),
+    { account: ACC.outputVat, party: p, debit: 0, credit: t.vat, activity: inv.activity, entity: inv.entity },
   ]);
 }
 /** Bill: Dr expense per line and expense entry, Dr Input VAT, Cr Payable. */
@@ -250,11 +265,11 @@ export function purchaseJournal(b: Bill): JournalLine[] {
   const t = totalsOf(b);
   const p = b.supplierName;
   return balance([
-    ...b.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? b.costCentre, memo: l.item })),
-    ...b.expenses.map((e) => ({ account: e.account, party: p, debit: e.amount, credit: 0, costCentre: e.costCentre ?? b.costCentre, memo: e.desc })),
-    ...(t.addDisc ? [{ account: ACC.discount, party: p, debit: 0, credit: t.addDisc }] : []),
-    { account: ACC.inputVat, party: p, debit: t.vat, credit: 0 },
-    { account: ACC.ap, party: p, debit: 0, credit: t.total, costCentre: b.costCentre },
+    ...b.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? b.costCentre, activity: l.activity ?? b.activity, entity: b.entity, memo: l.item })),
+    ...b.expenses.map((e) => ({ account: e.account, party: p, debit: e.amount, credit: 0, costCentre: e.costCentre ?? b.costCentre, activity: b.activity, entity: b.entity, memo: e.desc })),
+    ...(t.addDisc ? [{ account: ACC.discount, party: p, debit: 0, credit: t.addDisc, activity: b.activity, entity: b.entity }] : []),
+    { account: ACC.inputVat, party: p, debit: t.vat, credit: 0, activity: b.activity, entity: b.entity },
+    { account: ACC.ap, party: p, debit: 0, credit: t.total, costCentre: b.costCentre, activity: b.activity, entity: b.entity },
   ]);
 }
 /** Collection: Dr bank, Cr Receivable per allocation, Cr Customer Advances for the rest. Payment: Dr Payable, Cr bank. */
@@ -281,7 +296,7 @@ export const advanceJournal = (party: string, amount: number, invNo: string): Jo
 export function noteJournal(n: NoteDoc): JournalLine[] {
   const t = totalsOf({ lines: n.lines });
   const p = n.partyName;
-  if (n.kind === 'Credit') return balance([...n.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? n.costCentre, memo: l.item })), { account: ACC.outputVat, party: p, debit: t.vat, credit: 0 }, { account: ACC.ar, party: p, debit: 0, credit: t.total }]);
-  return balance([{ account: ACC.ap, party: p, debit: t.total, credit: 0 }, ...n.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineGross(l), costCentre: l.costCentre ?? n.costCentre, memo: l.item })), { account: ACC.inputVat, party: p, debit: 0, credit: t.vat }]);
+  if (n.kind === 'Credit') return balance([...n.lines.map((l) => ({ account: l.account, party: p, debit: lineGross(l), credit: 0, costCentre: l.costCentre ?? n.costCentre, activity: l.activity, memo: l.item })), { account: ACC.outputVat, party: p, debit: t.vat, credit: 0 }, { account: ACC.ar, party: p, debit: 0, credit: t.total }]);
+  return balance([{ account: ACC.ap, party: p, debit: t.total, credit: 0 }, ...n.lines.map((l) => ({ account: l.account, party: p, debit: 0, credit: lineGross(l), costCentre: l.costCentre ?? n.costCentre, activity: l.activity, memo: l.item })), { account: ACC.inputVat, party: p, debit: 0, credit: t.vat }]);
 }
 export { lineDisc, lineVat };

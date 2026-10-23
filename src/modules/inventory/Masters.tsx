@@ -172,7 +172,7 @@ export function CategoryForm({ sub: forceSub = false }: { sub?: boolean } = {}) 
   return (
     <>
       <FormHeader crumbs={[{ label: sub ? 'Item Sub-Category' : 'Item Category', to: base }, { label: existing ? existing.name : sub ? 'Add Sub-Category' : 'Add Category' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(base)}>Discard</Button><Button variant="contained" onClick={save}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(base)}>Discard</Button><Button variant="contained" onClick={save}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         <Box sx={{ maxWidth: 1100 }}>
           <FormGrid>
@@ -222,7 +222,7 @@ export function CategoryView() {
         </>}
       />
       <Page sx={{ pt: 2 }}>
-        <ValueGrid cols={4}>
+        <ValueGrid>
           <ValueField label="Category" value={top ? undefined : parent ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`${CAT_BASE}/${parent.id}`)}>{r.parent}</Box> : r.parent} />
           <ValueField label={top ? 'Category Name' : 'Sub-Category Name'} value={r.name} />
           <ValueField label="Description" value={r.description} />
@@ -278,7 +278,7 @@ export function BrandList() {
           { label: 'Mark Inactive / Active', onClick: (r) => brands.update(r.id, { status: r.status === 'Active' ? 'Inactive' : 'Active' }) },
           { label: 'Delete', danger: true, onClick: setDel },
         ]} />
-      <AppDialog open={!!dlg} title={dlg?.id ? 'Edit Brand' : 'Add Brand'} onClose={() => setDlg(null)} confirmLabel="Save" maxWidth="xs" onConfirm={save}>
+      <AppDialog open={!!dlg} title={dlg?.id ? 'Edit Brand' : 'Add Brand'} onClose={() => setDlg(null)} confirmLabel={dlg?.id ? 'Update' : 'Save'} maxWidth="xs" onConfirm={save}>
         <TextInput label="Brand Name" required value={dlg?.name} onChange={(v) => { setDlg(dlg ? { ...dlg, name: v } : dlg); setErr(undefined); }} error={err} />
       </AppDialog>
       <ConfirmDialog open={!!del} danger title="Delete brand" description={`Delete ${del?.name}? Assets that already use it keep the name.`} confirmLabel="Delete" onClose={() => setDel(null)} onConfirm={() => { if (del) { brands.remove(del.id); toast('Brand deleted'); } }} />

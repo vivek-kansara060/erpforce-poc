@@ -12,7 +12,7 @@ export const EDITABLE: ApprovalStatus[] = ['Draft', 'Pending', 'Rejected'];
 export type SourceType = 'Sales Order' | 'Rental Cycle' | 'Job Card' | 'Damage Charge' | 'Asset Disposal' | 'Manual' | 'Cross Hire' | 'Trip';
 export interface SourceRef { type: SourceType; id: string; number: string; soId?: string; lineIds?: string[] }
 
-export type LineTag = 'rental' | 'recurring-service' | 'one-time-service' | 'waiting-charge' | 'damage' | 'visit' | 'material' | 'service' | 'goods' | 'asset-sale' | 'cross-hire' | 'transport' | 'manual';
+export type LineTag = 'rental' | 'recurring-service' | 'one-time-service' | 'waiting-charge' | 'additional' | 'damage' | 'visit' | 'material' | 'service' | 'goods' | 'asset-sale' | 'cross-hire' | 'transport' | 'manual';
 export interface InvLine {
   id: string; item: string; desc: string; account: string;
   qty: number; unit: string; rate: number; discountPct: number; vatPct: number;
@@ -53,7 +53,7 @@ export interface NoteDoc {
   id: string; number: string; kind: 'Credit' | 'Debit'; date: string; partyId?: string; partyName: string; reason: string;
   againstId: string; againstNumber: string; lines: InvLine[]; approval: ApprovalStatus; journalId?: string; costCentre?: string; log: LogItem[];
 }
-export interface JournalLine { account: string; party?: string; debit: number; credit: number; costCentre?: string; memo?: string }
+export interface JournalLine { account: string; party?: string; debit: number; credit: number; costCentre?: string; activity?: string; entity?: string; memo?: string }
 export type JournalType = 'Sales' | 'Purchases' | 'Cash Receipt Voucher' | 'Payment' | 'Credit Note' | 'Debit Note' | 'Trip Expense';
 export interface Journal {
   id: string; number: string; postingDate: string; journalType: JournalType;
@@ -72,17 +72,20 @@ export const COLA = {
   debitNotes: 'accounting.debitNotes', journals: 'accounting.journals', rentalRuns: 'accounting.rentalRuns', schedFail: 'accounting.scheduleFailures',
 } as const;
 /**
- * One call site per series. The seed raises these to its highest number before the first runtime document, so new numbers always follow the seeded ones.
- * INV starts after 415, the highest invoice number already referenced by the CRM and Inventory seeds.
+ * One call site per series. The seed raises these to its highest number (its own, and the ones other seeds already reference: invoice refs on Sales Order lines,
+ * job cards and disposals, journal refs on disposals) before the first runtime document, so new numbers always follow the seeded ones. The values here are a fallback.
+ * Numbers are drawn at call time: seedRunner (set by seed.ts) makes sure the seed has run, and so has raised SEED_MAX, before a number is drawn.
  */
-export const SEED_MAX: Record<string, number> = { INV: 415, BILL: 23, PAY: 30, CRN: 8, DBN: 3, JV: 199, RUN: 12 };
-export const nextInvoiceNo = () => nextNumber('INV', SEED_MAX.INV);
-export const nextBillNo = () => nextNumber('BILL', SEED_MAX.BILL);
-export const nextPaymentNo = () => nextNumber('PAY', SEED_MAX.PAY);
-export const nextCreditNo = () => nextNumber('CRN', SEED_MAX.CRN);
-export const nextDebitNo = () => nextNumber('DBN', SEED_MAX.DBN);
-export const nextJournalNo = () => nextNumber('JV', SEED_MAX.JV);
-export const nextRunNo = () => nextNumber('RUN', SEED_MAX.RUN);
+export const SEED_MAX: Record<string, number> = { INV: 458, BILL: 40, PAY: 120, CRN: 8, DBN: 6, JV: 400, RUN: 14 };
+export const seedRunner: { run?: () => void } = {};
+const drawNo = (prefix: string) => { seedRunner.run?.(); return nextNumber(prefix, SEED_MAX[prefix]); };
+export const nextInvoiceNo = () => drawNo('INV');
+export const nextBillNo = () => drawNo('BILL');
+export const nextPaymentNo = () => drawNo('PAY');
+export const nextCreditNo = () => drawNo('CRN');
+export const nextDebitNo = () => drawNo('DBN');
+export const nextJournalNo = () => drawNo('JV');
+export const nextRunNo = () => drawNo('RUN');
 export const seriesNo = (prefix: string, n: number) => `${prefix}-26-${String(n).padStart(5, '0')}`;
 export const uid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
@@ -128,6 +131,8 @@ export const COA: Account[] = [
 export const ACC = { cash: '110100', bank1: '110200', bank2: '110300', ar: '130100', inputVat: '130200', ap: '210100', outputVat: '210300', advances: '210400', tripAccrual: '210500', discount: '410900', roundOff: '590100' } as const;
 export const accName = (code?: string) => COA.find((a) => a.code === code)?.name ?? code ?? '-';
 export const accLabel = (code?: string) => (code ? `${code} ${accName(code)}` : '-');
+/** What an expense line is called in logs and memos: its Expense Account (older lines without one fall back to their old type). */
+export const expenseName = (e: { account?: string; type?: string }) => (e.account ? accName(e.account) : e.type ?? 'Expense');
 export const incomeAccounts = COA.filter((a) => a.type === 'Income' && a.code !== ACC.discount);
 export const expenseAccounts = COA.filter((a) => a.type === 'Expense' && a.code !== ACC.roundOff);
 export function incomeAccountFor(kind?: string): string {
@@ -142,6 +147,8 @@ export function incomeAccountFor(kind?: string): string {
 }
 /** The expense accounts named on the Cross Hire order Expense Entry. */
 export function expenseAccountFor(name?: string): string {
+  // 12 Oct: expense lines carry the account code chosen from the Chart of Accounts; older cross-hire lines carry a name.
+  if (/^\d{6}$/.test(name ?? '')) return name!;
   const m: Record<string, string> = { 'Transportation Expense': '510300', 'Loading and Unloading': '510310', 'Fuel Expense': '510320', 'Insurance Expense': '520100', 'Other Direct Expense': '510500' };
   return m[name ?? ''] ?? '510500';
 }

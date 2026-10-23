@@ -9,12 +9,13 @@ import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { suppliers } from '@/mock-data/masters';
 import { COL, TODAY, chItems, type CrossHire, type SalesOrder } from '@/modules/crm/data';
-import { linkCrossHireBill } from '@/modules/crm/flow';
+import { linkCrossHireBill, unbilledChExpenses } from '@/modules/crm/flow';
+import { ExpenseTable, type ExpenseInput } from '@/modules/rental/FleetPages';
 import { getCollection } from '@/store/store';
 import { PrintDialog } from '@/modules/crm/ActionDialogs';
 import { RowsEditor, Section, SpecForm, SpecView, type Spec } from '@/modules/crm/FormKit';
 import { lid } from './billing';
-import { APPROVAL_STATUSES, EDITABLE, expenseAccountFor, expenseAccounts, totalsOf, type Bill, type ExpenseLine, type InvLine } from './data';
+import { APPROVAL_STATUSES, EDITABLE, accName, expenseAccountFor, expenseAccounts, totalsOf, type Bill, type ExpenseLine, type InvLine } from './data';
 import { approveBill, billByRef, billDue, billTotal, createBill, deleteBill, isOverdue, rejectBill, submitBill, updateBill } from './engine';
 import { ApprovalButtons, DocChips, ExpensesTable, LedgerDialog, LedgerTable, LinesTable, PaymentDialog, R_ACC, SourceLink, TotalsBox, money, sourcePath, useBills, useDebitNotes, useJournals, usePayments } from './shared';
 import { discSpecs, headerSpecs } from './SalesInvoicePages';
@@ -110,7 +111,6 @@ export function BillView() {
 
 const itemAcc = expenseAccounts.map((a) => `${a.code} ${a.name}`);
 type Row = { item: string; desc: string; qty: any; unit: string; rate: any; discountPct: any; vatPct: string; account: string };
-type ExRow = { account: string; desc: string; amount: any; vatPct: string };
 const accText = (code: string) => itemAcc.find((a) => a.startsWith(code)) ?? code;
 
 export function BillForm() {
@@ -124,13 +124,14 @@ export function BillForm() {
   const chSo = ch ? getCollection<SalesOrder>(COL.orders).find((x) => x.id === ch.soId) : undefined;
   const [f, setF] = useState<Record<string, any>>(() => existing ? { ...existing } : { entity: 'Gulf Power Rentals LLC', date: TODAY, postingTime: '09:00', paymentTerms: '30 days', currency: 'AED', exchangeRate: 1, discountOn: 'None', discountPct: 0, roundOff: false, supplierInvoiceDate: TODAY, ...(ch ? { supplierId: ch.supplierId, supplierName: ch.supplier, paymentTerms: ch.paymentTerms ?? '30 days', orderRef: ch.number, activity: 'Rental', costCentre: chSo?.costCentre } : {}) });
   const [rows, setRows] = useState<Row[]>(() => (ch ? chItems(ch).map((it) => ({ item: `Cross-hire ${it.group} ${it.category}`, desc: `${ch.number}${ch.soNumber ? ` for ${ch.soNumber}` : ''}`, qty: it.qty, unit: 'Nos', rate: it.rate, discountPct: 0, vatPct: '5', account: accText('510100') })) : (existing?.lines ?? []).map((l) => ({ item: l.item, desc: l.desc, qty: l.qty, unit: l.unit, rate: l.rate, discountPct: l.discountPct, vatPct: String(l.vatPct), account: accText(l.account) }))));
-  const [ex, setEx] = useState<ExRow[]>(() => (ch ? (ch.expenses ?? []).map((e) => ({ account: accText(expenseAccountFor(e.account)), desc: e.note || e.account, amount: e.amount, vatPct: '5' })) : (existing?.expenses ?? []).map((e) => ({ account: accText(e.account), desc: e.desc, amount: e.amount, vatPct: String(e.vatPct) }))));
+  // 12 Oct: the expense lines are edited inline like the trip expenses; the account is chosen on every line (a bill from a cross-hire order takes the order's open expenses).
+  const [ex, setEx] = useState<ExpenseInput[]>(() => (ch ? unbilledChExpenses(ch).map((e) => ({ account: expenseAccountFor(e.account), note: e.note, amount: e.amount, vatPct: e.vatPct ?? 5 })) : (existing?.expenses ?? []).map((e) => ({ account: e.account, note: e.desc, amount: e.amount, vatPct: e.vatPct }))));
   const [err, setErr] = useState<Record<string, string>>({});
   if (id && !existing) return <Page><PageTitle title="Bill not found" /></Page>;
   if (existing && !EDITABLE.includes(existing.approval)) return <Page><PageTitle title={`${existing.number} is approved and cannot be edited`} subtitle="Raise a Debit Note to correct an approved bill." right={<Button variant="outlined" onClick={() => nav(`/accounting/bills/${existing.id}`)}>Back</Button>} /></Page>;
   const set = (k: string, v: any) => setF((x) => { const n = { ...x, [k]: v }; if (k === 'supplierId') { const s = suppliers.find((y) => y.id === v); n.supplierName = s?.name ?? ''; n.paymentTerms = s?.creditPeriod ? `${s.creditPeriod} days` : x.paymentTerms; } return n; });
   const lines: InvLine[] = rows.filter((r) => r.item.trim()).map((r) => ({ id: lid(), item: r.item, desc: r.desc || r.item, qty: Number(r.qty) || 0, unit: r.unit || 'Nos', rate: Number(r.rate) || 0, discountPct: Number(r.discountPct) || 0, vatPct: Number(r.vatPct) || 0, account: String(r.account).slice(0, 6) || '510500', costCentre: f.costCentre || undefined, activity: f.activity || undefined, tag: 'manual' }));
-  const expenses: ExpenseLine[] = ex.filter((e) => Number(e.amount) > 0).map((e) => ({ id: lid(), account: String(e.account).slice(0, 6) || '510500', desc: e.desc, amount: Number(e.amount), vatPct: Number(e.vatPct) || 0, costCentre: f.costCentre || undefined }));
+  const expenses: ExpenseLine[] = ex.filter((e) => e.amount > 0 && e.account).map((e) => ({ id: lid(), account: e.account!, desc: e.note || accName(e.account), amount: e.amount, vatPct: e.vatPct ?? 0, costCentre: f.costCentre || undefined }));
   const specs: Spec[] = [
     { key: 'supplierId', label: 'Supplier', type: 'select', required: true, options: suppliers.filter((s) => s.active || s.id === f.supplierId).map((s) => ({ value: s.id, label: s.name })) },
     { key: 'supplierInvoiceNo', label: 'Supplier Invoice Number', required: true, hint: 'The supplier\'s own number; the bill also carries our internal number (Req, Vendor Bill)' }, { key: 'supplierInvoiceDate', label: 'Supplier Invoice Date', type: 'date', required: true },
@@ -153,7 +154,7 @@ export function BillForm() {
   return (
     <>
       <FormHeader subtitle={existing ? <HeaderMeta parts={[existing.supplierName, existing.supplierInvoiceNo, existing.date]} /> : undefined} crumbs={[{ label: 'Bills', to: '/accounting/bills' }, { label: existing ? existing.number : 'New Bill' }]}
-        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>Save</Button></>} />
+        actions={<><Button variant="outlined" onClick={() => nav(existing ? `/accounting/bills/${existing.id}` : '/accounting/bills')}>Discard</Button>{!existing && <Button variant="outlined" onClick={() => save(true)}>Save as Draft</Button>}<Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>} />
       <Page sx={{ pt: 2 }}>
         {ch && <Alert severity="info" sx={{ mb: 2 }}>Prefilled from cross-hire order {ch.number} ({ch.qty ?? 1} unit(s) in {chItems(ch).length} item(s) at the agreed rate per unit, and its expenses). Enter the supplier's invoice number and date; saving records the supplier invoice on the order.</Alert>}
         <SpecForm specs={specs} f={f} set={set} err={err} />
@@ -161,9 +162,8 @@ export function BillForm() {
           <RowsEditor<Row> cols={[{ key: 'item', label: 'Item', width: 200 }, { key: 'desc', label: 'Description', width: 200 }, { key: 'qty', label: 'Quantity', width: 80 }, { key: 'unit', label: 'UOM', width: 80 }, { key: 'rate', label: 'Rate', width: 100 }, { key: 'discountPct', label: 'Discount %', width: 80 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }, { key: 'account', label: 'Expense Account', type: 'select', options: itemAcc, width: 240 }]}
             rows={rows} onChange={setRows} blank={{ item: '', desc: '', qty: 1, unit: 'Nos', rate: 0, discountPct: 0, vatPct: '5', account: accText('510500') }} addLabel="Add Item" empty="No items" />
         </Section>
-        <Section title="Expenses" hint="GL expense lines without an item (existing bill form)">
-          <RowsEditor<ExRow> cols={[{ key: 'account', label: 'Account', type: 'select', options: itemAcc, width: 260 }, { key: 'desc', label: 'Narration', width: 260 }, { key: 'amount', label: 'Amount', width: 120 }, { key: 'vatPct', label: 'VAT %', type: 'select', options: ['5', '0'], width: 80 }]}
-            rows={ex} onChange={setEx} blank={{ account: accText('510300'), desc: '', amount: 0, vatPct: '5' }} addLabel="Add Expense" empty="No expenses" />
+        <Section title="Expenses" change="changed" req={'Client feedback 12 Oct: expenses are edited inline in the table as in the existing ERP, the Expense Account is chosen on every line'} hint="GL expense lines without an item (existing bill form). Saved with the bill">
+          <ExpenseTable rows={ex} hideDate noteLabel="Narration" onAdd={(e) => setEx((x) => [...x, e])} onUpdate={(i, e) => setEx((x) => x.map((y, k) => (k === i ? e : y)))} onRemove={(i) => setEx((x) => x.filter((_, k) => k !== i))} empty="No expenses" />
         </Section>
         <Section title="Discounts"><SpecForm specs={discSpecs} f={f} set={set} /></Section>
         <TotalsBox doc={{ lines, expenses, discountOn: f.discountOn, discountPct: Number(f.discountPct) || 0, roundOff: !!f.roundOff }} />

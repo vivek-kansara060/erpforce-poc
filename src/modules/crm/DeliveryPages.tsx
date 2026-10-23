@@ -8,19 +8,22 @@ import { useCollection } from '@/store/store';
 import { certSeed, type CertRec } from '@/modules/inventory/data';
 import { DataTable } from '@/components/DataTable';
 import { AppDialog, MenuButton, useToast } from '@/components/Dialogs';
-import { SelectInput, TextInput } from '@/components/Form';
+import { FieldError, SelectInput, TextInput } from '@/components/Form';
 import { SignaturePad } from '@/components/Flow';
 import { FormHeader, Page, PageTitle, HeaderMeta } from '@/components/PageHeader';
 import { StatusChip } from '@/components/StatusChip';
 import { Text } from '@/components/Text';
 import { TabPanels } from '@/components/Widgets';
 import { neutral } from '@/theme/color';
-import { stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
-import { addFocLines, createDelivery, deliveredQty, getOrder } from './flow';
+import { dayRate, stockLocations, isSupplierHeld, liveItems, DELIVERY_STATUSES, DELIVERY_TYPES, DEPARTMENTS, FAULT_ATTRIBUTION, TODAY, TRANSPORT_TYPES, assetById, availability, categoryOptions, groupOptions, isOpenTrip, rentalGroupOptions, mkLine, custName, nowStamp, type Delivery, type DoItem, type Line, type SalesOrder } from './data';
+import { addDeliveryExpense, addFocLines, completeTrip, createDelivery, deliveredQty, getOrder, removeDeliveryExpense, startTrip, updateDeliveryExpense } from './flow';
 import { Section, SpecForm, SpecView, type Spec } from './FormKit';
-import { R, RowMenu, aed, useDeliveries, useFleet, useOrders, usePricing, useTrips } from './shared';
+import { R, R8, TO_CONFIRM, RowMenu, aed, useDeliveries, useFleet, useOrders, usePricing, useTrips } from './shared';
 import { ItemModal, kindLabel } from './Items';
-import { ArrangeTransportDialog, TransportSection, TripsTable, blankTransport, toTransportInput, validateTransport } from '@/modules/rental/FleetPages';
+import { accLabel } from '@/modules/accounting/data';
+import { invoiceByRef } from '@/modules/accounting/engine';
+import { ValueField, ValueGrid } from '@/components/Form';
+import { ArrangeTransportDialog, ExpenseTable, TransportSection, TripsTable, blankTransport, driverAppOf, toTransportInput, useFleetSettings, validateTransport } from '@/modules/rental/FleetPages';
 
 const stockOf = (l: Line) => liveItems().find((i) => i.name === l.item)?.stock ?? 0;
 /** Lines still to be delivered: rental by unit, other items until a delivery is recorded. */
@@ -94,7 +97,7 @@ export function DeliveryForm() {
   };
   const [f, setF] = useState<Record<string, any>>(() => ({
     number: '', date: `${TODAY}T${dayjs().format('HH:mm')}`, soId: initSo?.id ?? '', location: 'Jebel Ali Main Yard', status: 'Dispatched', type: 'Full', reference: '', poNumber: initSo?.lpo ?? '', poDate: initSo?.lpoDate ?? '', narration: '', transport: 'Own Fleet', extCost: '', transportedBy: '', driver: '', vehicleNumber: '', iqama: '', mobile: '',
-    department: '', description: '', conditionFiles: [] as string[], signed: false, manual: [] as string[], foc: false, rentalStart: TODAY, startReason: '', startBy: '', waitingCharge: '', serviceLineIds: [] as string[], items: autoItems(initSo),
+    department: '', description: '', conditionFiles: [] as string[], signed: false, manual: [] as string[], foc: false, rentalStart: TODAY, startReason: '', startBy: '', addInvoice: '', addAmount: '', addNote: '', serviceLineIds: [] as string[], items: autoItems(initSo),
   }));
   const [err, setErr] = useState<Record<string, string>>({});
   const [tp, setTp] = useState(blankTransport);
@@ -111,6 +114,11 @@ export function DeliveryForm() {
   const supplierSite = isSupplierHeld(f.location);
   const late = rentalSel.length > 0 && f.rentalStart > f.date.slice(0, 10);
   const early = f.rentalStart < f.date.slice(0, 10);
+  // 8 Oct call: days between the delivery and the Invoice Start Date, and the default of the additional invoice (units x day rate x days, D2).
+  const lateDays = late ? Math.max(0, dayjs(f.rentalStart).diff(dayjs(f.date.slice(0, 10)), 'day')) : 0;
+  const addUnits = rentalSel.reduce((n, l) => n + (items[l.id]?.assetIds.length ?? 0), 0);
+  const addDefault = Math.round(rentalSel.reduce((s, l) => s + (items[l.id]?.assetIds.length ?? 0) * dayRate(l) * lateDays, 0));
+  const addAmount = f.addAmount === '' ? addDefault : Number(f.addAmount);
   const chosenAssets = Object.values(items).flatMap((it) => it.assetIds.map((h) => assetById(h)?.assetId));
   const expiredCerts = certs.rows.filter((c) => chosenAssets.includes(c.assetId) && c.expiry < TODAY);
   const view = { ...f, project: so?.costCentre ?? '', customerName: so ? custName(so.customerId) : '', operationType: 'Delivery', salesperson: so?.owner ?? '', entity: so?.entity ?? '' };
@@ -126,6 +134,8 @@ export function DeliveryForm() {
       if (!f.rentalStart) e.rentalStart = 'Rental Start Date is required';
       else if (early) e.rentalStart = 'Rental Start Date cannot be before the delivery date';
       if (late && (!f.startReason || !f.startBy)) e.late = 'A reason and who is responsible are required when the Rental Start Date differs from the delivery date';
+      if (late && !f.addInvoice) e.addInvoice = 'Answer Yes or No';
+      if (late && f.addInvoice === 'Yes' && !(addAmount > 0)) e.addAmount = 'Enter the additional invoice amount';
     }
     if (supplierSite && !String(f.supplierDoNo ?? '').trim()) e.supplierDoNo = "Enter the supplier's Delivery Order number";
     if (['Delivered', 'Acknowledged'].includes(f.status) && !f.signed && !f.manual.length) e.signature = 'A Delivery Order cannot be completed without a customer e-signature or an attached manual confirmation';
@@ -135,9 +145,10 @@ export function DeliveryForm() {
     addFocLines(so!.id, usedFoc);
     const d = createDelivery({ soId: so!.id, project: so!.costCentre, date: f.date, type: f.type, items: chosen, description: f.description, transport: tp.transport, extCost: Number(tp.charge) || 0, conditionFiles: f.conditionFiles,
       signature: f.signed ? 'E-signature' : f.manual.length ? 'Manual attachment' : '', foc: f.foc, status: f.status, number: f.number || undefined, driver: tp.driver, narration: f.narration, vehicleId: toTransportInput(tp).vehicleId, mobile: tp.mobile, rentalStart: rentalSel.length ? f.rentalStart : f.date.slice(0, 10),
-      startReason: late ? f.startReason : undefined, startBy: late ? f.startBy : undefined, waitingCharge: late ? Number(f.waitingCharge) || undefined : undefined, serviceLineIds: f.serviceLineIds,
+      startReason: late ? f.startReason : undefined, startBy: late ? f.startBy : undefined, serviceLineIds: f.serviceLineIds,
+      additional: late && f.addInvoice === 'Yes' ? { from: f.date.slice(0, 10), to: dayjs(f.rentalStart).subtract(1, 'day').format('YYYY-MM-DD'), days: lateDays, amount: addAmount, note: f.addNote || undefined } : undefined,
       supplierDoNo: supplierSite ? f.supplierDoNo : undefined, reference: f.reference, poNumber: f.poNumber, poDate: f.poDate, location: f.location, transportedBy: tp.transporter, iqama: f.iqama, department: f.department, salesperson: so!.owner });
-    toast(`${d.number} created. ${rentalSel.length ? (late ? `Assets are on Hold, billing starts ${f.rentalStart}` : 'Assets are On Hire and the billing cycle has started') : 'Stock delivered, ready to invoice'}`);
+    toast(`${d.number} created. ${rentalSel.length ? (late ? `Assets are on Hold, billing starts ${f.rentalStart}${d.additionalInvoiceId ? '. Additional invoice raised, pending approval' : ''}` : 'Assets are On Hire and the billing cycle has started') : 'Stock delivered, ready to invoice'}`);
     nav(`/crm/delivery-orders/${d.id}`);
   };
   const soOptions = orders.rows.filter((o) => o.lines.some((l) => remainingOf(l) > 0) && !['Closed', 'Cancelled'].includes(o.status)).map((o) => ({ value: o.id, label: `${o.number} - ${custName(o.customerId)}` }));
@@ -153,7 +164,7 @@ export function DeliveryForm() {
               <SpecForm specs={headerSpecs(soOptions)} f={view} set={set} err={err} />
               <Section title="Items" hint="Only the items on the Sales Order can be delivered. Fuel level and Hour Meter are not captured here, that sits with Usage Readings.">
                 <ItemsGrid pending={pending} items={items} fleetRows={fleet.rows} onTrace={setTrace} onQty={(id, q) => set('items', { ...items, [id]: { ...(items[id] ?? { lineId: id, assetIds: [] }), qty: q } })} />
-                {err.items && <Text type="s5" color="#C2363A">{err.items}</Text>}
+                <FieldError label="Items" error={err.items} />
                 {so && <Box sx={{ mt: 1 }}><MenuButton label="+ Add Extra Item" variant="outlined" items={(so.activity === 'Fixed Asset Trading' ? ['Fixed Asset Trading', 'Trading'] : ['Rental', 'Trading']).map((k) => ({ label: kindLabel(k), onClick: () => setExtraLine(k === 'Rental' || k === 'Fixed Asset Trading' ? mkLine({ activity: k as Line['activity'], item: '', group: 'Generator', frequency: k === 'Rental' ? 'Monthly' : undefined, start: k === 'Rental' ? so.contractStart : undefined, end: k === 'Rental' ? so.contractEnd : undefined }) : mkLine({ activity: k as Line['activity'], item: '', unit: 'Nos' })) }))} /></Box>}
                 {expiredCerts.length > 0 && <Alert severity="warning" sx={{ mt: 1.5 }}>Certificate expired on {expiredCerts.map((c) => `${c.assetId} (${c.type}, ${c.expiry})`).join('; ')}. This does not block the delivery.</Alert>}
               </Section>
@@ -164,12 +175,14 @@ export function DeliveryForm() {
               {rentalSel.length > 0 && (
                 <Section title="Rental Start" change="new" req={R.meet} hint={late ? 'The assets stay on Hold until the Rental Start Date; invoicing does not start before it.' : undefined}>
                   <SpecForm specs={[
-                    { key: 'rentalStart', label: 'Rental Start Date (Invoice Start)', type: 'date', required: true, hint: 'Defaults to the delivery date, editable. Billing for this delivery starts on this date' },
+                    { key: 'rentalStart', label: 'Invoice Start Date (Rental Start)', type: 'date', required: true, change: 'changed', req: R8('Invoice start date separate from the delivery date'), hint: 'Defaults to the delivery date, editable. Billing for this delivery starts on this date, and the invoice schedule of the order starts from the first one' },
                     { key: 'startReason', label: 'Reason for the later start', type: 'master', master: 'delayReason', required: true, show: () => late },
                     { key: 'startBy', label: 'Delay is the responsibility of', type: 'select', options: FAULT_ATTRIBUTION, required: true, show: () => late, hint: 'Company: no penalty. Client: a waiting charge may apply' },
-                    { key: 'waitingCharge', label: 'Lump sum for the waiting period (AED, optional)', type: 'number', show: () => late },
+                    { key: 'addInvoice', label: `Invoice starts ${lateDays} day(s) after delivery. Raise an additional invoice for those days?`, type: 'select', options: ['Yes', 'No'], required: true, show: () => late, change: 'new', req: R8('Additional invoice when invoice start differs from delivery'), hint: 'If No, the days before the Invoice Start Date are not billed' },
+                    { key: 'addAmount', label: 'Additional invoice amount (AED)', type: 'number', required: true, show: () => late && f.addInvoice === 'Yes', value: () => addAmount, change: 'new', req: R8('Additional invoice when invoice start differs from delivery'), hint: `Default: ${addUnits} unit(s) x day rate (Monthly price / 30, Weekly / 7, Daily / 1) x ${lateDays} day(s), editable. ${TO_CONFIRM}` },
+                    { key: 'addNote', label: 'Narration', show: () => late && f.addInvoice === 'Yes', change: 'new', req: R8('Additional invoice when invoice start differs from delivery') },
                   ]} f={f} set={set} err={err} />
-                  {err.late && <Text type="s5" color="#C2363A">{err.late}</Text>}
+                  <FieldError label="Reason and responsibility" error={err.late} />
                 </Section>
               )}
               <Section title="Classification"><SpecForm specs={[{ key: 'department', label: 'Department', type: 'select', options: DEPARTMENTS }]} f={f} set={set} /></Section>
@@ -186,7 +199,7 @@ export function DeliveryForm() {
                   <Box><Text type="s5" weight="medium" sx={{ mb: 0.5 }}>E-signature (preferred)</Text><SignaturePad onChange={(s) => set('signed', s)} /></Box>
                   <SpecForm specs={[{ key: 'manual', label: 'Manual fallback: signed printed form', type: 'file', hint: 'Where an e-signature is not possible on site' }]} f={f} set={set} cols={1} />
                 </Box>
-                {err.signature && <Text type="s5" color="#C2363A">{err.signature}</Text>}
+                <FieldError label="Customer Signature" error={err.signature} />
               </Section>
             </>) },
           { label: 'Package', content: <Text type="s4">Packages are packed and labelled in the existing Package flow (unchanged).</Text> },
@@ -288,6 +301,12 @@ function DeliveryTransport({ d, f }: { d: Delivery; f: Record<string, any> }) {
   );
 }
 
+/** Status of one unit of this delivery on the Sales Order: On Hire, Hold, Extended to a date, Returned or Replaced. */
+const unitStateOf = (so: SalesOrder | undefined, deliveryId: string, assetId: string) => {
+  const a = so?.lines.flatMap((l) => l.assigned).find((x) => x.assetId === assetId && x.deliveryId === deliveryId);
+  return a ? ((a.state === 'On Hire' || a.state === 'Hold') && a.extendedTo ? `Extended to ${a.extendedTo}` : a.state) : '-';
+};
+
 export function DeliveryView() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -295,14 +314,27 @@ export function DeliveryView() {
   const [printOpen, setPrintOpen] = useState(false);
   const dels = useDeliveries();
   const orders = useOrders();
+  const trips = useTrips();
+  const driverApp = driverAppOf(useFleetSettings());
   const d = dels.get(id);
   const [sign, setSign] = useState<{ open: boolean; ok: boolean }>({ open: false, ok: false });
   if (!d) return <Page><PageTitle title="Delivery Order not found" right={<Button variant="outlined" onClick={() => nav('/crm/delivery-orders')}>Back</Button>} /></Page>;
   const so = getOrder(d.soId) ?? orders.get(d.soId);
-  const next = d.status === 'Dispatched' ? 'Delivered' : d.status === 'Delivered' ? 'Acknowledged' : undefined;
+  // Driver app off (Fleet Management settings): Dispatched / Delivered is driven from here instead of from the detailed trip workflow.
+  const openTrip = trips.rows.find((t) => t.docId === d.id && isOpenTrip(t));
+  const next = d.status === 'Dispatched' ? 'Delivered' : d.status === 'Delivered' ? 'Acknowledged'
+    : !driverApp && ['Picked', 'Packed'].includes(d.status) && openTrip ? 'Dispatched' : undefined;
   const advance = () => {
-    if (next && !d.signature) { setSign({ open: true, ok: false }); return; }
-    if (next) { dels.update(d.id, { status: next }); toast(`Delivery marked ${next}`); }
+    if (!next) return;
+    if (next === 'Dispatched') {
+      if (openTrip) startTrip(openTrip); else dels.update(d.id, { status: 'Dispatched' });
+      toast(`${d.number} marked Dispatched`);
+      return;
+    }
+    if (!d.signature) { setSign({ open: true, ok: false }); return; }
+    if (next === 'Delivered' && !driverApp && openTrip) { completeTrip(openTrip, []); toast(`${d.number} marked Delivered, trip completed`); return; }
+    dels.update(d.id, { status: next });
+    toast(`Delivery marked ${next}`);
   };
   const items = d.items ?? [{ lineId: d.lineId, qty: d.assetIds.length || 1, assetIds: d.assetIds, deliveredSub: d.deliveredSub }];
   const f = { ...d, customerName: custName(d.customerId), operationType: 'Delivery', salesperson: d.salesperson ?? so?.owner, entity: so?.entity, location: d.location ?? 'Jebel Ali Main Yard', soId: so?.number };
@@ -327,12 +359,18 @@ export function DeliveryView() {
                   { key: 'qty', label: 'Delivered Quantity', align: 'right' },
                   { key: 'sub', label: 'Requested / Delivered', change: 'new', req: R.meet, render: (r) => { const l = so?.lines.find((x) => x.id === r.lineId); return l && (l.activity === 'Rental' || l.activity === 'Fixed Asset Trading') ? `${l.category} / ${r.deliveredSub ?? l.category}` : '-'; } },
                   { key: 'trace', label: 'Trace Details', change: 'new', req: R.del, render: (r) => r.assetIds.map((h: string) => assetById(h)?.assetId).join(', ') || '-' },
+                  { key: 'unitState', label: 'Asset Status', change: 'new', req: R8('Extended unit shown as Extended, returned units stay Returned'), render: (r) => (r.assetIds.length ? <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>{r.assetIds.map((h: string) => { const st = unitStateOf(so, d.id, h); return <Box key={h} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}><Text type="s5">{assetById(h)?.assetId}</Text><StatusChip status={st === 'Returned' ? 'Off Hire' : st} tone={st.startsWith('Extended') ? 'blue' : st === 'Replaced' ? 'grey' : undefined} /></Box>; })}</Box> : '-') },
                 ]} />
               </Section>
               <Section title="Transportation" change="changed" req={R.fleet} hint="The trip carries the transport cost to the Sales Order. Open it to start, complete or add expenses such as Salik and fuel."><DeliveryTransport d={d} f={f} /></Section>
+              <Section title="Additional Expenses" change="new" req="Fleet review 8 Oct: an expense can be charged to the Delivery Order even with no active trip" hint="Charge a cost (Salik, fuel, a waiting charge...) to this delivery directly, whether or not a trip is currently open.">
+                <ExpenseTable rows={d.expenses ?? []} onAdd={(e) => addDeliveryExpense(d.id, e)} onUpdate={(i, e) => updateDeliveryExpense(d.id, i, e)} onRemove={(i) => removeDeliveryExpense(d.id, i)} empty="No additional expenses. Use Add to charge a cost to this delivery"
+                  accounting={(r) => (r.journalId ? 'Posted to ledger' : '-')} />
+              </Section>
               <Section title="Rental Start" change="new" req={R.meet}>
                 <SpecView f={{ rentalStart: start, later: d.startReason ? `${d.startReason} (${d.startBy})${d.waitingCharge ? `, waiting charge ${aed(d.waitingCharge)}` : ''}` : '-', billing: `Starts ${start}`, closure: d.closed ? 'Closed automatically on return' : 'Open' }}
-                  specs={[{ key: 'rentalStart', label: 'Rental Start Date' }, { key: 'later', label: 'Later start' }, { key: 'billing', label: 'Billing' }, { key: 'closure', label: 'Delivery Order closure' }]} />
+                  specs={[{ key: 'rentalStart', label: 'Invoice Start Date (Rental Start)' }, { key: 'later', label: 'Later start' }, { key: 'billing', label: 'Billing' }, { key: 'closure', label: 'Delivery Order closure' }]} />
+                {d.additional && <Box sx={{ mt: 2 }}><ValueGrid><ValueField label="Additional Invoice" change="new" req={R8('Additional invoice when invoice start differs from delivery')} value={d.additionalInvoiceId ? <Box component="span" sx={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => nav(`/accounting/invoices/${d.additionalInvoiceId}`)}>{invoiceByRef(d.additionalInvoiceId)?.number ?? 'Open'}</Box> : undefined} /><ValueField label="Additional Invoice Period" change="new" req={R8('Additional invoice when invoice start differs from delivery')} value={`${d.additional.from} to ${d.additional.to} (${d.additional.days} day(s)), ${aed(d.additional.amount)}`} /></ValueGrid></Box>}
               </Section>
               <Section title="Other" change="new" req={R.del}>
                 <SpecView f={{ description: d.description, sig: d.signature || 'Not captured', foc: d.foc, department: d.department }} specs={[{ key: 'description', label: 'Description' }, { key: 'sig', label: 'Customer Signature' }, { key: 'foc', label: 'FOC' }, { key: 'department', label: 'Department' }]} />
@@ -345,7 +383,12 @@ export function DeliveryView() {
         ]} />
       </Page>
       <AppDialog open={sign.open} title="Customer signature required" onClose={() => setSign({ open: false, ok: false })} confirmLabel="Save signature and continue" confirmDisabled={!sign.ok}
-        onConfirm={() => { dels.update(d.id, { signature: 'E-signature', status: next! }); toast(`Signature captured, delivery marked ${next} (${nowStamp()})`); setSign({ open: false, ok: false }); }}>
+        onConfirm={() => {
+          dels.update(d.id, { signature: 'E-signature' });
+          if (next === 'Delivered' && !driverApp && openTrip) { completeTrip(openTrip, []); toast(`Signature captured, trip completed, delivery marked ${next} (${nowStamp()})`); }
+          else { dels.update(d.id, { status: next! }); toast(`Signature captured, delivery marked ${next} (${nowStamp()})`); }
+          setSign({ open: false, ok: false });
+        }}>
         <Text type="s4" sx={{ mb: 1 }}>A Delivery Order cannot be completed without a customer e-signature or a manual confirmation record.</Text>
         <SignaturePad onChange={(ok) => setSign({ open: true, ok })} />
       </AppDialog>

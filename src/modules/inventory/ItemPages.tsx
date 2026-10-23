@@ -178,7 +178,7 @@ export function ItemForm() {
     <>
       <FormHeader
         subtitle={existing ? <HeaderMeta parts={[existing.name, existing.type, existing.sku]} /> : undefined} crumbs={[{ label: 'Items', to: '/inventory/items' }, { label: existing ? existing.code : 'Add Item' }]}
-        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="outlined" onClick={() => save(true)}>Save as draft</Button><Button variant="contained" onClick={() => save(false)}>Save</Button></>}
+        actions={<><Button variant="text" onClick={() => setLeave(true)}>Cancel</Button><Button variant="outlined" onClick={() => save(true)}>Save as draft</Button><Button variant="contained" onClick={() => save(false)}>{existing ? 'Update' : 'Save'}</Button></>}
       />
       <Page sx={{ pt: 2 }}>
         <TabPanels tabs={[
@@ -234,7 +234,7 @@ export function ItemView() {
           <PhotoBox src={r.image} size={132} />
           <Box sx={{ flex: 1 }}>
             <Text type="h3" weight="medium" sx={{ mb: 2 }}>{r.name}</Text>
-            <ValueGrid cols={4}>
+            <ValueGrid>
               <ValueField label="Item Code" value={r.code} change="new" req={REQ_ITEM} />
               <ValueField label="SKU" value={r.sku} />
               <ValueField label="Type" value={r.type} />
@@ -258,7 +258,7 @@ export function ItemView() {
           ) },
           { label: 'Inventory', content: (
             <>
-              <ValueGrid cols={4}>
+              <ValueGrid>
                 <ValueField label="Costing Method" value={r.costingMethod} />
                 <ValueField label="Traceability" value={r.traceability} />
                 <ValueField label="Reorder Point" value={r.minStock === undefined ? undefined : fmtNum(r.minStock)} />
@@ -277,7 +277,7 @@ export function ItemView() {
             </>
           ) },
           { label: 'Pricing and Accounts', content: (
-            <ValueGrid cols={4}>
+            <ValueGrid>
               <ValueField label="Sales Price" value={aed(r.price)} />
               <ValueField label="Cost Price" value={aed(r.costPrice)} />
             </ValueGrid>

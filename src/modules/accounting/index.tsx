@@ -8,6 +8,7 @@ import { NoteForm, NoteList, NoteView } from './NotePages';
 import { CoaList, JournalList, JournalView } from './JournalPages';
 import { AccountingDashboard, ReportPage, ReportsIndex } from './reports';
 import { R_ACC } from './shared';
+import { AssetForm, AssetList, AssetView } from './AssetPages';
 
 const M = 'Accounting & Finance';
 const c = (screen: string, classification: ChangeEntry['classification'], existing: string, change: string, ref: string, path?: string): ChangeEntry => ({ module: M, screen, classification, existing, change, ref, path });
@@ -37,7 +38,7 @@ const mod: ModuleDef = {
     { label: 'Credits', children: [{ label: 'Debit Notes', path: '/accounting/debit-notes', change: 'changed' }, { label: 'Credit Notes', path: '/accounting/credit-notes', change: 'changed' }] },
     { label: 'Expense', children: [{ label: 'Expense Reimbursement', path: '/accounting/expense-reimbursement' }, { label: 'Expense Report', path: '/accounting/expense-report' }] },
     { label: 'Commissions', children: [{ label: 'Commission Setup', path: '/accounting/commission-setup' }, { label: 'Authorize Commission', path: '/accounting/authorize-commission' }, { label: 'Commission', path: '/accounting/commission' }, { label: 'Month Wise Commission', path: '/accounting/month-wise-commission' }] },
-    { label: 'Fixed Asset Management', children: [{ label: 'Assets Management', path: '/accounting/assets' }, { label: 'Asset Transfer', path: '/accounting/asset-transfer' }] },
+    { label: 'Fixed Asset Management', children: [{ label: 'Assets Management', path: '/accounting/assets', change: 'changed' }, { label: 'Asset Transfer', path: '/accounting/asset-transfer' }] },
     { label: 'Budget', path: '/accounting/budget' },
     { label: 'Master Data', children: [{ label: 'Customer Management', path: '/accounting/customers' }, { label: 'Vendor Management', path: '/accounting/vendors' }] },
     { label: 'Reports', path: '/accounting/reports', change: 'changed' },
@@ -66,7 +67,7 @@ const mod: ModuleDef = {
     { path: 'authorize-commission', element: ex('Authorize Commission', ['Salesperson', 'Period', 'Amount', 'Status']) },
     { path: 'commission', element: ex('Commission', ['Salesperson', 'Invoice', 'Amount', 'Status']) },
     { path: 'month-wise-commission', element: ex('Month Wise Commission', ['Month', 'Salesperson', 'Amount']) },
-    { path: 'assets', element: ex('Assets Management', ['Asset', 'Category', 'Purchase Date', 'Value', 'Status']) },
+    { path: 'assets', element: <AssetList /> }, { path: 'assets/add', element: <AssetForm /> }, { path: 'assets/:id', element: <AssetView /> }, { path: 'assets/:id/edit', element: <AssetForm /> },
     { path: 'asset-transfer', element: ex('Asset Transfer', ['Asset', 'From', 'To', 'Date', 'Status']) },
     { path: 'budget', element: ex('Budget', ['Budget Name', 'Budget Type', 'Financial Year', 'Total Amount', 'Status']) },
     { path: 'customers', element: ex('Customer Management', ['ID', 'Name', 'Phone Number', 'Emails', 'Status']) },
@@ -86,6 +87,7 @@ const mod: ModuleDef = {
     c('Chart of Accounts', 'EXISTING', 'Chart of accounts list', 'The accounts used by the POC postings, with balance and a link to the General Ledger', R_ACC.gl, '/accounting/chart-of-accounts'),
     c('Reports', 'EXISTING', '19 accounting reports', 'Aged Receivable, Aged Payable, Customer SOA and General Ledger rebuilt on live POC data; the rest unchanged', R_ACC.inv, '/accounting/reports'),
     c('Dashboard', 'EXISTING WITH CHANGE', 'Financial summary KPI cards', 'Cards fed by the POC invoices, bills and collections, plus waiting-for-approval count', R_ACC.meet, '/accounting'),
+    c('Assets Management', 'EXISTING WITH CHANGE', 'Fixed Asset register placeholder', 'Rebuilt as the Fixed Asset register: Asset Type, value, depreciation (method, computation, written off basis, duration, declining factor), accounts, department and attachment. Client feedback (8 Oct): delivery/fleet vehicles are purchased for the business\'s own use, not for rental, so they are registered here with a Fleet Vehicle flag and Default Driver instead of as a Heavy Equipment Fixed Asset in Inventory. Non-vehicle rental equipment is unaffected', R_ACC.meet, '/accounting/assets'),
   ],
 };
 export default mod;
