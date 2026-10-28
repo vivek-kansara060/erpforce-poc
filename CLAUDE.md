@@ -5,7 +5,7 @@
 Before writing code, answering a question, giving a recommendation, or doing research, Claude MUST first review all five sources below. Do not act or respond until this analysis is done.
 
 1. **FE code**: `D:\projects\erpforce-fe` (React + Vite + TypeScript). Check the relevant modules (`src/modules/*`), routes, store, shell, components, and types for what already exists.
-2. **BE code**: `D:\projects-clone\erpforce-be` the backend / data layer. This repo currently has no separate backend; data lives in `src/mock-data/` and `src/store/`. If a backend repo or path is added later, it must be checked here too.
+2. **BE code**: `D:\projects\erpforce-be` the backend / data layer. This repo currently has no separate backend; data lives in `src/mock-data/` and `src/store/`. If a backend repo or path is added later, it must be checked here too.
 3. **`ERP_PROJECT_DOCUMENTATION.md`**: our internal ERP project documentation (scope, modules, architecture).
 4. **`ERPForce_Heavy_Equipment_Rental_Module.md`**: the client-provided heavy equipment rental requirements. Treat this as the client's source of truth for requirements.
 5. **`Transcript.md`**: transcripts of our regular sync-up calls with the client. Newer decisions in the transcript override older ones and may override the original client document; check it for the latest agreed changes, clarifications, and open questions.
